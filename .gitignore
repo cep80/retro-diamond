@@ -4,7 +4,7 @@ node_modules
 .nitro
 .grok
 artifacts
-assets
+/assets
 screenshots
 dist
 .env
