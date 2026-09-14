@@ -18,3 +18,10 @@ dist
 .cache
 AGENTS.md
 AGENTS.project.md
+
+# Diamond Shine 3D sources: regenerable from scripts/blender (and far over GitHub's 100 MB file cap)
+content/3d/*-3d.glb
+content/3d/blend/
+content/3d/revisions/
+content/3d/previews/engine/
+*.blend1

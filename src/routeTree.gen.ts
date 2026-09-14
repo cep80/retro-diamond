@@ -10,33 +10,193 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as ApiTelemetryRouteImport } from './routes/api/telemetry'
+import { Route as ChallengeIndexRouteImport } from './routes/challenge/index'
+import { Route as FCodeRouteImport } from './routes/f/$code'
+import { Route as HelpIndexRouteImport } from './routes/help/index'
+import { Route as LeaderboardIndexRouteImport } from './routes/leaderboard/index'
+import { Route as ProfileCodeRouteImport } from './routes/profile/$code'
+import { Route as RIdRouteImport } from './routes/r/$id'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiCronCleanupRouteImport } from './routes/api/cron/cleanup'
+import { Route as ApiCronRolloverRouteImport } from './routes/api/cron/rollover'
+import { Route as ApiOgRIdRouteImport } from './routes/api/og/r/$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTelemetryRoute = ApiTelemetryRouteImport.update({
+  id: '/api/telemetry',
+  path: '/api/telemetry',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChallengeIndexRoute = ChallengeIndexRouteImport.update({
+  id: '/challenge/',
+  path: '/challenge/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FCodeRoute = FCodeRouteImport.update({
+  id: '/f/$code',
+  path: '/f/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpIndexRoute = HelpIndexRouteImport.update({
+  id: '/help/',
+  path: '/help/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeaderboardIndexRoute = LeaderboardIndexRouteImport.update({
+  id: '/leaderboard/',
+  path: '/leaderboard/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileCodeRoute = ProfileCodeRouteImport.update({
+  id: '/profile/$code',
+  path: '/profile/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RIdRoute = RIdRouteImport.update({
+  id: '/r/$id',
+  path: '/r/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronCleanupRoute = ApiCronCleanupRouteImport.update({
+  id: '/api/cron/cleanup',
+  path: '/api/cron/cleanup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCronRolloverRoute = ApiCronRolloverRouteImport.update({
+  id: '/api/cron/rollover',
+  path: '/api/cron/rollover',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOgRIdRoute = ApiOgRIdRouteImport.update({
+  id: '/api/og/r/$id',
+  path: '/api/og/r/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/telemetry': typeof ApiTelemetryRoute
+  '/f/$code': typeof FCodeRoute
+  '/profile/$code': typeof ProfileCodeRoute
+  '/r/$id': typeof RIdRoute
+  '/admin/': typeof AdminIndexRoute
+  '/challenge/': typeof ChallengeIndexRoute
+  '/help/': typeof HelpIndexRoute
+  '/leaderboard/': typeof LeaderboardIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cron/cleanup': typeof ApiCronCleanupRoute
+  '/api/cron/rollover': typeof ApiCronRolloverRoute
+  '/api/og/r/$id': typeof ApiOgRIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/telemetry': typeof ApiTelemetryRoute
+  '/f/$code': typeof FCodeRoute
+  '/profile/$code': typeof ProfileCodeRoute
+  '/r/$id': typeof RIdRoute
+  '/admin': typeof AdminIndexRoute
+  '/challenge': typeof ChallengeIndexRoute
+  '/help': typeof HelpIndexRoute
+  '/leaderboard': typeof LeaderboardIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cron/cleanup': typeof ApiCronCleanupRoute
+  '/api/cron/rollover': typeof ApiCronRolloverRoute
+  '/api/og/r/$id': typeof ApiOgRIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/telemetry': typeof ApiTelemetryRoute
+  '/f/$code': typeof FCodeRoute
+  '/profile/$code': typeof ProfileCodeRoute
+  '/r/$id': typeof RIdRoute
+  '/admin/': typeof AdminIndexRoute
+  '/challenge/': typeof ChallengeIndexRoute
+  '/help/': typeof HelpIndexRoute
+  '/leaderboard/': typeof LeaderboardIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cron/cleanup': typeof ApiCronCleanupRoute
+  '/api/cron/rollover': typeof ApiCronRolloverRoute
+  '/api/og/r/$id': typeof ApiOgRIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/api/telemetry'
+    | '/f/$code'
+    | '/profile/$code'
+    | '/r/$id'
+    | '/admin/'
+    | '/challenge/'
+    | '/help/'
+    | '/leaderboard/'
+    | '/api/auth/$'
+    | '/api/cron/cleanup'
+    | '/api/cron/rollover'
+    | '/api/og/r/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/api/telemetry'
+    | '/f/$code'
+    | '/profile/$code'
+    | '/r/$id'
+    | '/admin'
+    | '/challenge'
+    | '/help'
+    | '/leaderboard'
+    | '/api/auth/$'
+    | '/api/cron/cleanup'
+    | '/api/cron/rollover'
+    | '/api/og/r/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/telemetry'
+    | '/f/$code'
+    | '/profile/$code'
+    | '/r/$id'
+    | '/admin/'
+    | '/challenge/'
+    | '/help/'
+    | '/leaderboard/'
+    | '/api/auth/$'
+    | '/api/cron/cleanup'
+    | '/api/cron/rollover'
+    | '/api/og/r/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiTelemetryRoute: typeof ApiTelemetryRoute
+  FCodeRoute: typeof FCodeRoute
+  ProfileCodeRoute: typeof ProfileCodeRoute
+  RIdRoute: typeof RIdRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+  ChallengeIndexRoute: typeof ChallengeIndexRoute
+  HelpIndexRoute: typeof HelpIndexRoute
+  LeaderboardIndexRoute: typeof LeaderboardIndexRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiCronCleanupRoute: typeof ApiCronCleanupRoute
+  ApiCronRolloverRoute: typeof ApiCronRolloverRoute
+  ApiOgRIdRoute: typeof ApiOgRIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +208,107 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/telemetry': {
+      id: '/api/telemetry'
+      path: '/api/telemetry'
+      fullPath: '/api/telemetry'
+      preLoaderRoute: typeof ApiTelemetryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/challenge/': {
+      id: '/challenge/'
+      path: '/challenge'
+      fullPath: '/challenge/'
+      preLoaderRoute: typeof ChallengeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/f/$code': {
+      id: '/f/$code'
+      path: '/f/$code'
+      fullPath: '/f/$code'
+      preLoaderRoute: typeof FCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/': {
+      id: '/help/'
+      path: '/help'
+      fullPath: '/help/'
+      preLoaderRoute: typeof HelpIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leaderboard/': {
+      id: '/leaderboard/'
+      path: '/leaderboard'
+      fullPath: '/leaderboard/'
+      preLoaderRoute: typeof LeaderboardIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/$code': {
+      id: '/profile/$code'
+      path: '/profile/$code'
+      fullPath: '/profile/$code'
+      preLoaderRoute: typeof ProfileCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r/$id': {
+      id: '/r/$id'
+      path: '/r/$id'
+      fullPath: '/r/$id'
+      preLoaderRoute: typeof RIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/cleanup': {
+      id: '/api/cron/cleanup'
+      path: '/api/cron/cleanup'
+      fullPath: '/api/cron/cleanup'
+      preLoaderRoute: typeof ApiCronCleanupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cron/rollover': {
+      id: '/api/cron/rollover'
+      path: '/api/cron/rollover'
+      fullPath: '/api/cron/rollover'
+      preLoaderRoute: typeof ApiCronRolloverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/og/r/$id': {
+      id: '/api/og/r/$id'
+      path: '/api/og/r/$id'
+      fullPath: '/api/og/r/$id'
+      preLoaderRoute: typeof ApiOgRIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiTelemetryRoute: ApiTelemetryRoute,
+  FCodeRoute: FCodeRoute,
+  ProfileCodeRoute: ProfileCodeRoute,
+  RIdRoute: RIdRoute,
+  AdminIndexRoute: AdminIndexRoute,
+  ChallengeIndexRoute: ChallengeIndexRoute,
+  HelpIndexRoute: HelpIndexRoute,
+  LeaderboardIndexRoute: LeaderboardIndexRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiCronCleanupRoute: ApiCronCleanupRoute,
+  ApiCronRolloverRoute: ApiCronRolloverRoute,
+  ApiOgRIdRoute: ApiOgRIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

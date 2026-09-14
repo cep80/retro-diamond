@@ -20,9 +20,9 @@
  * `process.env`, which is why the merge has to happen before Vite starts.
  */
 import { spawn } from "node:child_process";
-import { readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { constants as osConstants } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, delimiter } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const APP_ENV_REL_PATH = ".grok/app-env.json";
@@ -104,14 +104,57 @@ export function isMainModule(moduleUrl) {
   }
 }
 
+function isBareCommand(command) {
+  return !command.includes("/") && !command.includes("\\");
+}
+
+/** Put this workspace's npm bins first so `vite` resolves after `npm run`. */
+function envWithLocalBin(env) {
+  const bin = join(projectRoot(), "node_modules", ".bin");
+  const current = env.PATH ?? env.Path ?? "";
+  const next = `${bin}${delimiter}${current}`;
+  return { ...env, PATH: next, Path: next };
+}
+
+/**
+ * Resolve a bare npm bin so Windows can actually launch it.
+ *
+ * `spawn("vite")` without a shell looks for `vite.exe`. npm's Windows shim is
+ * `vite.cmd`, which CreateProcess cannot run — that is `spawn vite ENOENT`.
+ * Prefer `node node_modules/<pkg>/bin/<cmd>.js` so we never need cmd.exe.
+ */
+function resolveSpawn(command, args) {
+  if (!isBareCommand(command)) {
+    return { command, args, shell: false };
+  }
+  const pkgBin = join(projectRoot(), "node_modules", command, "bin", `${command}.js`);
+  if (existsSync(pkgBin)) {
+    return { command: process.execPath, args: [pkgBin, ...args], shell: false };
+  }
+  const cmdShim = join(projectRoot(), "node_modules", ".bin", `${command}.cmd`);
+  if (process.platform === "win32" && existsSync(cmdShim)) {
+    return { command: cmdShim, args, shell: true };
+  }
+  const unixBin = join(projectRoot(), "node_modules", ".bin", command);
+  if (existsSync(unixBin)) {
+    return { command: unixBin, args, shell: false };
+  }
+  return { command, args, shell: process.platform === "win32" };
+}
+
 function main(argv) {
   const [command, ...args] = argv;
   if (!command) {
     console.error("usage: node scripts/with-app-env.mjs <command> [args…]");
     process.exit(2);
   }
-  const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
-  const child = spawn(command, args, { stdio: "inherit", env });
+  const env = envWithLocalBin(mergeAppEnv(readAppEnv(projectRoot()), process.env));
+  const resolved = resolveSpawn(command, args);
+  const child = spawn(resolved.command, resolved.args, {
+    stdio: "inherit",
+    env,
+    shell: resolved.shell,
+  });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => child.kill(signal));

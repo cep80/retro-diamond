@@ -29,10 +29,25 @@ export type Screen =
   | "postgame"
   | "offseason"
   | "fired"
-  | "settings";
+  | "settings"
+  | "trade"
+  | "legacy"
+  | "schedule"
+  | "bracket"
+  | "records"
+  | "achievements"
+  | "player"
+  | "yearbook"
+  | "help"
+  | "credits"
+  | "scout"
+  | "account"
+  | "challenge"
+  | "leaderboard"
+  | "friends";
 
 export type PitchType = "fastball" | "changeup" | "curve" | "slider";
-export type SwingKind = "contact" | "power";
+export type SwingKind = "contact" | "power" | "bunt";
 
 export interface PlayerStats {
   g: number;
@@ -44,6 +59,7 @@ export interface PlayerStats {
   bb: number;
   so: number;
   sb: number;
+  cs: number;
   doubles: number;
   triples: number;
   ip: number;
@@ -54,6 +70,32 @@ export interface PlayerStats {
   l: number;
   sv: number;
   hA: number;
+}
+
+export type Hand = "L" | "R" | "S";
+export type ParkId =
+  | "heat"
+  | "kings"
+  | "irons"
+  | "koi"
+  | "dusters"
+  | "rain"
+  | "palms"
+  | "peaks"
+  | "harbor"
+  | "stars"
+  | "range"
+  | "knights"
+  | "north"
+  | "mags"
+  | "forges"
+  | "smoke";
+
+export interface PlayerLook {
+  skin: 0 | 1 | 2 | 3 | 4;
+  hair: 0 | 1 | 2 | 3 | 4;
+  build: 0 | 1 | 2;
+  helm: boolean;
 }
 
 export interface Player {
@@ -76,7 +118,22 @@ export interface Player {
   morale: number;
   energy: number;
   injured: number;
+  /** Pitcher threw yesterday; caps effective energy at 80. */
+  pitchedLastGame?: boolean;
+  /** Career weeks on the IL / injured list. */
+  totalInjuredWeeks?: number;
+  /** Draft/scouting noise on true potential. */
+  scoutedPotential?: number;
+  /** Weeks missed this season; reset each offseason. */
+  injuredWeeksThisSeason?: number;
   stats: PlayerStats;
+  /** Totals from completed seasons; the current season lives in `stats` until the offseason folds it in. */
+  career?: PlayerStats;
+  /** Seasons folded into `career`. */
+  seasons?: number;
+  bats: Hand;
+  throws: Exclude<Hand, "S">;
+  look: PlayerLook;
 }
 
 export interface Team {
@@ -87,6 +144,7 @@ export interface Team {
   color: string;
   color2: string;
   prestige: number;
+  parkId: ParkId;
   roster: Player[];
   lineup: string[];
   rotation: string[];
@@ -105,6 +163,7 @@ export interface TeamTemplate {
   color: string;
   color2: string;
   prestige: number;
+  parkId: ParkId;
 }
 
 export interface GameSlot {
@@ -124,8 +183,10 @@ export interface NewsItem {
   text: string;
 }
 
+export type BatType = "GB" | "FB" | "LD" | "PU";
+
 export interface PlayResult {
-  kind: "k" | "bb" | "out" | "1b" | "2b" | "3b" | "hr" | "sf";
+  kind: "k" | "bb" | "hbp" | "out" | "1b" | "2b" | "3b" | "hr" | "sf" | "error";
   label: string;
   description: string;
   rbi: number;
@@ -134,6 +195,19 @@ export interface PlayResult {
   strike?: boolean;
   ball?: boolean;
   perfect?: boolean;
+  batType?: BatType;
+  wp?: boolean;
+  ifr?: boolean;
+}
+
+export type GameTime = "day" | "dusk" | "night";
+export type GameWeather = "clear" | "wind" | "rain";
+
+export interface GameConditions {
+  time: GameTime;
+  weather: GameWeather;
+  /** −0.6..0.6; positive helps carry. */
+  wind: number;
 }
 
 export interface LiveGame {
@@ -159,6 +233,46 @@ export interface LiveGame {
   userIsHome: boolean;
   waitingDefense: boolean;
   walkOff: boolean;
+  closerInH: boolean;
+  closerInA: boolean;
+  statSnap: Record<string, PlayerStats>;
+  /** Pitches left that still show the Contact / Power teach. */
+  teachLeft: number;
+  /** Defensive PAs left that still show the pitching teach. */
+  teachPitchLeft: number;
+  /** Pitch counts this game, for in-game fatigue. */
+  pitchesH: number;
+  pitchesA: number;
+  /** CPU-vs-CPU fast sim: user never bats or pitches. */
+  cpuOnly?: boolean;
+  /** Seeded weather for this slot. */
+  conditions?: GameConditions;
+  /** Who occupies each base (for steals and advancement). */
+  baseRunners?: [string | null, string | null, string | null];
+  /** PA counter for seeded RNG streams in live play. */
+  paIdx?: number;
+  pinchHitsUsed?: number;
+  defSubsUsed?: number;
+  /** Pitcher id → mound visit used this game. */
+  moundVisits?: Record<string, boolean>;
+  shiftOn?: boolean;
+  stealArmed?: boolean;
+  gamePlan?: "aggressive" | "normal" | "defensive";
+}
+
+export interface BoxLine {
+  playerId: string;
+  name: string;
+  pos: Pos;
+  line: string;
+}
+
+export interface WeekScore {
+  homeAbbr: string;
+  awayAbbr: string;
+  homeScore: number;
+  awayScore: number;
+  user: boolean;
 }
 
 export interface GameResult {
@@ -170,6 +284,24 @@ export interface GameResult {
   hitsA: number;
   log: string[];
   userPlayed: boolean;
+  box?: BoxLine[];
+  weekScores?: WeekScore[];
+  /** Credits earned from this game, split out so the post-game can show the gate. */
+  income?: { total: number; base: number; live: number; gate: number };
+}
+
+export interface Award {
+  playerId: string;
+  name: string;
+  teamAbbr: string;
+  line: string;
+}
+
+export interface SeasonAwards {
+  mvp: Award | null;
+  arm: Award | null;
+  /** Best bat on the user's club. */
+  clubBat: Award | null;
 }
 
 export interface SeasonRecord {
@@ -177,6 +309,7 @@ export interface SeasonRecord {
   wins: number;
   losses: number;
   result: string;
+  awards?: SeasonAwards;
 }
 
 export interface PressQ {
@@ -184,6 +317,35 @@ export interface PressQ {
   prompt: string;
   a: string;
   b: string;
+}
+
+export type Difficulty = "rookie" | "pro" | "legend";
+export type ColorblindMode = "none" | "protan" | "deutan" | "tritan";
+export type ReducedMotion = "system" | "off" | "on";
+export type TicketTier = "discount" | "standard" | "premium";
+
+export interface RivalryRecord {
+  wins: number;
+  losses: number;
+  heat: number;
+}
+
+export type CareerObjectiveKind = "playoffs" | "ring" | "develop_rookies" | "break_even" | "rivalry";
+
+export interface CareerObjective {
+  id: string;
+  label: string;
+  kind: CareerObjectiveKind;
+  ownerMet: number;
+  ownerMiss: number;
+  creditBonus: number;
+  /** Rival club for a rivalry-series objective. */
+  rivalId?: string;
+}
+
+export interface CareerCoach {
+  role: string;
+  yearsLeft: number;
 }
 
 export interface Career {
@@ -207,10 +369,49 @@ export interface Career {
   live: LiveGame | null;
   draftPool: Player[];
   draftPicks: number;
+  /** Set when the manager walks away; the legacy screen reads the career from here. */
+  retired?: boolean;
+  difficulty?: Difficulty;
+  seed?: number;
+  milestonesHit?: string[];
+  rivalries?: Record<string, RivalryRecord>;
+  records?: Record<string, unknown>;
+  facilities?: string[];
+  coaches?: CareerCoach[];
+  lastSaveTs?: number;
+  ticketTier?: TicketTier;
+  objective?: CareerObjective | null;
+  /** Weekly challenge run — not persisted in career slots. */
+  isChallenge?: boolean;
+  challengeWeek?: string;
 }
 
 export interface Settings {
   sfx: boolean;
   music: boolean;
   shake: boolean;
+  telemetry: boolean;
+  /** Defense plays itself (the old Skip ticker) instead of the playable pitching flow. */
+  autoPitch: boolean;
+  autoBaserun: boolean;
+  textScale: number;
+  colorblind: ColorblindMode;
+  highContrast: boolean;
+  reducedMotion: ReducedMotion;
+  leftHand: boolean;
+  haptics: boolean;
+  timingAssist: boolean;
+  narration: boolean;
+  skipOnboarding: boolean;
+  /** First Office visit teach card dismissed. */
+  onboardingOfficeDone?: boolean;
+}
+
+export type SaveSlot = 0 | 1 | 2;
+
+export interface SlotData {
+  career: Career | null;
+  screen: Screen;
+  /** Pregame state used to safely abandon an in-progress game. */
+  gameBackup?: Career | null;
 }

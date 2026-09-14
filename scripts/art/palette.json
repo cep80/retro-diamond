@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "ui": {
+    "ink": "#0c1210",
+    "ink2": "#141c18",
+    "panel": "#1c2620",
+    "panel2": "#24302a",
+    "line": "#2e3c34",
+    "cream": "#e8eadf",
+    "muted": "#8a9180",
+    "grass": "#3d6b3a",
+    "grass2": "#c8e09a",
+    "dirt": "#c4a574",
+    "danger": "#d4544a",
+    "ok": "#6aa84f",
+    "rust": "#e0906a",
+    "gold": "#f0c060",
+    "awayGray": "#8b9084"
+  },
+  "sprite": [
+    "#0c1210",
+    "#2a2018",
+    "#3c4868",
+    "#5c6058",
+    "#8a9180",
+    "#e8eadf",
+    "#f3d2b5",
+    "#c48a58",
+    "#8d562e",
+    "#1a1410",
+    "#6b4423",
+    "#c4a574",
+    "#ffffff",
+    "#4c2e1c",
+    "#24302a",
+    "#d4544a"
+  ],
+  "ramps": {
+    "jersey": {
+      "keys": ["J0", "J1", "J2", "J3"],
+      "colors": ["#ff00ff", "#e000e0", "#c000c0", "#a000a0"]
+    },
+    "pants": {
+      "keys": ["P0", "P1", "P2"],
+      "colors": ["#00ffff", "#00e0e0", "#00c0c0"]
+    },
+    "cap": {
+      "keys": ["C0", "C1", "C2"],
+      "colors": ["#b0ff00", "#90e000", "#70c000"]
+    },
+    "skin": {
+      "keys": ["S0", "S1", "S2"],
+      "colors": ["#ffccb0", "#ffb090", "#e09070"]
+    },
+    "hair": {
+      "keys": ["H0", "H1"],
+      "colors": ["#a07040", "#704020"]
+    },
+    "trim": {
+      "keys": ["T0"],
+      "colors": ["#ffff00"]
+    }
+  },
+  "chromaKey": "#00ff00",
+  "contrastMinDeltaL": 0.18
+}

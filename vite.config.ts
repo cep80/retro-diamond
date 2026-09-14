@@ -157,6 +157,12 @@ export default defineConfig(({ command, isPreview }) => ({
     strictPort: true,
   },
   resolve: { tsconfigPaths: true },
+  // Pre-bundle the 3D stack so the first dynamic import of the exhibition
+  // renderer doesn't trigger a mid-flight dependency re-optimization (which
+  // manifests as "Failed to fetch dynamically imported module").
+  optimizeDeps: {
+    include: ["three", "@react-three/fiber"],
+  },
   plugins: [
     pgliteBootstrapPlugin(),
     // Before tanstackStart so /auth/popup never falls through to the SPA.

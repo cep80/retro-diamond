@@ -1,37 +1,53 @@
 import { cn } from "@/lib/utils";
+import type React from "react";
 import type { ReactNode } from "react";
 import { stars as starCount } from "@/game/data";
+import { useGame } from "@/game/store";
 import type { Player } from "@/game/types";
 
 export function PixelBtn({
   children,
   onClick,
+  onPointerDown,
   variant = "primary",
   className,
   disabled,
   type = "button",
+  pressed,
+  ariaLabel,
 }: {
   children: ReactNode;
   onClick?: () => void;
+  /** Timing-critical inputs read the event timestamp here rather than waiting for click. */
+  onPointerDown?: (ev: React.PointerEvent<HTMLButtonElement>) => void;
   variant?: "primary" | "ghost" | "danger" | "cream";
   className?: string;
   disabled?: boolean;
   type?: "button" | "submit";
+  /** Toggle-style buttons announce their state. */
+  pressed?: boolean;
+  ariaLabel?: string;
 }) {
   const styles = {
     primary:
-      "bg-grass-2 text-ink hover:bg-cream active:translate-y-px",
-    cream: "bg-cream text-ink hover:bg-grass-2 active:translate-y-px",
-    ghost: "bg-panel-2 text-cream border border-line hover:border-grass-2 active:translate-y-px",
-    danger: "bg-danger text-cream hover:opacity-90 active:translate-y-px",
+      "border border-white/40 bg-grass-2 text-ink shadow-[0_4px_0_var(--color-teal-deep)] hover:brightness-110 active:translate-y-1 active:shadow-none",
+    cream:
+      "border border-white/50 bg-cream text-ink shadow-[0_4px_0_var(--color-sky-deep)] hover:bg-white active:translate-y-1 active:shadow-none",
+    ghost:
+      "border border-line bg-panel-2/90 text-cream hover:border-grass-2 hover:bg-panel active:translate-y-px",
+    danger:
+      "border border-white/20 bg-danger text-white shadow-[0_4px_0_var(--color-danger-deep)] hover:brightness-110 active:translate-y-1 active:shadow-none",
   }[variant];
   return (
     <button
       type={type}
       disabled={disabled}
+      aria-pressed={pressed}
+      aria-label={ariaLabel}
       onClick={onClick}
+      onPointerDown={onPointerDown}
       className={cn(
-        "min-h-11 px-4 inline-flex items-center justify-center text-center font-display text-[10px] leading-none tracking-wide uppercase disabled:opacity-40 disabled:pointer-events-none",
+        "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-center font-display text-xs font-bold uppercase leading-none tracking-[0.08em] transition-[transform,background-color,border-color,filter,box-shadow] disabled:pointer-events-none disabled:opacity-40",
         styles,
         className,
       )}
@@ -51,7 +67,8 @@ export function Stars({ value, className }: { value: number; className?: string 
         return (
           <span
             key={i}
-            className={cn("block size-2 rotate-45", on ? "bg-grass-2" : "bg-line")}
+            className={cn("block size-3", on ? "bg-gold" : "bg-line")}
+            style={{ clipPath: "polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 94%,50% 72%,21% 94%,32% 57%,2% 35%,39% 35%)" }}
           />
         );
       })}
@@ -76,12 +93,19 @@ export function Meter({
 }) {
   const pct = Math.max(0, Math.min(100, (value / max) * 100));
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-14 shrink-0 font-display text-[8px] text-muted uppercase">{label}</span>
-      <div className="h-2 flex-1 bg-ink-2">
-        <div className={cn("h-full", color)} style={{ width: `${pct}%` }} />
+    <div
+      className="flex items-center gap-2"
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={max}
+      aria-valuenow={Math.round(value)}
+    >
+      <span className="w-16 shrink-0 font-display text-[9px] font-bold uppercase tracking-wide text-muted">{label}</span>
+      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-ink-2">
+        <div className={cn("h-full rounded-full", color)} style={{ width: `${pct}%` }} />
       </div>
-      <span className="w-8 text-right font-ui text-xs tabular-nums text-cream">{Math.round(value)}</span>
+      <span className="w-8 text-right font-ui text-sm font-semibold tabular-nums text-cream">{Math.round(value)}</span>
     </div>
   );
 }
@@ -91,32 +115,52 @@ export function Shell({
   onBack,
   children,
   footer,
+  bg,
 }: {
   title: string;
   onBack?: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  bg?: string;
 }) {
+  const textScale = useGame((s) => s.settings.textScale);
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col bg-ink text-cream">
-      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-line bg-ink-2/95 px-3 py-3 backdrop-blur-sm">
+    <div
+      className="app-shell relative mx-auto flex min-h-dvh w-full max-w-xl flex-col overflow-hidden bg-ink text-cream"
+      style={{ ["--text-scale" as string]: String(textScale) }}
+    >
+      {bg ? (
+        <>
+          <img
+            src={bg}
+            alt=""
+            className="pointer-events-none absolute inset-0 size-full object-cover opacity-35"
+            crossOrigin="anonymous"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-ink/78" />
+        </>
+      ) : null}
+      <header className="shell-header sticky top-0 z-20 flex min-h-16 items-center gap-3 border-b border-line bg-ink-2/92 px-4 py-3 backdrop-blur-md">
         {onBack ? (
           <button
             type="button"
             onClick={onBack}
-            className="flex size-11 items-center justify-center border border-line bg-panel font-display text-[10px] text-grass-2"
+            className="flex size-11 items-center justify-center rounded-xl border border-line bg-panel font-display text-base font-bold text-grass-2 transition hover:border-grass-2 hover:bg-panel-2"
             aria-label="Back"
           >
-            {"<"}
+            {"‹"}
           </button>
         ) : (
           <span className="size-11" />
         )}
-        <h1 className="flex-1 font-display text-[11px] uppercase leading-relaxed">{title}</h1>
+        <h1 className="flex-1 font-display text-sm font-bold uppercase leading-relaxed tracking-[0.08em]" style={{ fontSize: "calc(14px * var(--text-scale, 1))" }}>
+          {title}
+        </h1>
+        <span className="h-1.5 w-8 -skew-x-12 rounded-full bg-coral" aria-hidden="true" />
       </header>
-      <div className="flex-1 overflow-y-auto px-3 py-4">{children}</div>
+      <div className="relative z-10 flex-1 overflow-y-auto px-4 py-5">{children}</div>
       {footer ? (
-        <div className="sticky bottom-0 border-t border-line bg-ink-2 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="relative z-10 sticky bottom-0 border-t border-line bg-ink-2/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
           {footer}
         </div>
       ) : null}
@@ -138,14 +182,17 @@ export function Card({
       <button
         type="button"
         onClick={onClick}
-        className={cn("w-full border border-line bg-panel p-3 text-left", className)}
+        className={cn(
+          "w-full rounded-2xl border border-line bg-panel/92 p-4 text-left transition-[transform,border-color,background-color] hover:-translate-y-0.5 hover:border-grass-2/80 hover:bg-panel-2",
+          className,
+        )}
       >
         {children}
       </button>
     );
   }
   return (
-    <div className={cn("w-full border border-line bg-panel p-3 text-left", className)}>
+    <div className={cn("w-full rounded-2xl border border-line bg-panel/92 p-4 text-left", className)}>
       {children}
     </div>
   );
@@ -154,16 +201,16 @@ export function Card({
 export function RatingRow({ label, n }: { label: string; n: number }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-16 font-display text-[8px] text-muted uppercase">{label}</span>
-      <div className="flex flex-1 gap-px">
+      <span className="w-16 font-display text-[9px] font-bold uppercase tracking-wide text-muted">{label}</span>
+      <div className="flex flex-1 gap-0.5">
         {Array.from({ length: 20 }, (_, i) => (
           <span
             key={i}
-            className={cn("h-2 flex-1", i < n ? "bg-grass-2" : "bg-ink-2")}
+            className={cn("h-2.5 flex-1 first:rounded-l-full last:rounded-r-full", i < n ? "bg-grass-2" : "bg-ink-2")}
           />
         ))}
       </div>
-      <span className="w-5 text-right font-ui text-xs tabular-nums">{n}</span>
+      <span className="w-6 text-right font-ui text-sm font-semibold tabular-nums">{n}</span>
     </div>
   );
 }

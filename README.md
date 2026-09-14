@@ -1,12 +1,16 @@
-# Retro Diamond
+# Diamond Shine
 
-A baseball career game in the spirit of Retro Bowl. Run the club from the office, then time the swing at the plate.
+**Diamond Shine** (ダイヤシャイン) is a single-player baseball career. You are her **Coach**. Home is the **complex**. The plate is the race.
+
+Never ダイヤの〜.
 
 ## Play
 
-- **Office** — 16 clubs, 16-week season, playoffs, rings. Roster, lineup, rotation, free agents, training, park, press. Keep the owner happy.
-- **At-bats** — one pitch per plate appearance. Hit **Contact** when the meter hits green, or **Power** for a tighter window and more lift. Lay off balls. Defense sims itself.
-- **Keys** — Space / J = Contact, K / X = Power, Enter = skip defense.
+- **Work** — Cage, Poles, Live looks, On-field BP, Situational, Off day, Trainer's room, Clubhouse (Catch with Coach). One station per turn. No tap at the stations; a one-second window preview, then the work lands.
+- **Featured games** — Academy Gate (5), First Light (18), Lantern Classic (28, always Lantern Field), Night Classic, Stretch, Series, Finale. Sit on the 3×3, pick Contact / Power / Bunt, time the tap. Pitch reads `?` until her Eye picks it up. Hot cells `+`, cold cells `×`. Primary Goal for Aoi (Lead): **REACH**.
+- You are not a GM. There is no office, cap, or trade board on the title.
+
+Aoi's Rookie year (turns 1–20) is the first playable year. The career is 60 turns. Title select starts all six 1.0 girls. Ace (Reina, Sol) throw a three-act outing; Closers (Kira) enter in the ninth.
 
 ## Run
 
@@ -18,12 +22,15 @@ npm run dev
 App listens on `0.0.0.0:8080`.
 
 ```bash
-npm run build
 npm run typecheck
+npm test
+npm run test:contact
 ```
 
-Saves live in the browser (`localStorage`). No account required.
+`test:contact` is the Turn-12 Contact 7 vs 14 oracle (target gap 25–35pp).
+
+Saves live in the browser (`localStorage`).
 
 ## Stack
 
-TanStack Start, React 19, Tailwind v4, Zustand, Canvas 2D.
+TanStack Start, React 19, Tailwind v4, Zustand.

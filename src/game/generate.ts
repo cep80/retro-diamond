@@ -3,25 +3,40 @@ import {
   emptyStats,
   FIRST_NAMES,
   HITTER_POS,
+  isPitcher,
   LAST_NAMES,
   makeRng,
+  ovr,
   pick,
   PITCHER_POS,
   TEAMS,
   uid,
-} from "./data";
-import type { Career, GameSlot, Player, Pos, Team } from "./types";
+} from "./data.ts";
+import { repairClub } from "./roster.ts";
+import { rollIdentity } from "./look.ts";
+import { rollOwnerObjective } from "./economy.ts";
+import type { Career, Difficulty, GameSlot, Player, Pos, Team } from "./types.ts";
 
 function rating(r: () => number, mean: number, spread = 3.2) {
   const n = mean + (r() + r() + r() - 1.5) * spread;
   return Math.max(1, Math.min(20, Math.round(n)));
 }
 
-function salaryFor(pos: Pos, ratingsMean: number, age: number) {
-  const star = Math.max(0, ratingsMean - 8);
-  const aging = age > 32 ? 1.15 : age < 24 ? 0.75 : 1;
-  const pitch = pos === "SP" || pos === "CL" ? 1.15 : 1;
-  return Math.max(2, Math.round(star * 2.1 * aging * pitch + 3));
+export function agingFactor(age: number): number {
+  if (age <= 23) return 1.25;
+  if (age >= 34) return 0.75;
+  if (age >= 31) return 0.88;
+  return 1;
+}
+
+export function posFactor(pos: Pos): number {
+  if (pos === "SP" || pos === "CL") return 1.15;
+  if (pos === "C") return 1.1;
+  return 1;
+}
+
+function salaryFor(pos: Pos, ovrVal: number, age: number, years: number) {
+  return Math.max(2, Math.round(ovrVal * 1.8 * agingFactor(age) * posFactor(pos) + years * 0.4));
 }
 
 export function makePlayer(r: () => number, pos: Pos, mean: number, forceId?: string): Player {
@@ -39,11 +54,9 @@ export function makePlayer(r: () => number, pos: Pos, mean: number, forceId?: st
   const stuff = rating(r, pos === "CL" ? m + 1.8 : pos === "SP" ? m + 0.8 : m);
   const control = rating(r, m + (pos === "SP" ? 0.6 : 0));
   const stamina = rating(r, pos === "SP" ? m + 2 : pos === "CL" ? m - 2 : m);
-  const ratingsMean =
-    pos === "SP" || pos === "RP" || pos === "CL"
-      ? (stuff + control + stamina) / 3
-      : (contact + power + speed + eye + fielding) / 5;
-  return {
+  const ident = rollIdentity(r, pos);
+  const years = 1 + Math.floor(r() * 4);
+  const draft: Player = {
     id: forceId ?? uid("p"),
     name: `${pick(r, FIRST_NAMES)} ${pick(r, LAST_NAMES)}`,
     pos,
@@ -58,13 +71,16 @@ export function makePlayer(r: () => number, pos: Pos, mean: number, forceId?: st
     stuff,
     control,
     stamina,
-    salary: salaryFor(pos, ratingsMean, age),
-    years: 1 + Math.floor(r() * 4),
+    salary: 0,
+    years,
     morale: 62 + Math.floor(r() * 28),
     energy: 100,
     injured: 0,
     stats: emptyStats(),
+    ...ident,
   };
+  draft.salary = salaryFor(pos, ovr(draft), age, years);
+  return draft;
 }
 
 function makeRoster(r: () => number, prestige: number, userTeam: boolean): Player[] {
@@ -121,7 +137,7 @@ export function makeTeam(templateIndex: number, seed: number, userTeam: boolean)
   const r = makeRng(seed + templateIndex * 9973);
   const roster = makeRoster(r, t.prestige, userTeam);
   const closer = roster.find((p) => p.pos === "CL") ?? null;
-  return {
+  const team: Team = {
     id: t.id,
     city: t.city,
     name: t.name,
@@ -129,6 +145,7 @@ export function makeTeam(templateIndex: number, seed: number, userTeam: boolean)
     color: t.color,
     color2: t.color2,
     prestige: t.prestige,
+    parkId: t.parkId,
     roster,
     lineup: defaultLineup(roster),
     rotation: defaultRotation(roster),
@@ -138,6 +155,8 @@ export function makeTeam(templateIndex: number, seed: number, userTeam: boolean)
     runsFor: 0,
     runsAgainst: 0,
   };
+  repairClub(team);
+  return team;
 }
 
 export function makeSchedule(teamIds: string[], seed: number): GameSlot[] {
@@ -196,11 +215,11 @@ export function makeFA(seed: number, year: number): Player[] {
   return pool;
 }
 
-export function newCareer(userTeamId: string, coachName: string): Career {
+export function newCareer(userTeamId: string, coachName: string, difficulty: Difficulty = "pro"): Career {
   const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
   const teams = TEAMS.map((t, i) => makeTeam(i, seed, t.id === userTeamId));
   const schedule = makeSchedule(teams.map((t) => t.id), seed + 7);
-  return {
+  const career: Career = {
     year: 1989,
     week: 1,
     phase: "season",
@@ -228,17 +247,46 @@ export function newCareer(userTeamId: string, coachName: string): Career {
     live: null,
     draftPool: [],
     draftPicks: 0,
+    seed,
+    difficulty,
+    milestonesHit: [],
+    rivalries: {},
+    records: {},
+    facilities: [],
+    coaches: [],
   };
+  career.objective = rollOwnerObjective(career, makeRng(seed + 99));
+  career.news.unshift({
+    id: uid("n"),
+    week: 1,
+    year: 1989,
+    text: `Owner's mandate: ${career.objective.label}.`,
+  });
+  return career;
 }
 
-export function findPlayer(team: Team, id: string) {
-  return team.roster.find((p) => p.id === id) ?? null;
-}
+export { findPlayer, starterFor } from "./roster.ts";
 
-export function starterFor(team: Team, week: number) {
-  if (team.rotation.length === 0) {
-    return team.roster.find((p) => p.pos === "SP") ?? team.roster.find((p) => p.pos === "RP") ?? team.roster[0]!;
+export function replenishRoster(team: Team, r: () => number) {
+  const hitters = team.roster.filter((p) => !isPitcher(p.pos));
+  const sps = team.roster.filter((p) => p.pos === "SP");
+  const mean = 8.2 + team.prestige * 0.35;
+  while (hitters.length < 10) {
+    const pos = HITTER_POS[hitters.length % HITTER_POS.length]!;
+    const p = makePlayer(r, pos, mean - 1.2);
+    team.roster.push(p);
+    hitters.push(p);
   }
-  const id = team.rotation[(week - 1) % team.rotation.length]!;
-  return findPlayer(team, id) ?? team.roster.find((p) => p.pos === "SP")!;
+  while (sps.length < 5) {
+    const p = makePlayer(r, "SP", mean - 0.6);
+    team.roster.push(p);
+    sps.push(p);
+  }
+  if (!team.roster.some((p) => p.pos === "CL")) {
+    team.roster.push(makePlayer(r, "CL", mean));
+  }
+  if (team.roster.filter((p) => p.pos === "RP").length < 3) {
+    team.roster.push(makePlayer(r, "RP", mean - 0.8));
+  }
+  repairClub(team);
 }

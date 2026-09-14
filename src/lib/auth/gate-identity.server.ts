@@ -1,3 +1,4 @@
+// TODO M5: Remove gate identity once Vercel previews replace the Grok sandbox popup path.
 import {
   importJWK,
   jwtVerify,

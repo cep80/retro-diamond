@@ -1,4 +1,4 @@
-import type { Player, PlayerStats, Pos, TeamTemplate } from "./types";
+import type { Player, PlayerStats, Pos, TeamTemplate } from "./types.ts";
 
 export const SAVE_VERSION = 1;
 export const SEASON_GAMES = 16;
@@ -7,22 +7,22 @@ export const TRAIN_COST = 4;
 export const ROSTER_MAX = 26;
 
 export const TEAMS: TeamTemplate[] = [
-  { id: "heat", city: "Houston", name: "Heat", abbr: "HOU", color: "#0b1d36", color2: "#e85d04", prestige: 3 },
-  { id: "kings", city: "Brooklyn", name: "Kings", abbr: "BKN", color: "#1a1a2e", color2: "#c8e09a", prestige: 4 },
-  { id: "irons", city: "Chicago", name: "Irons", abbr: "CHI", color: "#1c1917", color2: "#d4544a", prestige: 4 },
-  { id: "koi", city: "Tokyo", name: "Koi", abbr: "TKY", color: "#0c1445", color2: "#ef4444", prestige: 5 },
-  { id: "dusters", city: "Phoenix", name: "Dusters", abbr: "PHX", color: "#292524", color2: "#c4a574", prestige: 2 },
-  { id: "rain", city: "Seattle", name: "Rainiers", abbr: "SEA", color: "#0f2a1f", color2: "#7dd3c0", prestige: 3 },
-  { id: "palms", city: "Miami", name: "Palms", abbr: "MIA", color: "#042f2e", color2: "#fb7185", prestige: 3 },
-  { id: "peaks", city: "Denver", name: "Peaks", abbr: "DEN", color: "#1e1b4b", color2: "#86efac", prestige: 3 },
-  { id: "harbor", city: "Boston", name: "Harbor", abbr: "BOS", color: "#1e3a5f", color2: "#d4544a", prestige: 4 },
-  { id: "stars", city: "Los Angeles", name: "Stars", abbr: "LA", color: "#18181b", color2: "#e8eadf", prestige: 5 },
-  { id: "range", city: "Dallas", name: "Range", abbr: "DAL", color: "#1c1917", color2: "#5eead4", prestige: 3 },
-  { id: "knights", city: "Gotham", name: "Knights", abbr: "GTH", color: "#0a0a0a", color2: "#e5e5e5", prestige: 4 },
-  { id: "north", city: "Minneapolis", name: "North", abbr: "MIN", color: "#172554", color2: "#4ade80", prestige: 2 },
-  { id: "mags", city: "Atlanta", name: "Magnolias", abbr: "ATL", color: "#1c1917", color2: "#fda4af", prestige: 3 },
-  { id: "forges", city: "Pittsburgh", name: "Forges", abbr: "PIT", color: "#0c0a09", color2: "#fdba74", prestige: 3 },
-  { id: "smoke", city: "Kansas City", name: "Smoke", abbr: "KC", color: "#1c1917", color2: "#bef264", prestige: 2 },
+  { id: "heat", city: "Houston", name: "Heat", abbr: "HOU", color: "#0b1d36", color2: "#e85d04", prestige: 3, parkId: "heat" },
+  { id: "kings", city: "Brooklyn", name: "Kings", abbr: "BKN", color: "#1a1a2e", color2: "#c8e09a", prestige: 4, parkId: "kings" },
+  { id: "irons", city: "Chicago", name: "Irons", abbr: "CHI", color: "#1c1917", color2: "#d4544a", prestige: 4, parkId: "irons" },
+  { id: "koi", city: "Tokyo", name: "Koi", abbr: "TKY", color: "#0c1445", color2: "#ef4444", prestige: 5, parkId: "koi" },
+  { id: "dusters", city: "Phoenix", name: "Dusters", abbr: "PHX", color: "#292524", color2: "#c4a574", prestige: 2, parkId: "dusters" },
+  { id: "rain", city: "Seattle", name: "Rainiers", abbr: "SEA", color: "#0f2a1f", color2: "#7dd3c0", prestige: 3, parkId: "rain" },
+  { id: "palms", city: "Miami", name: "Palms", abbr: "MIA", color: "#042f2e", color2: "#fb7185", prestige: 3, parkId: "palms" },
+  { id: "peaks", city: "Denver", name: "Peaks", abbr: "DEN", color: "#1e1b4b", color2: "#86efac", prestige: 3, parkId: "peaks" },
+  { id: "harbor", city: "Boston", name: "Harbor", abbr: "BOS", color: "#1e3a5f", color2: "#d4544a", prestige: 4, parkId: "harbor" },
+  { id: "stars", city: "Los Angeles", name: "Stars", abbr: "LA", color: "#18181b", color2: "#e8eadf", prestige: 5, parkId: "stars" },
+  { id: "range", city: "Dallas", name: "Range", abbr: "DAL", color: "#1c1917", color2: "#5eead4", prestige: 3, parkId: "range" },
+  { id: "knights", city: "Gotham", name: "Knights", abbr: "GTH", color: "#0a0a0a", color2: "#e5e5e5", prestige: 4, parkId: "knights" },
+  { id: "north", city: "Minneapolis", name: "North", abbr: "MIN", color: "#172554", color2: "#4ade80", prestige: 2, parkId: "north" },
+  { id: "mags", city: "Atlanta", name: "Magnolias", abbr: "ATL", color: "#1c1917", color2: "#fda4af", prestige: 3, parkId: "mags" },
+  { id: "forges", city: "Pittsburgh", name: "Forges", abbr: "PIT", color: "#0c0a09", color2: "#fdba74", prestige: 3, parkId: "forges" },
+  { id: "smoke", city: "Kansas City", name: "Smoke", abbr: "KC", color: "#1c1917", color2: "#bef264", prestige: 2, parkId: "smoke" },
 ];
 
 export const FIRST_NAMES = [
@@ -47,7 +47,7 @@ export const PITCHER_POS: Pos[] = ["SP", "SP", "SP", "SP", "SP", "RP", "RP", "RP
 
 export function emptyStats(): PlayerStats {
   return {
-    g: 0, ab: 0, h: 0, hr: 0, rbi: 0, r: 0, bb: 0, so: 0, sb: 0,
+    g: 0, ab: 0, h: 0, hr: 0, rbi: 0, r: 0, bb: 0, so: 0, sb: 0, cs: 0,
     doubles: 0, triples: 0, ip: 0, er: 0, k: 0, bbP: 0, w: 0, l: 0, sv: 0, hA: 0,
   };
 }
@@ -89,30 +89,41 @@ export function avg(stats: PlayerStats) {
   return v.toFixed(3).replace(/^0/, "");
 }
 
+export function inningsPitched(ip: number) {
+  const inn = Math.floor(ip + 1e-9);
+  const outs = Math.min(2, Math.max(0, Math.round((ip - inn) * 10)));
+  return inn + outs / 3;
+}
+
+export function addOuts(stats: PlayerStats, n = 1) {
+  for (let i = 0; i < n; i++) {
+    const inn = Math.floor(stats.ip + 1e-9);
+    const outs = Math.round((stats.ip - inn) * 10);
+    stats.ip = outs >= 2 ? inn + 1 : inn + (outs + 1) / 10;
+  }
+}
+
 export function era(stats: PlayerStats) {
-  if (stats.ip <= 0) return "0.00";
-  return ((stats.er * 9) / stats.ip).toFixed(2);
+  const ip = inningsPitched(stats.ip);
+  if (ip <= 0) return "0.00";
+  return ((stats.er * 9) / ip).toFixed(2);
 }
 
 export function ipFmt(ip: number) {
-  const whole = Math.floor(ip);
-  const frac = Math.round((ip - whole) * 10);
-  return `${whole}.${Math.min(2, frac)}`;
+  const whole = Math.floor(ip + 1e-9);
+  const frac = Math.min(2, Math.max(0, Math.round((ip - whole) * 10)));
+  return `${whole}.${frac}`;
 }
 
-export function makeRng(seed: number) {
-  let s = seed >>> 0;
-  return () => {
-    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-}
+export { hashId, makeRng } from "./core/rng.ts";
 
 export function pick<T>(r: () => number, arr: T[]): T {
   return arr[Math.floor(r() * arr.length)]!;
 }
 
-export function uid(prefix: string) {
+/** Non-core callers may omit `next`; core simulation should use `makeIdFactory`. */
+export function uid(prefix: string, next?: (prefix: string) => string) {
+  if (next) return next(prefix);
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
 }
 

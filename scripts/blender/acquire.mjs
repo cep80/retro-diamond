@@ -1,0 +1,18 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+const dir = new URL('../../content/3d/sources/', import.meta.url);
+await mkdir(dir, { recursive: true });
+const page = await fetch('https://413games.itch.io/maid-character').then(r => r.text());
+await writeFile(new URL('413-source.html', dir), page);
+const csrf = page.match(/name="csrf_token"\s+value="([^"]+)"/)?.[1] ?? page.match(/"csrf_token":"([^"]+)"/)?.[1];
+const res = await fetch('https://413games.itch.io/maid-character/download_url', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded','Referer':'https://413games.itch.io/maid-character'}, body: new URLSearchParams({csrf_token:csrf ?? ''})});
+const data = await res.json();
+if (!data.url) throw new Error('Source download link unavailable: '+res.status);
+const download = await fetch(data.url).then(r=>r.text());
+const uploadId = download.match(/data-upload_id="(\d+)"/)?.[1];
+if (!uploadId) throw new Error('Source upload id unavailable');
+const info = await fetch(`https://413games.itch.io/maid-character/file/${uploadId}`, {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded','Referer':data.url},body:new URLSearchParams({csrf_token:csrf ?? ''})}).then(r=>r.json());
+if (!info.url) throw new Error('Source archive unavailable');
+const archive = await fetch(info.url);
+if (!archive.ok) throw new Error('Archive HTTP '+archive.status);
+await writeFile(new URL('Maid.zip',dir),Buffer.from(await archive.arrayBuffer()));
+console.log('Downloaded CC0 candidate to content/3d/sources/Maid.zip');

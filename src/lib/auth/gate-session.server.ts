@@ -1,3 +1,4 @@
+// TODO M5: Remove gate session plugin once Vercel previews replace the Grok sandbox popup path.
 import type { BetterAuthPlugin } from "better-auth";
 import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import {

@@ -1,0 +1,351 @@
+{
+  "version": 1,
+  "coordinate": {
+    "units": "meters",
+    "up": "+Y",
+    "homePlate": [
+      0,
+      0,
+      0
+    ],
+    "moundCenter": [
+      0,
+      0,
+      -18.44
+    ],
+    "bases": {
+      "first": [
+        19.4,
+        0,
+        -19.4
+      ],
+      "second": [
+        0,
+        0,
+        -38.79
+      ],
+      "third": [
+        -19.4,
+        0,
+        -19.4
+      ]
+    }
+  },
+  "assets": {
+    "field": {
+      "url": "/models/diamond-shine/lantern-field.glb",
+      "bytes": 1808720,
+      "triangles": 25275
+    },
+    "props": {
+      "url": "/models/diamond-shine/props.glb",
+      "bytes": 102680,
+      "triangles": 1352,
+      "nodes": [
+        "prop_ball",
+        "prop_bat",
+        "prop_helmet",
+        "prop_mitt"
+      ]
+    },
+    "aoi": {
+      "url": "/models/diamond-shine/aoi.glb?v=atlas1",
+      "bytes": 2933380,
+      "triangles": 30036,
+      "role": "batter",
+      "clips": {
+        "idle_bat": {
+          "duration": 2,
+          "loop": true,
+          "markers": {}
+        },
+        "swing_contact": {
+          "duration": 0.9167,
+          "loop": false,
+          "markers": {
+            "contact": 0.6667
+          }
+        },
+        "swing_power": {
+          "duration": 1,
+          "loop": false,
+          "markers": {
+            "contact": 0.75
+          }
+        },
+        "bunt": {
+          "duration": 0.7917,
+          "loop": false,
+          "markers": {
+            "contact": 0.5
+          }
+        },
+        "take": {
+          "duration": 0.7917,
+          "loop": false,
+          "markers": {}
+        },
+        "react_success": {
+          "duration": 1.2083,
+          "loop": false,
+          "markers": {}
+        },
+        "react_disappoint": {
+          "duration": 1.2083,
+          "loop": false,
+          "markers": {}
+        },
+        "run": {
+          "duration": 0.7917,
+          "loop": true,
+          "markers": {}
+        }
+      },
+      "sockets": {
+        "bat_grip": "hand.R",
+        "glove": "hand.L"
+      }
+    },
+    "reina": {
+      "url": "/models/diamond-shine/reina.glb",
+      "bytes": 2553508,
+      "triangles": 30000,
+      "role": "pitcher",
+      "clips": {
+        "idle_set": {
+          "duration": 2.0,
+          "loop": true,
+          "markers": {}
+        },
+        "pitch_delivery": {
+          "duration": 1.4167,
+          "loop": false,
+          "markers": {
+            "release": 0.9167
+          }
+        },
+        "follow_through": {
+          "duration": 0.7917,
+          "loop": false,
+          "markers": {}
+        },
+        "react_restrained": {
+          "duration": 1.2083,
+          "loop": false,
+          "markers": {}
+        }
+      },
+      "sockets": {
+        "ball_release": "hand.R",
+        "glove": "hand.L"
+      }
+    },
+    "catcher": {
+      "url": "/models/diamond-shine/catcher.glb",
+      "bytes": 132832,
+      "triangles": 888,
+      "role": "catcher",
+      "clips": {
+        "idle_crouch": {
+          "duration": 2,
+          "loop": true,
+          "markers": {}
+        },
+        "catch_receive": {
+          "duration": 0.5833,
+          "loop": false,
+          "markers": {
+            "catch": 0.3333
+          }
+        }
+      },
+      "sockets": {
+        "glove": "hand.L"
+      }
+    },
+    "miki": {
+      "url": "/models/diamond-shine/miki.glb",
+      "bytes": 2696756,
+      "triangles": 30000,
+      "role": "batter",
+      "clips": {
+        "idle_bat": {
+          "duration": 2.0,
+          "loop": true,
+          "markers": {}
+        },
+        "swing_contact": {
+          "duration": 0.9167,
+          "loop": false,
+          "markers": {
+            "contact": 0.6667
+          }
+        },
+        "swing_power": {
+          "duration": 1.0,
+          "loop": false,
+          "markers": {
+            "contact": 0.75
+          }
+        },
+        "bunt": {
+          "duration": 0.7917,
+          "loop": false,
+          "markers": {
+            "contact": 0.5
+          }
+        },
+        "take": {
+          "duration": 0.7917,
+          "loop": false,
+          "markers": {}
+        },
+        "react_success": {
+          "duration": 1.2083,
+          "loop": false,
+          "markers": {}
+        },
+        "react_disappoint": {
+          "duration": 1.2083,
+          "loop": false,
+          "markers": {}
+        },
+        "run": {
+          "duration": 0.7917,
+          "loop": true,
+          "markers": {}
+        }
+      },
+      "sockets": {
+        "bat_grip": "hand.R",
+        "glove": "hand.L"
+      }
+    },
+    "kira": {
+      "url": "/models/diamond-shine/kira.glb",
+      "bytes": 2658608,
+      "triangles": 29999,
+      "role": "pitcher",
+      "clips": {
+        "idle_set": {
+          "duration": 2.0,
+          "loop": true,
+          "markers": {}
+        },
+        "pitch_delivery": {
+          "duration": 1.4167,
+          "loop": false,
+          "markers": {
+            "release": 0.9167
+          }
+        },
+        "follow_through": {
+          "duration": 0.7917,
+          "loop": false,
+          "markers": {}
+        },
+        "react_restrained": {
+          "duration": 1.2083,
+          "loop": false,
+          "markers": {}
+        }
+      },
+      "sockets": {
+        "ball_release": "hand.R",
+        "glove": "hand.L"
+      }
+    },
+    "sol": {
+      "url": "/models/diamond-shine/sol.glb",
+      "bytes": 2807480,
+      "triangles": 30000,
+      "role": "pitcher",
+      "clips": {
+        "idle_set": {
+          "duration": 2.0,
+          "loop": true,
+          "markers": {}
+        },
+        "pitch_delivery": {
+          "duration": 1.4167,
+          "loop": false,
+          "markers": {
+            "release": 0.9167
+          }
+        },
+        "follow_through": {
+          "duration": 0.7917,
+          "loop": false,
+          "markers": {}
+        },
+        "react_restrained": {
+          "duration": 1.2083,
+          "loop": false,
+          "markers": {}
+        }
+      },
+      "sockets": {
+        "ball_release": "hand.R",
+        "glove": "hand.L"
+      }
+    },
+    "yuki": {
+      "url": "/models/diamond-shine/yuki.glb",
+      "bytes": 2800628,
+      "triangles": 30000,
+      "role": "batter",
+      "clips": {
+        "idle_bat": {
+          "duration": 2.0,
+          "loop": true,
+          "markers": {}
+        },
+        "swing_contact": {
+          "duration": 0.9167,
+          "loop": false,
+          "markers": {
+            "contact": 0.6667
+          }
+        },
+        "swing_power": {
+          "duration": 1.0,
+          "loop": false,
+          "markers": {
+            "contact": 0.75
+          }
+        },
+        "bunt": {
+          "duration": 0.7917,
+          "loop": false,
+          "markers": {
+            "contact": 0.5
+          }
+        },
+        "take": {
+          "duration": 0.7917,
+          "loop": false,
+          "markers": {}
+        },
+        "react_success": {
+          "duration": 1.2083,
+          "loop": false,
+          "markers": {}
+        },
+        "react_disappoint": {
+          "duration": 1.2083,
+          "loop": false,
+          "markers": {}
+        },
+        "run": {
+          "duration": 0.7917,
+          "loop": true,
+          "markers": {}
+        }
+      },
+      "sockets": {
+        "bat_grip": "hand.R",
+        "glove": "hand.L"
+      }
+    }
+  }
+}

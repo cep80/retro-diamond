@@ -1,0 +1,17 @@
+{
+  "name": "Diamond Shine",
+  "short_name": "Shine",
+  "description": "Coach one girl. Work the complex. Time the plate.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#081127",
+  "theme_color": "#081127",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
