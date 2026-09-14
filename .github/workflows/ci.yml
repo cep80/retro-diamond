@@ -11,9 +11,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 24 ships npm 11, which is what writes package-lock.json locally and
+      # what Vercel builds with; npm 10 (Node 22) rejects the same lock over the
+      # bundled optional deps of @tailwindcss/oxide-wasm32-wasi.
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - run: npm ci
