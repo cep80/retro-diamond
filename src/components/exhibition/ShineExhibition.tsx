@@ -524,9 +524,10 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
   useEffect(() => {
     if (!stepGateOpen || probes.current.interactive != null) return;
     probes.current.interactive = performance.now();
+    const delta = probes.current.interactive - probes.current.enter;
     console.info("[exhibition] first_pitch_interactive_ms", {
-      first_pitch_interactive_ms: probes.current.interactive,
-      first_pitch_delta_ms: probes.current.interactive - probes.current.enter,
+      first_pitch_interactive_ms: Math.round(delta),
+      first_pitch_delta_ms: Math.round(delta),
       replay_index: replayIndex,
     });
   }, [stepGateOpen, replayIndex]);
@@ -786,7 +787,11 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
           ) : null}
           {(snapshot.stage === "idle" || snapshot.stage === "dead") && !game.done ? (
             <PixelBtn className="h-14 max-sm:h-11 landscape:[@media(max-height:520px)]:h-11" onClick={() => controller.startPitch()}>
-              {snapshot.stage === "dead" ? "Back in the box" : "Here comes the pitch"}
+              {snapshot.stage === "dead"
+                ? "Back in the box"
+                : snapshot.game.events.length > 0
+                  ? "Next pitch"
+                  : "Here comes the pitch"}
             </PixelBtn>
           ) : null}
           {snapshot.stage === "prepare" || inFlight ? (

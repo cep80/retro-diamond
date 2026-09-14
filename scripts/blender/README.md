@@ -87,6 +87,17 @@ the pitch; `hero_swap._unarm_far_verts` moves any arm weight farther than
 `ARM_REACH` from every arm bone segment (hand extended by `HAND_FINGERS`)
 onto chest / spine before the bind.
 
+`pipeline/reclip.py -- <hero>` re-authors the clips on a saved hero blend and
+re-exports it in about a minute (no mesh swap); for batters it also renders
+a swing filmstrip from the game camera angle into `content/3d/previews/`.
+The VRoid FBX import leaves the scene at 30 fps, so `_author_vroid_clips`
+forces `clips.FPS` (24) before keying and `validate` fails any exported clip
+whose length is off the contract. The batter swing is seven keys (stance,
+load, stride, hip turn, contact, follow-through, finish) with both feet
+pinned and knee poles; the runtime starts it on the flight cue, slowed so
+the frame before `contact` lands as the ball arrives, then lets it run on a
+tap or holds it up on a take.
+
 `pipeline/hero_clean.py` holds per-hero clean-ups keyed by world-space boxes
 (the generator's invented chest lettering, seam speckle, sliver-normal
 scratches): texture masks are baked from the mesh position, so the fragmented

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   beatFlashAt,
   HERO_LOOK,
+  heroCurtainSkipsToneMap,
   heroMatGlow,
   isReinaCurtainVert,
   isReinaHairTexel,
@@ -34,6 +35,10 @@ describe("Hunyuan / LOOK kit bind", () => {
   });
 
   it("glows Reina's hair and cream sleeves so she is not a navy speck at 18 m", () => {
+    assert.deepEqual(heroMatGlow("mat_hair_curtain", "reina"), REINA_CURTAIN_EMIT);
+    assert.equal(heroCurtainSkipsToneMap("mat_hair_curtain", "reina"), true);
+    assert.equal(heroCurtainSkipsToneMap("mat_skin_hero", "reina"), false);
+    assert.equal(heroCurtainSkipsToneMap("mat_hair_curtain", "aoi"), false);
     assert.deepEqual(heroMatGlow("mat_hair_sculpt", "reina"), REINA_HAIR_GLOW);
     assert.deepEqual(heroMatGlow("mat_kit_cream", "reina"), REINA_SLEEVE_GLOW);
     assert.deepEqual(heroMatGlow("mat_kit_accent", "reina"), REINA_ACCENT_GLOW);
@@ -56,7 +61,7 @@ describe("Hunyuan / LOOK kit bind", () => {
     assert.equal(isReinaHairTexel(147, 151, 163), true, "cool silver");
     assert.equal(isReinaCurtainVert([0.02, 1.72, 0.04], [179, 177, 175]), true, "head");
     assert.equal(isReinaCurtainVert([0.09, 1.05, -0.13], [177, 177, 179]), true, "hanging curtain");
-    assert.equal(isReinaCurtainVert([0.18, 1.05, 0.02], [177, 177, 179]), true, "side strand past the glove");
+    assert.equal(isReinaCurtainVert([0.18, 1.05, 0.02], [177, 177, 179]), false, "idle sleeve / chest pale");
     assert.equal(isReinaCurtainVert([0.7, 1.36, 0.04], [186, 186, 186]), false, "A-pose sleeve");
     assert.equal(isReinaCurtainVert([0.16, 0.55, 0.02], [191, 191, 191]), false, "front pants");
     assert.equal(isReinaCurtainVert([0.04, 1.2, 0.12], [177, 177, 179]), false, "chest-front pale");

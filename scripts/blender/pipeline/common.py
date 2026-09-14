@@ -278,6 +278,11 @@ def export_glb(filepath, animations=False):
     modifiers applied. When ``animations`` is True, every Action becomes a
     named glTF animation."""
     os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    # The glTF exporter turns frames into seconds with the scene fps. The
+    # VRoid FBX import leaves saved hero scenes at 30 fps; the clip contract
+    # is FPS (24). Force it here so every export path agrees with clips.py.
+    bpy.context.scene.render.fps = FPS
+    bpy.context.scene.render.fps_base = 1.0
     kwargs = dict(
         filepath=filepath,
         export_format="GLB",

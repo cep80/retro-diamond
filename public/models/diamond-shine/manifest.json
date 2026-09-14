@@ -50,7 +50,7 @@
     },
     "aoi": {
       "url": "/models/diamond-shine/aoi.glb?v=atlas1",
-      "bytes": 2881432,
+      "bytes": 2901320,
       "triangles": 30036,
       "role": "batter",
       "clips": {
@@ -107,9 +107,9 @@
       }
     },
     "reina": {
-      "url": "/models/diamond-shine/reina.glb?v=hy14",
-      "bytes": 2553508,
-      "triangles": 30000,
+      "url": "/models/diamond-shine/reina.glb?v=hy31",
+      "bytes": 2670108,
+      "triangles": 31136,
       "role": "pitcher",
       "clips": {
         "idle_set": {
@@ -165,7 +165,7 @@
     },
     "miki": {
       "url": "/models/diamond-shine/miki.glb",
-      "bytes": 2695788,
+      "bytes": 2722168,
       "triangles": 30000,
       "role": "batter",
       "clips": {
@@ -223,7 +223,7 @@
     },
     "kira": {
       "url": "/models/diamond-shine/kira.glb",
-      "bytes": 2658608,
+      "bytes": 2658904,
       "triangles": 29999,
       "role": "pitcher",
       "clips": {
@@ -257,7 +257,7 @@
     },
     "sol": {
       "url": "/models/diamond-shine/sol.glb",
-      "bytes": 2807480,
+      "bytes": 2807320,
       "triangles": 30000,
       "role": "pitcher",
       "clips": {
@@ -291,7 +291,7 @@
     },
     "yuki": {
       "url": "/models/diamond-shine/yuki.glb",
-      "bytes": 2795296,
+      "bytes": 2825468,
       "triangles": 30000,
       "role": "batter",
       "clips": {

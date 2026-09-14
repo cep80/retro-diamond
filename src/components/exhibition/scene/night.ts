@@ -121,9 +121,9 @@ export function standWashOn(opts: { strikes: number; stage: string }): boolean {
  * Distance is shorter than the plate so this cannot wash the dirt to day.
  */
 export const MOUND_RIM = {
-  color: "#9ad4ff",
-  intensity: 3.6,
-  distance: 8,
+  color: "#7aa8c8",
+  intensity: 2.2,
+  distance: 7,
   decay: 2,
   position: [0.4, 3.15, -16.05] as Vec3,
 } as const;

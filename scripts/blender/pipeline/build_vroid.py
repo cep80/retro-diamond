@@ -396,6 +396,10 @@ def _clip_from_seed(arm, name, seed, keys, markers, total):
 # World recipes. Character faces −Y, +Z up, +X = character left.
 # Aoi camera is behind (+Y). Reina's locked camera is in front (−Y).
 _ZF = 0.08
+# Knee poles (world, in front of the knee) so the leg IK bends forward.
+_KNEE_L = (0.12, -0.55, 0.55)
+_KNEE_L_STRIDE = (0.28, -0.60, 0.55)
+_KNEE_R = (-0.12, -0.50, 0.55)
 _AOI_IDLE = dict(
     twist_deg=8, lean_deg=2,
     hands={"hand.R": (-0.10, 0.12, 1.38), "hand.L": (-0.04, 0.08, 1.34)},
@@ -446,28 +450,46 @@ _REINA_FOLLOW_R = (
 # Twist sign: +X is her left, so a RH batter coils to the right (negative,
 # away from the pitcher) and opens to the left (positive, toward the
 # pitcher) at contact. The old -82 / -78 turned her chest to the catcher.
+# Both feet are pinned in every swing key (the hips twist would otherwise
+# swing the unpinned back leg off the ground); knee poles bend them forward.
+_FOOT_R = (-0.12, 0.08, _ZF)
 _AOI_LOAD = dict(
     twist_deg=-18, lean_deg=4,
-    hands={"hand.R": (-0.22, 0.28, 1.28), "hand.L": (-0.16, 0.22, 1.32)},
-    feet={"foot.L": (0.10, -0.06, _ZF)},
-    poles={"hand.R": (-0.45, 0.20, 1.15), "hand.L": (-0.05, 0.35, 1.20)},
+    hands={"hand.R": (-0.22, 0.26, 1.44), "hand.L": (-0.12, 0.18, 1.32)},
+    feet={"foot.L": (0.10, -0.06, _ZF), "foot.R": _FOOT_R},
+    poles={"hand.R": (-0.32, 0.10, 1.04), "hand.L": (0.02, 0.14, 1.10), "foot.L": _KNEE_L, "foot.R": _KNEE_R},
 )
-# Contact: hands out in front of the chest toward the plate (−Y), the top
-# hand (R) leading along the barrel toward the pitcher side (+X), both level
-# so the runtime two-hand bat axis (knob at L, barrel through R) reads as a
-# horizontal bat over the plate. The old targets were tucked across her body.
+_AOI_STRIDE = dict(
+    twist_deg=-22, lean_deg=4,
+    hands={"hand.R": (-0.24, 0.28, 1.42), "hand.L": (-0.14, 0.20, 1.31)},
+    feet={"foot.L": (0.26, -0.10, _ZF), "foot.R": _FOOT_R},
+    poles={"hand.R": (-0.34, 0.10, 1.02), "hand.L": (0.00, 0.16, 1.08), "foot.L": _KNEE_L_STRIDE, "foot.R": _KNEE_R},
+)
+_AOI_TURN = dict(
+    twist_deg=16, lean_deg=6,
+    hands={"hand.R": (-0.06, -0.12, 1.12), "hand.L": (-0.12, -0.04, 1.14)},
+    feet={"foot.L": (0.26, -0.10, _ZF), "foot.R": _FOOT_R},
+    poles={"hand.R": (-0.32, 0.02, 0.94), "hand.L": (0.10, 0.02, 1.02), "foot.L": _KNEE_L_STRIDE, "foot.R": _KNEE_R},
+)
+# Contact: hands a forearm in front of the chest, top hand (R) offset toward
+# the pitcher side (+X) so the two-hand bat axis lies across the plate.
 _AOI_CONTACT = dict(
-    twist_deg=60, lean_deg=8,
-    hands={"hand.R": (0.24, -0.54, 1.04), "hand.L": (0.12, -0.44, 1.02)},
-    feet={"foot.L": (0.20, -0.32, _ZF)},
-    poles={"hand.R": (-0.12, -0.28, 0.92), "hand.L": (0.48, -0.36, 1.06)},
+    twist_deg=48, lean_deg=8,
+    hands={"hand.R": (0.18, -0.28, 1.06), "hand.L": (0.04, -0.30, 1.04)},
+    feet={"foot.L": (0.26, -0.10, _ZF), "foot.R": _FOOT_R},
+    poles={"hand.R": (-0.10, -0.12, 0.88), "hand.L": (0.18, -0.16, 1.20), "foot.L": _KNEE_L_STRIDE, "foot.R": _KNEE_R},
 )
-# Follow-through: hands wrap up over her left shoulder, top hand leading.
 _AOI_FOLLOW = dict(
-    twist_deg=80, lean_deg=4,
-    hands={"hand.R": (0.46, 0.14, 1.44), "hand.L": (0.34, 0.20, 1.36)},
-    feet={"foot.L": (0.14, -0.24, _ZF)},
-    poles={"hand.R": (0.10, 0.35, 1.25), "hand.L": (0.55, 0.20, 1.35)},
+    twist_deg=80, lean_deg=2,
+    hands={"hand.R": (0.38, -0.02, 1.42), "hand.L": (0.26, 0.06, 1.34)},
+    feet={"foot.L": (0.26, -0.10, _ZF), "foot.R": _FOOT_R},
+    poles={"hand.R": (0.10, 0.10, 1.18), "hand.L": (0.36, 0.14, 1.18), "foot.L": _KNEE_L_STRIDE, "foot.R": _KNEE_R},
+)
+_AOI_FINISH = dict(
+    twist_deg=100, lean_deg=0,
+    hands={"hand.R": (0.28, 0.22, 1.50), "hand.L": (0.18, 0.12, 1.44)},
+    feet={"foot.L": (0.26, -0.10, _ZF), "foot.R": _FOOT_R},
+    poles={"hand.R": (0.00, 0.30, 1.22), "hand.L": (0.36, 0.22, 1.22), "foot.L": _KNEE_L_STRIDE, "foot.R": _KNEE_R},
 )
 _REINA_SET = dict(
     twist_deg=0, lean_deg=2,
@@ -503,6 +525,11 @@ _REINA_FOLLOW = dict(
 
 def _author_vroid_clips(arm, variant):
     """Key the six camera-critical clips from world-space IK recipes."""
+    # The VRoid FBX import leaves the scene at 30 fps; the clip contract
+    # (frames, markers, manifest seconds) is 24 fps. Every hero clip used to
+    # export 20 % short with markers on the wrong frame.
+    bpy.context.scene.render.fps = CLIPS.FPS
+    bpy.context.scene.render.fps_base = 1.0
     if CLIPS.CHARACTERS[variant]["role"] == "batter":
         spec = CLIPS.CHARACTERS["aoi"]["clips"]
         _clip_from_ik(arm, "idle_bat", [
@@ -511,11 +538,14 @@ def _author_vroid_clips(arm, variant):
         # Near-body IK (hands ~0.5 m). The seed-rotate contact (s5_drop)
         # kept the bat on the shoulder at the locked camera; this recipe
         # opens the hips and puts the bat through the zone.
+        # stance → load → stride → hip turn → contact → follow → finish
         _clip_from_ik(arm, "swing_contact", [
-            (0, _AOI_LOAD), (6, _AOI_LOAD), (16, _AOI_CONTACT), (22, _AOI_FOLLOW),
+            (0, _AOI_IDLE), (4, _AOI_LOAD), (9, _AOI_STRIDE), (13, _AOI_TURN),
+            (16, _AOI_CONTACT), (19, _AOI_FOLLOW), (22, _AOI_FINISH),
         ], spec["swing_contact"]["markers"], 22)
         _clip_from_ik(arm, "swing_power", [
-            (0, _AOI_LOAD), (7, _AOI_LOAD), (18, _AOI_CONTACT), (24, _AOI_FOLLOW),
+            (0, _AOI_IDLE), (5, _AOI_LOAD), (10, _AOI_STRIDE), (15, _AOI_TURN),
+            (18, _AOI_CONTACT), (21, _AOI_FOLLOW), (24, _AOI_FINISH),
         ], spec["swing_power"]["markers"], 24)
         _clip_from_ik(arm, "bunt", [
             (0, _AOI_IDLE), (12, _AOI_CONTACT), (19, _AOI_CONTACT),

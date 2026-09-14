@@ -18,6 +18,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import clips as CLIPS
 from glb_util import Glb
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -153,6 +154,21 @@ def validate_character(variant, path, rep):
     for clip in REQUIRED_CLIPS[variant]:
         rep.check(clip in anims, f"clip '{clip}' present",
                   f"{variant} missing clip '{clip}'")
+    # Exported length must match the 24 fps contract (a 30 fps scene exports
+    # every clip 20 % short and puts contact / release on the wrong frame).
+    for anim in glb.gltf.get("animations", []):
+        name = anim.get("name", "")
+        spec = CLIPS.CHARACTERS.get(variant, {}).get("clips", {}).get(name)
+        if spec is None:
+            continue
+        expect = (spec["frames"]) / CLIPS.FPS
+        got = 0.0
+        for ch in anim.get("channels", []):
+            acc = glb.gltf["accessors"][anim["samplers"][ch["sampler"]]["input"]]
+            got = max(got, float(acc.get("max", [0.0])[0]))
+        rep.check(abs(got - expect) <= 1.5 / CLIPS.FPS,
+                  f"{variant}.{name} length {got:.3f}s ~ {expect:.3f}s",
+                  f"{variant}.{name} exported {got:.3f}s, contract {expect:.3f}s (scene fps?)")
     extra = anims - set(REQUIRED_CLIPS[variant])
     if extra:
         rep.fail(f"{variant} has unexpected clips: {sorted(extra)}")

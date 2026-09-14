@@ -5,12 +5,15 @@
  * Both shipped heroes are single textured atlases (`mat_skin_hero`) — do not
  * multiply them. Named-mat tints / glows stay for an unmapped kit split only;
  * they do not fire on the atlas. Reina's name at 18 m is tall + silver curtain
- * + inverted navy/cream, authored in the Hunyuan GLB (`?v=hy14`).
+ * + inverted navy/cream, authored in the Hunyuan GLB (`?v=hy31`).
  *
  * Do not attach runtime hair sheets. Camera-facing cards at 18 m read as a
- * white bib (LOOK fail), on the chest or the temples. The hy14 curtain is
- * already in the mesh; night toon crushed it to a bob. Emit those texels
- * only — never the navy jersey, never a card.
+ * white bib (LOOK fail), on the chest or the temples. hy14's curtain hangs
+ * on the back; hy31 clones that atlas-mapped sheet onto the sides
+ * (cones and untextured lofts read as doors / a bib).
+ * Emit atlas curtain texels and the named `mat_hair_curtain` locks —
+ * never the navy jersey, never a card. Do not vertex-wrap the atlas
+ * (hy17 melted arms).
  */
 
 export type HeroLookRole = "aoi" | "reina";
@@ -58,10 +61,17 @@ export function heroMatGlow(
 ): { color: string; intensity: number } | null {
   if (role !== "reina") return null;
   const n = matName.toLowerCase();
+  if (n.includes("curtain")) return REINA_CURTAIN_EMIT;
   if (n.includes("hair")) return REINA_HAIR_GLOW;
   if (n.includes("cream") || n.includes("sleeve")) return REINA_SLEEVE_GLOW;
   if (n.includes("accent") || n.includes("gold")) return REINA_ACCENT_GLOW;
   return null;
+}
+
+/** Named curtain locks skip ACES so 6 px of silver still reads at 18 m.
+ * Never the atlas — that would wash the navy jersey. */
+export function heroCurtainSkipsToneMap(matName: string, role: HeroLookRole): boolean {
+  return role === "reina" && /curtain/i.test(matName);
 }
 
 /** Whiff whoosh sits in the box, on the bat — not at the plate while the ball is mid-tunnel. */
@@ -91,9 +101,9 @@ export function isReinaHairTexel(r: number, g: number, b: number, a = 255): bool
 }
 
 /**
- * Head / bangs, the back sheet, or side strands that peek past the
- * shoulders from catcher-cam (length past the glove). Pants and A-pose
- * sleeves fail the z / |x| gate even when the texel is pale.
+ * Head / bangs and the authored back sheet only. Side length is the
+ * named `kit_curtain_*` locks — lighting idle sleeves or the chest
+ * washed her navy to a white bib at fov 33.
  */
 export function isReinaCurtainVert(
   pos: readonly [number, number, number],
@@ -101,10 +111,9 @@ export function isReinaCurtainVert(
 ): boolean {
   if (!isReinaHairTexel(rgb[0], rgb[1], rgb[2])) return false;
   const [x, y, z] = pos;
-  if (y >= 1.55) return true;
-  if (y < 0.85 || y >= 1.55 || Math.abs(x) > 0.32) return false;
-  if (z < -0.08) return true;
-  return Math.abs(x) >= 0.1 && z < 0.08;
+  if (y >= 1.58) return true;
+  if (y < 0.9 || Math.abs(x) > 0.28) return false;
+  return z < -0.1;
 }
 
 export function sampleAtlasRgba(

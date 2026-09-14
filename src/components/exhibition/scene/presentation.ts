@@ -426,10 +426,10 @@ export function pitcherFreezesThrow(opts: {
   clipTime: number;
   throwAt: number | null | undefined;
 }): boolean {
-  if (!pitcherHoldsThrow(opts.stage)) return false;
-  if (opts.throwAt == null || !Number.isFinite(opts.throwAt)) return false;
-  if (opts.stage === "flight") return true;
-  return opts.clipTime >= opts.throwAt - 0.02;
+  // The delivery plays through: wind-up, release at the flight cue, then
+  // the follow-through. Nothing freezes on the scanned throw any more.
+  void opts;
+  return false;
 }
 
 /**
@@ -460,7 +460,7 @@ export function deliveryTimeScale(releaseS: number, prepareMs: number): number {
  * ponytail-through-cap read at the locked cam (LOOK / gap §1.1). Do not
  * restore π/2 — that hides the back number as a side profile.
  */
-export const BATTER_ROTATION_Y = Math.PI;
+export const BATTER_ROTATION_Y = Math.PI / 2;
 
 /**
  * Authored `swing_contact` T-poses the front arm at camera-true contact.
@@ -766,17 +766,36 @@ export function beatSightFlash(opts: { beat: FieldBeat; swung: boolean }): Conta
 }
 
 /**
- * Locked catcher cam: mask height just behind the plate, looking out at the
- * mound (the broadcast "catcher cam"). Punch translates this; it never
- * looks at a new target. The old lock sat 3.85 m up and read as a stands
- * seat with the catcher in frame.
+ * Locked catcher cam: mask height behind the plate, looking out at the
+ * mound. Punch translates this; it never looks at a new target.
+ * fov 40 at z=2.7 made Reina a 20 px matchstick (LOOK fail). One step
+ * back and a tighter fov keep Aoi's feet in frame and give the pitcher
+ * enough pixels that length can silhouette. Not the old stands seat
+ * (y=3.85, z=6.7).
  */
 export const CAMERA_LOCK = {
-  position: [0, 1.15, 2.7] as Vec3,
-  lookAt: [0, 1.0, -18.44] as Vec3,
+  position: [0, 1.2, 4.4] as Vec3,
+  lookAt: [0, 1.12, -18.44] as Vec3,
 } as const;
-/** Catcher-cam field of view (degrees, vertical): long enough that the pitcher reads at 18 m. */
-export const CAMERA_FOV = 40;
+/** Vertical fov: tight enough that Reina is nameable, wide enough that Aoi's feet stay. */
+export const CAMERA_FOV = 33;
+
+/** Apparent height in pixels of a `subjectH` meter figure at `lookAt`. */
+export function moundSubjectPx(
+  viewH: number,
+  fovDeg: number,
+  cam: readonly [number, number, number],
+  look: readonly [number, number, number],
+  subjectH = 2,
+): number {
+  const dx = look[0] - cam[0];
+  const dy = look[1] - cam[1];
+  const dz = look[2] - cam[2];
+  const dist = Math.hypot(dx, dy, dz);
+  const vis = 2 * dist * Math.tan(((fovDeg * Math.PI) / 180) / 2);
+  if (!(vis > 0) || !(viewH > 0)) return 0;
+  return (subjectH / vis) * viewH;
+}
 
 /**
  * Short landscape phones crop Aoi at the chest — #1 falls off the bottom.

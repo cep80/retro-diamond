@@ -50,6 +50,9 @@ import {
   RELEASE_THROW_LEAD_S,
   pickThrowPoseTime,
   BATTER_ROTATION_Y,
+  CAMERA_FOV,
+  CAMERA_LOCK,
+  moundSubjectPx,
   pitcherFreezesThrow,
   pitcherHoldsThrow,
   prepareShowsBall,
@@ -298,10 +301,19 @@ describe("contact flash", () => {
     assert.equal(pitcherHoldsThrow("idle"), false);
     assert.equal(pitcherHoldsThrow("field"), false);
     assert.equal(pitcherFreezesThrow({ stage: "prepare", clipTime: 0.5, throwAt: 0.708 }), false, "wind-up plays");
-    assert.equal(pitcherFreezesThrow({ stage: "prepare", clipTime: 0.708, throwAt: 0.708 }), true, "freeze at the scanned throw");
-    assert.equal(pitcherFreezesThrow({ stage: "flight", clipTime: 0.92, throwAt: 0.708 }), true, "keep the leave while the ball is in the tunnel");
+    assert.equal(pitcherFreezesThrow({ stage: "prepare", clipTime: 0.708, throwAt: 0.708 }), false, "delivery plays through");
+    assert.equal(pitcherFreezesThrow({ stage: "flight", clipTime: 0.92, throwAt: 0.708 }), false, "follow-through plays");
     assert.equal(pitcherFreezesThrow({ stage: "reaction", clipTime: 0.708, throwAt: 0.708 }), false);
-    assert.equal(BATTER_ROTATION_Y, Math.PI, "back to the catcher so #1 reads");
+    assert.equal(BATTER_ROTATION_Y, Math.PI / 2, "side-on in the RH box, facing the plate (user call 2026-09-14)");
+    assert.ok(CAMERA_LOCK.position[1] < 2, "catcher height, not a stands seat");
+    assert.ok(CAMERA_LOCK.position[2] > 3.2 && CAMERA_LOCK.position[2] < 5.5, "behind the plate, not the mound");
+    assert.equal(CAMERA_LOCK.lookAt[2], -18.44);
+    assert.ok(CAMERA_FOV >= 30 && CAMERA_FOV <= 36, "tight enough to name Reina, wide enough for Aoi");
+    assert.ok(
+      moundSubjectPx(720, CAMERA_FOV, CAMERA_LOCK.position, CAMERA_LOCK.lookAt) >= 100,
+      "Reina must be more than a 20 px matchstick",
+    );
+    assert.ok(FIRST_PITCH_PLATE.z < CAMERA_LOCK.position[2], "gold window stays in front of the mask");
     assert.equal(prepareShowsBall(0, 520), false, "set has no baseball");
     assert.equal(prepareShowsBall(360, 520), false);
     assert.equal(prepareShowsBall(370, 520), true);

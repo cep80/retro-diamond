@@ -70,6 +70,7 @@ import {
 import {
   beatFlashAt,
   HERO_LOOK,
+  heroCurtainSkipsToneMap,
   heroMatGlow,
   kitMatTint,
   REINA_CURTAIN_EMIT,
@@ -645,8 +646,63 @@ function SceneRoot({
           off too — the brown blob read worse than an empty hand. */}
       <Ball controller={controller} paused={paused} />
       <FirstPitchPlate snapshot={snapshot} reduced={reduced} paused={paused} />
+      <LookProofHook />
     </>
   );
+}
+
+/** ?debug=1: `window.__dsFillBlack()` for the LOOK test at the locked cam. */
+function LookProofHook() {
+  const { gl, scene } = useThree();
+  useEffect(() => {
+    if (!debugFpsEnabled()) return;
+    const w = window as unknown as { __dsFillBlack?: () => number };
+    w.__dsFillBlack = () => {
+      // LOOK is "fill her black" — the heroes, not the park. A black
+      // field + black sky ate Reina last time; only the skyline showed.
+      const card = "#e6d4b0";
+      scene.background = new Color(card);
+      scene.fog = null;
+      gl.setClearColor(card, 1);
+      let meshes = 0;
+      scene.traverse((obj) => {
+        const light = obj as { isLight?: boolean; intensity?: number };
+        if (light.isLight && typeof light.intensity === "number") {
+          light.intensity = 0;
+          return;
+        }
+        const mesh = obj as Mesh & { isSkinnedMesh?: boolean };
+        if (!mesh.isMesh) return;
+        if (/firstPitch|halo|lantern/i.test(mesh.name)) {
+          mesh.visible = false;
+          return;
+        }
+        const hero =
+          Boolean(mesh.isSkinnedMesh) || /kit_curtain|prop_bat|prop_mitt/i.test(mesh.name);
+        if (!hero) {
+          mesh.visible = false;
+          return;
+        }
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const mat of mats) {
+          const m = mat as MeshBasicMaterial & { emissive?: { set: (c: string) => void }; map?: unknown; needsUpdate?: boolean };
+          if (m.color) m.color.set("#000000");
+          if (m.emissive) {
+            m.emissive.set("#000000");
+            (m as { emissiveIntensity?: number }).emissiveIntensity = 0;
+          }
+          m.map = null;
+          m.needsUpdate = true;
+        }
+        meshes += 1;
+      });
+      return meshes;
+    };
+    return () => {
+      delete w.__dsFillBlack;
+    };
+  }, [gl, scene]);
+  return null;
 }
 
 function FirstPitchPlate({
@@ -780,7 +836,12 @@ function applyHeroLook(root: Object3D, role: HeroLookRole) {
         named.emissive.set("#000000");
         named.emissiveIntensity = 0;
       }
-      if (role === "reina") applyReinaCurtainEmit(mesh, named);
+      if (heroCurtainSkipsToneMap(named.name ?? "", role)) {
+        (named as { toneMapped?: boolean }).toneMapped = false;
+      }
+      if (role === "reina" && !/curtain/i.test(named.name ?? "") && !/kit_curtain/i.test(mesh.name)) {
+        applyReinaCurtainEmit(mesh, named);
+      }
     }
   });
 }
@@ -1247,8 +1308,23 @@ function CharacterActor({
         | undefined;
       const anyMixer = mixer as unknown as { _nActiveActions: number; _nActiveBindings: number; _bindings: unknown[]; _actions: unknown[] };
       const probe = gltf.scene.getObjectByName("upper_armL") ?? gltf.scene.getObjectByName("upper_arm.L");
+      const curtainBoxes: { name: string; min: number[]; max: number[] }[] = [];
+      if (asset.role === "pitcher") {
+        const box = new Box3();
+        gltf.scene.traverse((o) => {
+          const mesh = o as Mesh;
+          if (!mesh.isMesh || !/kit_curtain/i.test(mesh.name)) return;
+          box.setFromObject(mesh);
+          curtainBoxes.push({
+            name: mesh.name,
+            min: box.min.toArray().map((v) => Number(v.toFixed(3))),
+            max: box.max.toArray().map((v) => Number(v.toFixed(3))),
+          });
+        });
+      }
       const dump = {
         role: asset.role,
+        curtainBoxes: asset.role === "pitcher" ? curtainBoxes : undefined,
         idle: idleName,
         tracks: clip?.tracks.map((t) => t.name) ?? [],
         bones,
@@ -1590,7 +1666,7 @@ function CharacterActor({
         return;
       }
       if (asset.role === "batter") {
-        if (cue.t === "prepare" || cue.t === "flight") {
+        if (cue.t === "prepare") {
           const idle = actionFor(idleName) ?? actions[idleName];
           if (idle && current.current !== idle) {
             current.current?.stop();
@@ -1602,12 +1678,34 @@ function CharacterActor({
             current.current = idle;
           }
         }
+        if (cue.t === "flight") {
+          // The authored swing (stance → load → stride → hip turn → contact →
+          // follow → finish) starts with the pitch, slowed so the frame just
+          // before contact lands when the ball reaches the plate (u = 1). A
+          // tap lets it run through at full speed; a take holds it up.
+          const name = swingClipName(controller.getSnapshot().swing);
+          const contact = asset.clips[name]?.markers?.contact ?? 0.667;
+          const action = play(name, { once: true, fade: 0.1 });
+          if (action) {
+            action.timeScale = Math.max(0.15, (contact - SWING_CLIP_LEAD_S) / Math.max(0.2, cue.durationS));
+            clipSwing.current = true;
+          }
+        }
         if (cue.t === "resolved") {
           batThrough.current = cue.swung;
           throughAt.current = performance.now();
-          if (cue.swung) {
-            // Authored swing_contact T-poses the front arm. Runtime cut only.
-            clipSwing.current = false;
+          const swing = current.current;
+          const clip = swing?.getClip();
+          if (swing && clip && clip.name !== idleName && clipSwing.current) {
+            if (cue.swung) {
+              const contact = asset.clips[clip.name]?.markers?.contact ?? 0.667;
+              swing.time = Math.max(swing.time, contact - SWING_CLIP_LEAD_S);
+              swing.timeScale = 1;
+              swing.paused = false;
+            } else {
+              // Check swing: hold wherever the load / stride got to.
+              swing.paused = true;
+            }
           }
         }
         // Do not play `take`. The clip floats the front foot and reads as a swing.
