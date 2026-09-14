@@ -1171,17 +1171,22 @@ function CharacterActor({
         kit:
           asset.role === "pitcher"
             ? (() => {
-                const rows: { name: string; mapped: boolean; emit: number }[] = [];
+                const rows: { name: string; mapped: boolean; emit: number; emitHex: string | null }[] = [];
                 gltf.scene.traverse((o) => {
                   const mesh = o as Mesh;
                   if (!mesh.isMesh) return;
                   const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
                   for (const mat of mats) {
-                    const named = mat as MeshBasicMaterial & { name?: string; map?: unknown; emissiveIntensity?: number };
+                    const named = mat as MeshBasicMaterial & {
+                      name?: string;
+                      map?: unknown;
+                      emissiveIntensity?: number;
+                      emissive?: { getHexString?: () => string };
+                    };
                     const name = named.name ?? "";
                     if (!/kit_|hair_/i.test(name)) continue;
                     if (rows.some((r) => r.name === name)) continue;
-                    const em = named.emissive as { getHexString?: () => string } | undefined;
+                    const em = named.emissive;
                     rows.push({
                       name,
                       mapped: Boolean(named.map),
@@ -1897,7 +1902,8 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
     const out = outgoing.current;
     // Off-bat flights and the mitt carry run to their own end; a short
     // reaction stage must not blink the ball out mid-air. `prepare` resets.
-    if (out && s.stage !== "flight" && s.stage !== "prepare") {
+    // `prepare` is not in the Stage union any more; keep the guard as written.
+    if (out && s.stage !== "flight" && (s.stage as string) !== "prepare") {
       out.elapsed += step;
       const t = Math.min(1, out.elapsed / out.durS);
       const p = out.from.clone().lerp(out.to, t);

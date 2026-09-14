@@ -1046,7 +1046,7 @@ export function simCpuPaAlways(career: Career, live: LiveGame, r: () => number):
 
 export function simCpuPa(career: Career, live: LiveGame, r?: () => number): LiveGame {
   const rng = r ?? paRng(career, live, live.paIdx ?? 0);
-  let cur = maybeBringCloser(career, live);
+  const cur = maybeBringCloser(career, live);
   if (cur.over || userIsBatting(cur)) return cur;
   return simCpuPaAlways(career, cur, rng);
 }
@@ -1499,7 +1499,7 @@ function cpuClaimFreeAgents(career: Career) {
     while (signed < 2 && career.fa.length > 0) {
       const cap = team.prestige * 12;
       const need = weakestPos(team);
-      let pick =
+      const pick =
         career.fa.filter((p) => p.salary <= cap && p.pos === need).sort((a, b) => ovr(b) - ovr(a))[0] ??
         career.fa.filter((p) => p.salary <= cap).sort((a, b) => ovr(b) - ovr(a))[0];
       if (!pick) break;

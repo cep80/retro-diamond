@@ -230,7 +230,7 @@ export function migrateSave(persisted: unknown, from: number): PersistedSave {
 
   const legacy = raw as { career?: Career | null; screen?: Screen; settings?: Partial<Settings> };
   const settings = migrateSettings(legacy.settings);
-  let career = legacy.career ?? null;
+  const career = legacy.career ?? null;
   let screen = legacy.screen ?? "title";
 
   if (career) {
