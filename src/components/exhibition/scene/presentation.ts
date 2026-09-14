@@ -410,9 +410,68 @@ export const CONTACT_HOLD_MS = 280;
  */
 export const RELEASE_HOLD_MS = 200;
 
-/** True while the ball is still her pitch — stay on the earned throw. */
+/** Stage where the leave may freeze. Wind-up still plays until `throwAt`. */
 export function pitcherHoldsThrow(stage: string): boolean {
   return stage === "prepare" || stage === "flight";
+}
+
+/**
+ * Freeze the scanned throw (`throwAt`, ~0.708 on hy14) once it is on the
+ * mesh. Authored `release` (0.917) is the arm coming home — do not play
+ * that chest-return while the ball is in the tunnel. Wind-up plays until
+ * the clip reaches the winner.
+ */
+export function pitcherFreezesThrow(opts: {
+  stage: string;
+  clipTime: number;
+  throwAt: number | null | undefined;
+}): boolean {
+  if (!pitcherHoldsThrow(opts.stage)) return false;
+  if (opts.throwAt == null || !Number.isFinite(opts.throwAt)) return false;
+  if (opts.stage === "flight") return true;
+  return opts.clipTime >= opts.throwAt - 0.02;
+}
+
+/**
+ * Exhibition pace. The featured-game pitch speeds (0.34–0.82 s of flight)
+ * and the 520 ms prepare were tuned for the 2D meter; at the catcher cam
+ * the ball was unhittable and the wind-up was a snap. Flight and the swing
+ * window scale together so a well-timed swing is still a well-timed swing.
+ */
+export const EXHIBITION_PACE = {
+  flightScale: 2.0,
+  windowScale: 1.3,
+  prepareMs: 1250,
+  prepareMsReduced: 700,
+} as const;
+
+/**
+ * Playback rate for `pitch_delivery` so its `release` marker lands exactly
+ * when the prepare beat ends and the ball leaves the hand.
+ */
+export function deliveryTimeScale(releaseS: number, prepareMs: number): number {
+  if (!(releaseS > 0) || !(prepareMs > 0)) return 1;
+  return Math.min(2.5, Math.max(0.25, releaseS / (prepareMs / 1000)));
+}
+
+/**
+ * Right-handed batter in the third-base box (x < 0). The contract rig
+ * faces +Z at rotation 0; π puts her back to the catcher so #1 and the
+ * ponytail-through-cap read at the locked cam (LOOK / gap §1.1). Do not
+ * restore π/2 — that hides the back number as a side profile.
+ */
+export const BATTER_ROTATION_Y = Math.PI;
+
+/**
+ * Authored `swing_contact` T-poses the front arm at camera-true contact.
+ * The clip stays off the mesh. Runtime owns the cut. Lead is unused.
+ */
+export const SWING_CLIP_LEAD_S = 0;
+
+export function swingClipName(kind: SwingKind | null | undefined): "swing_contact" | "swing_power" | "bunt" {
+  if (kind === "power") return "swing_power";
+  if (kind === "bunt") return "bunt";
+  return "swing_contact";
 }
 
 /**
@@ -441,7 +500,7 @@ export function throwPoseScore(handR: Vec3): number {
 /**
  * How long the ball sits on the throwing hand before flight. Earlier than
  * this, prepare is the LOOK set: empty mitt up, no baseball visible.
- * Must stay inside PREPARE_MS (520) / PREPARE_MS_REDUCED (260).
+ * Must stay inside the exhibition prepare window (`EXHIBITION_PACE`).
  */
 export const THROW_SHOW_MS = 150;
 
@@ -706,11 +765,18 @@ export function beatSightFlash(opts: { beat: FieldBeat; swung: boolean }): Conta
   return contactFlash(opts.beat);
 }
 
-/** Locked catcher-side camera. Punch translates this; it never looks at a new target. */
+/**
+ * Locked catcher cam: mask height just behind the plate, looking out at the
+ * mound (the broadcast "catcher cam"). Punch translates this; it never
+ * looks at a new target. The old lock sat 3.85 m up and read as a stands
+ * seat with the catcher in frame.
+ */
 export const CAMERA_LOCK = {
-  position: [0, 3.85, 6.7] as Vec3,
-  lookAt: [0, -0.35, -9.5] as Vec3,
+  position: [0, 1.15, 2.7] as Vec3,
+  lookAt: [0, 1.0, -18.44] as Vec3,
 } as const;
+/** Catcher-cam field of view (degrees, vertical): long enough that the pitcher reads at 18 m. */
+export const CAMERA_FOV = 40;
 
 /**
  * Short landscape phones crop Aoi at the chest — #1 falls off the bottom.

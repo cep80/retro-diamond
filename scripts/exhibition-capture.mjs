@@ -32,7 +32,9 @@
 // first-pitch family stills. CAP_BATTER=miki / CAP_PITCHER=kira put a roster
 // hero in a slot (?batter= / ?pitcher=, see scene/roster.ts). CAP_SIT clicks an aim cell before the pitch.
 // CAP_HOLD freezes mixers after startPitch so a prepare-frame still stays put.
-// Use findFirstPitchBeat seeds (foul-first-N), not later-PA findBeat hits.
+// Use findFirstPitchBeat seeds at EXHIBITION_PACE (live clock), not later-PA
+// findBeat hits and not the default 2D-pace first-pitch family. Same u at
+// windowScale 1.6 can flip foul ↔ foul-tip.
 // Dev server must be up on http://localhost:8080.
 import { chromium, devices } from "playwright";
 import { writeFileSync } from "node:fs";
@@ -43,6 +45,10 @@ const swingIdx = process.argv.indexOf("--swing-ms");
 const swingMs = swingIdx > 0 ? Number(process.argv[swingIdx + 1]) : -1;
 const shotsIdx = process.argv.indexOf("--shots-ms");
 const shotsMs = shotsIdx > 0 ? process.argv[shotsIdx + 1].split(",").map(Number) : [];
+// --shots-prep a,b: stills N ms after the pitch button, during the wind-up
+// (before the flight wait), as <prefix>-pN.png.
+const prepIdx = process.argv.indexOf("--shots-prep");
+const shotsPrep = prepIdx > 0 ? process.argv[prepIdx + 1].split(",").map(Number) : [];
 const noSkip = process.argv.includes("--no-skip");
 const sessionIdx = process.argv.indexOf("--session");
 const sessions = sessionIdx > 0 ? Number(process.argv[sessionIdx + 1]) : 0;
@@ -265,6 +271,16 @@ if (pitch) {
     return { ok: true, stage: plate.snapshot().stage };
   }, { mode: aim ?? "", hold: process.env.CAP_HOLD === "1" });
   console.log("pitch", pitched);
+  if (shotsPrep.length) {
+    const tp = Date.now();
+    for (const ms of [...shotsPrep].sort((a, b) => a - b)) {
+      const wait = ms - (Date.now() - tp);
+      if (wait > 0) await page.waitForTimeout(wait);
+      const st = await page.evaluate(() => window.__dsPlate?.snapshot().stage);
+      await shot(`${out}-p${ms}.png`);
+      console.log(`shot p${ms}: stage=${st} elapsed=${Date.now() - tp}`);
+    }
+  }
   if (!pitched.ok || (pitched.stage !== "prepare" && pitched.stage !== "flight")) {
     console.log("Pitch did not start. Body:", (await page.locator("body").innerText()).slice(0, 600));
     await shot(`${out}-nopitch.png`);
@@ -282,9 +298,11 @@ if (pitch) {
       if (!plate) return { ok: false, reason: "no plate" };
       const snap = plate.snapshot();
       if (snap.stage !== "flight") return { ok: false, reason: snap.stage };
-      const targetU = Number.isFinite(u)
-        ? u
-        : ms / Math.max(0.2, snap.pitch?.speed ?? 0.55) / 1000;
+      // Flight length is the controller's scaled duration (flight cue), not
+      // the raw pitch speed — the exhibition pace multiplies it.
+      const flightCue = (window.__dsCues ?? []).filter((c) => c.t === "flight").pop();
+      const durS = flightCue?.durationS ?? Math.max(0.2, snap.pitch?.speed ?? 0.55);
+      const targetU = Number.isFinite(u) ? u : ms / durS / 1000;
       const hit = plate.tapAtU(targetU);
       window.__swing = { u: targetU, ...hit };
       return window.__swing;

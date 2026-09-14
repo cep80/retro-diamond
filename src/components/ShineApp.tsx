@@ -5,13 +5,13 @@ import { PixelBtn } from "@/components/chrome";
 import { ShineMute } from "@/components/ShineMute";
 import { setMasterMuted, setMix, sfxCowbell, sfxSelect, startEnding, startMusic, stopMusic, unlockAudio } from "@/game/audio";
 import { ShineHelp, ShineSettings } from "@/components/ShineSettings";
-import { clubhouseOpen, looksUnlocked, powerStationsUnlocked, nextOfficial, turnMeta, ROOKIE_CALENDAR, calendarPeekLine } from "@/shine/calendar.ts";
+import { nextOfficial, turnMeta, ROOKIE_CALENDAR, calendarPeekLine } from "@/shine/calendar.ts";
 import { BIBLE, endingMood, isPitcherStyle, parkSrc, portraitSrc, sheet, workMood } from "@/shine/bible.ts";
 import { coachBrief, workComparison } from "@/shine/coach.ts";
 import { NEVER_SOLD, SKUS, cosmeticClasses, previewClaimable } from "@/shine/commerce.ts";
-import { workPreviewWindow } from "@/shine/oracle.ts";
 import { kitAccent } from "@/shine/stage.ts";
-import { cheerLines, curtainSkin, curtainStillSrc, datePark, endingRankLabel, pastBlurb, recapLine, shouldCurtainCall, workMorningLine, yearVoice } from "@/shine/culture.ts";
+import { cheerLines, curtainSkin, curtainStillSrc, datePark, endingRankLabel, recapLine, shouldCurtainCall, yearVoice } from "@/shine/culture.ts";
+import { ShineComplexWork } from "./ShineComplexWork";
 import { encodeCard } from "@/shine/carry.ts";
 import { careerStill, cardAltLook, cardBanner, cardGold, finaleGap, nextGirlName, parentEligible, pickInheritSparks, sparkEffectLine, sparkGapLine } from "@/shine/ending.ts";
 import { PILGRIMAGE_LINE, shineIsoWeek, weatherLine, weeklySit } from "@/shine/pilgrimage.ts";
@@ -19,31 +19,11 @@ import { PG_INDEX } from "@/shine/run.ts";
 import { ShinePlate } from "./ShinePlate";
 import { ShineExhibition } from "./exhibition/ShineExhibition";
 import { warmExhibitionAssets } from "./exhibition/scene/manifest";
-import { MOOD_LABELS, energyBand, moodLevel, stationStaff, stationStat } from "@/shine/training.ts";
-import { stationOpen, useShine, workLocked } from "@/shine/store.ts";
+import { MOOD_LABELS, moodLevel } from "@/shine/training.ts";
+import { useShine } from "@/shine/store.ts";
 import { catchWithCoachScene, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
 import { replayLines } from "@/shine/scrapbook.ts";
-import type { CharacterId, DefiningPa, Highlight, Spark, StationId, TraineeRun } from "@/shine/types.ts";
-
-function cagePreviewPct(run: TraineeRun, station: StationId, sideFocus: "stuff" | "control") {
-  const stat = stationStat(station, sideFocus, run) ?? "contact";
-  const half = workPreviewWindow(stat, run.stats[stat], run.carry);
-  return Math.min(72, Math.max(12, (half / 0.6) * 100));
-}
-
-const STATIONS: { id: StationId; label: string; blurb: string }[] = [
-  { id: "cage", label: "Cage", blurb: "Contact. Soft toss, the window." },
-  { id: "poles", label: "Poles", blurb: "Speed. Foul pole to foul pole." },
-  { id: "looks", label: "Live looks", blurb: "Eye. Read it out of the hand." },
-  { id: "bp", label: "On-field BP", blurb: "Power. Let it travel." },
-  { id: "situational", label: "Situational", blurb: "Guts. Two-strike baseball." },
-  { id: "charting", label: "Charting", blurb: "Wit. Film, tendencies, last-3 column." },
-  { id: "off-day", label: "Off day", blurb: "Energy +25. Let her breathe." },
-  { id: "treatment", label: "Trainer's room", blurb: "Energy +35. Mood dips." },
-  { id: "clubhouse", label: "Clubhouse", blurb: "Catch with Coach. Once a year." },
-  { id: "hitch", label: "Her hitch", blurb: "She's throwing her mother's BP. Same work math." },
-  { id: "side", label: "Side", blurb: "Stuff or Control. Bullpen. Pitchers only." },
-];
+import type { CharacterId, DefiningPa, Highlight, Spark, StationId } from "@/shine/types.ts";
 
 function Title() {
   const run = useShine((s) => s.run);
@@ -111,69 +91,55 @@ function Title() {
                 continueRun();
               }}
             >
-              Continue {sheet(run.characterId).name} · Turn {run.turn}
+              Continue {sheet(run.characterId).jp} · Turn {run.turn}
             </PixelBtn>
           ) : null}
-          {clubhouse.length > 0 ? (
+          <div className="shine-title-menu">
             <PixelBtn
               variant="ghost"
-              className="h-12 border border-gold/40"
+              className={`h-11 ${clubhouse.length > 0 ? "border-gold/40" : ""}`}
               onClick={() => {
                 sfxSelect();
                 openWall();
               }}
             >
-              Clubhouse · {clubhouse.length} card{clubhouse.length === 1 ? "" : "s"}
+              Clubhouse{clubhouse.length > 0 ? ` · ${clubhouse.length}` : ""}
             </PixelBtn>
-          ) : null}
-          <PixelBtn
-            variant="ghost"
-            className="h-12"
-            onClick={() => {
-              sfxSelect();
-              stopMusic();
-              openWeekly();
-            }}
-          >
-            This week&apos;s look · {shineIsoWeek()}
-          </PixelBtn>
-          <PixelBtn
-            variant="ghost"
-            className="h-12"
-            onClick={() => {
-              sfxSelect();
-              stopMusic();
-              openExhibition();
-            }}
-          >
-            3D Exhibition · Aoi vs Reina
-          </PixelBtn>
-          {clubhouse.length === 0 ? (
             <PixelBtn
               variant="ghost"
-              className="h-12"
+              className="h-11"
               onClick={() => {
                 sfxSelect();
-                openWall();
+                stopMusic();
+                openWeekly();
               }}
             >
-              Clubhouse
+              This week
             </PixelBtn>
-          ) : null}
-          <PixelBtn
-            variant="ghost"
-            className="h-12"
-            onClick={() => {
-              sfxSelect();
-              openShop();
-            }}
-          >
-            Shop · USD
-          </PixelBtn>
-          <div className="flex gap-3">
             <PixelBtn
               variant="ghost"
-              className="h-11 flex-1"
+              className="h-11"
+              onClick={() => {
+                sfxSelect();
+                stopMusic();
+                openExhibition();
+              }}
+            >
+              Exhibition
+            </PixelBtn>
+            <PixelBtn
+              variant="ghost"
+              className="h-11"
+              onClick={() => {
+                sfxSelect();
+                openShop();
+              }}
+            >
+              Shop
+            </PixelBtn>
+            <PixelBtn
+              variant="ghost"
+              className="h-11"
               onClick={() => {
                 sfxSelect();
                 openSettings();
@@ -183,7 +149,7 @@ function Title() {
             </PixelBtn>
             <PixelBtn
               variant="ghost"
-              className="h-11 flex-1"
+              className="h-11"
               onClick={() => {
                 sfxSelect();
                 openHelp();
@@ -216,9 +182,9 @@ function Wall() {
   const openSelect = useShine((s) => s.openSelect);
   const nextHook = sparkGapLine(clubhouse);
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-ink text-cream">
-      <img src="/bg/park-koi.jpg" alt="" className="absolute inset-0 size-full object-cover opacity-50" />
-      <div className="title-wash absolute inset-0" />
+    <main className="shine-stage text-cream">
+      <img src="/bg/park-koi.jpg" alt="" className="absolute inset-0 size-full object-cover" />
+      <div className="shine-stage-wash absolute inset-0" />
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
         <p className="episode-chip w-fit">ダイヤシャイン</p>
         <h1 className="mt-4 font-display text-2xl font-bold">Clubhouse</h1>
@@ -245,11 +211,12 @@ function Wall() {
                 >
                   <div className="relative bg-ink/90 px-4 pb-3 pt-4">
                     <p className="font-display text-[10px] uppercase tracking-widest text-gold">{rank}</p>
+                    <p className="shine-kana text-sm text-gold">{who.jp}</p>
                     {art ? (
                       <img
                         src={art}
                         alt=""
-                        className={`character-cutout mx-auto mt-2 h-28 w-auto object-contain ${cardAltLook(c) ? "shine-alt-look" : ""}`}
+                        className={`character-cutout mx-auto mt-2 h-44 w-auto object-contain ${cardAltLook(c) ? "shine-alt-look" : ""}`}
                       />
                     ) : null}
                     <p className="mt-3 font-display text-sm font-bold uppercase tracking-wide">
@@ -363,39 +330,50 @@ function Select() {
   const art = portraitSrc(pick, "focused");
   const eligible = clubhouse.filter((c) => parentEligible(c, pick, clubhouse.length));
   const parent = eligible.find((c) => c.id === parentId);
+  const accent = kitAccent(pick);
 
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-ink text-cream">
-      <img src={parkSrc(who.parkId)} alt="" className="absolute inset-0 size-full object-cover opacity-50" />
-      <div className="title-wash absolute inset-0" />
-      <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
-        <p className="episode-chip w-fit">ダイヤシャイン</p>
-        <h1 className="mt-4 font-display text-2xl font-bold">Choose who you Coach</h1>
+    <main className="shine-stage text-cream" style={{ ["--shine-accent" as string]: accent }}>
+      <img src={parkSrc(who.parkId)} alt="" className="absolute inset-0 size-full object-cover" />
+      <div className="shine-stage-wash absolute inset-0" />
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 py-6 sm:px-8">
+        <div className="flex items-center justify-between gap-3">
+          <p className="episode-chip w-fit">ダイヤシャイン</p>
+          <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
+            Title
+          </PixelBtn>
+        </div>
+        <p className="shine-kana mt-4 text-sm text-gold">{who.jp}</p>
+        <h1 className="mt-1 font-display text-3xl font-bold uppercase tracking-tight sm:text-4xl">
+          #{who.number} {who.name}
+        </h1>
         <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">Past first. The board comes later.</p>
-        <div className="mt-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {BIBLE.map((c) => {
             const face = portraitSrc(c.id, "neutral");
+            const on = pick === c.id;
             return (
               <button
                 key={c.id}
                 type="button"
-                aria-pressed={pick === c.id}
+                aria-pressed={on}
                 onClick={() => {
                   setPick(c.id);
                   setParentId(null);
                   setSparks([]);
                 }}
-                className={`club-nav-tile flex items-start gap-3 px-3 py-3 text-left ${pick === c.id ? "border-gold" : ""}`}
+                className="shine-cast-card"
+                style={on ? { ["--shine-accent" as string]: kitAccent(c.id) } : undefined}
               >
-                {face ? (
-                  <img src={face} alt="" className="shine-select-face size-14 shrink-0 rounded-full object-cover object-top" />
-                ) : null}
-                <span className="min-w-0">
-                  <span className="block font-display text-xs font-bold uppercase tracking-wide">
-                    {c.name} · #{c.number} · {c.pgVerb}
+                {face ? <img src={face} alt="" /> : null}
+                <span className="shine-cast-meta">
+                  <span className="shine-kana block text-[11px] text-gold">{c.jp}</span>
+                  <span className="mt-0.5 block font-display text-xs font-bold uppercase tracking-wide">
+                    #{c.number} {c.name}
                   </span>
-                  <span className="mt-1 block font-ui text-xs leading-snug text-cream/85">{pastBlurb(c.id)}</span>
-                  <span className="mt-1 block font-ui text-[11px] text-muted">vs {sheet(c.rival).name}</span>
+                  <span className="mt-0.5 block font-display text-[10px] uppercase tracking-widest text-cream/70">
+                    {c.pgVerb}
+                  </span>
                 </span>
               </button>
             );
@@ -496,23 +474,29 @@ function Select() {
           </div>
           {lastLine ? <p className="mt-2 font-ui text-xs text-grass-2">{lastLine}</p> : null}
         </div>
-        <div className="mt-6 flex flex-wrap items-end gap-4">
-          {art ? <img src={art} alt={who.name} className="character-cutout h-36 w-auto object-contain" /> : null}
-          <div className="max-w-md">
-            <p className="font-ui text-xs uppercase tracking-widest text-gold">
-              #{who.number} · vs {sheet(who.rival).name}
-            </p>
-            <p className="mt-2 font-ui text-sm leading-relaxed text-cream/90">{who.past}</p>
-            <p className="mt-2 font-ui text-xs text-muted">{who.sg}</p>
+        <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end">
+          {art ? (
+            <img
+              src={art}
+              alt={who.name}
+              className="shine-hero-stand mx-auto h-56 w-auto object-contain sm:h-72 lg:mx-0 lg:h-[22rem]"
+            />
+          ) : null}
+          <div className="max-w-md flex-1">
+            <div className="shine-speech">
+              <p className="font-ui text-xs uppercase tracking-widest text-ink/55">
+                vs {sheet(who.rival).jp} · {who.pgVerb}
+              </p>
+              <p className="mt-2 font-ui text-sm leading-relaxed">{who.past}</p>
+              <p className="mt-2 font-ui text-xs text-ink/60">{who.sg}</p>
+            </div>
+            <PixelBtn
+              className="mt-4 h-12 w-full"
+              onClick={() => startRun(pick, parentId, pickInheritSparks(parent?.sparks ?? [], sparks))}
+            >
+              Coach {who.name}
+            </PixelBtn>
           </div>
-        </div>
-        <div className="mt-6 flex gap-3">
-          <PixelBtn className="h-12" onClick={() => startRun(pick, parentId, pickInheritSparks(parent?.sparks ?? [], sparks))}>
-            Coach {who.name}
-          </PixelBtn>
-          <PixelBtn variant="ghost" className="h-12" onClick={openTitle}>
-            Title
-          </PixelBtn>
         </div>
       </div>
     </main>
@@ -534,6 +518,8 @@ function Complex() {
   const dismissLooksLock = useShine((s) => s.dismissLooksLock);
   const dismissCalendarPeek = useShine((s) => s.dismissCalendarPeek);
   const dismissStoryCard = useShine((s) => s.dismissStoryCard);
+  const openTitle = useShine((s) => s.openTitle);
+  const openSettings = useShine((s) => s.openSettings);
   const [preview, setPreview] = useState<StationId | null>(null);
   const [intensive, setIntensive] = useState(false);
   const [sideFocus, setSideFocus] = useState<"stuff" | "control">("stuff");
@@ -545,7 +531,9 @@ function Complex() {
   const art = portraitSrc(run.characterId, workMood(run.mood));
   const brief = coachBrief(run);
   const comparison = run.lastWork && run.lastWork.turn === run.turn - 1 ? workComparison(run) : null;
-  const [showBoard, setShowBoard] = useState(false);
+  const next = nextOfficial(run.turn);
+  const turnsAway = Math.max(0, next.turn - run.turn);
+  const moodIdx = moodLevel(run.mood);
 
   useEffect(() => {
     if (!preview) return;
@@ -668,216 +656,30 @@ function Complex() {
   }
 
   return (
-    <Shell runTurn={run.turn} label={meta.label}>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <section>
-          <div className="flex items-end gap-4">
-            {art ? (
-              <img
-                src={art}
-                alt={who.name}
-                className={`character-cutout h-36 w-auto object-contain sm:h-44 ${run.altLook ? "shine-alt-look" : ""}`}
-              />
-            ) : (
-              <div className="flex h-36 w-24 items-end rounded-xl border border-gold/40 bg-ink/70 px-2 py-3 font-display text-xs uppercase">
-                {who.name}
-              </div>
-            )}
-            <div>
-              <p className="episode-chip w-fit">
-                #{who.number} {who.name} · {who.style} · {who.pgVerb}
-              </p>
-              <p className="mt-2 font-ui text-sm text-cream/80">{workMorningLine(who.parkId)}</p>
-              <p className="mt-1 font-ui text-xs text-muted">vs {sheet(who.rival).name} · {who.sg}</p>
-            </div>
-          </div>
-          {lastLine ? <p className="mt-3 font-ui text-sm text-grass-2">{lastLine}</p> : null}
-          {comparison ? (
-            <div className="mt-3 rounded-xl border border-grass-2/40 bg-ink/60 px-3 py-2" data-testid="work-comparison">
-              <p className="font-display text-[10px] uppercase tracking-widest text-grass-2">After the work</p>
-              <p className="mt-1 font-ui text-sm text-cream/90">{comparison.line}</p>
-              <p className="font-ui text-xs text-muted">{comparison.where}</p>
-            </div>
-          ) : null}
-          <div className="mt-4 rounded-2xl border border-gold/30 bg-ink/60 p-3" data-testid="coach-brief">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-display text-[10px] uppercase tracking-widest text-gold">Coaching decision</p>
-              <p className="font-ui text-xs text-cream/80">
-                {brief.condition.energy} · {brief.condition.mood} · {brief.condition.line}
-              </p>
-            </div>
-            <dl className="mt-2 grid gap-2 font-ui text-sm sm:grid-cols-3">
-              <div>
-                <dt className="font-display text-[10px] uppercase tracking-wide text-muted">Need</dt>
-                <dd className="mt-0.5 text-cream/90">{brief.need}</dd>
-              </div>
-              <div>
-                <dt className="font-display text-[10px] uppercase tracking-wide text-muted">Choice</dt>
-                <dd className="mt-0.5 text-cream/90">
-                  <span className="text-grass-2">{STATIONS.find((s) => s.id === brief.choice.station)?.label ?? brief.choice.station}</span>
-                  {" · "}
-                  {brief.choice.why}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-display text-[10px] uppercase tracking-wide text-muted">Next test</dt>
-                <dd className="mt-0.5 text-cream/90">
-                  {brief.nextTest.label} · {brief.nextTest.turnsAway === 0 ? "today" : `${brief.nextTest.turnsAway} turn${brief.nextTest.turnsAway === 1 ? "" : "s"}`}
-                  {brief.nextTest.definition ? <span className="block text-xs text-muted">{brief.nextTest.definition}</span> : null}
-                </dd>
-              </div>
-            </dl>
-          </div>
-          {preview ? (
-            <div className="mt-3">
-              <p className="font-display text-xs uppercase tracking-widest text-gold">Window preview</p>
-              <div
-                className="shine-window-preview mt-2"
-                style={
-                  {
-                    ["--window-pct"]: `${cagePreviewPct(run, preview, sideFocus)}%`,
-                  } as CSSProperties
-                }
-                aria-hidden
-              >
-                <div className="shine-window-preview-fill" />
-              </div>
-            </div>
-          ) : null}
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
-            {STATIONS.filter((s) => {
-              if (s.id === "clubhouse") return clubhouseOpen(run.turn);
-              if (s.id === "hitch") return Boolean(run.parentId);
-              if (s.id === "side") return pitcher;
-              if (s.id === "cage" && pitcher && run.turn === 1) return false;
-              return true;
-            }).map((s) => {
-              const open = stationOpen(run, s.id);
-              const stat = stationStat(s.id, sideFocus, run);
-              const staff = stationStaff(s.id, run);
-              const blurb =
-                s.id === "clubhouse" && run.turn < 6
-                  ? "The complex is quiet. Sometimes the Coach will be around."
-                  : s.id === "off-day" && run.turn <= 4
-                    ? "Recover 25 energy. No stat progress. Sometimes the right call."
-                    : s.blurb;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  disabled={!open.open}
-                  title={open.reason}
-                  onClick={() => {
-                    if (run.turn === 1 && (s.id === "cage" || s.id === "side")) {
-                      setPreview(s.id);
-                      window.setTimeout(() => finishForcedCage(), 1000);
-                      return;
-                    }
-                    if (s.id === "clubhouse") {
-                      setCatchBeat(true);
-                      return;
-                    }
-                    if (s.id === "off-day" || s.id === "treatment") {
-                      train(s.id);
-                      return;
-                    }
-                    setPreview(s.id);
-                    window.setTimeout(() => train(s.id, intensive, sideFocus), 1000);
-                  }}
-                  className="club-nav-tile px-4 py-3 text-left disabled:opacity-35"
-                >
-                  <p className="font-display text-xs font-bold uppercase tracking-wide">{s.label}</p>
-                  {staff && open.open ? <p className="mt-1 font-ui text-[11px] text-gold/80">{staff}</p> : null}
-                  <p className="mt-1 font-ui text-sm text-muted">{blurb}</p>
-                  {stat ? (
-                    <p className="mt-2 font-display text-[10px] uppercase text-grass-2">
-                      {stat} {run.stats[stat]}
-                    </p>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-          {run.turn > 5 && looksUnlocked(run.turn) === false ? (
-            <p className="mt-3 font-ui text-xs text-muted">Live looks and Charting unlock after the Gate.</p>
-          ) : null}
-          {run.turn > 5 && !powerStationsUnlocked(run.turn) ? (
-            <p className="mt-1 font-ui text-xs text-muted">On-field BP and Situational open at Turn 6.</p>
-          ) : null}
-          {workLocked(run) ? (
-            <p className="mt-3 font-ui text-sm text-coral">She's empty. Trainer's room.</p>
-          ) : null}
-          {pitcher ? (
-            <label className="mt-3 flex items-center gap-2 font-ui text-sm text-muted">
-              <input
-                type="checkbox"
-                checked={sideFocus === "control"}
-                onChange={(e) => setSideFocus(e.target.checked ? "control" : "stuff")}
-              />
-              Side focus: {sideFocus === "control" ? "Control" : "Stuff"}
-            </label>
-          ) : null}
-          <label className="mt-4 flex items-center gap-2 font-ui text-sm text-muted">
-            <input type="checkbox" checked={intensive} onChange={(e) => setIntensive(e.target.checked)} />
-            Intensive (−18 energy)
-          </label>
-        </section>
-        <aside className="rounded-2xl border border-line bg-panel/90 p-4">
-          <p className="font-display text-[10px] uppercase tracking-widest text-muted">Condition</p>
-          <p className="mt-2 font-ui text-sm">
-            Energy {Math.round(run.energy)} · {energyBand(run.energy)}
-          </p>
-          <div className="shine-energy-bar mt-1" aria-hidden>
-            <div className="shine-energy-fill" style={{ width: `${Math.max(0, Math.min(100, run.energy))}%` }} />
-          </div>
-          <p className="mt-2 font-ui text-sm">Mood {mood}</p>
-          <p className="mt-4 font-display text-[10px] uppercase tracking-widest text-gold">Next game</p>
-          <p className="mt-1 font-ui text-sm text-cream/90">
-            {nextOfficial(run.turn).label} · Turn {nextOfficial(run.turn).turn}
-          </p>
-          <p className="font-ui text-xs text-muted">vs {sheet(who.rival).name}</p>
-          {brief.nextTest.definition ? <p className="mt-1 font-ui text-xs text-muted">{brief.nextTest.definition}</p> : null}
-          <button
-            type="button"
-            aria-expanded={showBoard}
-            onClick={() => setShowBoard((v) => !v)}
-            className="mt-4 font-display text-[10px] uppercase tracking-widest text-muted underline-offset-2 hover:underline"
-          >
-            {showBoard ? "Hide board" : "Board"}
-          </button>
-          {showBoard ? (
-            <ul className="mt-2 space-y-1 font-ui text-sm tabular-nums">
-              <li>Contact {run.stats.contact}</li>
-              <li>Speed {run.stats.speed}</li>
-              <li>Eye {run.stats.eye}</li>
-              <li>Power {run.stats.power}</li>
-              <li>Guts {run.stats.guts}</li>
-              <li>Wit {run.stats.wit}</li>
-              {pitcher ? (
-                <>
-                  <li>Stuff {run.stats.stuff}</li>
-                  <li>Control {run.stats.control}</li>
-                  <li>Stamina {run.stats.stamina}</li>
-                </>
-              ) : null}
-              <li className="pt-1 text-muted">Fans {run.fans}</li>
-            </ul>
-          ) : null}
-          <p className="mt-3 font-ui text-xs text-muted">
-            Turn {run.turn} / 60 · Year {run.year} · Potential {run.potential}
-          </p>
-          {run.pgResults.some((m) => m !== "pending") ? (
-            <p className="mt-1 font-ui text-xs text-muted">
-              Gate {run.pgResults[0]} · First Light {run.pgResults[1]}
-              {run.pgResults[2] !== "pending" ? ` · Lantern ${run.pgResults[2]}` : ""}
-            </p>
-          ) : null}
-          {run.turn >= 6 && !run.finaleUnlocked ? (
-            <p className="mt-3 font-ui text-xs text-gold">{finaleGap(run)}</p>
-          ) : null}
-        </aside>
-      </div>
-    </Shell>
+    <ShineComplexWork
+      run={run}
+      art={art}
+      meta={meta}
+      mood={mood}
+      moodIdx={moodIdx}
+      pitcher={pitcher}
+      brief={brief}
+      comparison={comparison}
+      lastLine={lastLine}
+      preview={preview}
+      setPreview={setPreview}
+      intensive={intensive}
+      setIntensive={setIntensive}
+      sideFocus={sideFocus}
+      setSideFocus={setSideFocus}
+      train={train}
+      finishForcedCage={finishForcedCage}
+      setCatchBeat={setCatchBeat}
+      openTitle={openTitle}
+      openSettings={openSettings}
+      next={next}
+      turnsAway={turnsAway}
+    />
   );
 }
 
@@ -1014,7 +816,7 @@ function YearEnd() {
             <img
               src={art}
               alt=""
-              className={`character-cutout mb-4 h-40 w-auto object-contain ${
+              className={`character-cutout mb-4 h-52 w-auto object-contain sm:h-64 ${
                 still.rank === "S" || still.rank === "A" ? "shine-dohage" : still.rank === "never-quit" ? "shine-never-quit" : ""
               }`}
             />
@@ -1082,16 +884,20 @@ function YearEnd() {
 
 function SceneBlock({ scene }: { scene: RelationshipScene }) {
   const art = portraitSrc(scene.speaker, scene.mood);
+  const who = sheet(scene.speaker);
   return (
-    <div className="mt-4 flex items-start gap-4 rounded-2xl border border-gold/30 bg-ink/60 p-4" data-testid="relationship-scene">
+    <div className="shine-dialogue mt-4" data-testid="relationship-scene">
       {art ? <img src={art} alt="" className="character-cutout h-28 w-auto shrink-0 object-contain" /> : null}
-      <div className="min-w-0 space-y-2">
+      <div className="shine-speech">
+        <p className="shine-kana text-[11px] text-ink/50">
+          #{who.number} {who.jp}
+        </p>
         {scene.lines.map((l, i) => (
-          <p key={i} className="font-ui text-sm leading-relaxed text-cream/90">
+          <p key={i} className="mt-1 font-ui text-sm leading-relaxed">
             {l}
           </p>
         ))}
-        {scene.quoted ? <p className="font-ui text-[11px] text-muted">She remembers: {scene.quoted.note}</p> : null}
+        {scene.quoted ? <p className="mt-2 font-ui text-[11px] text-ink/55">She remembers: {scene.quoted.note}</p> : null}
       </div>
     </div>
   );
@@ -1141,8 +947,8 @@ function Shell({ runTurn, label, children }: { runTurn: number; label: string; c
   const park = run ? parkSrc(sheet(run.characterId).parkId) : "/bg/park-koi.jpg";
   return (
     <main className="relative min-h-dvh overflow-hidden bg-ink text-cream">
-      <img src={park} alt="" className="absolute inset-0 size-full object-cover opacity-50" />
-      <div className="title-wash absolute inset-0" />
+      <img src={park} alt="" className="absolute inset-0 size-full object-cover" />
+      <div className="shine-stage-wash absolute inset-0" />
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
         <div className="flex items-center justify-between gap-3">
           <p className="episode-chip w-fit">

@@ -20,10 +20,12 @@ import {
   Color,
   DoubleSide,
   Fog,
+  Float32BufferAttribute,
   LoopOnce,
   LoopRepeat,
   MathUtils,
   MeshBasicMaterial,
+  Matrix4,
   Quaternion,
   Vector3,
   type AnimationAction,
@@ -34,7 +36,6 @@ import {
 } from "three";
 import { GLTFLoader, type GLTF } from "three/addons/loaders/GLTFLoader.js";
 import type { Cell, Loc } from "@/game/plate";
-import { PREPARE_MS, PREPARE_MS_REDUCED } from "@/shine/beats.ts";
 import type { PlateController, PlateCue, PlateSnapshot } from "@/shine/plate-controller.ts";
 import { AimGrid } from "./AimGrid";
 import { loadManifest, type CharacterAsset, type SceneManifest } from "./scene/manifest";
@@ -66,14 +67,27 @@ import {
   matchesContractBone,
   rewriteTrackName,
 } from "./scene/rig-bind";
-import { beatFlashAt, HERO_LOOK, heroMatGlow, kitMatTint, type HeroLookRole } from "./scene/kit-look";
+import {
+  beatFlashAt,
+  HERO_LOOK,
+  heroMatGlow,
+  kitMatTint,
+  REINA_CURTAIN_EMIT,
+  reinaCurtainWeights,
+  type HeroLookRole,
+} from "./scene/kit-look";
 import { heroKeyFor, heroLookFor, heroRequests } from "./scene/roster";
 import {
   BALL_VISUAL,
   ballLeavesBat,
   ballScaleAtFlight,
   beatSightFlash,
+  BATTER_ROTATION_Y,
+  SWING_CLIP_LEAD_S,
+  swingClipName,
+  CAMERA_FOV,
   CAMERA_LOCK,
+  deliveryTimeScale,
   CAMERA_PUNCH,
   cameraPunchOffset,
   cameraPunchOn,
@@ -89,14 +103,13 @@ import {
   FLASH_SIGHT,
   flashDiscMaxScale,
   heldClipSnaps,
-  pitcherHoldsThrow,
+  pitcherFreezesThrow,
   planOutgoing,
   RELEASE_POINT as RELEASE_POINT_V,
   mittFaceOnScore,
   mittFacesCatcher,
   pickThrowPoseTime,
   pitcherSetGloveLift,
-  prepareShowsBall,
   setMittNearFace,
   releaseFromThrowingHand,
   releaseThrowTime,
@@ -124,6 +137,16 @@ import type { ExhibitionTier } from "./quality";
 const MOUND = new Vector3(0, 0, -18.44);
 const RELEASE_POINT = new Vector3(RELEASE_POINT_V[0], RELEASE_POINT_V[1], RELEASE_POINT_V[2]);
 const liveReleaseOrigin = new Vector3(RELEASE_POINT.x, RELEASE_POINT.y, RELEASE_POINT.z);
+// Scratch for the two-hand bat axis (authored swing clip): the barrel runs
+// from the bottom hand (hand.L) through the top hand (hand.R).
+const _batHandL = new Vector3();
+const _batHandR = new Vector3();
+const _batDir = new Vector3();
+const _batOne = new Vector3(1, 1, 1);
+const _batUp = new Vector3(0, 1, 0);
+const _batQ = new Quaternion();
+const _batM = new Matrix4();
+const _batMInv = new Matrix4();
 let throwHandReady = false;
 const MITT_POINT = new Vector3(0, 0.55, 0.9);
 const ZONE = { halfW: 0.2159, top: 1.05, bottom: 0.45 };
@@ -139,6 +162,15 @@ const _batTip = new Vector3();
 const _batCorner = new Vector3();
 const _footL = new Vector3();
 const _footR = new Vector3();
+
+/** Put the bat back on its tuned socket offset after the two-hand override. */
+function restoreBatSocket(bat: Object3D | null) {
+  const local = bat?.userData.socketLocal as { p: Vector3; q: Quaternion; s: Vector3 } | undefined;
+  if (!bat || !local) return;
+  bat.position.copy(local.p);
+  bat.quaternion.copy(local.q);
+  bat.scale.copy(local.s);
+}
 
 function rememberThrowingHand(hand: Object3D | null) {
   if (!hand) return;
@@ -364,7 +396,7 @@ export default function Exhibition3D(props: Props) {
         dpr={Math.min(baseDpr * dprScale, baseDpr)}
         shadows={props.tier === "desktop"}
         gl={{ antialias: props.tier === "desktop", powerPreference: "high-performance", alpha: false }}
-        camera={{ fov: 35, near: 0.1, far: 400, position: [...CAMERA_LOCK.position] }}
+        camera={{ fov: CAMERA_FOV, near: 0.1, far: 400, position: [...CAMERA_LOCK.position] }}
         onCreated={onCreated}
       >
         <Suspense fallback={null}>
@@ -581,7 +613,7 @@ function SceneRoot({
       <CameraLock controller={controller} paused={paused} reduced={reduced} />
       <NightSky />
       <NightLighting desktop={tier === "desktop"} lanterns={lanternLights} />
-      <FrameLanterns />
+      {/* FrameLanterns off: at the catcher cam they stood on the infield. */}
       <LanternHalos points={lanternHalos} />
       <primitive object={fieldGltf.scene} />
       <CharacterActor
@@ -591,7 +623,7 @@ function SceneRoot({
         paused={paused}
         reduced={reduced}
         position={[-0.95, 0, 0.55]}
-        rotationY={Math.PI}
+        rotationY={BATTER_ROTATION_Y}
         propMesh={findProp(propsGltf, "prop_bat")}
         propSocket={heroes.batter.sockets?.bat_grip ?? "hand.R"}
         propOffset={SOCKET_OFFSETS.bat_grip}
@@ -605,22 +637,12 @@ function SceneRoot({
         position={[MOUND.x, 0, MOUND.z]}
         rotationY={0}
         bodyScale={HERO_LOOK.reina.height}
-        propMesh={findProp(propsGltf, "prop_mitt")}
+        propMesh={null}
         propSocket={heroes.pitcher.sockets?.glove ?? "hand.L"}
         propOffset={SOCKET_OFFSETS.pitcher_glove}
       />
-      <CharacterActor
-        gltf={catcherGltf}
-        asset={manifest.assets.catcher}
-        controller={controller}
-        paused={paused}
-        reduced={reduced}
-        position={[0, 0, 1.1]}
-        rotationY={Math.PI}
-        propMesh={findProp(propsGltf, "prop_mitt")}
-        propSocket={manifest.assets.catcher.sockets?.glove ?? "hand.L"}
-        propOffset={SOCKET_OFFSETS.glove}
-      />
+      {/* No catcher: the camera is the catcher. The blockout mitt props are
+          off too — the brown blob read worse than an empty hand. */}
       <Ball controller={controller} paused={paused} />
       <FirstPitchPlate snapshot={snapshot} reduced={reduced} paused={paused} />
     </>
@@ -758,8 +780,77 @@ function applyHeroLook(root: Object3D, role: HeroLookRole) {
         named.emissive.set("#000000");
         named.emissiveIntensity = 0;
       }
+      if (role === "reina") applyReinaCurtainEmit(mesh, named);
     }
   });
+}
+
+function readTextureImageData(image: unknown): { data: Uint8ClampedArray; width: number; height: number } | null {
+  if (!image || typeof document === "undefined") return null;
+  const src = image as { width?: number; height?: number };
+  const w = src.width ?? 0;
+  const h = src.height ?? 0;
+  if (!(w > 0) || !(h > 0)) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  try {
+    ctx.drawImage(image as CanvasImageSource, 0, 0);
+  } catch {
+    return null;
+  }
+  return ctx.getImageData(0, 0, w, h);
+}
+
+function applyReinaCurtainEmit(
+  mesh: Mesh,
+  mat: {
+    map?: unknown;
+    emissive?: { set: (c: string) => void };
+    emissiveIntensity?: number;
+    emissiveMap?: unknown;
+    needsUpdate?: boolean;
+  },
+) {
+  const map = mat.map as { image?: unknown; flipY?: boolean } | undefined;
+  if (!map?.image || !mat.emissive) return;
+  const pos = mesh.geometry.getAttribute("position");
+  const uv = mesh.geometry.getAttribute("uv");
+  if (!pos || !uv) return;
+  const atlas = readTextureImageData(map.image);
+  if (!atlas) return;
+  const weights = reinaCurtainWeights(pos.array, uv.array, atlas);
+  let lit = 0;
+  for (const w of weights) lit += w > 0 ? 1 : 0;
+  if (lit < 8) return;
+  mesh.geometry.setAttribute("curtain", new Float32BufferAttribute(weights, 1));
+  const named = mat as typeof mat & {
+    onBeforeCompile?: (shader: { vertexShader: string; fragmentShader: string }) => void;
+    customProgramCacheKey?: () => string;
+    userData?: { curtainVerts?: number };
+  };
+  named.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        "#include <common>\nattribute float curtain;\nvarying float vCurtain;",
+      )
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvCurtain = curtain;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\nvarying float vCurtain;")
+      .replace(
+        "#include <emissivemap_fragment>",
+        "#include <emissivemap_fragment>\ntotalEmissiveRadiance *= vCurtain;",
+      );
+  };
+  named.customProgramCacheKey = () => "reina-curtain-emit";
+  named.userData = { ...(named.userData ?? {}), curtainVerts: lit };
+  mat.emissive.set(REINA_CURTAIN_EMIT.color);
+  mat.emissiveIntensity = REINA_CURTAIN_EMIT.intensity;
+  mat.emissiveMap = null;
+  mat.needsUpdate = true;
 }
 
 function applyCatcherReadability(root: Object3D) {
@@ -1080,6 +1171,8 @@ function CharacterActor({
   const current = useRef<AnimationAction | null>(null);
   const batProp = useRef<Object3D | null>(null);
   const batThrough = useRef(false);
+  /** True while the authored swing clip owns the batter's bones. */
+  const clipSwing = useRef(false);
   const throughAt = useRef(0);
   const throwAt = useRef<number | null>(null);
   const throwScanGltf = useRef<GLTF | null>(null);
@@ -1171,7 +1264,14 @@ function CharacterActor({
         kit:
           asset.role === "pitcher"
             ? (() => {
-                const rows: { name: string; mapped: boolean; emit: number; emitHex: string | null }[] = [];
+                const rows: {
+                  name: string;
+                  mapped: boolean;
+                  emit: number;
+                  emitHex: string | null;
+                  emitMap: boolean;
+                  curtainVerts?: number;
+                }[] = [];
                 gltf.scene.traverse((o) => {
                   const mesh = o as Mesh;
                   if (!mesh.isMesh) return;
@@ -1184,7 +1284,7 @@ function CharacterActor({
                       emissive?: { getHexString?: () => string };
                     };
                     const name = named.name ?? "";
-                    if (!/kit_|hair_/i.test(name)) continue;
+                    if (!/kit_|hair_|skin_hero/i.test(name)) continue;
                     if (rows.some((r) => r.name === name)) continue;
                     const em = named.emissive;
                     rows.push({
@@ -1192,6 +1292,8 @@ function CharacterActor({
                       mapped: Boolean(named.map),
                       emit: Number((named.emissiveIntensity ?? 0).toFixed(2)),
                       emitHex: em?.getHexString ? `#${em.getHexString()}` : null,
+                      emitMap: Boolean((named as { userData?: { curtainVerts?: number } }).userData?.curtainVerts),
+                      curtainVerts: (named as { userData?: { curtainVerts?: number } }).userData?.curtainVerts,
                     });
                   }
                 });
@@ -1449,7 +1551,10 @@ function CharacterActor({
       MathUtils.degToRad(off.rotDeg[2]),
     );
     bone.add(instance);
-    if (asset.role === "batter") batProp.current = instance;
+    if (asset.role === "batter") {
+      batProp.current = instance;
+      instance.userData.socketLocal = { p: instance.position.clone(), q: instance.quaternion.clone(), s: instance.scale.clone() };
+    }
     return () => {
       if (batProp.current === instance) batProp.current = null;
       bone.remove(instance);
@@ -1463,10 +1568,20 @@ function CharacterActor({
         if (cue.t === "prepare") {
           clearThrowHand();
           prepareAt.current = performance.now();
-          backToIdle();
+          // Wind-up: play the delivery so its `release` marker lands when
+          // the prepare beat ends and the ball leaves the hand.
+          const delivery = play("pitch_delivery", { once: true, fade: 0.1 });
+          if (delivery) {
+            const release = asset.clips.pitch_delivery?.markers?.release ?? 0.9167;
+            delivery.timeScale = deliveryTimeScale(release, cue.prepareMs);
+          } else {
+            backToIdle();
+          }
         }
         if (cue.t === "flight") {
           stampThrowPose();
+          gltf.scene.updateMatrixWorld(true);
+          rememberThrowingHand(swingRig.current.handR);
         }
         if (cue.t === "reaction" || cue.t === "idle") {
           if (debugFpsEnabled() && current.current?.paused) return;
@@ -1490,6 +1605,10 @@ function CharacterActor({
         if (cue.t === "resolved") {
           batThrough.current = cue.swung;
           throughAt.current = performance.now();
+          if (cue.swung) {
+            // Authored swing_contact T-poses the front arm. Runtime cut only.
+            clipSwing.current = false;
+          }
         }
         // Do not play `take`. The clip floats the front foot and reads as a swing.
         if (cue.t === "reaction") {
@@ -1501,6 +1620,8 @@ function CharacterActor({
           if (debugFpsEnabled() && (current.current?.paused || batThrough.current || throughAt.current > 0)) return;
           batThrough.current = false;
           throughAt.current = 0;
+          restoreBatSocket(batProp.current);
+          clipSwing.current = false;
           backToIdle();
         }
         return;
@@ -1515,8 +1636,24 @@ function CharacterActor({
   // Time advances only while live. update(0) while paused keeps the current
   // clip pose on the mesh instead of dropping back to bind.
   useFrame((_, delta) => {
+    if (asset.role === "pitcher") {
+      const stage = controller.getSnapshot().stage;
+      const delivery = actionFor("pitch_delivery");
+      if (
+        delivery &&
+        pitcherFreezesThrow({ stage, clipTime: delivery.time, throwAt: throwAt.current })
+      ) {
+        current.current = delivery;
+        delivery.enabled = true;
+        delivery.setEffectiveWeight(1);
+        delivery.paused = true;
+        delivery.timeScale = 0;
+        if (throwAt.current != null) delivery.time = throwAt.current;
+        mixer.update(0);
+      }
+    }
     mixer.update(paused || debugHoldClock() ? 0 : delta);
-    if (asset.role === "batter") {
+    if (asset.role === "batter" && !clipSwing.current) {
       const stage = controller.getSnapshot().stage;
       const u = controller.progress(performance.now());
       const through = batThrough.current || debugForceBatThrough();
@@ -1558,25 +1695,6 @@ function CharacterActor({
     }
     if (asset.role === "pitcher") {
       const stage = controller.getSnapshot().stage;
-      if (stage === "prepare") {
-        const prep = reduced ? PREPARE_MS_REDUCED : PREPARE_MS;
-        if (prepareShowsBall(performance.now() - prepareAt.current, prep) && !throwHandReady) {
-          stampThrowPose();
-        }
-      }
-      const delivery = actionFor("pitch_delivery");
-      if (
-        delivery &&
-        current.current === delivery &&
-        pitcherHoldsThrow(stage) &&
-        throwAt.current != null
-      ) {
-        delivery.paused = true;
-        if (Math.abs(delivery.time - throwAt.current) > 0.02) {
-          delivery.time = throwAt.current;
-          mixer.update(0);
-        }
-      }
       const lift = debugSetGloveLift() ?? pitcherSetGloveLift({ stage, ballOut: throwHandReady });
       const armL = swingRig.current.armL;
       if (armL && lift.some((n) => n !== 0)) {

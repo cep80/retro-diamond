@@ -443,21 +443,29 @@ _REINA_FOLLOW_R = (
     ("chest", (1.0, 0.0, 0.0), 8),
     ("hips", (0.0, 0.0, 1.0), 10),
 )
+# Twist sign: +X is her left, so a RH batter coils to the right (negative,
+# away from the pitcher) and opens to the left (positive, toward the
+# pitcher) at contact. The old -82 / -78 turned her chest to the catcher.
 _AOI_LOAD = dict(
-    twist_deg=18, lean_deg=4,
+    twist_deg=-18, lean_deg=4,
     hands={"hand.R": (-0.22, 0.28, 1.28), "hand.L": (-0.16, 0.22, 1.32)},
     feet={"foot.L": (0.10, -0.06, _ZF)},
     poles={"hand.R": (-0.45, 0.20, 1.15), "hand.L": (-0.05, 0.35, 1.20)},
 )
+# Contact: hands out in front of the chest toward the plate (−Y), the top
+# hand (R) leading along the barrel toward the pitcher side (+X), both level
+# so the runtime two-hand bat axis (knob at L, barrel through R) reads as a
+# horizontal bat over the plate. The old targets were tucked across her body.
 _AOI_CONTACT = dict(
-    twist_deg=-82, lean_deg=8,
-    hands={"hand.R": (0.56, -0.14, 1.02), "hand.L": (0.48, -0.06, 1.08)},
+    twist_deg=60, lean_deg=8,
+    hands={"hand.R": (0.24, -0.54, 1.04), "hand.L": (0.12, -0.44, 1.02)},
     feet={"foot.L": (0.20, -0.32, _ZF)},
-    poles={"hand.R": (0.18, 0.22, 1.08), "hand.L": (0.72, 0.08, 1.12)},
+    poles={"hand.R": (-0.12, -0.28, 0.92), "hand.L": (0.48, -0.36, 1.06)},
 )
+# Follow-through: hands wrap up over her left shoulder, top hand leading.
 _AOI_FOLLOW = dict(
-    twist_deg=-78, lean_deg=4,
-    hands={"hand.R": (0.38, 0.22, 1.38), "hand.L": (0.30, 0.28, 1.42)},
+    twist_deg=80, lean_deg=4,
+    hands={"hand.R": (0.46, 0.14, 1.44), "hand.L": (0.34, 0.20, 1.36)},
     feet={"foot.L": (0.14, -0.24, _ZF)},
     poles={"hand.R": (0.10, 0.35, 1.25), "hand.L": (0.55, 0.20, 1.35)},
 )

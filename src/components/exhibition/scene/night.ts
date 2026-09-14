@@ -76,7 +76,9 @@ export const FRAME_LANTERNS: readonly LanternPoint[] = [
 ];
 
 export function lanternLightCandidates(field: readonly LanternPoint[]): LanternPoint[] {
-  return [...SCRIPTED_PLAY_LIGHTS, ...FRAME_LANTERNS, ...field];
+  // FRAME_LANTERNS are no longer placed: at the catcher cam their posts stood
+  // on the infield. Only the scripted fills and the field's own lanterns.
+  return [...SCRIPTED_PLAY_LIGHTS, ...field];
 }
 
 /**
@@ -86,7 +88,7 @@ export function lanternLightCandidates(field: readonly LanternPoint[]): LanternP
  */
 export function lanternHaloPoints(field: readonly LanternPoint[]): LanternPoint[] {
   const facing = field.filter((p) => p.pos[2] < CAMERA_CLIP_Z);
-  return [...FRAME_LANTERNS, ...facing].sort((a, b) => a.name.localeCompare(b.name));
+  return [...facing].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Empty grandstand / dugout / terrace blocks that otherwise read as gray daylight. */

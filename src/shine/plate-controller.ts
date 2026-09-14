@@ -65,7 +65,7 @@ export type PlatePauseReason = "user" | "hidden";
 export type PlateCue =
   | { t: "step-in" }
   | { t: "sting"; name: string }
-  | { t: "prepare"; pitch: LivePitch }
+  | { t: "prepare"; pitch: LivePitch; prepareMs: number }
   | { t: "flight"; pitch: LivePitch; durationS: number }
   | { t: "recognized" }
   | { t: "resolved"; beat: FieldBeat; spec: BeatSpec; swung: boolean; swingKind: SwingKind | null }
@@ -114,6 +114,13 @@ export interface PlateControllerOptions {
   initialAim?: Cell;
   /** Fire character unique stings before qualifying pitches (career flavor). */
   uniqueStings?: boolean;
+  /** Multiplier on pitch flight time (3D exhibition pace). Default 1. */
+  flightScale?: number;
+  /** Divides the swing timing error (wider window). Default 1. */
+  windowScale?: number;
+  /** Prepare beat length in ms; defaults to PREPARE_MS / PREPARE_MS_REDUCED. */
+  prepareMs?: number;
+  prepareMsReduced?: number;
 }
 
 /** The half-width of the timing window, shared by 2D and 3D HUDs. */
@@ -148,6 +155,10 @@ export class PlateController {
   private readonly sched: PlateScheduler;
   private readonly reduced: boolean;
   private readonly assist: boolean;
+  private readonly flightScale: number;
+  private readonly windowScale: number;
+  private readonly prepareMs: number;
+  private readonly prepareMsReduced: number;
   private readonly stings: boolean;
   private timers: Suspendable[] = [];
   private snap: PlateSnapshot | null = null;
@@ -159,6 +170,10 @@ export class PlateController {
     this.sched = opts.scheduler ?? realScheduler;
     this.reduced = opts.reducedMotion ?? false;
     this.assist = opts.timingAssist ?? false;
+    this.flightScale = opts.flightScale ?? 1;
+    this.windowScale = opts.windowScale ?? 1;
+    this.prepareMs = opts.prepareMs ?? PREPARE_MS;
+    this.prepareMsReduced = opts.prepareMsReduced ?? PREPARE_MS_REDUCED;
     this.stings = opts.uniqueStings ?? true;
     const g = opts.restore ? structuredClone(opts.restore.game) : startFeaturedGame(opts.run, opts.kind, opts.encounter);
     g.lastSpurt = maybeLastSpurt(g);
@@ -305,15 +320,15 @@ export class PlateController {
     this.recognized = game.kind === "practice" || p.recognizeAt <= 0;
     this.beat = null;
     this.stage = "prepare";
-    this.cue({ t: "prepare", pitch: p });
+    const prep = this.reduced ? this.prepareMsReduced : this.prepareMs;
+    this.cue({ t: "prepare", pitch: p, prepareMs: prep });
     this.changed();
-    const prep = this.reduced ? PREPARE_MS_REDUCED : PREPARE_MS;
     this.later(() => this.beginFlight(p), prep);
   }
 
   private beginFlight(p: LivePitch) {
     if (this.stage !== "prepare") return;
-    const durS = Math.max(0.2, p.speed) * (this.assist ? TIMING_ASSIST_FLIGHT : 1);
+    const durS = Math.max(0.2, p.speed) * (this.assist ? TIMING_ASSIST_FLIGHT : 1) * this.flightScale;
     this.clock = startClock(this.sched.now(), durS);
     this.stage = "flight";
     this.cue({ t: "flight", pitch: p, durationS: durS });
@@ -351,6 +366,7 @@ export class PlateController {
     const nextKind = practice ? "contact" : kind;
     let timingErr = (progress - 1) * Math.max(0.2, p.speed);
     if (this.assist) timingErr /= TIMING_ASSIST_WINDOW;
+    timingErr /= this.windowScale;
     const next = { ...this.game };
     resolveSwing(this.run, next, p, this.aim, timingErr, nextKind);
     this.land(next, true, nextKind);

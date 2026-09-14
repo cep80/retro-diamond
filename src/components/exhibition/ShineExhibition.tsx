@@ -49,6 +49,7 @@ import {
   type OnboardingPhase,
 } from "./onboarding";
 import { effectiveTier, type ExhibitionQuality } from "./quality";
+import { EXHIBITION_PACE } from "./scene/presentation";
 import {
   ballLeavesBat,
   firstPitchSight,
@@ -240,6 +241,10 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
       reducedMotion: reduced,
       timingAssist: settings.timingAssist,
       initialAim: DEFAULT_SIT,
+      flightScale: EXHIBITION_PACE.flightScale,
+      windowScale: EXHIBITION_PACE.windowScale,
+      prepareMs: EXHIBITION_PACE.prepareMs,
+      prepareMsReduced: EXHIBITION_PACE.prepareMsReduced,
     });
   }
   const controller = controllerRef.current;
@@ -342,7 +347,12 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
     const off = controller.onCue((cue: PlateCue) => {
       if (debug) {
         const w = window as unknown as { __dsCues?: unknown[] };
-        (w.__dsCues ??= []).push({ t: cue.t, beat: cue.t === "resolved" ? cue.beat : undefined, at: performance.now() });
+        (w.__dsCues ??= []).push({
+          t: cue.t,
+          beat: cue.t === "resolved" ? cue.beat : undefined,
+          durationS: cue.t === "flight" ? cue.durationS : undefined,
+          at: performance.now(),
+        });
         if (cue.t === "resolved") console.info("[exhibition-cue] resolved", cue.beat, "swung", cue.swung, Math.round(performance.now()));
       }
       exhibitionAudioCue(cue, controller.getSnapshot().game, io);

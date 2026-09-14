@@ -45,7 +45,15 @@ export class VirtualScheduler implements PlateScheduler {
 /** The 3D exhibition's encounter: Aoi vs Reina, 3 PAs, neutral start. */
 export const EXHIBITION_ENCOUNTER = { arm: "reina" as const, appearances: 3, neutral: true };
 
-export function exhibitionController(seed: string) {
+/** Optional live-exhibition clock. Default is the 2D featured-game pace. */
+export type ControllerPace = {
+  flightScale?: number;
+  windowScale?: number;
+  prepareMs?: number;
+  prepareMsReduced?: number;
+};
+
+export function exhibitionController(seed: string, pace?: ControllerPace) {
   const sched = new VirtualScheduler();
   const run = newRun("aoi");
   run.rngSeed = seed;
@@ -55,8 +63,12 @@ export function exhibitionController(seed: string) {
     encounter: EXHIBITION_ENCOUNTER,
     scheduler: sched,
     uniqueStings: false,
+    flightScale: pace?.flightScale,
+    windowScale: pace?.windowScale,
+    prepareMs: pace?.prepareMs,
+    prepareMsReduced: pace?.prepareMsReduced,
   });
-  return { c, sched, run };
+  return { c, sched, run, pace };
 }
 
 /**
@@ -84,7 +96,12 @@ function awayCell(pitchLoc: { x: number; y: number }): Cell {
 }
 
 /** Play one pitch through the controller and drain the beat back to idle. */
-export function playPitch(c: PlateController, sched: VirtualScheduler, plan: PitchPlan): PitchResult {
+export function playPitch(
+  c: PlateController,
+  sched: VirtualScheduler,
+  plan: PitchPlan,
+  pace?: ControllerPace,
+): PitchResult {
   const before = structuredClone(c.getSnapshot().game);
   const cues: string[] = [];
   const stages: string[] = [];
@@ -101,8 +118,8 @@ export function playPitch(c: PlateController, sched: VirtualScheduler, plan: Pit
   c.startPitch();
   const pitch = c.getSnapshot().pitch;
   if (!pitch) throw new Error("startPitch dealt no pitch (game done?)");
-  const durS = Math.max(0.2, pitch.speed);
-  sched.advance(PREPARE_MS);
+  const durS = Math.max(0.2, pitch.speed) * (pace?.flightScale ?? 1);
+  sched.advance(pace?.prepareMs ?? PREPARE_MS);
   if (plan.action === "swing") {
     const aim = plan.aim === "pitch" ? locCell(pitch.loc) : plan.aim === "away" ? awayCell(pitch.loc) : plan.aim;
     c.setAim(aim);
@@ -140,19 +157,19 @@ export interface FoundBeat {
 export function findBeat(
   target: FieldBeat,
   plan: (game: FeaturedGame) => PitchPlan,
-  opts?: { seeds?: number; prefix?: string },
+  opts?: { seeds?: number; prefix?: string; pace?: ControllerPace },
 ): FoundBeat | null {
   const max = opts?.seeds ?? 300;
   const prefix = opts?.prefix ?? target;
   for (let i = 0; i < max; i++) {
     const seed = `${prefix}-${i}`;
-    const { c, sched } = exhibitionController(seed);
+    const { c, sched } = exhibitionController(seed, opts?.pace);
     c.stepIn();
     const beats: FieldBeat[] = [];
     let guard = 0;
     while (!c.getSnapshot().game.done && guard < 40) {
       guard += 1;
-      const result = playPitch(c, sched, plan(c.getSnapshot().game));
+      const result = playPitch(c, sched, plan(c.getSnapshot().game), opts?.pace);
       beats.push(result.resolved.beat);
       if (result.resolved.beat === target) {
         return { seed, result, beats, game: c.getSnapshot().game };
@@ -169,15 +186,15 @@ export function findBeat(
 export function findFirstPitchBeat(
   target: FieldBeat,
   plan: PitchPlan,
-  opts?: { seeds?: number; prefix?: string },
+  opts?: { seeds?: number; prefix?: string; pace?: ControllerPace },
 ): FoundBeat | null {
   const max = opts?.seeds ?? 600;
   const prefix = opts?.prefix ?? `${target}-first`;
   for (let i = 0; i < max; i++) {
     const seed = `${prefix}-${i}`;
-    const { c, sched } = exhibitionController(seed);
+    const { c, sched } = exhibitionController(seed, opts?.pace);
     c.stepIn();
-    const result = playPitch(c, sched, plan);
+    const result = playPitch(c, sched, plan, opts?.pace);
     if (result.resolved.beat === target) {
       return { seed, result, beats: [result.resolved.beat], game: c.getSnapshot().game };
     }

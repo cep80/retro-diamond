@@ -55,7 +55,7 @@ export const EXHIBITION_WARM_HREFS = [
   MANIFEST_URL,
   "/models/diamond-shine/lantern-field.glb",
   "/models/diamond-shine/aoi.glb?v=atlas1",
-  "/models/diamond-shine/reina.glb",
+  "/models/diamond-shine/reina.glb?v=hy14",
   "/models/diamond-shine/catcher.glb",
   "/models/diamond-shine/props.glb",
 ] as const;

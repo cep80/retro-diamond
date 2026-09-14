@@ -43,7 +43,7 @@ describe("exhibition audio cues", () => {
 
   it("prepare plays select + anticipation and ducks the crowd (like the career plate)", () => {
     const { calls, io } = recordingIo();
-    exhibitionAudioCue({ t: "prepare", pitch: {} as never }, gameWith({ count: { balls: 1, strikes: 2 } }), io);
+    exhibitionAudioCue({ t: "prepare", pitch: {} as never, prepareMs: 520 }, gameWith({ count: { balls: 1, strikes: 2 } }), io);
     assert.deepEqual(calls, ["select", "anticipation:true", "duck:true", "crowd:0.09"]);
   });
 

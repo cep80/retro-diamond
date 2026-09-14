@@ -49,6 +49,8 @@ import {
   RELEASE_POINT,
   RELEASE_THROW_LEAD_S,
   pickThrowPoseTime,
+  BATTER_ROTATION_Y,
+  pitcherFreezesThrow,
   pitcherHoldsThrow,
   prepareShowsBall,
   THROW_SHOW_MS,
@@ -295,6 +297,11 @@ describe("contact flash", () => {
     assert.equal(pitcherHoldsThrow("reaction"), false);
     assert.equal(pitcherHoldsThrow("idle"), false);
     assert.equal(pitcherHoldsThrow("field"), false);
+    assert.equal(pitcherFreezesThrow({ stage: "prepare", clipTime: 0.5, throwAt: 0.708 }), false, "wind-up plays");
+    assert.equal(pitcherFreezesThrow({ stage: "prepare", clipTime: 0.708, throwAt: 0.708 }), true, "freeze at the scanned throw");
+    assert.equal(pitcherFreezesThrow({ stage: "flight", clipTime: 0.92, throwAt: 0.708 }), true, "keep the leave while the ball is in the tunnel");
+    assert.equal(pitcherFreezesThrow({ stage: "reaction", clipTime: 0.708, throwAt: 0.708 }), false);
+    assert.equal(BATTER_ROTATION_Y, Math.PI, "back to the catcher so #1 reads");
     assert.equal(prepareShowsBall(0, 520), false, "set has no baseball");
     assert.equal(prepareShowsBall(360, 520), false);
     assert.equal(prepareShowsBall(370, 520), true);

@@ -225,23 +225,9 @@ def build_field():
                           material=m_flood, coll=lights)
 
     # -- Signature: ring of warm festival lantern posts ---------------------
-    # Plate / tunnel posts the locked catcher camera can actually see.
-    for name, gx, gz, h in (
-        ("lantern_plate_3b", -2.35, -3.1, 2.4),
-        ("lantern_plate_1b", 2.15, -5.4, 2.4),
-        ("lantern_tunnel_3b", -2.8, -12.0, 2.6),
-        ("lantern_tunnel_1b", 2.8, -12.0, 2.6),
-    ):
-        _lantern_post(name, (gx, 0.0, gz), lanterns, m_post, m_lantern, height=h)
-    # Along both foul lines...
-    n_line = 9
-    for i in range(1, n_line + 1):
-        t = i / (n_line + 1)
-        for sgn in (1.0, -1.0):
-            gx = sgn * fx * t
-            gz = fz * t
-            _lantern_post(f"lantern_foul_{'R' if sgn > 0 else 'L'}_{i}",
-                          (gx, 0.0, gz), lanterns, m_post, m_lantern)
+    # No posts anywhere the catcher cam reads as the playing field: the
+    # plate / tunnel / foul-line posts are gone. The lantern ring behind the
+    # stands (below) and the floodlight towers beyond the fence stay.
     # ...and a ring behind the stands.
     n_ring = 16
     for i in range(n_ring):

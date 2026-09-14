@@ -17,6 +17,7 @@ import {
   matchesSocket,
   pitcherReactionClip,
   planOutgoing,
+  EXHIBITION_PACE,
   swingClip,
 } from "../components/exhibition/scene/presentation.ts";
 import { beatSpec } from "./beats.ts";
@@ -263,6 +264,33 @@ describe("every producible outcome, end to end through the controller", () => {
     assert.equal(f.beats.length, 1);
     assert.equal(f.beats[0], "foul");
     assert.ok(f.seed.startsWith("foul-first-"));
+  });
+
+  it("first-pitch foul at exhibition pace (live capture)", () => {
+    // windowScale 1.6 turns u=0.94 into a tip. Earlier tap stays a pull foul.
+    const f = assertBeatContract(
+      findFirstPitchBeat(
+        "foul",
+        { action: "swing", kind: "contact", u: 0.88, aim: "away" },
+        { seeds: 800, pace: EXHIBITION_PACE },
+      ),
+      "foul",
+    );
+    assert.equal(f.beats[0], "foul");
+    assert.equal(f.seed, "foul-first-0");
+  });
+
+  it("first-pitch foul-tip at exhibition pace (live capture)", () => {
+    const f = assertBeatContract(
+      findFirstPitchBeat(
+        "foul-tip",
+        { action: "swing", kind: "contact", u: 1.0, aim: "away" },
+        { seeds: 800, pace: EXHIBITION_PACE },
+      ),
+      "foul-tip",
+    );
+    assert.equal(f.beats[0], "foul-tip");
+    assert.equal(f.seed, "foul-tip-first-0");
   });
 
   it("foul-tip: perfect timing off the wrong sit tips it back", () => {

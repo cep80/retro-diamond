@@ -71,10 +71,9 @@ describe("lantern light selection", () => {
 
   it("prefers the lanterns nearest the play area", () => {
     const picked = selectLanternLights(lanternLightCandidates(fieldLanterns()), "desktop").map((p) => p.name);
-    // Plate-adjacent frame lanterns beat the first foul-line posts. Tunnel
-    // frames at z=-12 lose a desktop slot to those nearer foul lights.
-    assert.ok(picked.includes("frame_plate_3b"));
-    assert.ok(picked.includes("frame_plate_1b"));
+    // Frame lanterns are no longer placed (they stood on the infield at the
+    // catcher cam); the picks come from the field's own lanterns.
+    assert.ok(picked.every((n) => !n.startsWith("frame_")));
     assert.ok(picked.every((n) => !n.startsWith("lantern_ring_")));
     assert.ok(PLAY_CENTER[2] < 0);
     assert.equal(FRAME_LANTERNS.length, 4);
@@ -128,7 +127,7 @@ describe("lantern light selection", () => {
   it("halos every frame lantern and every field glow in front of the camera", () => {
     const pts = lanternHaloPoints(fieldLanterns());
     const names = pts.map((p) => p.name);
-    for (const f of FRAME_LANTERNS) assert.ok(names.includes(f.name));
+    for (const f of FRAME_LANTERNS) assert.ok(!names.includes(f.name), "frame lanterns are not placed");
     assert.ok(names.includes("lantern_foul_L_1_glow"));
     assert.ok(names.every((n) => !n.startsWith("lantern_ring_")), "ring lanterns sit behind the camera");
     assert.ok(names.every((n) => !n.startsWith("scripted_")), "scripted fills have no fixture to glow");

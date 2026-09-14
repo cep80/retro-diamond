@@ -34,8 +34,8 @@
   "assets": {
     "field": {
       "url": "/models/diamond-shine/lantern-field.glb",
-      "bytes": 1808720,
-      "triangles": 25275
+      "bytes": 1541260,
+      "triangles": 21747
     },
     "props": {
       "url": "/models/diamond-shine/props.glb",
@@ -50,12 +50,12 @@
     },
     "aoi": {
       "url": "/models/diamond-shine/aoi.glb?v=atlas1",
-      "bytes": 2933380,
+      "bytes": 2881432,
       "triangles": 30036,
       "role": "batter",
       "clips": {
         "idle_bat": {
-          "duration": 2,
+          "duration": 2.0,
           "loop": true,
           "markers": {}
         },
@@ -67,7 +67,7 @@
           }
         },
         "swing_power": {
-          "duration": 1,
+          "duration": 1.0,
           "loop": false,
           "markers": {
             "contact": 0.75
@@ -107,7 +107,7 @@
       }
     },
     "reina": {
-      "url": "/models/diamond-shine/reina.glb",
+      "url": "/models/diamond-shine/reina.glb?v=hy14",
       "bytes": 2553508,
       "triangles": 30000,
       "role": "pitcher",
@@ -165,7 +165,7 @@
     },
     "miki": {
       "url": "/models/diamond-shine/miki.glb",
-      "bytes": 2696756,
+      "bytes": 2695788,
       "triangles": 30000,
       "role": "batter",
       "clips": {
@@ -291,7 +291,7 @@
     },
     "yuki": {
       "url": "/models/diamond-shine/yuki.glb",
-      "bytes": 2800628,
+      "bytes": 2795296,
       "triangles": 30000,
       "role": "batter",
       "clips": {
