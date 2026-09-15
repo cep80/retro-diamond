@@ -11,6 +11,7 @@ import { locCell, type Cell } from "../game/plate.ts";
 import { PREPARE_MS } from "./beats.ts";
 import type { FeaturedGame, FieldBeat, SwingKind } from "./featured-game.ts";
 import { FLIGHT_RESOLVE_U, PlateController, type PlateCue, type PlateScheduler } from "./plate-controller.ts";
+import type { CoachCardId, DuelCall } from "./duel.ts";
 import { newRun } from "./run.ts";
 
 /** Deterministic virtual time: timers fire in order as time is advanced. */
@@ -51,6 +52,8 @@ export type ControllerPace = {
   windowScale?: number;
   prepareMs?: number;
   prepareMsReduced?: number;
+  /** The Duel on: calls, cards, the book, the 70/30 tap. */
+  duel?: boolean;
 };
 
 export function exhibitionController(seed: string, pace?: ControllerPace) {
@@ -67,6 +70,7 @@ export function exhibitionController(seed: string, pace?: ControllerPace) {
     windowScale: pace?.windowScale,
     prepareMs: pace?.prepareMs,
     prepareMsReduced: pace?.prepareMsReduced,
+    duel: pace?.duel,
   });
   return { c, sched, run, pace };
 }
@@ -76,7 +80,9 @@ export function exhibitionController(seed: string, pace?: ControllerPace) {
  * (1.0 = perfect timing at the plate). Aim "pitch" sits on the incoming
  * pitch's cell (best quality); "away" sits the far corner (weak contact).
  */
-export type PitchPlan = { action: "take" } | { action: "swing"; kind: SwingKind; u: number; aim: "pitch" | "away" | Cell };
+export type PitchPlan =
+  | { action: "take"; call?: DuelCall; card?: CoachCardId }
+  | { action: "swing"; kind: SwingKind; u: number; aim: "pitch" | "away" | Cell; call?: DuelCall; card?: CoachCardId };
 
 export type ResolvedCue = Extract<PlateCue, { t: "resolved" }>;
 
@@ -115,6 +121,8 @@ export function playPitch(
     if (stages.at(-1) !== stage) stages.push(stage);
   });
 
+  if (plan.call) c.setCall(plan.call);
+  if (plan.card) c.fireCard(plan.card);
   c.startPitch();
   const pitch = c.getSnapshot().pitch;
   if (!pitch) throw new Error("startPitch dealt no pitch (game done?)");

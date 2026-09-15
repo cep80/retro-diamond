@@ -93,6 +93,16 @@ export function ShineSettings() {
         <section className="mt-4 rounded-2xl border border-line bg-panel/90 p-4">
           <p className="font-display text-[10px] uppercase tracking-widest text-gold">Play</p>
           <label className="mt-3 flex items-start gap-3 font-ui text-sm">
+            <input type="checkbox" className="mt-1" checked={settings.duel} onChange={(e) => setSettings({ duel: e.target.checked })} />
+            <span>
+              The Duel (preview)
+              <span className="block text-xs text-muted">
+                Call the pitch before it comes: sit a cell, sit hard or soft, protect, or take. Three coach cards a game. Her book opens as you
+                play her. Off keeps the plate exactly as it was.
+              </span>
+            </span>
+          </label>
+          <label className="mt-3 flex items-start gap-3 font-ui text-sm">
             <input
               type="checkbox"
               className="mt-1"

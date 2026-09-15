@@ -54,6 +54,7 @@ export function patchSettings(s: Partial<ShineSettings> | undefined | null): Shi
     sfx: clamp01(s?.sfx, DEFAULT_SETTINGS.sfx),
     crowd: clamp01(s?.crowd, DEFAULT_SETTINGS.crowd),
     timingAssist: s?.timingAssist ?? false,
+    duel: s?.duel ?? false,
     reducedMotion: s?.reducedMotion ?? false,
     textScale: scale,
     keys,

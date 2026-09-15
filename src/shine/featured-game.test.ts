@@ -88,7 +88,7 @@ describe("featured game", () => {
     game.paIndex = 1;
     game.paTarget = 4;
     game.count = { balls: 3, strikes: 0 };
-    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0 });
+    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
     assert.equal(game.skipped, true);
     assert.equal(game.done, true);
     assert.match(game.banner, /walks off/);
@@ -104,7 +104,7 @@ describe("featured game", () => {
     game.paIndex = 1;
     game.paTarget = 4;
     game.count = { balls: 3, strikes: 0 };
-    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0 });
+    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
     assert.equal(game.skipped, false);
     assert.equal(game.done, false);
   });
@@ -122,7 +122,7 @@ describe("featured game", () => {
     const game = startFeaturedGame(run, "first-light");
     game.count = { balls: 1, strikes: 2 };
     const loc = { x: -0.5, y: -0.5 };
-    resolveSwing(run, game, { type: "fastball", loc, inZone: true, speed: 0.6, recognizeAt: 0 }, { row: 1, col: 1 }, 0.01, "contact");
+    resolveSwing(run, game, { type: "fastball", loc, inZone: true, speed: 0.6, recognizeAt: 0, family: "hard" as const }, { row: 1, col: 1 }, 0.01, "contact");
     assert.equal(game.done, false);
     assert.equal(game.count.strikes, 2);
     assert.ok(game.lastContact === "foul-tip" || game.lastContact === "foul");
@@ -135,7 +135,7 @@ describe("featured game", () => {
     const game = startFeaturedGame(run, "lantern-classic");
     game.count = { balls: 1, strikes: 2 };
     const loc = { x: -0.5, y: -0.5 };
-    resolveSwing(run, game, { type: "fastball", loc, inZone: true, speed: 0.6, recognizeAt: 0 }, { row: 1, col: 1 }, 0.01, "contact");
+    resolveSwing(run, game, { type: "fastball", loc, inZone: true, speed: 0.6, recognizeAt: 0, family: "hard" as const }, { row: 1, col: 1 }, 0.01, "contact");
     assert.ok(game.lastContact === "foul-tip" || game.lastContact === "foul");
     assert.equal(game.twoStrikeFoul, true);
     assert.equal(game.pgMet, true);
@@ -146,7 +146,7 @@ describe("featured game", () => {
     run.turn = 33;
     const game = startFeaturedGame(run, "night-classic");
     game.count = { balls: 2, strikes: 2 };
-    resolveTake(run, game, { type: "slider", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0 });
+    resolveTake(run, game, { type: "slider", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "soft" as const });
     assert.equal(game.sawFullCount, true);
     assert.equal(game.pgMet, true);
   });
@@ -156,7 +156,7 @@ describe("featured game", () => {
     run.turn = 5;
     const game = startFeaturedGame(run, "gate");
     game.count = { balls: 3, strikes: 0 };
-    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0 });
+    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
     assert.equal(game.reached, true);
     assert.equal(game.pgMet, true);
   });
@@ -167,7 +167,7 @@ describe("featured game", () => {
     const game = startFeaturedGame(run, "lantern-classic");
     setBases(game, { first: false, second: false, third: false });
     game.count = { balls: 3, strikes: 0 };
-    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0 });
+    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
     assert.equal(game.reached, true);
     assert.equal(game.pgMet, false);
   });
@@ -178,7 +178,7 @@ describe("featured game", () => {
     const game = startFeaturedGame(run, "practice");
     setBases(game, { first: false, second: false, third: true });
     const loc = { x: 1.5, y: 1.5 };
-    resolveSwing(run, game, { type: "fastball", loc, inZone: true, speed: 2, recognizeAt: 0 }, { row: 1, col: 1 }, 0, "contact");
+    resolveSwing(run, game, { type: "fastball", loc, inZone: true, speed: 2, recognizeAt: 0, family: "hard" as const }, { row: 1, col: 1 }, 0, "contact");
     assert.equal(game.reached, true);
     assert.equal(game.rbi, 1);
     assert.ok(game.events.some((e) => e.t === "rbi"));
@@ -191,7 +191,7 @@ describe("featured game", () => {
     const game = startFeaturedGame(run, "practice");
     setBases(game, { first: false, second: false, third: false });
     const loc = { x: 1.5, y: 1.5 };
-    resolveSwing(run, game, { type: "fastball", loc, inZone: true, speed: 2, recognizeAt: 0 }, { row: 1, col: 1 }, 0, "contact");
+    resolveSwing(run, game, { type: "fastball", loc, inZone: true, speed: 2, recognizeAt: 0, family: "hard" as const }, { row: 1, col: 1 }, 0, "contact");
     assert.equal(game.reached, true);
     assert.equal(game.rbi, 0);
     assert.equal(game.pgMet, false);
@@ -202,7 +202,7 @@ describe("featured game", () => {
     run.turn = 50;
     const game = startFeaturedGame(run, "practice");
     const loc = { x: 1.5, y: 1.5 };
-    resolveSwing(run, game, { type: "slider", loc, inZone: true, speed: 2, recognizeAt: 0 }, { row: 1, col: 1 }, 0, "contact");
+    resolveSwing(run, game, { type: "slider", loc, inZone: true, speed: 2, recognizeAt: 0, family: "soft" as const }, { row: 1, col: 1 }, 0, "contact");
     assert.notEqual(game.lastContact, "miss");
     assert.equal(game.pgMet, true);
   });
@@ -212,7 +212,7 @@ describe("featured game", () => {
     run.turn = 28;
     const game = startFeaturedGame(run, "lantern-classic");
     game.paTarget = 4;
-    const away = { type: "fastball" as const, loc: { x: -0.8, y: 1.5 }, inZone: false, speed: 2, recognizeAt: 0 };
+    const away = { type: "fastball" as const, loc: { x: -0.8, y: 1.5 }, inZone: false, speed: 2, recognizeAt: 0, family: "hard" as const };
     for (let i = 0; i < 8 && !game.betweenLine && !game.done; i++) {
       resolveTake(run, game, away);
     }
@@ -224,7 +224,7 @@ describe("featured game", () => {
     const run = newAoiRun();
     run.turn = 18;
     const game = startFeaturedGame(run, "first-light");
-    const away = { type: "fastball" as const, loc: { x: -0.8, y: 1.5 }, inZone: false, speed: 2, recognizeAt: 0 };
+    const away = { type: "fastball" as const, loc: { x: -0.8, y: 1.5 }, inZone: false, speed: 2, recognizeAt: 0, family: "hard" as const };
     for (let i = 0; i < 4; i++) resolveTake(run, game, away);
     assert.equal(game.walks, 1);
     assert.equal(game.hits, 0);
@@ -235,7 +235,7 @@ describe("featured game", () => {
     const run = newAoiRun();
     run.turn = 33;
     const game = startFeaturedGame(run, "night-classic");
-    const away = { type: "fastball" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0 };
+    const away = { type: "fastball" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const };
     for (let i = 0; i < 4; i++) resolveTake(run, game, away);
     assert.equal(game.reached, true);
     assert.equal(game.sgMet, true);
@@ -263,8 +263,8 @@ describe("featured game", () => {
     const run = newAoiRun();
     run.turn = 50;
     const game = startFeaturedGame(run, "stretch");
-    const heart = { type: "fastball" as const, loc: cellLoc(LEAD_DEFAULT_SIT), inZone: true, speed: 2, recognizeAt: 0 };
-    const away = { type: "fastball" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0 };
+    const heart = { type: "fastball" as const, loc: cellLoc(LEAD_DEFAULT_SIT), inZone: true, speed: 2, recognizeAt: 0, family: "hard" as const };
+    const away = { type: "fastball" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const };
     resolveTake(run, game, heart);
     resolveTake(run, game, heart);
     for (let i = 0; i < 4; i++) resolveTake(run, game, away);
@@ -277,7 +277,7 @@ describe("featured game", () => {
     run.turn = 60;
     const game = startFeaturedGame(run, "finale");
     game.risp = false;
-    const heart = { type: "fastball" as const, loc: cellLoc({ row: 1, col: 1 }), inZone: true, speed: 2, recognizeAt: 0 };
+    const heart = { type: "fastball" as const, loc: cellLoc({ row: 1, col: 1 }), inZone: true, speed: 2, recognizeAt: 0, family: "hard" as const };
     resolveTake(run, game, heart);
     resolveTake(run, game, heart);
     resolveTake(run, game, heart);
@@ -289,7 +289,7 @@ describe("featured game", () => {
     const run = newAoiRun();
     run.turn = 55;
     const walked = startFeaturedGame(run, "series");
-    const away = { type: "fastball" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0 };
+    const away = { type: "fastball" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const };
     for (let pa = 0; pa < 3; pa++) {
       for (let i = 0; i < 4; i++) resolveTake(run, walked, away);
     }
@@ -299,12 +299,89 @@ describe("featured game", () => {
     const live = newAoiRun();
     live.turn = 55;
     const game = startFeaturedGame(live, "series");
-    const heart = { type: "fastball" as const, loc: cellLoc(LEAD_DEFAULT_SIT), inZone: true, speed: 2, recognizeAt: 0 };
+    const heart = { type: "fastball" as const, loc: cellLoc(LEAD_DEFAULT_SIT), inZone: true, speed: 2, recognizeAt: 0, family: "hard" as const };
     let guard = 0;
     while (game.qualityAbs < 3 && !game.done && guard++ < 48) {
       resolveSwing(live, game, heart, LEAD_DEFAULT_SIT, 0, "contact");
     }
     assert.ok(game.qualityAbs >= 3, `qualityAbs ${game.qualityAbs}`);
     assert.equal(game.pgMet, true);
+  });
+});
+
+
+// ── the Duel: resolvers ───────────────────────────────────────────────────────
+describe("the Duel: resolvers", () => {
+  it("dealt pitches carry a family and the practice pitch is hard", () => {
+    const run = newRun("aoi");
+    run.rngSeed = "duel-family";
+    const g = startFeaturedGame(run, "practice");
+    const p = dealPitch(run, g);
+    assert.equal(p.family, "hard");
+    const g2 = startFeaturedGame(run, "lantern-classic", { arm: "reina", appearances: 3, neutral: true });
+    for (let i = 0; i < 6; i++) {
+      const q = dealPitch(run, g2);
+      assert.equal(q.family, q.type === "fastball" ? "hard" : "soft");
+      g2.live = null;
+      g2.pitchesSeen += 1;
+    }
+  });
+
+  it("starts with sit-cell, all three cards, and a book open by Wit", () => {
+    const run = newRun("aoi");
+    const g = startFeaturedGame(run, "lantern-classic", { arm: "reina", appearances: 3, neutral: true });
+    assert.equal(g.duel, false);
+    assert.equal(g.call, "sit-cell");
+    assert.deepEqual(g.cardsLeft, ["green-light", "spurt", "her-call"]);
+    assert.equal(g.cardArmed, null);
+    assert.ok(g.bookOpen >= 1);
+    assert.equal(g.takesThisArm, 0);
+    assert.equal(g.fightMeter, 0);
+  });
+
+  it("a take opens the book when the Duel is on, and not when it is off", () => {
+    const run = newRun("aoi");
+    run.stats.wit = 1;
+    run.rngSeed = "duel-take";
+    const off = startFeaturedGame(run, "lantern-classic", { arm: "reina", appearances: 3, neutral: true });
+    resolveTake(run, off, { type: "slider", loc: { x: -1, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "soft" as const });
+    assert.equal(off.takesThisArm, 0);
+    assert.equal(off.bookOpen, 1);
+    const on = startFeaturedGame(run, "lantern-classic", { arm: "reina", appearances: 3, neutral: true });
+    on.duel = true;
+    on.call = "take";
+    resolveTake(run, on, { type: "slider", loc: { x: -1, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "soft" as const });
+    assert.equal(on.takesThisArm, 1);
+    assert.equal(on.bookOpen, 2);
+    assert.equal(on.pendingBook, 2);
+    assert.match(on.lastVerdict, /^Took it\./);
+  });
+
+  it("protect coerces a power swing to contact and the verdict names the call", () => {
+    const run = newRun("aoi");
+    run.rngSeed = "duel-protect";
+    const g = startFeaturedGame(run, "lantern-classic", { arm: "reina", appearances: 3, neutral: true });
+    g.duel = true;
+    g.count = { balls: 0, strikes: 2 };
+    g.call = "protect";
+    const pitch = { type: "fastball" as const, loc: { x: 1.5, y: 1.5 }, inZone: true, speed: 0.6, recognizeAt: 0, family: "hard" as const };
+    resolveSwing(run, g, pitch, { row: 1, col: 1 }, 0.0, "power");
+    const ev = g.events.find((e) => e.t === "swing") as { kind?: string } | undefined;
+    assert.equal(ev?.kind, "contact", "power under Protect swings for contact");
+    assert.ok(g.lastVerdict.startsWith("Protected."), g.lastVerdict);
+  });
+
+  it("the call and the fight meter reset when the PA ends", () => {
+    const run = newRun("miki");
+    run.rngSeed = "duel-reset";
+    const g = startFeaturedGame(run, "lantern-classic", { arm: "sol", appearances: 3, neutral: true });
+    g.duel = true;
+    g.call = "sit-soft";
+    g.fightMeter = 2;
+    g.count = { balls: 0, strikes: 2 };
+    // a called third strike ends the PA
+    resolveTake(run, g, { type: "fastball", loc: { x: 1.5, y: 1.5 }, inZone: true, speed: 0.6, recognizeAt: 0, family: "hard" as const });
+    assert.equal(g.call, "sit-cell");
+    assert.equal(g.fightMeter, 0);
   });
 });

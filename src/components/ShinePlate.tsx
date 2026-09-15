@@ -45,6 +45,12 @@ import { rivalPortraitId, rivalProfile, scoutingReport } from "@/shine/rivals.ts
 import { basesLabel } from "@/shine/events.ts";
 import { uniqueName, uniqueShouldFire } from "@/shine/unique.ts";
 import { useShine } from "@/shine/store.ts";
+import { DuelPanel } from "./DuelPanel";
+import { CARD_KEYS, HAND_KEYS, duelEnabled } from "./duel-ui";
+import { blendTiming, callAllowed, gaussianFrom, likelyFamily, satRight, showsFamilyHint, statSigma, type CoachCardId, type DuelCall } from "@/shine/duel.ts";
+import { hashId as duelHashId, makeRng as duelRng } from "@/game/data.ts";
+import { track as trackEvent } from "@/game/telemetry.ts";
+import { bookLines } from "@/shine/rivals.ts";
 import { isPitcherStyle, parkSrc, portraitClass, portraitMood, portraitSrc, sheet } from "@/shine/bible.ts";
 import { careerStill } from "@/shine/ending.ts";
 import { turnMeta } from "@/shine/calendar.ts";
@@ -111,6 +117,8 @@ function HitterPlate() {
   const [scout, setScout] = useState(false);
   const [restored, setRestored] = useState(false);
   const [savedChip, setSavedChip] = useState(false);
+  const [bookToast, setBookToast] = useState<1 | 2 | 3 | null>(null);
+  const duelKeys = useRef<{ setCall: (c: DuelCall) => void; fireCard: (c: CoachCardId) => void }>({ setCall: () => {}, fireCard: () => {} });
 
   const clock = useRef<PlateClock | null>(null);
   const raf = useRef(0);
@@ -135,6 +143,7 @@ function HitterPlate() {
     const kind = kindFor(run, weekly);
     const saved = !weekly && liveGame && liveGame.side === "plate" && liveGame.runId === run.id && liveGame.turn === run.turn ? liveGame : null;
     const g = saved ? structuredClone(saved.game) : startFeaturedGame(run, kind);
+    g.duel = duelEnabled(settings);
     g.lastSpurt = maybeLastSpurt(g);
     setGame(g);
     setAim(saved ? saved.aim : defaultSit(sheet(run.characterId).style, 1));
@@ -255,6 +264,9 @@ function HitterPlate() {
       if (paused) return;
       if (e.code === k.contact) setSwing("contact");
       if (e.code === k.bunt) setSwing("bunt");
+      // The Duel: 1–5 the hand, Q/W/E the cards.
+      if (HAND_KEYS[e.code]) duelKeys.current.setCall(HAND_KEYS[e.code]!);
+      if (CARD_KEYS[e.code]) duelKeys.current.fireCard(CARD_KEYS[e.code]!);
       if (e.code === k.power && stageRef.current !== "flight") setSwing("power");
       if (e.code === k.swing || e.code === "KeyJ" || e.code === "KeyZ") {
         e.preventDefault();
@@ -346,6 +358,16 @@ function HitterPlate() {
   /** Field → reaction → idle, with the release cue at the first frame the field shows. */
   function land(next: FeaturedGame) {
     const b = fieldBeatFor(next);
+    if (next.duel) {
+      trackEvent("pa_resolve", { call: next.call, beat: b, card: next.cardArmed, verdict: next.lastVerdict, arm: next.arm });
+      next.cardArmed = null;
+      if (next.pendingBook) {
+        trackEvent("book_opened", { line: next.pendingBook, arm: next.arm, why: "take" });
+        setBookToast(next.pendingBook);
+        next.pendingBook = null;
+        later(() => setBookToast(null), 2600);
+      }
+    }
     const s = beatSpec(b, reduced);
     clock.current = null;
     setPitch(null);
@@ -381,11 +403,41 @@ function HitterPlate() {
     if (!practice) startWalkUp(who.id, useShine.getState().ownedCosmetics.includes("walk-up-alt"));
   }
 
+  // ── the Duel: calls and cards are taken between pitches ──────────────────
+  function setCall(call: DuelCall) {
+    if (!game || !game.duel) return;
+    const s = stageRef.current;
+    if (s !== "idle" && s !== "dead" && s !== "situation") return;
+    if (!callAllowed(call, game.count) || game.call === call) return;
+    setGame({ ...game, call });
+  }
+  function fireCard(card: CoachCardId) {
+    if (!game || !game.duel) return;
+    const s = stageRef.current;
+    if (s !== "idle" && s !== "dead" && s !== "situation") return;
+    if (!game.cardsLeft.includes(card)) return;
+    trackEvent("card_fired", { card, pa: game.paIndex, count: `${game.count.balls}-${game.count.strikes}` });
+    setGame({ ...game, cardsLeft: game.cardsLeft.filter((c) => c !== card), cardArmed: card });
+  }
+  function disarmCard() {
+    if (!game || !game.duel || !game.cardArmed) return;
+    const s = stageRef.current;
+    if (s !== "idle" && s !== "dead" && s !== "situation") return;
+    setGame({ ...game, cardsLeft: [...game.cardsLeft, game.cardArmed], cardArmed: null });
+  }
+  duelKeys.current = { setCall, fireCard };
+
   function startPitch() {
     if (!run || !game || game.done || paused) return;
     const s = stageRef.current;
     if (s !== "idle" && s !== "dead") return;
+    const armedCard = game.duel ? game.cardArmed : null;
+    if (armedCard === "spurt") {
+      game.lastSpurt = true;
+      game.spurtFired = true;
+    }
     if (
+      armedCard === "her-call" ||
       uniqueShouldFire(run.characterId, {
         already: game.uniqueFired,
         kind: game.kind,
@@ -404,7 +456,11 @@ function HitterPlate() {
     }
     const p = dealPitch(run, game);
     setPitch(p);
-    setRecognized(practice || p.recognizeAt <= 0);
+    // A matched family sit reads the pitch out of the hand.
+    setRecognized(practice || p.recognizeAt <= 0 || (game.duel && satRight(game.call, p.family)));
+    if (game.duel) {
+      trackEvent("pa_call", { call: game.call, count: `${game.count.balls}-${game.count.strikes}`, arm: game.arm, bookOpen: game.bookOpen, card: armedCard });
+    }
     setGhost(null);
     setBeat(null);
     setU(0);
@@ -433,6 +489,11 @@ function HitterPlate() {
     const nextKind = practice ? "contact" : kind;
     let timingErr = (progress - 1) * Math.max(0.2, pitch.speed);
     if (assist) timingErr /= TIMING_ASSIST_WINDOW;
+    if (game.duel && !practice) {
+      // 70/30: her Contact owns most of the timing; the tap is the green light.
+      const r = duelRng(duelHashId(`${run.rngSeed}|tap|${game.paIndex}|${game.pitchesSeen}`));
+      timingErr = blendTiming(timingErr, gaussianFrom(r) * statSigma(run.stats.contact));
+    }
     const next = { ...game };
     resolveSwing(run, next, pitch, aim, timingErr, nextKind);
     land(next);
@@ -705,6 +766,25 @@ function HitterPlate() {
         </div>
 
         <div className="mx-auto flex w-full max-w-sm flex-col gap-2">
+          {game.duel && !practice ? (
+            <DuelPanel
+              book={bookLines(rivalProfile(game.arm), game.adaptation, game.bookOpen)}
+              call={game.call}
+              cards={game.cardsLeft}
+              cardArmed={game.cardArmed}
+              verdict={stage === "prepare" || inFlight ? "" : game.lastVerdict}
+              strikes={game.count.strikes}
+              canCall={stage === "idle" || stage === "dead" || stage === "situation"}
+              eyeHint={showsFamilyHint(run.stats.eye) ? likelyFamily(rivalProfile(game.arm), game.count) : null}
+              wit={run.stats.wit}
+              takes={game.takesThisArm}
+              bookToast={bookToast}
+              firstPa={game.paIndex <= 1 && game.pitchesSeen === 0}
+              onCall={setCall}
+              onCard={fireCard}
+              onDisarm={disarmCard}
+            />
+          ) : null}
           {practice || weekly ? null : (
             <div className="flex gap-2">
               {(["contact", "power", "bunt"] as const).map((k) => (

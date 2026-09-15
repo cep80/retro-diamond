@@ -239,6 +239,8 @@ export interface ShineSettings {
   crowd: number;
   /** Widens the swing window ×1.35 and slows flight ×1.15. Never changes outcomes' honesty — only the window. */
   timingAssist: boolean;
+  /** The Duel: calls, cards, the book, the 70/30 tap (Phase 0 preview). */
+  duel: boolean;
   reducedMotion: boolean;
   textScale: 1 | 1.15 | 1.3;
   keys: KeyMap;
@@ -259,6 +261,7 @@ export const DEFAULT_SETTINGS: ShineSettings = {
   sfx: 1,
   crowd: 0.8,
   timingAssist: false,
+  duel: false,
   reducedMotion: false,
   textScale: 1,
   keys: DEFAULT_KEYS,

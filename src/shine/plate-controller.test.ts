@@ -12,6 +12,7 @@ import {
 } from "./featured-game.ts";
 import { FLIGHT_RESOLVE_U, PlateController, type PlateCue, type PlateScheduler } from "./plate-controller.ts";
 import { newRun } from "./run.ts";
+import { COACH_CARDS } from "./duel.ts";
 import type { TraineeRun } from "./types.ts";
 
 /** Deterministic virtual time: timers fire in order as time is advanced. */
@@ -290,5 +291,125 @@ describe("input integrity", () => {
     assert.equal(c.getSnapshot().game.paIndex, 3);
     assert.ok(cues.includes("prepare") && cues.includes("flight") && cues.includes("resolved"));
     // Career state is untouched by design: the controller never persists.
+  });
+});
+
+
+// ── the Duel ─────────────────────────────────────────────────────────────────
+
+function makeDuelController(seed: string) {
+  const sched = new VirtualScheduler();
+  const run = exhibitionRun(seed);
+  const c = new PlateController({
+    run,
+    kind: "lantern-classic",
+    encounter: ENCOUNTER,
+    scheduler: sched,
+    uniqueStings: false,
+    duel: true,
+  });
+  c.stepIn();
+  return { c, sched, run };
+}
+
+describe("the Duel: calls", () => {
+  it("defaults to sit-cell and ignores calls when the Duel is off", () => {
+    const { c } = makeController("duel-off");
+    assert.equal(c.getSnapshot().duel, false);
+    assert.equal(c.getSnapshot().call, "sit-cell");
+    c.setCall("sit-hard");
+    assert.equal(c.getSnapshot().call, "sit-cell", "off: the call is a no-op");
+    assert.deepEqual(c.getSnapshot().book, []);
+  });
+
+  it("accepts a call between pitches and cues it", () => {
+    const { c } = makeDuelController("duel-call");
+    const cues: PlateCue[] = [];
+    c.onCue((cue) => cues.push(cue));
+    c.setCall("sit-soft");
+    assert.equal(c.getSnapshot().call, "sit-soft");
+    assert.ok(cues.some((q) => q.t === "call" && q.call === "sit-soft"));
+  });
+
+  it("refuses protect below two strikes and refuses any call in flight", () => {
+    const { c, sched } = makeDuelController("duel-protect");
+    c.setCall("protect");
+    assert.equal(c.getSnapshot().call, "sit-cell", "protect needs two strikes");
+    intoFlight(c, sched);
+    c.setCall("sit-hard");
+    assert.equal(c.getSnapshot().call, "sit-cell", "no calls in flight");
+  });
+
+  it("a matched family sit reveals the pitch at release", () => {
+    const { c, sched } = makeDuelController("duel-reveal");
+    // find a pitch whose family we can sit: call both ways across seeds
+    let revealed = false;
+    for (let i = 0; i < 12 && !revealed; i++) {
+      const { c: cc, sched: ss } = makeDuelController(`duel-reveal-${i}`);
+      cc.setCall("sit-hard");
+      cc.startPitch();
+      const p = cc.getSnapshot().pitch!;
+      if (p.family === "hard" && p.recognizeAt > 0) {
+        assert.equal(cc.getSnapshot().recognized, true, "hard sit on a hard pitch reads it out of the hand");
+        assert.equal(cc.getSnapshot().family, "hard");
+        revealed = true;
+      }
+      ss.advance(5000);
+    }
+    assert.ok(revealed, "no hard pitch with a late recognizeAt in 12 seeds");
+    void c; void sched;
+  });
+
+  it("the book opens with takes and shows on the snapshot", () => {
+    const { c, sched } = makeDuelController("duel-book");
+    const before = c.getSnapshot().book.length;
+    assert.ok(before >= 1);
+    const cues: PlateCue[] = [];
+    c.onCue((cue) => cues.push(cue));
+    // take two pitches (let them resolve untouched)
+    for (let i = 0; i < 2; i++) {
+      c.setCall("take");
+      const durS = intoFlight(c, sched);
+      sched.advance(durS * 1000 * (FLIGHT_RESOLVE_U + 0.05));
+      sched.advance(6000);
+      if (c.getSnapshot().game.done) break;
+    }
+    assert.ok(c.getSnapshot().book.length > before, "takes open the book");
+    assert.ok(cues.some((q) => q.t === "book"), "a book cue fired");
+  });
+});
+
+describe("the Duel: cards", () => {
+  it("arms once, spends on the pitch, never refills", () => {
+    const { c, sched } = makeDuelController("duel-cards");
+    assert.deepEqual(c.getSnapshot().cards, [...COACH_CARDS]);
+    c.fireCard("green-light");
+    assert.equal(c.getSnapshot().cardArmed, "green-light");
+    assert.ok(!c.getSnapshot().cards.includes("green-light"));
+    c.fireCard("green-light");
+    assert.equal(c.getSnapshot().cards.length, 2, "cannot arm a spent card");
+    const cues: PlateCue[] = [];
+    c.onCue((cue) => cues.push(cue));
+    const durS = intoFlight(c, sched);
+    assert.ok(cues.some((q) => q.t === "card" && q.card === "green-light"));
+    sched.advance(durS * 1000 * (FLIGHT_RESOLVE_U + 0.05));
+    sched.advance(6000);
+    assert.equal(c.getSnapshot().cardArmed, null, "cleared on land");
+    assert.equal(c.getSnapshot().cards.length, 2);
+  });
+
+  it("disarm puts the card back before the pitch", () => {
+    const { c } = makeDuelController("duel-disarm");
+    c.fireCard("spurt");
+    c.disarmCard();
+    assert.equal(c.getSnapshot().cardArmed, null);
+    assert.ok(c.getSnapshot().cards.includes("spurt"));
+  });
+
+  it("spurt arms Last Spurt for the pitch", () => {
+    const { c } = makeDuelController("duel-spurt");
+    c.fireCard("spurt");
+    c.startPitch();
+    assert.equal(c.getSnapshot().game.lastSpurt, true);
   });
 });

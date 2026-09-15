@@ -13,7 +13,9 @@ import {
   GREEN_LIGHT_WINDOW,
   PROTECT_QUALITY_CAP,
   PROTECT_REACH,
+  SIT_RIGHT_BARREL,
   SIT_RIGHT_WINDOW,
+  SIT_WRONG_BARREL,
   SIT_WRONG_WINDOW,
   STAT_SIGMA_BASE,
   STAT_SIGMA_MIN,
@@ -64,14 +66,16 @@ describe("families", () => {
 });
 
 describe("callMods", () => {
-  it("a right sit widens the window, a wrong sit narrows it, and the barrel is untouched", () => {
+  it("a right sit widens the window and the barrel; a wrong sit narrows both", () => {
     const right = callMods(base({ call: "sit-hard", family: "hard" }));
     const wrong = callMods(base({ call: "sit-hard", family: "soft" }));
     assert.equal(right.windowMult, SIT_RIGHT_WINDOW);
     assert.equal(wrong.windowMult, SIT_WRONG_WINDOW);
-    assert.equal(right.barrelMult, 1);
-    assert.equal(wrong.barrelMult, 1);
+    assert.equal(right.barrelMult, SIT_RIGHT_BARREL);
+    assert.equal(wrong.barrelMult, SIT_WRONG_BARREL);
     assert.ok(SIT_RIGHT_WINDOW > 1 && SIT_WRONG_WINDOW < 1);
+    assert.ok(SIT_RIGHT_BARREL > 1 && SIT_WRONG_BARREL < 1);
+    assert.ok(SIT_RIGHT_BARREL < CELL_RIGHT_BARREL, "sitting the cell is still the best location read");
   });
 
   it("sit-cell scales the barrel by how close the pitch crossed to the sat cell", () => {
@@ -81,7 +85,7 @@ describe("callMods", () => {
     assert.equal(hit.barrelMult, CELL_RIGHT_BARREL);
     assert.equal(adj.barrelMult, CELL_ADJ_BARREL);
     assert.equal(far.barrelMult, CELL_WRONG_BARREL);
-    for (const m of [hit, adj, far]) assert.equal(m.windowMult, 1, "location never touches timing");
+    for (const m of [hit, adj, far]) assert.equal(m.windowMult, 1, "the cell sit never touches timing");
     assert.ok(CELL_RIGHT_BARREL > CELL_ADJ_BARREL && CELL_ADJ_BARREL > CELL_WRONG_BARREL);
   });
 

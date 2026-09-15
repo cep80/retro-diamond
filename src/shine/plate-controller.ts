@@ -52,6 +52,9 @@ import {
   type SwingKind,
 } from "./featured-game.ts";
 import { effectiveTimingMult, shineSwingWindow } from "./oracle.ts";
+import { hashId, makeRng } from "../game/data.ts";
+import { blendTiming, callAllowed, gaussianFrom, satRight, statSigma, type CoachCardId, type DuelCall, type PitchFamily } from "./duel.ts";
+import { bookLines, rivalProfile } from "./rivals.ts";
 import { sheet } from "./bible.ts";
 import type { TraineeRun } from "./types.ts";
 import { uniqueName, uniqueShouldFire } from "./unique.ts";
@@ -73,7 +76,11 @@ export type PlateCue =
   | { t: "idle" }
   | { t: "dead" }
   | { t: "paused"; reason: PlatePauseReason }
-  | { t: "resumed" };
+  | { t: "resumed" }
+  // ── the Duel ──
+  | { t: "call"; call: DuelCall }
+  | { t: "card"; card: CoachCardId }
+  | { t: "book"; line: 1 | 2 | 3; text: string };
 
 export interface PlateSnapshot {
   stage: Stage;
@@ -87,6 +94,16 @@ export interface PlateSnapshot {
   beat: FieldBeat | null;
   /** True once the game is over and the beat has finished. */
   done: boolean;
+  // ── the Duel ──
+  duel: boolean;
+  call: DuelCall;
+  cards: CoachCardId[];
+  cardArmed: CoachCardId | null;
+  /** Open book lines on the arm, in order. */
+  book: string[];
+  /** The live pitch's family once revealed, else null. */
+  family: PitchFamily | null;
+  verdict: string;
 }
 
 /** Injectable time source so tests can drive the lifecycle deterministically. */
@@ -121,6 +138,8 @@ export interface PlateControllerOptions {
   /** Prepare beat length in ms; defaults to PREPARE_MS / PREPARE_MS_REDUCED. */
   prepareMs?: number;
   prepareMsReduced?: number;
+  /** The Duel: calls, cards, the book, the 70/30 tap. Off keeps the plate byte-identical. */
+  duel?: boolean;
 }
 
 /** The half-width of the timing window, shared by 2D and 3D HUDs. */
@@ -159,6 +178,7 @@ export class PlateController {
   private readonly windowScale: number;
   private readonly prepareMs: number;
   private readonly prepareMsReduced: number;
+  private readonly duel: boolean;
   private readonly stings: boolean;
   private timers: Suspendable[] = [];
   private snap: PlateSnapshot | null = null;
@@ -174,9 +194,11 @@ export class PlateController {
     this.windowScale = opts.windowScale ?? 1;
     this.prepareMs = opts.prepareMs ?? PREPARE_MS;
     this.prepareMsReduced = opts.prepareMsReduced ?? PREPARE_MS_REDUCED;
+    this.duel = opts.duel ?? false;
     this.stings = opts.uniqueStings ?? true;
     const g = opts.restore ? structuredClone(opts.restore.game) : startFeaturedGame(opts.run, opts.kind, opts.encounter);
     g.lastSpurt = maybeLastSpurt(g);
+    g.duel = opts.duel ?? false;
     this.game = g;
     this.aim = opts.restore?.aim ?? opts.initialAim ?? { row: 1, col: 1 };
     this.swing = opts.restore?.swing ?? "contact";
@@ -212,6 +234,13 @@ export class PlateController {
         recognized: this.recognized,
         beat: this.beat,
         done: this.game.done && this.stage === "idle",
+        duel: this.duel,
+        call: this.game.call,
+        cards: this.game.cardsLeft,
+        cardArmed: this.game.cardArmed,
+        book: this.duel && this.game.kind !== "practice" ? bookLines(rivalProfile(this.game.arm), this.game.adaptation, this.game.bookOpen) : [],
+        family: this.pitch && this.recognized ? this.pitch.family : null,
+        verdict: this.game.lastVerdict,
       };
     }
     return this.snap;
@@ -293,13 +322,52 @@ export class PlateController {
     this.changed();
   }
 
+  // ── the Duel ─────────────────────────────────────────────────────────────
+
+  /** A call is made between pitches. Protect needs two strikes. */
+  setCall(call: DuelCall) {
+    if (!this.duel) return;
+    if (this.stage !== "idle" && this.stage !== "dead" && this.stage !== "situation") return;
+    if (!callAllowed(call, this.game.count)) return;
+    if (this.game.call === call) return;
+    this.game = { ...this.game, call };
+    this.cue({ t: "call", call });
+    this.changed();
+  }
+
+  /** Arm a coach card for the next pitch. Spent when the pitch starts; never refills. */
+  fireCard(card: CoachCardId) {
+    if (!this.duel) return;
+    if (this.stage !== "idle" && this.stage !== "dead" && this.stage !== "situation") return;
+    if (!this.game.cardsLeft.includes(card)) return;
+    this.game = { ...this.game, cardsLeft: this.game.cardsLeft.filter((c) => c !== card), cardArmed: card };
+    this.changed();
+  }
+
+  /** Put an armed card back before the pitch. */
+  disarmCard() {
+    if (!this.duel) return;
+    if (this.stage !== "idle" && this.stage !== "dead" && this.stage !== "situation") return;
+    const card = this.game.cardArmed;
+    if (!card) return;
+    this.game = { ...this.game, cardsLeft: [...this.game.cardsLeft, card], cardArmed: null };
+    this.changed();
+  }
+
   startPitch() {
     if (this.pauseReason || this.game.done) return;
     if (this.stage !== "idle" && this.stage !== "dead") return;
     const game = this.game;
     const who = sheet(this.run.characterId);
+    const card = this.duel ? game.cardArmed : null;
+    if (card === "spurt") {
+      game.lastSpurt = true;
+      game.spurtFired = true;
+    }
+    if (card) this.cue({ t: "card", card });
     if (
       this.stings &&
+      (card === "her-call" ||
       uniqueShouldFire(this.run.characterId, {
         already: game.uniqueFired,
         kind: game.kind,
@@ -310,14 +378,15 @@ export class PlateController {
         parkId: who.parkId,
         scoreDiff: game.scoreDiff,
         inning: game.inning,
-      })
+      }))
     ) {
       game.uniqueFired = true;
       this.cue({ t: "sting", name: uniqueName(this.run.characterId) });
     }
     const p = dealPitch(this.run, game);
     this.pitch = p;
-    this.recognized = game.kind === "practice" || p.recognizeAt <= 0;
+    // A matched family sit reads the pitch out of the hand.
+    this.recognized = game.kind === "practice" || p.recognizeAt <= 0 || (this.duel && satRight(game.call, p.family));
     this.beat = null;
     this.stage = "prepare";
     const prep = this.reduced ? this.prepareMsReduced : this.prepareMs;
@@ -367,6 +436,11 @@ export class PlateController {
     let timingErr = (progress - 1) * Math.max(0.2, p.speed);
     if (this.assist) timingErr /= TIMING_ASSIST_WINDOW;
     timingErr /= this.windowScale;
+    if (this.duel && !practice) {
+      // 70/30: her Contact owns most of the timing; the tap is the green light.
+      const r = makeRng(hashId(`${this.run.rngSeed}|tap|${this.game.paIndex}|${this.game.pitchesSeen}`));
+      timingErr = blendTiming(timingErr, gaussianFrom(r) * statSigma(this.run.stats.contact));
+    }
     const next = { ...this.game };
     resolveSwing(this.run, next, p, this.aim, timingErr, nextKind);
     this.land(next, true, nextKind);
@@ -390,8 +464,15 @@ export class PlateController {
     this.clock = null;
     this.pitch = null;
     this.beat = beat;
+    next.cardArmed = null;
     this.game = next;
     this.cue({ t: "resolved", beat, spec, swung, swingKind });
+    if (next.pendingBook) {
+      const line = next.pendingBook;
+      const text = bookLines(rivalProfile(next.arm), next.adaptation, line)[line - 1] ?? "";
+      next.pendingBook = null;
+      this.cue({ t: "book", line, text });
+    }
     if (spec.fieldMs > 0) {
       this.stage = "field";
       this.changed();

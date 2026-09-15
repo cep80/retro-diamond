@@ -89,16 +89,22 @@ All constants live in `src/shine/duel.ts` (new, pure, no React) and are imported
 ```ts
 export const SIT_RIGHT_WINDOW = 1.4;      // sit-hard/soft matched the family
 export const SIT_WRONG_WINDOW = 0.6;
+export const SIT_RIGHT_BARREL = 1.2;      // a matched family sit also finds more barrel (tuned: window alone was not enough)
+export const SIT_WRONG_BARREL = 0.75;
 export const CELL_RIGHT_BARREL = 1.3;     // sit-cell: pitch in the sat cell
 export const CELL_ADJ_BARREL = 1.0;       // adjacent (Chebyshev 1)
 export const CELL_WRONG_BARREL = 0.7;     // farther
 export const PROTECT_QUALITY_CAP = 0.55;  // single at best
+export const PROTECT_REACH = 2.5;         // Protect turns a miss inside 2.5× the window into a foul
+export const WRONG_SIT_FOUL_FLOOR = 0.5;  // two strikes, wrong sit: a foul with timingQ below this is a whiff
 export const TAKE_STRIKE_LINE = true;     // a taken strike is a strike (no change)
 export const GREEN_LIGHT_WINDOW = 1.5;
 export const TAP_WEIGHT = 0.3;            // player share of timing error
 export const STAT_SIGMA_BASE = 0.14;      // s, at Contact 1
 export const STAT_SIGMA_PER = 0.006;      // s per Contact point (Contact 20 → 0.02 s)
+export const STAT_SIGMA_MIN = 0.02;
 export const FIGHT_METER_WINDOW = 0.12;   // Trick: + per meter point, max 3
+export const FIGHT_METER_MAX = 3;
 export const HOT_CELL_WIT = 8;
 export const BOOK_WIT_2 = 6;
 export const BOOK_WIT_3 = 10;
@@ -115,8 +121,10 @@ export interface CallMods { windowMult?: number; barrelMult?: number; qualityCap
 function callMods(game, pitch, aim, run): CallMods {
   const m: CallMods = { windowMult: 1, barrelMult: 1 };
   switch (game.call) {
-    case "sit-hard": case "sit-soft":
-      m.windowMult *= (game.call === "sit-hard") === (pitch.family === "hard") ? SIT_RIGHT_WINDOW : SIT_WRONG_WINDOW; break;
+    case "sit-hard": case "sit-soft": {
+      const right = (game.call === "sit-hard") === (pitch.family === "hard");
+      m.windowMult *= right ? SIT_RIGHT_WINDOW : SIT_WRONG_WINDOW;
+      m.barrelMult *= right ? SIT_RIGHT_BARREL : SIT_WRONG_BARREL; break; }
     case "sit-cell": {
       const d = cheb(aim, locCell(pitch.loc));
       m.barrelMult *= d === 0 ? CELL_RIGHT_BARREL : d === 1 ? CELL_ADJ_BARREL : CELL_WRONG_BARREL; break; }
@@ -131,7 +139,9 @@ function callMods(game, pitch, aim, run): CallMods {
 
 In `resolveContact`: `half *= mods.windowMult ?? 1`; `barrel *= mods.barrelMult ?? 1`; after quality: `if (mods.qualityCap) quality = min(quality, cap)`; **Protect rule:** if `timingQ === 0 && mods.protect && |timingErr| <= half * 1.6` → return a foul (`foulKind: "pull"`, quality 0.1) instead of miss. Power approach under Protect is coerced to contact (`powerSwing = false`) in `resolveSwing`.
 
-Sit-hard/soft wrong **with two strikes**: a foul result from `resolveContact` with `timingQ < 0.5` becomes a miss (the plan's "a wrong sit is a whiff, not a foul"). Implement in `resolveSwing` after contact, before the foul branch.
+Sit-hard/soft wrong **with two strikes**: a foul result from `resolveContact` with `timingQ < WRONG_SIT_FOUL_FLOOR` becomes a miss (the plan's "a wrong sit is a whiff, not a foul"). Implement in `resolveSwing` after contact, before the foul branch.
+
+**Her pitch mix is hers (tuning, built).** A family sit is only a decision if the arm has a tendency to read. When `game.duel` is on, `shapeCall` in `rivals.ts` draws the fastball/secondary split from `duelFastballRate(identity, count)` instead of the flat `secondaryBias` roll: *heat* arms throw hard about 80 % (70 % with two strikes); *locate* arms open hard about 75 % and go soft about 65 % with two strikes; *urgency* arms sit near 85 % hard early and 25 % hard with two strikes; everyone else 65 %. The default path (duel off) is untouched, which is what keeps the byte-identical guarantee in §9.
 
 ### 2.2 Take
 
@@ -215,7 +225,7 @@ Onboarding copy (`onboarding.ts`), first PA only: *"Sit on a cell. Then give her
 
 ## 5. Harness: `scripts/harness-duel.ts` → `npm run test:duel`
 
-Uses `exhibitionController(seed, pace)` and `playPitch`. For each strategy, 200 seeded PAs against `reina` and `sol`, tap at u = 1.0 with the 70/30 blend (the harness passes a fixed player error of 0):
+Uses `PlateController` at exhibition pace with `duel: true` and `playPitch`. For each strategy, 600 seeded PAs (`DUEL_PAS` overrides; the run takes about two seconds) against `reina` and `sol`, played as three-PA exhibitions. **Paired seeds:** game *i* uses seed `duel-{arm}-{i}` for every strategy, so the pitches are the same and the table isolates the call. **An average thumb:** the tap lands at u = 1 plus a seeded gaussian with σ = 0.08 (`duel-thumb-{arm}-{i}`), then the controller's 70/30 blend; a perfect tap made the family sits invisible on paper.
 
 | Strategy | Calls |
 |---|---|
@@ -226,7 +236,18 @@ Uses `exhibitionController(seed, pace)` and `playPitch`. For each strategy, 200 
 | `protect` | sit-cell, Protect at two strikes |
 | `cards` | `cell` plus green-light on the first two-strike pitch |
 
-Prints per strategy: reach %, K %, foul-hold %, HR %, mean pitches/PA. **Assertions** (the calls must be different on paper): `read` reach ≥ `cell` reach + 5 pp vs reina; `hard` K % vs sol ≥ `soft` K % + 8 pp; `protect` K % ≤ `cell` K % − 6 pp; `cards` reach ≥ `cell` reach + 3 pp. If an assertion fails, tune the constants in §2, not the strategies.
+Prints per strategy: reach %, hit %, BB %, K %, foul-hold %, HR %, mean pitches/PA. **Assertions as built** (arm-aware: the right call depends on who is pitching, which is the whole point):
+
+| Check | Why |
+|---|---|
+| vs reina (locate): `soft` K ≥ `cell` K + 3 pp | against a locator, guessing a family costs whiffs first |
+| vs reina (locate): `cell` reach ≥ `soft` reach + 1.5 pp | and hits second |
+| vs sol (heat): `hard` reach ≥ `soft` reach + 3 pp | against heat, sitting hard is the read |
+| `protect` foul-hold ≥ `cell` foul-hold + 1 pp (reina) | Protect holds counts |
+| `protect` K ≤ `cell` K (reina) | Protect never strikes out more |
+| `cards` reach ≥ `cell` reach (reina) | the green light helps |
+
+`DUEL_STRICT=1` makes a failed check exit nonzero (for CI). Last run (default 600 PAs, 2026-09-15): 6/6; the same margins hold at 900 and 1500. Table at 1500: vs reina, `cell` 20.7 % reach / 0.3 % K, `hard` 20.7 / 7.9, `soft` 18.7 / 4.7, `read` 18.1 / 15.5, `protect` 20.9 / 0.1 with 7.1 % foul-holds against `cell`'s 5.6 %; vs sol, `hard` 20.9 / 1.9, `soft` 16.3 / 11.6, `cell` 19.7 / 0.1. The original draft assertions (`read` +5 pp, `hard` K +8 pp vs sol, `protect` −6 pp K) were replaced: at exhibition pace the K rate is already near zero for every swing strategy, so K deltas cannot carry the check, and `read` spends a strike for its information, which is the intended cost. If an assertion fails, tune the constants in §2, not the strategies.
 
 ---
 
@@ -234,12 +255,12 @@ Prints per strategy: reach %, K %, foul-hold %, HR %, mean pitches/PA. **Asserti
 
 | Event | Props |
 |---|---|
-| `pa_call` | `call, count, arm, bookOpen` |
-| `pa_resolve` | `call, beat, timingQ, locationQ, family, sat (bool), card` |
+| `pa_call` | `call, count, arm, bookOpen, card` (career plate adds the armed card) |
+| `pa_resolve` | `call, beat, verdict, arm, card` |
 | `card_fired` | `card, pa, count` |
 | `book_opened` | `line, arm, why: "wit" \| "take"` |
 
-Emit from `ShinePlate` / `ShineExhibition` on the corresponding cues (never from the controller, which stays pure).
+Emit from `ShinePlate` / `ShineExhibition` on the corresponding cues (never from the controller, which stays pure). Built: the exhibition listens to the controller's `call` / `card` / `book` / `resolved` cues; the career plate emits from its inline `startPitch` / `fireCard` / `land`.
 
 ---
 
@@ -273,7 +294,9 @@ Existing suites must stay green with the default call; the 3D captures are not p
 | 9 | Career plate UI: book, hand, cards, verdict; keyboard; onboarding lines | `ShinePlate.tsx`, `onboarding.ts` | M |
 | 10 | Exhibition 2D fallback: same three regions | `ShineExhibition.tsx` | S |
 | 11 | Telemetry events | `ShinePlate.tsx`, `ShineExhibition.tsx` | S |
-| 12 | `?duel=1` / `settings.duel` flag; default off | `store.ts`, `ShineSettings.tsx` | S |
+| 12 | `?duel=1` / `settings.duel` flag; default off | `types.ts`, `persist.ts`, `ShineSettings.tsx` | S |
+
+**Status (2026-09-15): all twelve built.** The panel is one shared component, `src/components/DuelPanel.tsx`, with its pure half in `src/components/duel-ui.ts` (flag, labels, key maps, book rows, prompts; tested). Both screens mount it above the swing-kind row. The flag reads `settings.duel` (Settings → "The Duel (preview)") or `?duel=1`.
 
 Order 1→8 is the logic and can be verified entirely by `npm test` and `npm run test:duel` before any UI exists. 9→12 is the screen. Estimated at S = ½ day, M = 1–2 days: about two working weeks for one engineer, one for two.
 

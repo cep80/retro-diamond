@@ -1157,3 +1157,11 @@
   --color-grass-2: #c8e09a;
   --color-dirt: #d4a0c4;
 }
+
+/* The Duel: a book line that just opened. */
+@keyframes shine-book-open {
+  0% { color: #ffd166; }
+  100% { color: inherit; }
+}
+.shine-book-open { animation: shine-book-open 2.4s ease-out; }
+@media (prefers-reduced-motion: reduce) { .shine-book-open { animation: none; } }

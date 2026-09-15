@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { makeRng } from "../game/data.ts";
+import { bookLines, fatigueLine } from "./rivals.ts";
 import { arsenal } from "../game/plate.ts";
 import {
   ADAPT_MIN_SAMPLES,
@@ -109,5 +110,25 @@ describe("rivals", () => {
     const third = rivalLineup({ characterId: "reina", year: 2 }, 2);
     assert.equal(third.id, "rival-bat-miki");
     assert.notEqual(rivalLineup({ characterId: "reina", year: 2 }, 0).id, "rival-bat-miki");
+  });
+});
+
+
+describe("the Duel: the book", () => {
+  it("opens in order: identity, second tell, adaptation or fatigue", () => {
+    const p = rivalProfile("reina");
+    assert.deepEqual(bookLines(p, null, 1), [p.tells[0]]);
+    assert.deepEqual(bookLines(p, null, 2), [p.tells[0], p.tells[1]]);
+    const three = bookLines(p, null, 3);
+    assert.equal(three.length, 3);
+    assert.equal(three[2], fatigueLine("reina"));
+    const adapted = bookLines(p, { kind: "fill-zone", line: "She knows you don't chase." }, 3);
+    assert.equal(adapted[2], "She knows you don't chase.");
+  });
+  it("every arm has a fatigue line", () => {
+    for (const id of ["academy", "reina", "sol", "kira"] as const) {
+      assert.ok(fatigueLine(id).length > 8, id);
+      assert.doesNotMatch(fatigueLine(id), /!/);
+    }
   });
 });

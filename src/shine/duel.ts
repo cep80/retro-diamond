@@ -20,12 +20,15 @@ export const COACH_CARDS: readonly CoachCardId[] = ["green-light", "spurt", "her
 // ── numbers (§2 of the build spec) ──────────────────────────────────────────
 export const SIT_RIGHT_WINDOW = 1.4;
 export const SIT_WRONG_WINDOW = 0.6;
+/** A right family sit also puts her on plane; a wrong one leaves her off it. */
+export const SIT_RIGHT_BARREL = 1.2;
+export const SIT_WRONG_BARREL = 0.75;
 export const CELL_RIGHT_BARREL = 1.3;
 export const CELL_ADJ_BARREL = 1.0;
 export const CELL_WRONG_BARREL = 0.7;
 export const PROTECT_QUALITY_CAP = 0.55;
 /** A protected swing this far outside the window (in window halves) still fouls it off. */
-export const PROTECT_REACH = 1.6;
+export const PROTECT_REACH = 2.5;
 export const GREEN_LIGHT_WINDOW = 1.5;
 /** Player share of the timing error; the rest is her Contact. */
 export const TAP_WEIGHT = 0.3;
@@ -84,9 +87,12 @@ export function callMods(ctx: CallContext): CallMods {
   const m: CallMods = { windowMult: 1, barrelMult: 1, qualityCap: null, protect: false };
   switch (ctx.call) {
     case "sit-hard":
-    case "sit-soft":
-      m.windowMult *= satRight(ctx.call, ctx.family) ? SIT_RIGHT_WINDOW : SIT_WRONG_WINDOW;
+    case "sit-soft": {
+      const right = satRight(ctx.call, ctx.family);
+      m.windowMult *= right ? SIT_RIGHT_WINDOW : SIT_WRONG_WINDOW;
+      m.barrelMult *= right ? SIT_RIGHT_BARREL : SIT_WRONG_BARREL;
       break;
+    }
     case "sit-cell": {
       const d = cellDistance(ctx.aim, locCell(ctx.pitchLoc));
       m.barrelMult *= d === 0 ? CELL_RIGHT_BARREL : d === 1 ? CELL_ADJ_BARREL : CELL_WRONG_BARREL;
@@ -133,15 +139,33 @@ export function bookOpenFor(wit: number, takesThisArm: number): 1 | 2 | 3 {
   return 1;
 }
 
+/**
+ * The Duel's pitch mix: how often an arm throws the fastball, by identity and
+ * count. This is what makes her book true — a heat arm really is fastballs,
+ * a locate arm really goes soft with two strikes. Applied by `shapeCall` only
+ * when the Duel is on, so the pre-Duel plate is untouched.
+ */
+export function duelFastballRate(identity: string, count: { balls: number; strikes: number }): number {
+  const first = count.balls === 0 && count.strikes === 0;
+  const two = count.strikes >= 2;
+  switch (identity) {
+    case "heat":
+      return two ? 0.7 : 0.8;
+    case "locate":
+      return first ? 0.75 : two ? 0.35 : 0.55;
+    case "urgency":
+      return first ? 0.85 : two ? 0.25 : 0.55;
+    default:
+      return 0.65;
+  }
+}
+
 /** What the arm probably throws next, from her mix and the count. Shown when Eye is high enough. */
 export function likelyFamily(
   profile: { secondaryBias: number; identity: string },
   count: { balls: number; strikes: number },
 ): PitchFamily {
-  const first = count.balls === 0 && count.strikes === 0;
-  if (first) return "hard";
-  if (count.strikes >= 2 && profile.secondaryBias > 0) return "soft";
-  return profile.secondaryBias > 0.15 ? "soft" : "hard";
+  return duelFastballRate(profile.identity, count) >= 0.5 ? "hard" : "soft";
 }
 
 export function showsFamilyHint(eye: number): boolean {
@@ -169,6 +193,15 @@ export function verdictLine(opts: {
   const pitch = SOFT_NAME[opts.pitchType];
   const family = pitchFamily(opts.pitchType);
   const two = opts.strikes != null && opts.strikes >= 2;
+  // An untouched pitch under a swing call: she watched it, the call is moot.
+  if (opts.call !== "take") {
+    if (opts.outcome === "walk") return "Ball four. She walked her.";
+    if (opts.outcome === "take-ball") return `Watched it. Ball. It was the ${pitch}.`;
+    if (opts.outcome === "take-strike") return two ? "Watched it. Strike two." : "Watched it. Strike.";
+    if (opts.outcome === "k" && opts.call !== "protect" && opts.call !== "sit-hard" && opts.call !== "sit-soft" && opts.satCell == null) {
+      return "Watched strike three.";
+    }
+  }
   if (opts.card === "green-light") {
     if (opts.outcome === "reach") return "Green light. She didn't miss.";
     if (opts.outcome === "miss" || opts.outcome === "k") return "Green light. It was the wrong pitch.";
@@ -203,6 +236,13 @@ export function verdictLine(opts: {
   if (opts.outcome === "foul") return d === 0 ? "Sat on it. Fought it off." : "Sat away. It came in. Fought it off.";
   if (opts.outcome === "k") return d === 0 ? "Sat on it. Strike three." : "Sat away. It came in. Strike three.";
   return d === 0 ? "Sat on it. Missed." : "Sat away. It came in.";
+}
+
+/** Standard normal from a uniform source (Box–Muller); pure in `r`. */
+export function gaussianFrom(r: () => number): number {
+  const u1 = Math.max(1e-12, r());
+  const u2 = r();
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 }
 
 /** The cell the pitch actually crossed, for the verdict and the HUD. */

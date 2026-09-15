@@ -1,5 +1,22 @@
 import { hashId, makeRng } from "../game/data.ts";
 import {
+  COACH_CARDS,
+  FIGHT_METER_MAX,
+  WRONG_SIT_FOUL_FLOOR,
+  bookOpenFor,
+  callMods,
+  cellDistance,
+  pitchFamily,
+  satRight,
+  sitFamily,
+  verdictLine,
+  type CoachCardId,
+  type DuelCall,
+  type PitchFamily,
+  type VerdictOutcome,
+} from "./duel.ts";
+import { locCell as duelLocCell } from "../game/plate.ts";
+import {
   arsenal,
   cellLoc,
   cpuCall,
@@ -84,6 +101,8 @@ export interface LivePitch {
   inZone: boolean;
   speed: number;
   recognizeAt: number;
+  /** Duel: fastball is hard, everything else soft. */
+  family: PitchFamily;
 }
 
 /** Optional isolated-encounter configuration. Career callers never pass one. */
@@ -135,6 +154,19 @@ export interface FeaturedGame {
   lastPitchType: PitchType | null;
   trickFouls: number;
   twoStrikeFoul: boolean;
+  // ── the Duel (design/diamond-shine-duel-build-spec-2026-09-14.md) ──
+  /** False keeps every resolver byte-identical to the pre-Duel plate. */
+  duel: boolean;
+  call: DuelCall;
+  cardsLeft: CoachCardId[];
+  cardArmed: CoachCardId | null;
+  bookOpen: 1 | 2 | 3;
+  takesThisArm: number;
+  /** Trick only; two-strike fouls this PA, capped. */
+  fightMeter: number;
+  lastVerdict: string;
+  /** A book line opened by the last resolve, for the controller to cue. */
+  pendingBook: 1 | 2 | 3 | null;
   sawFullCount: boolean;
   timesReached: number;
   hits: number;
@@ -239,6 +271,15 @@ export function startFeaturedGame(run: TraineeRun, kind: GameKind, encounter?: E
     lastPitchType: null,
     trickFouls: 0,
     twoStrikeFoul: false,
+    duel: false,
+    call: "sit-cell",
+    cardsLeft: [...COACH_CARDS],
+    cardArmed: null,
+    bookOpen: bookOpenFor(run.stats.wit, 0),
+    takesThisArm: 0,
+    fightMeter: 0,
+    lastVerdict: "",
+    pendingBook: null,
     sawFullCount: false,
     timesReached: 0,
     hits: 0,
@@ -318,6 +359,7 @@ export function dealPitch(run: TraineeRun, game: FeaturedGame): LivePitch {
       inZone: true,
       speed: 2.0,
       recognizeAt: 0,
+      family: "hard" as const,
     };
     game.live = pitch;
     game.lastPitches = [...game.lastPitches, { type: pitch.type, loc: pitch.loc }].slice(-3);
@@ -330,13 +372,15 @@ export function dealPitch(run: TraineeRun, game: FeaturedGame): LivePitch {
   if (arm !== game.arm) {
     game.arm = arm;
     game.adaptation = rivalAdaptation(rivalProfile(arm), game.tells);
+    game.takesThisArm = 0;
+    game.bookOpen = bookOpenFor(run.stats.wit, 0);
   }
   const profile = rivalProfile(arm);
   const pitcher = rivalPlayer(arm, run.year);
   const fight = sheet(run.characterId).style === "trick" ? 0.1 * game.trickFouls : 0;
   const who = sheet(run.characterId);
   const ars = arsenal(pitcher);
-  const shaped = shapeCall(profile, game.adaptation, cpuCall(pitcher, batter, game.count, r), game.count, ars.map((p) => p.type), r);
+  const shaped = shapeCall(profile, game.adaptation, cpuCall(pitcher, batter, game.count, r), game.count, ars.map((p) => p.type), r, game.duel);
   let loc = scatterLoc(shaped.target, pitcher.control, 0.2, shaped.type, r);
   if (game.count.balls === 0 && game.count.strikes >= 2 && r() < 0.55) {
     loc = { x: loc.x < 1.5 ? -0.45 : 3.45, y: loc.y };
@@ -350,6 +394,7 @@ export function dealPitch(run: TraineeRun, game: FeaturedGame): LivePitch {
     inZone: locInZone(loc),
     speed,
     recognizeAt: recognitionU(run.stats.eye, Math.max(0, DECEPTION[shaped.type] - fight), run.stats.wit, run.carry),
+    family: pitchFamily(shaped.type),
   };
   game.live = pitch;
   game.lastPitches = [...game.lastPitches, { type: pitch.type, loc: pitch.loc }].slice(-3);
@@ -607,7 +652,12 @@ function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedT
   if (armChanged) {
     game.arm = arm;
     game.adaptation = rivalAdaptation(rivalProfile(arm), game.tells);
+    game.takesThisArm = 0;
+    game.bookOpen = bookOpenFor(run.stats.wit, 0);
   }
+  // Duel: the call is per PA; the fight meter is per PA.
+  game.call = "sit-cell";
+  game.fightMeter = 0;
   push(game.events, { t: "paStart", pa: game.paIndex, inning: game.inning, outs: game.outs, bases: { ...game.bases } });
   game.banner = game.lastSpurt
     ? "This is the one she trained for."
@@ -620,6 +670,19 @@ function isFirstPitch(game: FeaturedGame) {
   return game.count.balls === 0 && game.count.strikes === 0 && game.paPitches === 0;
 }
 
+/** Duel verdict line: names the call. Harmless when the Duel is off (HUD ignores it). */
+function setVerdict(game: FeaturedGame, pitch: LivePitch, outcome: VerdictOutcome, aim?: Cell) {
+  game.lastVerdict = verdictLine({
+    call: game.call,
+    pitchType: pitch.type,
+    outcome,
+    satCell: aim ? cellDistance(aim, duelLocCell(pitch.loc)) : undefined,
+    card: game.cardArmed,
+    strikes: game.count.strikes,
+    balls: game.count.balls,
+  });
+}
+
 export function resolveTake(run: TraineeRun, game: FeaturedGame, pitch: LivePitch) {
   const r = makeRng(hashId(`${run.rngSeed}|${game.kind}|take|${game.paIndex}|${game.pitchesSeen}`));
   const first = isFirstPitch(game);
@@ -628,9 +691,18 @@ export function resolveTake(run: TraineeRun, game: FeaturedGame, pitch: LivePitc
   game.paPitches += 1;
   game.live = null;
   push(game.events, { t: "take", pa: game.paIndex, strike: pitch.inZone });
+  if (game.duel) {
+    game.takesThisArm += 1;
+    const open = bookOpenFor(run.stats.wit, game.takesThisArm);
+    if (open > game.bookOpen) {
+      game.bookOpen = open;
+      game.pendingBook = open;
+    }
+  }
   if (pitch.inZone) {
     game.count.strikes += 1;
     game.banner = "Strike. Looking.";
+    setVerdict(game, pitch, game.count.strikes >= 3 ? "k" : "take-strike");
     if (game.count.strikes >= 3) {
       game.struckOut = true;
       game.ks += 1;
@@ -644,6 +716,7 @@ export function resolveTake(run: TraineeRun, game: FeaturedGame, pitch: LivePitc
   }
   game.count.balls += 1;
   game.banner = "Ball.";
+  setVerdict(game, pitch, game.count.balls >= 4 ? "walk" : "take-ball");
   if (!pitch.inZone && game.count.strikes >= 2) noteCallback(run, game, "eye");
   if (game.count.balls >= 4) {
     const scored = reachBase(run, game, r, "walk", "walk");
@@ -664,6 +737,8 @@ export function resolveSwing(
 ) {
   const r = makeRng(hashId(`${run.rngSeed}|${game.kind}|swing|${game.paIndex}|${game.pitchesSeen}`));
   const first = isFirstPitch(game);
+  // Duel: Protect is a contact swing, and the record says so.
+  if (game.duel && game.call === "protect" && swing === "power") swing = "contact";
   game.pitchesSeen += 1;
   game.paPitches += 1;
   game.live = null;
@@ -673,9 +748,13 @@ export function resolveSwing(
   const li = liveLi(run, game);
   const park = stagePark(run, game.kind);
   const style = sheet(run.characterId).style;
+  // Duel: the call and the armed card bend the window / barrel.
+  const mods = game.duel
+    ? callMods({ call: game.call, cardArmed: game.cardArmed, fightMeter: game.fightMeter, style, aim, pitchLoc: pitch.loc, family: pitch.family })
+    : {};
 
   if (swing === "bunt") {
-    const contact = resolveContact(timingErr, aim, pitch.loc, run.stats.contact, run.stats.power, run.stats.guts, li, false, park.hr, r, run.carry, style);
+    const contact = resolveContact(timingErr, aim, pitch.loc, run.stats.contact, run.stats.power, run.stats.guts, li, false, park.hr, r, run.carry, style, mods);
     game.tells = recordHitterTell(game.tells, { first, inZone: pitch.inZone, swung: true, timingErr });
     if (!contact.reach) {
       game.lastQuality = 0;
@@ -712,7 +791,18 @@ export function resolveSwing(
   }
 
   const err = game.kind === "practice" ? timingErr / 2 : timingErr;
-  const contact = resolveContact(err, aim, pitch.loc, run.stats.contact, run.stats.power, run.stats.guts, li, swing === "power", park.hr, r, run.carry, style);
+  let contact = resolveContact(err, aim, pitch.loc, run.stats.contact, run.stats.power, run.stats.guts, li, swing === "power", park.hr, r, run.carry, style, mods);
+  // Duel: a wrong family sit with two strikes that only clips the ball is a whiff, not a foul.
+  if (
+    game.duel &&
+    contact.foul &&
+    game.count.strikes >= 2 &&
+    sitFamily(game.call) !== null &&
+    !satRight(game.call, pitch.family) &&
+    contact.timingQ < WRONG_SIT_FOUL_FLOOR
+  ) {
+    contact = { ...contact, reach: false, foul: false, foulKind: null, quality: 0 };
+  }
   game.tells = recordHitterTell(game.tells, {
     first,
     inZone: pitch.inZone,
@@ -727,6 +817,7 @@ export function resolveSwing(
     push(game.events, { t: "contact", pa: game.paIndex, tier: "miss", quality: 0 });
     game.count.strikes += 1;
     game.banner = "Swing and miss.";
+    setVerdict(game, pitch, game.count.strikes >= 3 ? "k" : "miss", aim);
     if (game.count.strikes >= 3) {
       game.struckOut = true;
       game.ks += 1;
@@ -748,13 +839,18 @@ export function resolveSwing(
     if (!twoStrike) game.count.strikes += 1;
     else {
       game.twoStrikeFoul = true;
-      if (style === "trick") game.trickFouls += 1;
+      if (style === "trick") {
+        game.trickFouls += 1;
+        game.fightMeter = Math.min(FIGHT_METER_MAX, game.fightMeter + 1);
+      }
       noteCallback(run, game, "guts");
     }
+    setVerdict(game, pitch, "foul", aim);
     evaluateGoals(game);
     return;
   }
 
+  setVerdict(game, pitch, "reach", aim);
   if (contact.quality > 0.6) noteCallback(run, game, "contact");
 
   if (contact.hr) {

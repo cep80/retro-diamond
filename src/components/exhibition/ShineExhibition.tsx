@@ -50,6 +50,10 @@ import {
 } from "./onboarding";
 import { effectiveTier, type ExhibitionQuality } from "./quality";
 import { EXHIBITION_PACE } from "./scene/presentation";
+import { DuelPanel } from "@/components/DuelPanel";
+import { duelEnabled } from "@/components/duel-ui";
+import { likelyFamily, showsFamilyHint } from "@/shine/duel.ts";
+import { track as trackEvent } from "@/game/telemetry.ts";
 import {
   ballLeavesBat,
   firstPitchSight,
@@ -183,6 +187,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
   const [sceneReady, setSceneReady] = useState(false);
   const [ghost, setGhost] = useState<Cell | null>(null);
   const [u, setU] = useState(0);
+  const [bookToast, setBookToast] = useState<1 | 2 | 3 | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingPhase>("unseen");
   const [sitChosen, setSitChosen] = useState(false);
   const [madeContact, setMadeContact] = useState(false);
@@ -245,6 +250,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
       windowScale: EXHIBITION_PACE.windowScale,
       prepareMs: EXHIBITION_PACE.prepareMs,
       prepareMsReduced: EXHIBITION_PACE.prepareMsReduced,
+      duel: duelEnabled(settings),
     });
   }
   const controller = controllerRef.current;
@@ -356,6 +362,24 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
         if (cue.t === "resolved") console.info("[exhibition-cue] resolved", cue.beat, "swung", cue.swung, Math.round(performance.now()));
       }
       exhibitionAudioCue(cue, controller.getSnapshot().game, io);
+      // The Duel telemetry (build spec §6).
+      if (cue.t === "call") {
+        const g = controller.getSnapshot().game;
+        trackEvent("pa_call", { call: cue.call, count: `${g.count.balls}-${g.count.strikes}`, arm: g.arm, bookOpen: g.bookOpen });
+      }
+      if (cue.t === "card") {
+        const g = controller.getSnapshot().game;
+        trackEvent("card_fired", { card: cue.card, pa: g.paIndex, count: `${g.count.balls}-${g.count.strikes}` });
+      }
+      if (cue.t === "book") {
+        trackEvent("book_opened", { line: cue.line, arm: controller.getSnapshot().game.arm, why: "take" });
+        setBookToast(cue.line);
+        window.setTimeout(() => setBookToast(null), 2600);
+      }
+      if (cue.t === "resolved" && controller.getSnapshot().duel) {
+        const g = controller.getSnapshot().game;
+        trackEvent("pa_resolve", { call: g.call, beat: cue.beat, verdict: g.lastVerdict, arm: g.arm });
+      }
       if (cue.t === "step-in") setOnboarding((p) => onboardingNext(p, "step-in"));
       if (cue.t === "prepare") {
         setOnboarding((p) => onboardingNext(p, "pitch"));
@@ -760,6 +784,26 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
         </div>
 
         <div className="flex w-full flex-col gap-2 pb-2">
+          {snapshot.duel && !game.done ? (
+            <DuelPanel
+              book={snapshot.book}
+              call={snapshot.call}
+              cards={snapshot.cards}
+              cardArmed={snapshot.cardArmed}
+              verdict={snapshot.stage === "prepare" || inFlight ? "" : snapshot.verdict}
+              strikes={game.count.strikes}
+              canCall={snapshot.stage === "idle" || snapshot.stage === "dead" || snapshot.stage === "situation"}
+              eyeHint={showsFamilyHint(controller.run.stats.eye) ? likelyFamily(rivalProfile(game.arm), game.count) : null}
+              wit={controller.run.stats.wit}
+              takes={game.takesThisArm}
+              bookToast={bookToast}
+              firstPa={game.paIndex <= 1 && game.pitchesSeen === 0}
+              onCall={(c) => controller.setCall(c)}
+              onCard={(c) => controller.fireCard(c)}
+              onDisarm={() => controller.disarmCard()}
+              compact
+            />
+          ) : null}
           <div className={`flex gap-2 ${
             mode === "3d" && (showOnboarding || livePitch)
               ? "max-sm:hidden landscape:[@media(max-height:520px)]:hidden"

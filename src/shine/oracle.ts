@@ -4,6 +4,7 @@
  */
 import { clamp } from "../game/data.ts";
 import { CENTER, CONTACT_WINDOW, POWER_WINDOW, deliveryWindows, locationError, windowMiss, type Cell, type Loc } from "../game/plate.ts";
+import { protectSaves, type CallMods } from "./duel.ts";
 import type { DeliveryWindows } from "../game/plate.ts";
 
 import type { Spark, StyleId } from "./types.ts";
@@ -194,19 +195,25 @@ export function resolveContact(
   r: () => number,
   sparks: Spark[] = [],
   style?: StyleId,
+  mods: Partial<CallMods> = {},
 ): ContactResult {
   const miss = { quality: 0, locationQ: 0, timingQ: 0, reach: false, hr: false, foul: false, foulKind: null as FoulKind | null };
   const mult = effectiveTimingMult(contact, power, guts, li, powerSwing, sparks);
-  const half = shineSwingWindow(powerSwing, mult, sparks);
+  const half = shineSwingWindow(powerSwing, mult, sparks) * (mods.windowMult ?? 1);
   const timingQ = clamp(1 - Math.abs(timingErr) / half, 0, 1);
-
-  if (timingQ === 0) return { ...miss, timingQ };
-
+  if (timingQ === 0) {
+    // Duel: Protect turns a near miss into a foul that holds the count.
+    if (mods.protect && protectSaves(timingErr, half)) {
+      return { quality: 0.1, locationQ: 0, timingQ: 0, reach: true, hr: false, foul: true, foulKind: "pull" };
+    }
+    return { ...miss, timingQ };
+  }
   const locErr = locationError(aimCell, actualLoc);
-  const barrel = barrelRadius(contact) + styleBarrelBonus(style, powerSwing);
+  const barrel = (barrelRadius(contact) + styleBarrelBonus(style, powerSwing)) * (mods.barrelMult ?? 1);
   const lq = locationQ(locErr, barrel);
   let quality = timingQ * lq * contactQuality(contact);
   if (powerSwing && style === "trick") quality *= TRICK_POWER_QUALITY;
+  if (mods.qualityCap != null) quality = Math.min(quality, mods.qualityCap);
 
   if (lq < 0.35) {
     const foulKind: FoulKind = timingQ >= 0.85 ? "tip" : "pull";

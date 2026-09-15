@@ -11,6 +11,7 @@ import type { Cell, Loc, PitchCall } from "../game/plate.ts";
 import { academyBatter, academyPitcher, traineeBatter } from "./actors.ts";
 import { sheet } from "./bible.ts";
 import { weeklySit } from "./pilgrimage.ts";
+import { duelFastballRate } from "./duel.ts";
 import type { CharacterId, Tells, TraineeRun } from "./types.ts";
 
 export type RivalArmId = CharacterId | "academy";
@@ -280,6 +281,30 @@ export function rivalAdaptation(profile: RivalProfile, tells: Tells): Adaptation
   return null;
 }
 
+/** The third book line when the arm has not adapted to you: what fatigue does to her. */
+const FATIGUE_LINES: Record<RivalArmId, string> = {
+  academy: "Tryout arm. Same look all night.",
+  reina: "Past pitch 100 the fastball sits up. That is the only mistake she makes.",
+  sol: "Past pitch 100 the heat is still there; the ladder gets lower.",
+  kira: "One inning of everything. She does not get tired; she gets out.",
+  aoi: "Not a pitcher.",
+  miki: "Not a pitcher.",
+  yuki: "Not a pitcher.",
+};
+
+export function fatigueLine(id: RivalArmId): string {
+  return FATIGUE_LINES[id] ?? "";
+}
+
+/**
+ * The Duel's book on an arm: line 1 always, line 2 by Wit or a take, line 3
+ * (her adaptation to you, else what fatigue does to her) by more of either.
+ */
+export function bookLines(profile: RivalProfile, adaptation: Adaptation | null, open: 1 | 2 | 3): string[] {
+  const all = [profile.tells[0], profile.tells[1], adaptation?.line ?? fatigueLine(profile.id)];
+  return all.slice(0, open);
+}
+
 export interface ScoutingReport {
   arm: RivalArmId;
   name: string;
@@ -331,11 +356,19 @@ export function shapeCall(
   count: { balls: number; strikes: number },
   arsenalTypes: PitchType[],
   r: () => number,
+  duel = false,
 ): PitchCall & { speedMult: number } {
   let { type, target } = call;
   let speedMult = profile.speedMult;
   const first = count.balls === 0 && count.strikes === 0;
   const twoStrikes = count.strikes >= 2;
+
+  // The Duel: identity owns the family mix so the book reads true.
+  if (duel) {
+    const secondaries = arsenalTypes.filter((t) => t !== "fastball");
+    if (r() < duelFastballRate(profile.identity, count) || secondaries.length === 0) type = "fastball";
+    else if (type === "fastball") type = secondaries[Math.floor(r() * secondaries.length)]!;
+  }
 
   // Identity: pitch mix.
   if (profile.secondaryBias < 0 && type !== "fastball" && r() < -profile.secondaryBias) type = "fastball";
