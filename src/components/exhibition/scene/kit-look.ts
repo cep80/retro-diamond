@@ -33,7 +33,7 @@ export const HERO_LOOK = {
     gold: "#ffd166",
   },
   reina: {
-    height: 1.28,
+    height: 1.29,
     hair: "#d4d8e0",
     jersey: "#1a2744",
     sleeve: "#f4efe4",

@@ -113,7 +113,9 @@ import {
   firstPitchPlateZ,
   CAMERA_FOV,
   CAMERA_LOCK,
+  deliveryLeaveStartMs,
   deliveryTimeScale,
+  plantSinkY,
   CAMERA_PUNCH,
   cameraPunchOffset,
   cameraPunchOn,
@@ -1498,6 +1500,8 @@ function CharacterActor({
   bodyScale?: number;
 }) {
   const group = useRef<Group>(null);
+  const plantGroup = useRef<Group>(null);
+  const plantDone = useRef(false);
   const swingBody = useRef<Group>(null);
   const swingRig = useRef<{
     spine: Object3D | null;
@@ -1789,6 +1793,8 @@ function CharacterActor({
   useEffect(() => {
     plantedSwing.current = null;
     plantedSetArmL.current = null;
+    plantDone.current = false;
+    if (plantGroup.current) plantGroup.current.position.y = 0;
     swingRig.current = {
       spine: findSocketBone(gltf.scene, "spine"),
       thighL: findSocketBone(gltf.scene, "thigh.L"),
@@ -2009,12 +2015,14 @@ function CharacterActor({
         if (cue.t === "prepare") {
           clearThrowHand();
           prepareAt.current = performance.now();
-          // Wind-up: play the delivery so its `release` marker lands when
-          // the prepare beat ends and the ball leaves the hand.
+          // Wind-up: play delivery so the scanned throw pose lands at the
+          // leave window (prepareMs − THROW_SHOW_MS). Authored release /
+          // full prepareMs put post-reclip throwAt (~0.885) after p1200.
           const delivery = play("pitch_delivery", { once: true, fade: 0.1 });
           if (delivery) {
             const release = asset.clips.pitch_delivery?.markers?.release ?? 0.9167;
-            delivery.timeScale = deliveryTimeScale(release, cue.prepareMs);
+            const poseAt = throwAt.current ?? release;
+            delivery.timeScale = deliveryTimeScale(poseAt, deliveryLeaveStartMs(cue.prepareMs));
           } else {
             backToIdle();
           }
@@ -2091,6 +2099,18 @@ function CharacterActor({
       }
     }
     mixer.update(paused || debugHoldClock() ? 0 : delta);
+    if (!plantDone.current && plantGroup.current) {
+      const fl = swingRig.current.footL;
+      const fr = swingRig.current.footR;
+      if (fl && fr) {
+        gltf.scene.updateMatrixWorld(true);
+        fl.updateWorldMatrix(true, false);
+        fr.updateWorldMatrix(true, false);
+        const dy = plantSinkY([fl.getWorldPosition(_footL).y, fr.getWorldPosition(_footR).y]);
+        if (dy !== 0) plantGroup.current.position.y += dy;
+        plantDone.current = true;
+      }
+    }
     if (asset.role === "batter") {
       const stage = controller.getSnapshot().stage;
       const u = controller.progress(performance.now());
@@ -2264,13 +2284,15 @@ function CharacterActor({
 
   return (
     <group ref={group} position={position} rotation-y={rotationY} scale={fitScale * (bodyScale ?? 1)}>
-      <group ref={swingBody}>
-        <primitive object={gltf.scene} />
-        {/* Contact shadow: cheap and stable on every tier. */}
-        <mesh rotation-x={-Math.PI / 2} position={[0, 0.015, 0]}>
-          <circleGeometry args={[0.55, 24]} />
-          <meshBasicMaterial color="#000000" transparent opacity={0.35} depthWrite={false} />
-        </mesh>
+      <group ref={plantGroup}>
+        <group ref={swingBody}>
+          <primitive object={gltf.scene} />
+          {/* Contact shadow: cheap and stable on every tier. */}
+          <mesh rotation-x={-Math.PI / 2} position={[0, 0.015, 0]}>
+            <circleGeometry args={[0.55, 24]} />
+            <meshBasicMaterial color="#000000" transparent opacity={0.35} depthWrite={false} />
+          </mesh>
+        </group>
       </group>
     </group>
   );

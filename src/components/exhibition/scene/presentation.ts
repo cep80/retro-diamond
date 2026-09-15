@@ -86,6 +86,21 @@ export const SWING_LOAD_YAW_DEG = 42;
 export const SWING_LOAD_BAT_SWEEP_DEG = 28;
 
 /**
+ * Mixamo `foot.*` is the ankle, not the sole. Idle dumps after reclip still
+ * sat ~0.08–0.12 m up (hy140). Sink the hero so the lower ankle kisses
+ * `ANKLE_PLANT_Y` — soles on dirt without lifting a deep plant.
+ */
+export const ANKLE_PLANT_Y = 0.045;
+
+export function plantSinkY(footYs: readonly number[], targetY = ANKLE_PLANT_Y): number {
+  const ys = footYs.filter((n) => Number.isFinite(n));
+  if (!ys.length) return 0;
+  const dy = targetY - Math.min(...ys);
+  if (Math.abs(dy) < 0.008) return 0;
+  return Math.max(-0.14, Math.min(0.06, dy));
+}
+
+/**
  * Group slide toward the mound. Forbidden: it moonwalks both shoes and
  * fails a planted front foot. The cut lives on the spine. y stays 0.
  */
@@ -438,12 +453,14 @@ export function planOutgoing(beat: FieldBeat, spec: BeatSpec, eventCount: number
  * 820 ms, so a linear t leaves the ball on the bat at r80. Front-load long
  * flights so the first sight window covers part of the family path. Cover
  * 0.5 put a single at x≈−3 / z≈−10 by r80 — off the phone film while tip
- * and foul still named (hy129). 0.28 keeps gold inside the locked fov and
- * still past the dirt. Short reaction flights (foul / tip / mitt carry)
- * stay linear — they already finish inside the beat.
+ * and foul still named (hy129). 0.28 parked gold at x≈−2.35 / z≈−8 —
+ * lip of the phone cone behind Aoi (hy142-hit). 0.18 kept gold in frame
+ * but failed “past the dirt” at r80. 0.22 clears both.
+ * Short reaction flights (foul / tip / mitt carry) stay linear — they
+ * already finish inside the beat.
  */
 export const OUTGOING_SIGHT_MS = 150;
-export const OUTGOING_SIGHT_COVER = 0.28;
+export const OUTGOING_SIGHT_COVER = 0.22;
 
 export function outgoingSightT(elapsedS: number, durS: number): number {
   if (!(durS > 0)) return elapsedS > 0 ? 1 : 0;
@@ -492,7 +509,8 @@ export const BALL_VISUAL = {
   flashMs: 160,
   /** Brand gold — pale #fff6d8 died as cream on the night dither (hy129). */
   flashColor: "#ffd166",
-  flashMaxScale: 3.6,
+  /** hy142-hit: 3.6 gold disc died as a lantern flare on the shoulder. */
+  flashMaxScale: 4.4,
   /** Coral pop for a pulled foul — distinct from a barreled gold flash. */
   flashFoul: "#ff718f",
   flashFoulScale: 2.9,
@@ -514,9 +532,9 @@ export const BALL_VISUAL = {
  * Billboard it — an XY circle is nearly edge-on from the locked catcher cam.
  */
 export const FLASH_SIGHT = {
-  discRadius: 0.18,
-  discOpacity: 0.88,
-  discMaxScale: 2.4,
+  discRadius: 0.22,
+  discOpacity: 0.92,
+  discMaxScale: 2.8,
 } as const;
 
 /** Family size on the billboard. Tip stays a tick; contact is the biggest spark. */
@@ -576,12 +594,25 @@ export const EXHIBITION_PACE = {
 } as const;
 
 /**
- * Playback rate for `pitch_delivery` so its `release` marker lands exactly
- * when the prepare beat ends and the ball leaves the hand.
+ * Wall-clock ms when the leave ball may appear — start of the last
+ * `THROW_SHOW_MS` of prepare. Wind-up must reach the earned throw by then.
  */
-export function deliveryTimeScale(releaseS: number, prepareMs: number): number {
-  if (!(releaseS > 0) || !(prepareMs > 0)) return 1;
-  return Math.min(2.5, Math.max(0.25, releaseS / (prepareMs / 1000)));
+export function deliveryLeaveStartMs(prepareMs: number, showMs = THROW_SHOW_MS): number {
+  if (!(prepareMs > 0)) return 0;
+  const show = Math.min(Math.max(0, showMs), Math.max(0, prepareMs - 1));
+  return Math.max(1, prepareMs - show);
+}
+
+/**
+ * Playback rate for `pitch_delivery` so the earned throw pose lands at the
+ * leave window (`deliveryLeaveStartMs`), not at prepare end. Pass scanned
+ * `throwAt` (fallback: authored `release`) and that leave-start ms.
+ * Scaling by authored release / full prepareMs put a post-reclip throwAt
+ * (~0.885) after p1200 — hold:false for almost the whole leave (hy139).
+ */
+export function deliveryTimeScale(poseAtS: number, leaveStartMs: number): number {
+  if (!(poseAtS > 0) || !(leaveStartMs > 0)) return 1;
+  return Math.min(2.5, Math.max(0.25, poseAtS / (leaveStartMs / 1000)));
 }
 
 /**

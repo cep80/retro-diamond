@@ -4,9 +4,12 @@ Cones and untextured lofts read as white doors / a bib. This keeps the
 authored hair UVs and the atlas, so the peek is silver hair, not a card.
 Original verts stay put (hy17 wrap melted the arms).
 
-Always starts from the hy14 drop.
+Defaults to the live `public/models/diamond-shine/reina.glb` so a
+post-reclip plant stays. Pass `hy14` to rebuild from the frozen drop.
+Re-runs purge `kit_curtain_*` first so clones do not stack.
 
     blender --background --python-exit-code 1 --python reina_clone_curtain.py
+    blender --background --python-exit-code 1 --python reina_clone_curtain.py -- hy14
 """
 from __future__ import annotations
 
@@ -22,9 +25,9 @@ from mathutils import Matrix, Vector
 
 import common as C
 
-SRC = os.path.join(C.REPO_ROOT, "content", "3d", "revisions", "reina-hy14-2026-09-14", "reina.glb")
+HY14 = os.path.join(C.REPO_ROOT, "content", "3d", "revisions", "reina-hy14-2026-09-14", "reina.glb")
 OUT = os.path.join(C.MODELS_DIR, "reina.glb")
-CACHE = "hy44"
+CACHE = "hy143"
 
 # Blender Z-up after glTF import. Face −Y, back +Y, up +Z.
 # Extract clones stay for close-up hair (edge-on at 18 m).
@@ -574,15 +577,29 @@ def bump_cache(path):
     print("[clone] manifest", url, "bytes", g.byte_length, "tris", g.triangle_count(), "anims", g.animation_names())
 
 
+def _purge_curtains():
+    for o in list(bpy.data.objects):
+        if o.type != "MESH":
+            continue
+        n = o.name.lower()
+        if "kit_curtain" in n or n.startswith("curtain_src") or n.startswith("kit_lock_"):
+            print("[clone] purge", o.name)
+            bpy.data.objects.remove(o, do_unlink=True)
+
+
 def main():
-    if not os.path.isfile(SRC):
-        raise SystemExit("missing " + SRC)
+    argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
+    src = HY14 if (argv and argv[0] == "hy14") else OUT
+    if not os.path.isfile(src):
+        raise SystemExit("missing " + src)
+    print("[clone] src", src)
     C.reset_scene()
-    bpy.ops.import_scene.gltf(filepath=SRC)
+    bpy.ops.import_scene.gltf(filepath=src)
+    _purge_curtains()
     arms = [o for o in bpy.data.objects if o.type == "ARMATURE"]
     meshes = [o for o in bpy.data.objects if o.type == "MESH"]
     if not arms or not meshes:
-        raise RuntimeError("hy14 missing arm/mesh")
+        raise RuntimeError("missing arm/mesh")
     arm = arms[0]
     body = max(meshes, key=lambda o: len(o.data.vertices))
     print("[clone] body", body.name, "verts", len(body.data.vertices), "arm", arm.name, "world", _world_aabb(body))

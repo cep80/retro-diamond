@@ -10,9 +10,12 @@ Not camera-facing cards (those read as a white bib). Not a vertex wrap
 (hy17 melted the atlas). Not lofted temple strands (hy25/hy26 fused
 into door slabs up close and a wide bob at 18 m).
 
-Always starts from the hy14 drop so a re-run cannot stack.
+Defaults to the live `public/models/diamond-shine/reina.glb` so a
+post-reclip plant stays. Pass `hy14` to rebuild from the frozen drop.
+Re-runs delete existing `kit_curtain_*` first so locks do not stack.
 
     blender --background --python-exit-code 1 --python reina_side_locks.py
+    blender --background --python-exit-code 1 --python reina_side_locks.py -- hy14
 """
 from __future__ import annotations
 
@@ -28,24 +31,25 @@ from mathutils import Vector
 
 import common as C
 
-SRC = os.path.join(C.REPO_ROOT, "content", "3d", "revisions", "reina-hy14-2026-09-14", "reina.glb")
+HY14 = os.path.join(C.REPO_ROOT, "content", "3d", "revisions", "reina-hy14-2026-09-14", "reina.glb")
 OUT = os.path.join(C.MODELS_DIR, "reina.glb")
-CACHE = "hy23"
+CACHE = "hy142"
 
 # Always from hy14. hy21 vanished on the cream sleeves. hy22 was
 # doors against the sky. hy24 was a white bib on the navy. hy25/hy26
 # lofted strands were temple slabs. This taper (temple → hip, inside
 # the body AABB) keeps navy readable and does not invent wings or a
-# card. Length at 18 m is still the open LOOK gap — do not restore
-# hy18/hy22/hy24/hy25/hy26 span.
-LOCK_X = 0.16
-LOCK_Y = 1.28
-LOCK_Z = 0.06
-LOCK_R_TOP = 0.055
-LOCK_R_BOT = 0.016
-LOCK_DEPTH = 0.70
-LOCK_FLAT = 0.44
-LOCK_IN_DEG = 16.0
+# card. hy140 locks hung to ~1.11 but fill-black still read a stick at
+# 18 m (hy142-look). Longer hang + slightly wider taper — still under
+# the hy22 door width and the 1.15 z_min past-glove gate.
+LOCK_X = 0.17
+LOCK_Y = 1.30
+LOCK_Z = 0.05
+LOCK_R_TOP = 0.062
+LOCK_R_BOT = 0.014
+LOCK_DEPTH = 0.95
+LOCK_FLAT = 0.48
+LOCK_IN_DEG = 14.0
 
 
 def _mat():
@@ -183,11 +187,24 @@ def bump_cache(path):
     print("[locks] manifest", url, "bytes", g.byte_length, "tris", g.triangle_count(), "anims", g.animation_names())
 
 
+def _purge_curtains():
+    for o in list(bpy.data.objects):
+        if o.type != "MESH":
+            continue
+        if "kit_curtain" in o.name.lower() or o.name.lower().startswith("curtain"):
+            print("[locks] purge", o.name)
+            bpy.data.objects.remove(o, do_unlink=True)
+
+
 def main():
-    if not os.path.isfile(SRC):
-        raise SystemExit("missing " + SRC)
+    argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
+    src = HY14 if (argv and argv[0] == "hy14") else OUT
+    if not os.path.isfile(src):
+        raise SystemExit("missing " + src)
+    print("[locks] src", src)
     C.reset_scene()
-    bpy.ops.import_scene.gltf(filepath=SRC)
+    bpy.ops.import_scene.gltf(filepath=src)
+    _purge_curtains()
     arms = [o for o in bpy.data.objects if o.type == "ARMATURE"]
     meshes = [o for o in bpy.data.objects if o.type == "MESH"]
     if not arms:

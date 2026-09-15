@@ -79,7 +79,10 @@ import {
   firstPitchPlateZ,
   CAMERA_FOV,
   CAMERA_LOCK,
+  deliveryLeaveStartMs,
   deliveryTimeScale,
+  plantSinkY,
+  ANKLE_PLANT_Y,
   EXHIBITION_PACE,
   moundSubjectPx,
   pitcherFreezesThrow,
@@ -529,12 +532,23 @@ describe("contact flash", () => {
     assert.equal(prepareShowsBall(410, 700), false, "reduced prepare still hides the set");
     assert.equal(prepareShowsBall(430, 700), true);
     {
-      const scale = deliveryTimeScale(0.9167, EXHIBITION_PACE.prepareMs);
-      const elapsedAtThrow = (0.708 / scale) * 1000;
-      assert.ok(
-        Math.abs(EXHIBITION_PACE.prepareMs - elapsedAtThrow - THROW_SHOW_MS) < 40,
-        "hy116: earned throw is the leave window, not a set lead",
+      assert.equal(
+        deliveryLeaveStartMs(EXHIBITION_PACE.prepareMs),
+        EXHIBITION_PACE.prepareMs - THROW_SHOW_MS,
+        "leave opens THROW_SHOW_MS before prepare ends",
       );
+      for (const throwAt of [0.708, 0.885]) {
+        const leaveStart = deliveryLeaveStartMs(EXHIBITION_PACE.prepareMs);
+        const scale = deliveryTimeScale(throwAt, leaveStart);
+        const elapsedAtThrow = (throwAt / scale) * 1000;
+        assert.ok(
+          Math.abs(elapsedAtThrow - leaveStart) < 1,
+          `hy139: throwAt ${throwAt}s must land at leave start, not after p1200`,
+        );
+      }
+      const reducedLeave = deliveryLeaveStartMs(EXHIBITION_PACE.prepareMsReduced);
+      assert.ok(reducedLeave >= 1 && reducedLeave < EXHIBITION_PACE.prepareMsReduced);
+      assert.ok(deliveryTimeScale(0.885, reducedLeave) <= 2.5);
     }
   });
 
@@ -653,6 +667,10 @@ describe("contact flash", () => {
     assert.equal(swingStrideM(0), 0);
     assert.equal(swingStrideM(1), 0, "no group slide — feet stay planted");
     assert.equal(SWING_STRIDE_M, 0, "moonwalk stride is a §1.5 fail");
+    assert.equal(ANKLE_PLANT_Y, 0.045, "Mixamo ankle target so soles kiss dirt");
+    assert.equal(plantSinkY([0.083, 0.121]), ANKLE_PLANT_Y - 0.083, "hy140: sink the floating reclip ankles");
+    assert.equal(plantSinkY([0.04, 0.05]), 0, "already planted — do not jitter");
+    assert.ok(plantSinkY([0.2, 0.22]) >= -0.14);
     assert.equal(swingStrideThighDeg(-1), 0, "coil does not step");
     assert.equal(swingStrideThighDeg(0), 0);
     assert.equal(swingStrideThighDeg(1), SWING_STRIDE_THIGH_DEG);
@@ -719,7 +737,7 @@ describe("outgoing paths", () => {
     assert.ok(Math.abs(tipEnd[0]) < 0.5, "hy136: teal never leaves the phone film");
     assert.ok(tipEnd[2] < 4.2, "hy136: tip stops short of the locked cam");
     assert.ok(single80[2] < from[2] - 4, "single has already left the dirt at r80");
-    assert.ok(Math.abs(single80[0]) < 1.7, "hy129: single gold stays inside the phone fov at r80");
+    assert.ok(Math.abs(single80[0]) < 1.55, "hy142: single gold stays inside the phone fov at r80");
     assert.ok(single.arc < 2, "hy99: through the hole is a skip, not a 6 m fly");
     assert.ok(single80[1] < 3.2, "hy99: the outbound ball stays in the phone strip");
     const fly = planOutgoing("fly-out", beatSpec("fly-out"), 3)!;
@@ -735,7 +753,7 @@ describe("outgoing paths", () => {
     assert.ok(hr80[2] < fly80[2], "gone is already past the fly at r80");
     assert.ok(outgoingSightT(0.08, single.durS) > 0.08 / single.durS, "a long hit is front-loaded");
     assert.equal(outgoingSightT(0.08, 0.12), 0.08 / 0.12, "a short mitt carry stays linear");
-    assert.equal(outgoingSightT(0.15, 0.82), 0.28);
+    assert.equal(outgoingSightT(0.15, 0.82), 0.22);
   });
 
   it("names foul, tip, and a single on the phone park inside 150 ms (hy119)", () => {
