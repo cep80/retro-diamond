@@ -136,6 +136,8 @@ import {
   outgoingBallLook,
   outgoingBallClearsBatter,
   outgoingSightShows,
+  mittCarrySightShows,
+  incomingSightShows,
   flashFollowsOutgoing,
   outgoingSightT,
   planOutgoing,
@@ -2309,11 +2311,19 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
   useEffect(() => {
     return controller.onCue((cue: PlateCue) => {
       // A new pitch or a waved-off dead ball resets any leftover flight state.
-      if (cue.t === "prepare" || cue.t === "dead" || cue.t === "idle") {
+      // hy136: do not clear on idle — foul/tip sight was still mid-path when
+      // reaction ended (tip-in r280 teal=0 while dump said visible). prepare
+      // / dead still hard-reset. Mitt hold hides via mittHoldShows(idle).
+      if (cue.t === "prepare" || cue.t === "dead") {
         outgoing.current = null;
         flash.current = null;
         flight.current.origin = null;
         if (cue.t === "prepare") clearThrowHand();
+        return;
+      }
+      if (cue.t === "idle") {
+        flash.current = null;
+        flight.current.origin = null;
         return;
       }
       if (cue.t === "flight") {
@@ -2446,27 +2456,37 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
     const s = controller.getSnapshot();
     const sight = sightRef.current;
     if (s.stage === "prepare") {
-      hideOutgoingSight(sight);
       // LOOK set: empty mitt, no ball. Last THROW_SHOW_MS is the throw-hand
       // hold (hy116): freeze at throwAt lights throwHandReady.
       if (!throwHandReady) {
+        hideOutgoingSight(sight);
         mesh.visible = false;
         if (debugFpsEnabled()) {
           (window as unknown as { __dsBall?: unknown }).__dsBall = { hold: false, visible: false };
         }
         return;
       }
+      // hy134: leave speck is an unlit sight ball — toon washed out at 18m.
+      const showSight = incomingSightShows({ stage: "prepare" });
+      const holdScale = ballScaleAtFlight(0);
       paintBallLook(mesh, outgoingBallLook(null));
       mesh.position.copy(liveReleaseOrigin);
-      mesh.scale.setScalar(ballScaleAtFlight(0));
-      mesh.visible = true;
+      mesh.scale.setScalar(holdScale);
+      paintOutgoingSight(sight, {
+        pos: liveReleaseOrigin,
+        scale: holdScale,
+        color: BALL_VISUAL.color,
+        show: showSight,
+      });
+      mesh.visible = !showSight;
       if (debugFpsEnabled()) {
         (window as unknown as { __dsBall?: unknown }).__dsBall = {
           hold: true,
           pos: liveReleaseOrigin.toArray().map((v) => Number(v.toFixed(2))),
           visible: true,
-          scale: mesh.scale.x,
+          scale: holdScale,
           type: s.pitch?.type ?? null,
+          sight: showSight,
         };
       }
       return;
@@ -2493,20 +2513,29 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
       // Slight presentation arc by pitch type; never decides anything.
       const drop = s.pitch.type === "curve" ? 0.35 : s.pitch.type === "changeup" ? 0.22 : s.pitch.type === "slider" ? 0.15 : 0.08;
       p.y += Math.sin(Math.min(u, 1) * Math.PI) * drop;
-      hideOutgoingSight(sight);
+      // hy134: tunnel cream is an unlit sight ball — mid-park toon died on night dither.
+      const showSight = incomingSightShows({ stage: "flight" });
+      const flightScale = ballScaleAtFlight(Math.min(u, 1));
       paintBallLook(mesh, outgoingBallLook(null));
       mesh.position.copy(p);
-      mesh.scale.setScalar(ballScaleAtFlight(Math.min(u, 1)));
-      mesh.visible = true;
+      mesh.scale.setScalar(flightScale);
+      paintOutgoingSight(sight, {
+        pos: p,
+        scale: flightScale,
+        color: BALL_VISUAL.color,
+        show: showSight,
+      });
+      mesh.visible = !showSight;
       flight.current.u = u;
       flight.current.pos.copy(p);
       if (debugFpsEnabled()) {
         (window as unknown as { __dsBall?: unknown }).__dsBall = {
           u: Number(u.toFixed(3)),
           pos: p.toArray().map((v) => Number(v.toFixed(2))),
-          visible: mesh.visible,
-          scale: mesh.scale.x,
+          visible: true,
+          scale: flightScale,
           type: s.pitch.type,
+          sight: showSight,
         };
       }
       return;
@@ -2549,7 +2578,10 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
       });
       mesh.position.copy(p);
       mesh.scale.setScalar(ballScaleAtOutgoing(p.z));
-      const showSight = outgoingSightShows({ leavesBat: Boolean(out.leavesBat) });
+      const travelM = out.from.distanceTo(out.to);
+      const showSight =
+        outgoingSightShows({ leavesBat: Boolean(out.leavesBat) }) ||
+        mittCarrySightShows({ leavesBat: Boolean(out.leavesBat), t, travelM });
       paintOutgoingSight(sight, {
         pos: p,
         scale: ballScaleAtOutgoing(p.z),

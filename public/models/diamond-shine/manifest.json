@@ -50,7 +50,7 @@
     },
     "aoi": {
       "url": "/models/diamond-shine/aoi.glb?v=atlas1",
-      "bytes": 2901320,
+      "bytes": 2901632,
       "triangles": 30036,
       "role": "batter",
       "clips": {
@@ -108,8 +108,8 @@
     },
     "reina": {
       "url": "/models/diamond-shine/reina.glb?v=hy44",
-      "bytes": 2668928,
-      "triangles": 31107,
+      "bytes": 2557188,
+      "triangles": 30000,
       "role": "pitcher",
       "clips": {
         "idle_set": {

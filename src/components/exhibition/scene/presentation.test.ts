@@ -56,6 +56,8 @@ import {
   outgoingBallLook,
   outgoingBallClearsBatter,
   outgoingSightShows,
+  mittCarrySightShows,
+  incomingSightShows,
   flashFollowsOutgoing,
   exhibitionResultReadout,
   flashDiscMaxScale,
@@ -203,6 +205,8 @@ describe("contact flash", () => {
     assert.equal(outgoingBallLook("foul").color, BALL_VISUAL.flashFoul);
     assert.equal(outgoingBallLook("foul-tip").color, BALL_VISUAL.flashFoulTip);
     assert.equal(outgoingBallLook("single").color, BALL_VISUAL.flashColor);
+    assert.equal(BALL_VISUAL.flashColor, "#ffd166", "hy129: contact is brand gold, not cream");
+    assert.notEqual(outgoingBallLook("single").color, BALL_VISUAL.color);
     assert.equal(outgoingBallLook("miss").color, BALL_VISUAL.color, "a miss stays cream");
     assert.equal(outgoingBallLook("take-strike").color, BALL_VISUAL.color, "a take stays cream");
     assert.equal(outgoingBallLook(null).color, BALL_VISUAL.color);
@@ -214,6 +218,15 @@ describe("contact flash", () => {
     assert.equal(flashFollowsOutgoing({ leavesBat: false }), false);
     assert.equal(outgoingSightShows({ leavesBat: true }), true, "hy127: foul / tip / contact are an unlit sight ball");
     assert.equal(outgoingSightShows({ leavesBat: false }), false, "a take stays the toon mitt pop");
+    assert.equal(mittCarrySightShows({ leavesBat: false, t: 0.5 }), true, "hy137: miss carry is an unlit sight ball");
+    assert.equal(mittCarrySightShows({ leavesBat: false, t: 1 }), false, "hy137: mitt hold stays the toon pop");
+    assert.equal(mittCarrySightShows({ leavesBat: false, t: 0.5, travelM: 0 }), false, "hy138: take already home stays toon");
+    assert.equal(mittCarrySightShows({ leavesBat: true, t: 0.5 }), false, "family path uses outgoingSightShows");
+    assert.ok(BALL_VISUAL.releaseScaleBoost >= 1.7, "hy138: desktop leave needs a bigger speck");
+    assert.equal(incomingSightShows({ stage: "flight" }), true, "hy134: tunnel cream is an unlit sight ball");
+    assert.equal(incomingSightShows({ stage: "prepare" }), true, "hy134: leave speck is an unlit sight ball");
+    assert.equal(incomingSightShows({ stage: "reaction" }), false, "mitt hold stays the toon pop");
+    assert.equal(BALL_VISUAL.flashRelease, "#ffd166", "hy134: leave spark is brand gold, not pale cream");
   });
 
   it("pulses the gold window only on the session's first pitch", () => {
@@ -559,9 +572,12 @@ describe("contact flash", () => {
     assert.equal(swingPhase({ stage: "reaction", through: false, u: 1, throughAgeMs: CONTACT_HOLD_MS }), 0);
     assert.equal(swingPhase({ stage: "field", through: false, u: 0 }), 0, "no resolve stamp is idle");
     assert.equal(swingPhase({ stage: "field", through: true, u: 0 }), 1);
-    assert.equal(swingPhase({ stage: "field", through: true, u: 0, throughAgeMs: 0 }), -1, "cut starts from the coil");
-    assert.ok(swingPhase({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS / 2 }) > -0.1);
-    assert.ok(swingPhase({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS / 2 }) < 0.1);
+    assert.equal(
+      swingPhase({ stage: "field", through: true, u: 0, throughAgeMs: 0 }),
+      1,
+      "hy130: contact snaps to through — mid-ease was a plank at r80",
+    );
+    assert.equal(swingPhase({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS / 2 }), 1);
     assert.equal(swingPhase({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS }), 1);
     assert.equal(swingOpensThrough("single", true), true);
     assert.equal(swingOpensThrough("foul", true), true);
@@ -600,9 +616,12 @@ describe("contact flash", () => {
       SWING_MISS_PHASE,
       "a miss never pulls the barrel through",
     );
-    assert.ok(swingBatWeight({ stage: "field", through: true, u: 0, throughAgeMs: 0 }) < 0.15, "cut starts on the ball, not at pull");
-    assert.ok(swingBatWeight({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS / 2 }) > 0.4);
-    assert.ok(swingBatWeight({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS / 2 }) < 0.6);
+    assert.equal(
+      swingBatWeight({ stage: "field", through: true, u: 0, throughAgeMs: 0 }),
+      1,
+      "hy130: contact bat snaps to through with the body",
+    );
+    assert.equal(swingBatWeight({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS / 2 }), 1);
     assert.equal(swingBatWeight({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS }), 1);
     assert.equal(swingBatWeight({ stage: "idle", through: false, u: 0 }), 0);
     assert.equal(swingBatWeight({ stage: "prepare", through: false, u: 0 }), 0, "bat stays on the shoulder in the coil");
@@ -684,15 +703,23 @@ describe("outgoing paths", () => {
     const foul80 = at(foul, 80);
     const tip80 = at(tip, 80);
     const single80 = at(single, 80);
-    assert.ok(foul80[0] < from[0] - 0.5, "pulled foul is already off the plate at r80");
+    assert.ok(foul80[0] < from[0], "pulled foul is already off the plate heart at r80");
     assert.ok(foul80[0] > -0.85, "hy127: pulled foul stays inside the phone fov");
+    assert.ok(Math.abs(foul.to[0]) < 0.7, "hy135: foul dest stays inside the phone film");
+    const foulEnd = at(foul, foul.durS * 1000);
+    assert.ok(Math.abs(foulEnd[0]) < 0.85, "hy135: hopper never leaves the phone film");
     assert.ok(foul80[2] > from[2], "hy126: pulled foul is on our side of her at r80");
     assert.ok(foul80[1] < 2.0, "hy126: the hopper stays in the phone strip");
     assert.ok(foul.arc < 1, "hy126: hopper is a skip, not a 1.4 m lift");
-    assert.ok(tip80[2] > from[2] + 0.7, "tip is already coming at the mask at r80");
+    assert.ok(tip80[2] > from[2] + 0.4, "tip is already coming at the mask at r80");
     assert.ok(tip.arc < 1, "hy109: tip is a pop, not a 2 m fly");
     assert.ok(tip80[1] < 2.0, "hy109: the tip stays in the phone strip");
-    assert.ok(single80[2] < from[2] - 8, "single has already left the dirt at r80");
+    assert.ok(Math.abs(tip.to[0]) < 0.35, "hy136: tip dest stays inside the phone film");
+    const tipEnd = at(tip, tip.durS * 1000);
+    assert.ok(Math.abs(tipEnd[0]) < 0.5, "hy136: teal never leaves the phone film");
+    assert.ok(tipEnd[2] < 4.2, "hy136: tip stops short of the locked cam");
+    assert.ok(single80[2] < from[2] - 4, "single has already left the dirt at r80");
+    assert.ok(Math.abs(single80[0]) < 1.7, "hy129: single gold stays inside the phone fov at r80");
     assert.ok(single.arc < 2, "hy99: through the hole is a skip, not a 6 m fly");
     assert.ok(single80[1] < 3.2, "hy99: the outbound ball stays in the phone strip");
     const fly = planOutgoing("fly-out", beatSpec("fly-out"), 3)!;
@@ -708,7 +735,7 @@ describe("outgoing paths", () => {
     assert.ok(hr80[2] < fly80[2], "gone is already past the fly at r80");
     assert.ok(outgoingSightT(0.08, single.durS) > 0.08 / single.durS, "a long hit is front-loaded");
     assert.equal(outgoingSightT(0.08, 0.12), 0.08 / 0.12, "a short mitt carry stays linear");
-    assert.equal(outgoingSightT(0.15, 0.82), 0.5);
+    assert.equal(outgoingSightT(0.15, 0.82), 0.28);
   });
 
   it("names foul, tip, and a single on the phone park inside 150 ms (hy119)", () => {
@@ -723,7 +750,7 @@ describe("outgoing paths", () => {
     const missFrom = plate2dFlight({ u: 0.25, loc: { x: 1.5, y: 1.5 } });
     const miss80 = plate2dOutgoingSight({ plan: null, mitt: true, from: missFrom, elapsedS: 0.08 })!;
     assert.ok(miss80.top < take80.top - 4, "hy119: early miss is still incoming");
-    assert.ok(foul80.left < plate.left - 2, "pulled foul is already off the plate");
+    assert.ok(foul80.left < plate.left, "hy135: pulled foul is already off the plate heart");
     assert.ok(tip80.top > plate.top, "tip pops at the mask");
     assert.ok(tip80.scale > foul80.scale, "tip is the near ball");
     assert.ok(single80.top < plate.top - 8, "single has left the dirt");
@@ -733,6 +760,8 @@ describe("outgoing paths", () => {
     assert.notEqual(foul80.left, single80.left);
     const worldFoul = outgoingPoint([0, 1.05, 0.55], foul.to, foul.arc, 0.08, foul.durS);
     assert.ok(plate2dWorldToPark(worldFoul).left < 52, "hy127: pulled foul is still the left-park ball");
+    const worldFoulEnd = outgoingPoint([0, 1.05, 0.55], foul.to, foul.arc, foul.durS, foul.durS);
+    assert.ok(plate2dWorldToPark(worldFoulEnd).left > 8, "hy135: 2D foul stays on the park photo");
   });
 });
 

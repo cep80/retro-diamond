@@ -106,9 +106,10 @@ function clampPhase(n: number): number {
 }
 
 /**
- * Body/arm cut length. Bat yaw snaps on the tap (`swingBatWeight`); the
- * torso eases load → rotate → through so the swing is not a one-frame pop.
- * Done inside the 150 ms tell. Group slide stays 0.
+ * Body/arm cut length (legacy). Contact and miss both snap into the
+ * 150 ms tell now — mid-ease was a plank through her skull (hy124 miss,
+ * hy130 contact). Kept so callers and dumps still have a beat window.
+ * Group slide stays 0. Do not change yaw numbers.
  */
 export const SWING_CUT_MS = 110;
 
@@ -142,12 +143,11 @@ export function swingPhase(opts: {
   const age = opts.throughAgeMs;
   if (opts.through) {
     const dest = opts.opened === false ? SWING_MISS_PHASE : 1;
-    // hy124: a miss that eases coil → chop puts a plank through her
-    // skull at r80. Snap to the zone hold. Contact still eases.
-    if (opts.opened === false) return dest;
-    if (age == null || !Number.isFinite(age) || age >= SWING_CUT_MS) return dest;
-    const t = Math.max(0, age / SWING_CUT_MS);
-    return clampPhase(-1 + (dest + 1) * t);
+    // hy124 / hy130: easing coil → dest put a plank through her skull
+    // at r80. Miss snaps to the zone chop; contact snaps to through.
+    // Do not change yaw / sweep / arm numbers.
+    void age;
+    return dest;
   }
   if (opts.stage === "prepare" || opts.stage === "flight") return -1;
   if (age != null && Number.isFinite(age) && age < resolveClipHoldMs({ swung: false })) return -1;
@@ -243,9 +243,9 @@ export function swingPrepWeight(u: number, stage?: string): number {
 
 /**
  * Bat yaw / sweep weight. 0 through the coil and on a take.
- * A swung resolve eases 0 → 1 over SWING_CUT_MS so the 150 ms tell is the
- * barrel crossing the ball, not a follow-through pop. Omit `throughAgeMs`
- * (or pass ≥ SWING_CUT_MS) for the held through still.
+ * A swung resolve snaps to the tell pose (miss → zone chop, contact →
+ * through) so r80 is never a mid-cut plank (hy124 / hy130). Omit
+ * `throughAgeMs` for the held still.
  */
 export function swingBatWeight(opts: {
   stage: string;
@@ -256,10 +256,8 @@ export function swingBatWeight(opts: {
 }): number {
   if (opts.through) {
     const dest = opts.opened === false ? Math.max(0, SWING_MISS_PHASE) : 1;
-    if (opts.opened === false) return dest;
-    const age = opts.throughAgeMs;
-    if (age == null || !Number.isFinite(age) || age >= SWING_CUT_MS) return dest;
-    return clampUnit((age / SWING_CUT_MS) * dest);
+    void opts.throughAgeMs;
+    return dest;
   }
   return Math.max(0, swingPhase(opts));
 }
@@ -393,13 +391,16 @@ const OUTGOING: Partial<Record<FieldBeat, OutgoingShape>> = {
   "grounder-out": { to: [6, 0.1, -22], arc: 1.2, spreadX: 10 },
   "bunt-down": { to: [1.2, 0.05, -6], arc: 0.8, spreadX: 2 },
   "bunt-out": { to: [0.8, 0.05, -5], arc: 0.8, spreadX: 2 },
-  // Pulled hopper, third-base, inside the locked phone fov. Chest y
-  // put coral on her cream (hy127-foul-fov). Hip height is open air
-  // left of the knickers, same slot language as the teal tip.
-  foul: { to: [2.4, 0.4, 2.3], arc: 0.35, spreadX: 0.6, pull: true },
-  // Short pop at the mask. arc 2 put the ball at y≈2.6 at r80 — a sky
-  // speck, not a tell (hy108). Family stays back-toward-camera (hy109).
-  "foul-tip": { to: [1.5, 1.2, 4], arc: 0.6, spreadX: 2 },
+  // Pulled hopper, third-base, inside the locked phone fov for the *whole*
+  // tell. Chest y put coral on her cream (hy127-foul-fov). Hip height is
+  // open air left of the knickers. Dest |x|=2.4 left the film by tell end
+  // (hy134-foul-resit out≈1 at x≈−2.1); phone half-fov ≈0.45 m at z=2.3.
+  foul: { to: [0.55, 0.4, 2.3], arc: 0.35, spreadX: 0.08, pull: true },
+  // Short pop back toward the mask. arc 2 put the ball at y≈2.6 at r80 — a
+  // sky speck, not a tell (hy108). Family stays back-toward-camera (hy109).
+  // Dest |x|=1.5 at z=4 left the phone film mid-tell (hy136-tip-fov r280
+  // x≈−0.5 vs ~0.33 m half-fov); keep teal inside the locked frustum.
+  "foul-tip": { to: [0.12, 1.15, 3.2], arc: 0.5, spreadX: 0.04 },
 };
 
 /** True when the bat touched the ball: the beats that flash and leave the bat. */
@@ -435,12 +436,14 @@ export function planOutgoing(beat: FieldBeat, spec: BeatSpec, eventCount: number
 /**
  * §1.4: name the beat in ~150 ms without the HUD. A single's fieldMs is
  * 820 ms, so a linear t leaves the ball on the bat at r80. Front-load long
- * flights so the first sight window covers half the family path. Short
- * reaction flights (foul / tip / mitt carry) stay linear — they already
- * finish inside the beat.
+ * flights so the first sight window covers part of the family path. Cover
+ * 0.5 put a single at x≈−3 / z≈−10 by r80 — off the phone film while tip
+ * and foul still named (hy129). 0.28 keeps gold inside the locked fov and
+ * still past the dirt. Short reaction flights (foul / tip / mitt carry)
+ * stay linear — they already finish inside the beat.
  */
 export const OUTGOING_SIGHT_MS = 150;
-export const OUTGOING_SIGHT_COVER = 0.5;
+export const OUTGOING_SIGHT_COVER = 0.28;
 
 export function outgoingSightT(elapsedS: number, durS: number): number {
   if (!(durS > 0)) return elapsedS > 0 ? 1 : 0;
@@ -448,6 +451,10 @@ export function outgoingSightT(elapsedS: number, durS: number): number {
   if (elapsedS >= durS) return 1;
   const sightS = OUTGOING_SIGHT_MS / 1000;
   if (durS <= sightS) return elapsedS / durS;
+  // Foul / tip ride the reaction window (~0.3 s). Front-loading those
+  // parked coral/teal off the tell (hy129). Only field-length hits
+  // (single+) use the cover ramp.
+  if (durS <= 0.4) return elapsedS / durS;
   const cover = OUTGOING_SIGHT_COVER;
   if (elapsedS <= sightS) return (elapsedS / sightS) * cover;
   return cover + (1 - cover) * ((elapsedS - sightS) / (durS - sightS));
@@ -476,13 +483,15 @@ export function outgoingPoint(
 export const BALL_VISUAL = {
   radius: 0.037,
   scale: 1.9,
-  /** Extra scale at release (u=0); plate (u=1) stays at `scale`. */
-  releaseScaleBoost: 1.4,
+  /** Extra scale at release (u=0); plate (u=1) stays at `scale`.
+   * 1.4 left the desktop leave as ~39 hot pixels (hy138-desk-reina). */
+  releaseScaleBoost: 1.75,
   color: "#f5f8ff",
   emissive: "#c9d8ff",
   emissiveIntensity: 0.7,
   flashMs: 160,
-  flashColor: "#fff6d8",
+  /** Brand gold — pale #fff6d8 died as cream on the night dither (hy129). */
+  flashColor: "#ffd166",
   flashMaxScale: 3.6,
   /** Coral pop for a pulled foul — distinct from a barreled gold flash. */
   flashFoul: "#ff718f",
@@ -493,8 +502,8 @@ export const BALL_VISUAL = {
   /** Cool whoosh for a swing-and-miss — no outgoing ball. */
   flashWhiff: "#c5d4ff",
   flashWhiffScale: 3.2,
-  /** Warm spark at the 18m release so the ball leaving her hand reads. */
-  flashRelease: "#ffe6b0",
+  /** Brand-gold spark at the 18m leave — pale #ffe6b0 died on night dither (hy134). */
+  flashRelease: "#ffd166",
   flashReleaseScale: 5.5,
 } as const;
 
@@ -1154,10 +1163,38 @@ export function flashFollowsOutgoing(opts: { leavesBat: boolean }): boolean {
 /**
  * hy127: family outgoing is an unlit sight ball in front of her. The
  * toon cream died on her jersey (hy126 foul still). Take / miss keep
- * the toon mitt pop. Does not change paths or tap math.
+ * the toon mitt pop *on arrival*. Does not change paths or tap math.
  */
 export function outgoingSightShows(opts: { leavesBat: boolean }): boolean {
   return opts.leavesBat;
+}
+
+/**
+ * hy137: early miss / take *carry* to the mitt is an unlit sight ball.
+ * Mid-tunnel toon washed out the same way as live flight (hy134;
+ * hy137-miss-r80 cream was a grey speck). Hold at the mask stays the
+ * depth-tested toon pop (hy127). A take already home skips sight — no
+ * mid-tunnel wash to fix (hy138). Does not change paths or tap math.
+ */
+export function mittCarrySightShows(opts: {
+  leavesBat: boolean;
+  t: number;
+  /** World meters from carry start to mitt. ~0 when already home. */
+  travelM?: number;
+}): boolean {
+  if (opts.leavesBat) return false;
+  if ((opts.travelM ?? 1) < 0.2) return false;
+  return opts.t < 1;
+}
+
+/**
+ * hy134: leave + tunnel cream is an unlit sight ball. Night lantern
+ * dither washed the toon mid-park to ~210 grey (hy134-tunnel-t1650).
+ * Mitt hold after a take/miss stays the depth-tested toon pop.
+ * Does not change paths or tap math.
+ */
+export function incomingSightShows(opts: { stage: string }): boolean {
+  return opts.stage === "flight" || opts.stage === "prepare";
 }
 
 /**

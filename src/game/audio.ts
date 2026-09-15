@@ -475,7 +475,7 @@ export const CONTACT_SFX: Record<ContactTier, { noise: ContactNoise; tones: read
   },
 };
 
-/** Layers the ear hears on release. Take is glove+ump, not a silent miss. */
+/** Layers the ear hears on release. Take is leather+call, not a silent miss. */
 export const RELEASE_SFX_LAYERS: Record<ReleaseBeat, readonly string[]> = {
   k: ["umpire", "tone:196", "crowd-burst"],
   out: ["glove", "tone:262"],
@@ -487,12 +487,31 @@ export const RELEASE_SFX_LAYERS: Record<ReleaseBeat, readonly string[]> = {
   "foul-tip": ["contact:foul-tip"],
   miss: ["contact:miss", "glove"],
   ball: ["glove"],
-  "take-strike": ["glove", "umpire"],
+  // hy131: looking strike owns its recipe — quiet glove+ump died under the bed.
+  "take-strike": ["take-leather", "ump-call"],
   "steal-safe": ["slide", "crowd-burst"],
   "steal-out": ["slide", "umpire"],
   "sac-fly": ["glove", "crowd-burst"],
   score: ["crowd-burst", "tone:392", "tone:523"],
 };
+
+/**
+ * Looking strike. Louder leather + a short ump bark so take ear-names vs
+ * miss whoosh under the lantern bed (hy131 peaks were 1–2 on take).
+ * Does not touch contact / miss recipes.
+ */
+export const TAKE_STRIKE_SFX = {
+  leather: { dur: 0.07, vol: 0.22, freq: 1000 },
+  pop: { freq: 520, dur: 0.06, type: "square" as OscillatorType, vol: 0.1 },
+  call: { freq: 310, dur: 0.11, type: "square" as OscillatorType, vol: 0.09 },
+};
+
+export function sfxTakeStrike() {
+  if (!enabled.sfx) return;
+  noise(TAKE_STRIKE_SFX.leather.dur, TAKE_STRIKE_SFX.leather.vol, TAKE_STRIKE_SFX.leather.freq);
+  tone(TAKE_STRIKE_SFX.pop.freq, TAKE_STRIKE_SFX.pop.dur, TAKE_STRIKE_SFX.pop.type, TAKE_STRIKE_SFX.pop.vol);
+  tone(TAKE_STRIKE_SFX.call.freq, TAKE_STRIKE_SFX.call.dur, TAKE_STRIKE_SFX.call.type, TAKE_STRIKE_SFX.call.vol);
+}
 
 export function sfxContact(tier: ContactTier) {
   if (!enabled.sfx) return;
@@ -737,8 +756,7 @@ export function sfxRelease(beat: ReleaseBeat) {
       sfxGlove();
       return;
     case "take-strike":
-      sfxGlove();
-      sfxUmpire();
+      sfxTakeStrike();
       return;
     case "foul":
       sfxContact("foul");
