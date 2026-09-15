@@ -97,8 +97,9 @@ describe("presentation mapping covers every field beat", () => {
     const hr = planOutgoing("hr", spec("hr"), 0)!;
     const single = planOutgoing("single", spec("single"), 0)!;
     assert.ok(g.arc < 2, "grounder arc is low");
-    assert.ok(f.arc > 10, "fly ball arc is high");
-    assert.ok(hr.to[2] < -90, "homer carries past the fence");
+    assert.ok(f.arc > single.arc, "a fly climbs more than a skip");
+    assert.ok(f.arc < 3, "hy114: a fly stays in the phone strip");
+    assert.ok(hr.to[2] < f.to[2], "homer carries past a fly");
     assert.ok(single.to[2] < 0 && single.to[2] > -60, "single lands in the field");
   });
 
@@ -267,7 +268,7 @@ describe("every producible outcome, end to end through the controller", () => {
   });
 
   it("first-pitch foul at exhibition pace (live capture)", () => {
-    // windowScale 1.6 turns u=0.94 into a tip. Earlier tap stays a pull foul.
+    // windowScale 1.3: u=0.94 tips. u=0.88 stays a pull foul.
     const f = assertBeatContract(
       findFirstPitchBeat(
         "foul",
@@ -291,6 +292,42 @@ describe("every producible outcome, end to end through the controller", () => {
     );
     assert.equal(f.beats[0], "foul-tip");
     assert.equal(f.seed, "foul-tip-first-0");
+  });
+
+  it("first-pitch fly-out at exhibition pace (live capture)", () => {
+    const f = assertBeatContract(
+      findFirstPitchBeat("fly-out", PERFECT_CONTACT, { seeds: 800, pace: EXHIBITION_PACE }),
+      "fly-out",
+    );
+    assert.equal(f.beats[0], "fly-out");
+    assert.equal(f.seed, "fly-out-first-2");
+  });
+
+  it("first-pitch single at exhibition pace (live capture)", () => {
+    const f = assertBeatContract(
+      findFirstPitchBeat("single", PERFECT_CONTACT, { seeds: 800, pace: EXHIBITION_PACE }),
+      "single",
+    );
+    assert.equal(f.beats[0], "single");
+    assert.equal(f.seed, "single-first-0");
+  });
+
+  it("first-pitch miss at exhibition pace (live capture)", () => {
+    const f = assertBeatContract(
+      findFirstPitchBeat("miss", WHIFF, { seeds: 800, pace: EXHIBITION_PACE }),
+      "miss",
+    );
+    assert.equal(f.beats[0], "miss");
+    assert.equal(f.seed, "miss-first-0");
+  });
+
+  it("first-pitch take-strike at exhibition pace (live capture)", () => {
+    const f = assertBeatContract(
+      findFirstPitchBeat("take-strike", TAKE, { seeds: 800, pace: EXHIBITION_PACE }),
+      "take-strike",
+    );
+    assert.equal(f.beats[0], "take-strike");
+    assert.equal(f.seed, "take-strike-first-0");
   });
 
   it("foul-tip: perfect timing off the wrong sit tips it back", () => {

@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { BIBLE, endingMood, mikiResultsPgCount, portraitFile, portraitSrc, sheet, workMood } from "./bible.ts";
+import { BIBLE, endingMood, mikiResultsPgCount, portraitFile, portraitSrc, practiceSrc, sheet, workMood } from "./bible.ts";
 
 const CHAR = join(dirname(fileURLToPath(import.meta.url)), "../../public/characters");
 
@@ -72,6 +72,8 @@ describe("1.0 bible", () => {
       for (const mood of ["", "-focused", "-elated", "-crushed"]) {
         assert.ok(existsSync(join(CHAR, `${stem}${mood}.png`)), `${stem}${mood}`);
       }
+      assert.equal(practiceSrc(c.id), `/characters/${stem}-practice.png`);
+      assert.ok(existsSync(join(CHAR, `${stem}-practice.png`)), `${stem}-practice`);
     }
     assert.equal(endingMood("S"), "elated");
     assert.equal(endingMood("C"), "crushed");

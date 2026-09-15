@@ -7,15 +7,23 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { HERO_LOOK } from "./kit-look.ts";
 import { beatSpec } from "../../../shine/beats.ts";
 import type { FieldBeat } from "../../../shine/featured-game.ts";
 import {
   ballLeavesBat,
   ballScaleAtFlight,
+  ballScaleAtOutgoing,
   BALL_VISUAL,
   FLASH_SIGHT,
   FIRST_PITCH_PLATE,
   aimGridBox,
+  aimGridPinsToPlate,
+  plate2dPinsToPark,
+  plate2dFlight,
+  plate2dOutgoingSight,
+  plate2dShowsBall,
+  plate2dWorldToPark,
   aimGridPhoneStrip,
   SIT_HIT_MIN_PX,
   sitHitSlopPx,
@@ -23,6 +31,7 @@ import {
   firstPitchSitLit,
   firstPitchSitGlass,
   sitClearsForBall,
+  worldSitShows,
   firstPitchPlateFrameBars,
   firstPitchPlateOpacity,
   firstPitchPlateSight,
@@ -36,13 +45,24 @@ import {
   cameraPunchOffset,
   cameraPunchOn,
   carryToMittS,
+  MITT_RECEIVE,
+  mittAlreadyHome,
+  mittHoldShows,
+  mittTellDurS,
+  OUTGOING_SIGHT_MS,
   heldClipSnaps,
   CATCHER_VIS,
   contactFlash,
+  outgoingBallLook,
+  outgoingBallClearsBatter,
+  outgoingSightShows,
+  flashFollowsOutgoing,
   exhibitionResultReadout,
   flashDiscMaxScale,
   lastFoulHeldTwo,
   latchPitchType,
+  outgoingPoint,
+  outgoingSightT,
   planOutgoing,
   RELEASE_HAND_FORWARD_M,
   RELEASE_HAND_LIFT_M,
@@ -50,8 +70,15 @@ import {
   RELEASE_THROW_LEAD_S,
   pickThrowPoseTime,
   BATTER_ROTATION_Y,
+  BATTER_BOX_X,
+  BATTER_BOX_PHONE_X,
+  batterStandX,
+  firstPitchPlateScale,
+  firstPitchPlateZ,
   CAMERA_FOV,
   CAMERA_LOCK,
+  deliveryTimeScale,
+  EXHIBITION_PACE,
   moundSubjectPx,
   pitcherFreezesThrow,
   pitcherHoldsThrow,
@@ -67,6 +94,9 @@ import {
   SET_GLOVE_LIFT_DEG,
   setMittNearFace,
   SOCKET_OFFSETS,
+  phoneParkHidesScoreboard,
+  phoneParkIsTheRead,
+  phoneParkShowsCaption,
   resultBannerVisible,
   SWING_PREP_MAX,
   swingCameraContactS,
@@ -74,13 +104,17 @@ import {
   swingArmRDeg,
   swingArmTravel,
   swingBatRotDeg,
+  swingBatRollDeg,
   swingBatSweepDeg,
   swingBatWeight,
   swingBatYawDeg,
+  swingThroughExtra,
+  swingZoneWeight,
   SWING_ARM_L_X_DEG,
   SWING_ARM_L_Y_DEG,
   SWING_ARM_R_X_DEG,
   SWING_ARM_R_Y_DEG,
+  SWING_BAT_ROLL_DEG,
   SWING_BAT_SWEEP_DEG,
   SWING_BAT_YAW_DEG,
   SWING_BODY_YAW_DEG,
@@ -91,15 +125,28 @@ import {
   SWING_STRIDE_M,
   SWING_STRIDE_THIGH_DEG,
   swingBodyYawDeg,
+  swingOpensThrough,
   swingPhase,
+  SWING_MISS_PHASE,
   swingStrideM,
   swingStrideThighDeg,
   swingPrepTime,
   swingPrepWeight,
+  showSwingCta,
+  ghostClearsOnCue,
+  sitCellChosen,
+  sitSeatRests,
+  sitGhostLead,
+  sitSeatsPulse,
   timingBarIsSwing,
+  timingBarWearsGold,
+  timingBarNow,
   TIMING_WINDOW_MIN_PX,
+  TIMING_WINDOW_FILL,
   timingMarkerPct,
+  timingWindowFillCss,
   timingWindowRenderedPx,
+  timingWindowShowsFill,
   timingWindowWidthPct,
 } from "./presentation.ts";
 
@@ -152,11 +199,45 @@ describe("contact flash", () => {
     assert.ok(beatSightFlash({ beat: "single", swung: true }));
   });
 
+  it("paints the outgoing ball the family color so foul / tip / contact disagree (hy125)", () => {
+    assert.equal(outgoingBallLook("foul").color, BALL_VISUAL.flashFoul);
+    assert.equal(outgoingBallLook("foul-tip").color, BALL_VISUAL.flashFoulTip);
+    assert.equal(outgoingBallLook("single").color, BALL_VISUAL.flashColor);
+    assert.equal(outgoingBallLook("miss").color, BALL_VISUAL.color, "a miss stays cream");
+    assert.equal(outgoingBallLook("take-strike").color, BALL_VISUAL.color, "a take stays cream");
+    assert.equal(outgoingBallLook(null).color, BALL_VISUAL.color);
+    assert.notEqual(outgoingBallLook("foul").color, outgoingBallLook("foul-tip").color);
+    assert.notEqual(outgoingBallLook("foul").color, outgoingBallLook("single").color);
+    assert.equal(outgoingBallClearsBatter({ leavesBat: true }), true, "hy126: foul / tip / contact sit in front of her");
+    assert.equal(outgoingBallClearsBatter({ leavesBat: false }), false, "a take stays on the mask");
+    assert.equal(flashFollowsOutgoing({ leavesBat: true }), true, "the family spark rides the path");
+    assert.equal(flashFollowsOutgoing({ leavesBat: false }), false);
+    assert.equal(outgoingSightShows({ leavesBat: true }), true, "hy127: foul / tip / contact are an unlit sight ball");
+    assert.equal(outgoingSightShows({ leavesBat: false }), false, "a take stays the toon mitt pop");
+  });
+
   it("pulses the gold window only on the session's first pitch", () => {
     assert.equal(firstPitchSight({ pitchesSeen: 0, stage: "flight" }), true);
     assert.equal(firstPitchSight({ pitchesSeen: 0, stage: "prepare" }), true);
-    assert.equal(firstPitchSight({ pitchesSeen: 0, stage: "idle" }), false);
-    assert.equal(firstPitchSight({ pitchesSeen: 1, stage: "flight" }), false);
+    assert.equal(firstPitchSight({ pitchesSeen: 0, stage: "idle" }), true, "desktop idle uses the bar so Reina reads");
+    assert.equal(
+      firstPitchSight({ pitchesSeen: 1, stage: "idle" }),
+      true,
+      "after a take the desktop bar is the gold window",
+    );
+    assert.equal(
+      firstPitchSight({ pitchesSeen: 0, stage: "idle", phoneStrip: true }),
+      true,
+      "phone idle: the bar is the gold window",
+    );
+    assert.equal(
+      firstPitchSight({ pitchesSeen: 1, stage: "idle", phoneStrip: true }),
+      true,
+      "a take keeps the phone bar pulse",
+    );
+    assert.equal(firstPitchSight({ pitchesSeen: 1, stage: "flight" }), true);
+    assert.equal(firstPitchSight({ pitchesSeen: 1, stage: "flight", swung: true }), false);
+    assert.equal(firstPitchSight({ pitchesSeen: 0, stage: "flight", paIndex: 3 }), false);
   });
 
   it("puts a gold plate in the world only on the first pitch", () => {
@@ -164,19 +245,58 @@ describe("contact flash", () => {
     assert.ok(firstPitchPlateOpacity(0, true) < firstPitchPlateOpacity(0.225, false));
     assert.ok(firstPitchPlateOpacity(0, false) >= FIRST_PITCH_PLATE.opacityMin);
     assert.ok(FIRST_PITCH_PLATE.scale > 1.5, "true zone is a postage stamp at fov 35");
+    assert.ok(FIRST_PITCH_PLATE.scale <= 1.8, "2.2 sat the top bar on Reina's hair at leave");
+    assert.ok(FIRST_PITCH_PLATE.phoneScale > 1.5, "phone gold is still a window");
+    assert.ok(FIRST_PITCH_PLATE.phoneScale <= 1.55, "hy97: sit-path gold must leave Aoi's legs");
+    assert.ok(FIRST_PITCH_PLATE.phoneScale < FIRST_PITCH_PLATE.scale, "phone gold must not wallpaper Aoi");
+    assert.equal(firstPitchPlateScale(false), FIRST_PITCH_PLATE.scale);
+    assert.equal(firstPitchPlateScale(true), FIRST_PITCH_PLATE.phoneScale);
     assert.ok(FIRST_PITCH_PLATE.z > 1.1, "must sit in front of the catcher");
+    assert.ok(FIRST_PITCH_PLATE.phoneZ < 0.45, "phone gold sits on the plate, not over the leave");
+    assert.ok(FIRST_PITCH_PLATE.phoneZ > 0.1, "phone gold stays a world window, not a HUD stamp");
+    assert.ok(FIRST_PITCH_PLATE.phoneZ <= 0.18, "hy97: not a near-cam card over Aoi");
+    assert.ok(firstPitchPlateZ(true) < firstPitchPlateZ(false));
+    assert.equal(firstPitchPlateZ(false), FIRST_PITCH_PLATE.z);
+    assert.equal(firstPitchPlateZ(true), FIRST_PITCH_PLATE.phoneZ);
     assert.ok(FIRST_PITCH_PLATE.frame > 0 && FIRST_PITCH_PLATE.frame < 0.12, "a window frame, not a filled wash");
+    assert.ok(FIRST_PITCH_PLATE.frame <= 0.04, "hy97: a lip, not a card");
     const bars = firstPitchPlateFrameBars(2, 1.4);
     assert.equal(bars.length, 4);
     assert.ok(bars.every((b) => b.w * b.h < 2 * 1.4 * 0.2), "bars must not fill the window");
   });
 
-  it("shows the world gold plate while the onboarding card is still up", () => {
-    assert.equal(firstPitchPlateSight({ pitchesSeen: 0, stage: "idle" }), true);
-    assert.equal(firstPitchPlateSight({ pitchesSeen: 0, stage: "prepare" }), true);
+  it("shows the world gold plate only on the live flight", () => {
+    assert.equal(firstPitchPlateSight({ pitchesSeen: 0, stage: "idle" }), false, "step-in idle must show Reina, not a gold card");
+    assert.equal(firstPitchPlateSight({ pitchesSeen: 0, stage: "prepare" }), false, "desktop leave cannot sit behind a gold card");
     assert.equal(firstPitchPlateSight({ pitchesSeen: 0, stage: "flight" }), true);
+    assert.equal(firstPitchPlateSight({ pitchesSeen: 0, stage: "flight", aimed: false }), false, "hy96: no seat, no plate");
+    assert.equal(firstPitchPlateSight({ pitchesSeen: 0, stage: "flight", aimed: true }), true);
     assert.equal(firstPitchPlateSight({ pitchesSeen: 0, stage: "situation" }), false);
-    assert.equal(firstPitchPlateSight({ pitchesSeen: 1, stage: "idle" }), false);
+    assert.equal(firstPitchPlateSight({ pitchesSeen: 1, stage: "idle" }), false, "after a take the park must read");
+    assert.equal(firstPitchPlateSight({ pitchesSeen: 1, stage: "prepare" }), false, "wind-up leave stays clear; the bar is the window");
+    assert.equal(firstPitchPlateSight({ pitchesSeen: 1, stage: "flight" }), true, "the live pitch still has a referent");
+    assert.equal(firstPitchPlateSight({ pitchesSeen: 1, stage: "idle", swung: true }), false);
+    assert.equal(firstPitchPlateSight({ pitchesSeen: 0, stage: "idle", paIndex: 3 }), false);
+    assert.equal(
+      firstPitchPlateSight({ pitchesSeen: 0, stage: "idle", phoneStrip: true }),
+      false,
+      "phone idle must show the park, not a gold card",
+    );
+    assert.equal(
+      firstPitchPlateSight({ pitchesSeen: 0, stage: "prepare", phoneStrip: true }),
+      false,
+      "phone leave cannot sit behind a gold card",
+    );
+    assert.equal(
+      firstPitchPlateSight({ pitchesSeen: 0, stage: "flight", phoneStrip: true }),
+      false,
+      "hy104: phone bar is the window, not a world card",
+    );
+    assert.equal(
+      firstPitchPlateSight({ pitchesSeen: 0, stage: "flight", phoneStrip: true, aimed: true }),
+      false,
+      "hy104: sit-path phone still keeps the park",
+    );
   });
 
   it("keeps the aim grid inside a short portrait canvas so Aoi still reads", () => {
@@ -186,6 +306,30 @@ describe("contact flash", () => {
     assert.ok(phone.width >= 90, "cells must stay thumbable");
     const cy = 80 + 153 / 2;
     assert.ok(phone.top > cy - phone.height / 2, "sit biases toward the plate, not her shoulders");
+    const idle = aimGridBox({ left: 140, top: 80, width: 110, height: 153, canvasW: 390, canvasH: 320, stage: "idle" });
+    const flight = aimGridBox({ left: 140, top: 80, width: 110, height: 153, canvasW: 390, canvasH: 320, stage: "flight" });
+    assert.ok(idle.top > flight.top, "hy102: idle sit drops to the plate lip");
+    assert.ok(Math.abs(idle.top - (320 - idle.height - 8)) < 1, "phone idle pins to the park floor");
+    assert.equal(aimGridPinsToPlate({ phoneStrip: true, landscape: false, stage: "idle" }), true);
+    assert.equal(aimGridPinsToPlate({ phoneStrip: true, landscape: false, stage: "prepare" }), true, "hy115: windup keeps the lip on the plate");
+    assert.equal(aimGridPinsToPlate({ phoneStrip: true, landscape: false, stage: "flight" }), false);
+    assert.equal(aimGridPinsToPlate({ phoneStrip: false, landscape: false, stage: "idle" }), false);
+    assert.equal(aimGridPinsToPlate({ phoneStrip: false, landscape: false, stage: "prepare" }), false);
+    assert.equal(plate2dPinsToPark({ phoneStrip: true }), true, "hy112: phone 2D sit is the park plate");
+    assert.equal(plate2dPinsToPark({ phoneStrip: false }), false);
+    const leave = plate2dFlight({ u: 0, loc: { x: 1.5, y: 1.5 } });
+    const plate = plate2dFlight({ u: 1, loc: { x: 1.5, y: 1.5 } });
+    assert.ok(leave.top >= 46 && leave.top <= 52, "hy118: release sits on the cropped rubber");
+    assert.ok(plate.top > 80, "the pitch finishes on the plate lip");
+    assert.ok(plate.scale > leave.scale);
+    assert.equal(plate2dShowsBall({ stage: "idle" }), false);
+    assert.equal(plate2dShowsBall({ stage: "prepare", elapsedMs: 0, prepMs: 1250 }), false, "set has no baseball");
+    assert.equal(
+      plate2dShowsBall({ stage: "prepare", elapsedMs: 1000, prepMs: 1250 }),
+      true,
+      "hy118: last 280 ms is the rubber leave",
+    );
+    assert.equal(plate2dShowsBall({ stage: "flight" }), true);
     const desk = aimGridBox({ left: 540, top: 280, width: 110, height: 153, canvasW: 1280, canvasH: 720 });
     assert.ok(desk.width >= 170, "desktop keeps the 48px touch enlargement");
     assert.ok(Math.abs(desk.top - (280 + 153 / 2 - desk.height / 2)) < 1, "desktop stays on the zone");
@@ -193,7 +337,7 @@ describe("contact flash", () => {
     assert.equal(aimGridPhoneStrip(844, 390), true, "landscape phone is a short frame");
     assert.equal(aimGridPhoneStrip(1280, 720), false);
     const land = aimGridBox({ left: 360, top: 90, width: 90, height: 125, canvasW: 844, canvasH: 390 });
-    assert.ok(land.height <= 152, `landscape phone grid ${land.height} wallpapered Aoi`);
+    assert.ok(land.height <= 126, `landscape phone grid ${land.height} wallpapered Aoi`);
     assert.ok(land.top + land.height <= 390 - 12, "all nine seats stay on a short landscape");
     const clipped = aimGridBox({
       left: 320,
@@ -218,17 +362,45 @@ describe("contact flash", () => {
     assert.equal(firstPitchAimSight({ pitchesSeen: 1, stage: "idle" }), false);
     assert.equal(firstPitchAimSight({ pitchesSeen: 0, stage: "idle", aimed: false }), false);
     assert.equal(firstPitchAimSight({ pitchesSeen: 0, stage: "idle", aimed: true }), true);
-    assert.equal(firstPitchPlateSight({ pitchesSeen: 0, stage: "idle" }), true, "gold window stays up before they pick a cell");
+    assert.equal(firstPitchPlateSight({ pitchesSeen: 0, stage: "idle" }), false, "the bar is the gold window before they pick");
     assert.equal(firstPitchSitLit({ pitchesSeen: 0, aimed: false }), false);
     assert.equal(firstPitchSitLit({ pitchesSeen: 0, aimed: true }), true);
     assert.equal(firstPitchSitLit({ pitchesSeen: 1, aimed: false }), true);
     assert.equal(firstPitchSitGlass({ pitchesSeen: 0, aimed: false }), true, "empty seats pulse until they pick");
-    assert.equal(firstPitchSitGlass({ pitchesSeen: 0, aimed: true }), false);
+    assert.equal(firstPitchSitGlass({ pitchesSeen: 0, aimed: true }), true, "hy107: pick stays glass, not a heat keypad");
     assert.equal(firstPitchSitGlass({ pitchesSeen: 1, aimed: false }), false);
+    assert.equal(sitSeatRests({ aimed: true, on: false }), true, "hy107: empty seats rest after they pick");
+    assert.equal(sitSeatRests({ aimed: true, on: true }), false, "the chosen lip stays");
+    assert.equal(sitSeatRests({ aimed: false, on: false }), false, "unsit keeps all nine");
+    assert.equal(sitSeatRests({ aimed: false, on: false, ghost: true, ghostHere: true }), false, "hy108: ghost lip is the re-aim");
+    assert.equal(sitSeatRests({ aimed: false, on: false, ghost: true, ghostHere: false }), true, "empty seats rest after a foul");
     assert.equal(sitClearsForBall("prepare"), true);
     assert.equal(sitClearsForBall("flight"), true);
-    assert.equal(sitClearsForBall("idle"), false, "lit sit stays a verb between pitches");
+    assert.equal(sitClearsForBall("idle"), false, "before pitch 1 the sit stays ink so the pick reads");
+    assert.equal(sitClearsForBall("idle", 1), true, "after a take the park must read");
     assert.equal(sitClearsForBall("field"), false);
+    assert.equal(worldSitShows("idle"), true);
+    assert.equal(worldSitShows("prepare"), true, "wind-up still has a sit until they pick");
+    assert.equal(worldSitShows("prepare", false), true);
+    assert.equal(worldSitShows("prepare", true), false, "hy117: leave owns the set after they sit");
+    assert.equal(worldSitShows("dead"), true);
+    assert.equal(worldSitShows("flight"), false, "hy103: live ball is not under a 3×3");
+    assert.equal(worldSitShows("field"), false);
+    assert.equal(worldSitShows("reaction"), false);
+    assert.equal(sitGhostLead({ ghost: true, aimed: false }), true, "hy77: ghost sit after a foul");
+    assert.equal(sitGhostLead({ ghost: true, aimed: true }), false);
+    assert.equal(sitGhostLead({ ghost: false, aimed: false }), false);
+    assert.equal(ghostClearsOnCue("prepare"), false, "hy81: wind-up still has a seat");
+    assert.equal(ghostClearsOnCue("flight"), true, "the live ball must not sit under gold");
+    assert.equal(ghostClearsOnCue("resolved"), false);
+    assert.equal(sitSeatsPulse({ aimed: false, stage: "idle" }), true, "hy94: empty seats name the tap");
+    assert.equal(sitSeatsPulse({ aimed: false, stage: "prepare" }), true, "wind-up still lets them sit");
+    assert.equal(sitSeatsPulse({ aimed: false, stage: "flight" }), false, "hy95: live ball is not under a pulse");
+    assert.equal(sitSeatsPulse({ aimed: true, stage: "idle" }), false);
+    assert.equal(sitSeatsPulse({ aimed: false, stage: "idle", ghost: true }), false, "hy98: ghost is the re-aim");
+    assert.equal(sitSeatsPulse({ aimed: false, stage: "prepare", ghost: true }), false);
+    assert.equal(sitCellChosen({ aimed: false }), false, "hy101: default center is not a sit");
+    assert.equal(sitCellChosen({ aimed: true }), true);
   });
 
   it("does not freeze an authored take or contact clip on the mesh", () => {
@@ -258,7 +430,7 @@ describe("contact flash", () => {
     assert.deepEqual(releaseFromThrowingHand(null), RELEASE_POINT);
     assert.deepEqual(releaseFromThrowingHand([Number.NaN, 1, -18]), RELEASE_POINT);
     const mitt = SOCKET_OFFSETS.pitcher_glove.scale ?? 0;
-    assert.ok(mitt >= 1.8 && mitt <= 3.2, "mitt reads at 18 m without becoming a chest bib");
+    assert.ok(mitt >= 1.8 && mitt < 2.1, "mitt reads at 18 m; 2.4 ate the curtain peek");
     assert.equal(SOCKET_OFFSETS.glove.scale, undefined, "catcher mitt stays identity");
     assert.equal(mittFacesCatcher([0.24, 0.89, 0.66]), false, "edge-on at 18 m is a speck");
     assert.equal(mittFacesCatcher([0.86, 0.81, 0.84]), false, "tumbled cube after the set lift");
@@ -294,17 +466,36 @@ describe("contact flash", () => {
         0.9167,
       ) === 0.708,
     );
-    assert.equal(THROW_SHOW_MS, 150);
+    assert.equal(THROW_SHOW_MS, 280, "leave needs a contact-length sight window at 18 m");
+    assert.ok(THROW_SHOW_MS < EXHIBITION_PACE.prepareMsReduced, "ball still appears inside reduced prepare");
     assert.equal(pitcherHoldsThrow("prepare"), true);
     assert.equal(pitcherHoldsThrow("flight"), true, "keep the earned throw while the ball is in the tunnel");
     assert.equal(pitcherHoldsThrow("reaction"), false);
     assert.equal(pitcherHoldsThrow("idle"), false);
     assert.equal(pitcherHoldsThrow("field"), false);
     assert.equal(pitcherFreezesThrow({ stage: "prepare", clipTime: 0.5, throwAt: 0.708 }), false, "wind-up plays");
-    assert.equal(pitcherFreezesThrow({ stage: "prepare", clipTime: 0.708, throwAt: 0.708 }), false, "delivery plays through");
-    assert.equal(pitcherFreezesThrow({ stage: "flight", clipTime: 0.92, throwAt: 0.708 }), false, "follow-through plays");
+    assert.equal(
+      pitcherFreezesThrow({ stage: "prepare", clipTime: 0.708, throwAt: 0.708 }),
+      true,
+      "hy116: earned throw holds the leave",
+    );
+    assert.equal(
+      pitcherFreezesThrow({ stage: "flight", clipTime: 0.92, throwAt: 0.708 }),
+      true,
+      "keep the earned throw while the ball is in the tunnel",
+    );
     assert.equal(pitcherFreezesThrow({ stage: "reaction", clipTime: 0.708, throwAt: 0.708 }), false);
+    assert.equal(pitcherFreezesThrow({ stage: "prepare", clipTime: 0.708, throwAt: null }), false);
     assert.equal(BATTER_ROTATION_Y, Math.PI / 2, "side-on in the RH box, facing the plate (user call 2026-09-14)");
+    assert.equal(batterStandX(false), BATTER_BOX_X, "desktop stays in the third-base box");
+    assert.equal(batterStandX(true), BATTER_BOX_PHONE_X, "phone strip steps her toward the hole");
+    assert.ok(BATTER_BOX_PHONE_X > BATTER_BOX_X && BATTER_BOX_PHONE_X < 0, "still RH box, not the hole");
+    {
+      const depth = Math.abs(0.55 - CAMERA_LOCK.position[2]);
+      const ang = Math.atan(Math.abs(BATTER_BOX_PHONE_X) / depth);
+      const half = Math.atan(Math.tan((CAMERA_FOV * Math.PI) / 360) * (390 / 560));
+      assert.ok(ang < half - 0.02, "side-on Aoi stays inside the tighter phone cone");
+    }
     assert.ok(CAMERA_LOCK.position[1] < 2, "catcher height, not a stands seat");
     assert.ok(CAMERA_LOCK.position[2] > 3.2 && CAMERA_LOCK.position[2] < 5.5, "behind the plate, not the mound");
     assert.equal(CAMERA_LOCK.lookAt[2], -18.44);
@@ -313,18 +504,34 @@ describe("contact flash", () => {
       moundSubjectPx(720, CAMERA_FOV, CAMERA_LOCK.position, CAMERA_LOCK.lookAt) >= 100,
       "Reina must be more than a 20 px matchstick",
     );
+    assert.ok(
+      moundSubjectPx(560, CAMERA_FOV, CAMERA_LOCK.position, CAMERA_LOCK.lookAt, 2 * HERO_LOOK.reina.height) >= 95,
+      "phone-strip Reina at runtime height must clear 95 px",
+    );
     assert.ok(FIRST_PITCH_PLATE.z < CAMERA_LOCK.position[2], "gold window stays in front of the mask");
     assert.equal(prepareShowsBall(0, 520), false, "set has no baseball");
-    assert.equal(prepareShowsBall(360, 520), false);
-    assert.equal(prepareShowsBall(370, 520), true);
+    assert.equal(prepareShowsBall(230, 520), false);
+    assert.equal(prepareShowsBall(250, 520), true);
     assert.equal(prepareShowsBall(520, 520), true);
-    assert.equal(prepareShowsBall(100, 260), false);
-    assert.equal(prepareShowsBall(110, 260), true);
+    assert.equal(prepareShowsBall(410, 700), false, "reduced prepare still hides the set");
+    assert.equal(prepareShowsBall(430, 700), true);
+    {
+      const scale = deliveryTimeScale(0.9167, EXHIBITION_PACE.prepareMs);
+      const elapsedAtThrow = (0.708 / scale) * 1000;
+      assert.ok(
+        Math.abs(EXHIBITION_PACE.prepareMs - elapsedAtThrow - THROW_SHOW_MS) < 40,
+        "hy116: earned throw is the leave window, not a set lead",
+      );
+    }
   });
 
   it("makes the ball larger at release than at the plate", () => {
     assert.ok(ballScaleAtFlight(0) > ballScaleAtFlight(1));
     assert.equal(ballScaleAtFlight(1), BALL_VISUAL.scale);
+    assert.ok(BALL_VISUAL.releaseScaleBoost >= 1.3, "leave is a bigger speck than the plate");
+    assert.equal(ballScaleAtOutgoing(1.3), BALL_VISUAL.scale, "hy110: tip at the mask stays plate scale");
+    assert.ok(ballScaleAtOutgoing(-12) > BALL_VISUAL.scale * 1.8, "hy110: a single at r80 is still a ball");
+    assert.ok(Math.abs(ballScaleAtOutgoing(-18.44) - ballScaleAtFlight(0)) < 0.05);
   });
 
   it("scrubs the swing toward the through pose as the ball arrives", () => {
@@ -356,7 +563,43 @@ describe("contact flash", () => {
     assert.ok(swingPhase({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS / 2 }) > -0.1);
     assert.ok(swingPhase({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS / 2 }) < 0.1);
     assert.equal(swingPhase({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS }), 1);
+    assert.equal(swingOpensThrough("single", true), true);
+    assert.equal(swingOpensThrough("foul", true), true);
+    assert.equal(swingOpensThrough("miss", true), false);
+    assert.equal(swingOpensThrough("k", true), false);
+    assert.equal(swingOpensThrough("take-strike", false), false);
+    assert.equal(
+      swingPhase({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS, opened: false }),
+      SWING_MISS_PHASE,
+    );
+    assert.equal(
+      swingPhase({ stage: "field", through: true, u: 0, throughAgeMs: 0, opened: false }),
+      SWING_MISS_PHASE,
+      "hy124: miss snaps to the zone chop — easing was a plank through the skull",
+    );
+    assert.equal(
+      swingPhase({ stage: "field", through: true, u: 0, throughAgeMs: 80, opened: false }),
+      SWING_MISS_PHASE,
+    );
+    assert.ok(
+      swingBatWeight({ stage: "field", through: true, u: 0, throughAgeMs: 0, opened: false }) === SWING_MISS_PHASE,
+    );
+    assert.ok(SWING_MISS_PHASE > 0.5 && SWING_MISS_PHASE < 0.8, "a miss freezes in the zone, not a twitch and not through");
+    assert.ok(
+      Math.abs(swingBatYawDeg(SWING_MISS_PHASE)) > 60,
+      "catcher-cam must see the barrel leave the shoulder on a miss",
+    );
+    assert.equal(swingZoneWeight(1), SWING_MISS_PHASE, "through does not add yaw/sweep past the zone");
+    assert.equal(swingThroughExtra(SWING_MISS_PHASE), 0);
+    assert.equal(swingThroughExtra(1), 1);
+    assert.equal(swingBatRollDeg(SWING_MISS_PHASE), 0, "a miss has no follow-through roll");
+    assert.equal(swingBatRollDeg(1), 0, "catcher-cam through is the zone cut, not a Z roll");
     assert.equal(swingBatWeight({ stage: "field", through: true, u: 0 }), 1, "held through is full pull");
+    assert.equal(
+      swingBatWeight({ stage: "field", through: true, u: 0, opened: false }),
+      SWING_MISS_PHASE,
+      "a miss never pulls the barrel through",
+    );
     assert.ok(swingBatWeight({ stage: "field", through: true, u: 0, throughAgeMs: 0 }) < 0.15, "cut starts on the ball, not at pull");
     assert.ok(swingBatWeight({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS / 2 }) > 0.4);
     assert.ok(swingBatWeight({ stage: "field", through: true, u: 0, throughAgeMs: SWING_CUT_MS / 2 }) < 0.6);
@@ -386,7 +629,7 @@ describe("contact flash", () => {
       "load tips back; through tips into the tunnel",
     );
     assert.ok(Math.sign(SWING_BODY_YAW_DEG) === Math.sign(SWING_BAT_YAW_DEG), "body turns with the bat");
-    assert.ok(Math.abs(SWING_BODY_YAW_DEG) >= 24 && Math.abs(SWING_BODY_YAW_DEG) <= 50, "enough to read a cut, not a spin");
+    assert.ok(Math.abs(SWING_BODY_YAW_DEG) >= 10 && Math.abs(SWING_BODY_YAW_DEG) <= 20, "side-on cut, not a spin that hides her face");
     assert.equal(swingStrideM(-1), 0, "coil stays in the box");
     assert.equal(swingStrideM(0), 0);
     assert.equal(swingStrideM(1), 0, "no group slide — feet stay planted");
@@ -423,11 +666,73 @@ describe("outgoing paths", () => {
     const tip = planOutgoing("foul-tip", spec("foul-tip"), 3)!;
     const single = planOutgoing("single", spec("single"), 3)!;
     assert.ok(foul.to[0] < 0, "pulled foul goes third-base");
+    assert.ok(foul.to[2] > 0, "hy126: hopper stays on our side of her, not behind the jersey");
     assert.ok(tip.to[2] > 0, "tip pops back toward the mitt");
     assert.ok(single.to[2] < -20, "single leaves the infield");
     assert.notEqual(foul.to[2], tip.to[2]);
     assert.equal(planOutgoing("miss", spec("miss"), 3), null);
     assert.equal(planOutgoing("take-strike", spec("take-strike"), 3), null);
+  });
+
+  it("names foul, tip, and a single by ball path inside 150 ms", () => {
+    const from: [number, number, number] = [0, 1.05, 0.55];
+    const foul = planOutgoing("foul", beatSpec("foul"), 3)!;
+    const tip = planOutgoing("foul-tip", beatSpec("foul-tip"), 3)!;
+    const single = planOutgoing("single", beatSpec("single"), 3)!;
+    const at = (plan: { to: [number, number, number]; arc: number; durS: number }, ms: number) =>
+      outgoingPoint(from, plan.to, plan.arc, ms / 1000, plan.durS);
+    const foul80 = at(foul, 80);
+    const tip80 = at(tip, 80);
+    const single80 = at(single, 80);
+    assert.ok(foul80[0] < from[0] - 0.5, "pulled foul is already off the plate at r80");
+    assert.ok(foul80[0] > -0.85, "hy127: pulled foul stays inside the phone fov");
+    assert.ok(foul80[2] > from[2], "hy126: pulled foul is on our side of her at r80");
+    assert.ok(foul80[1] < 2.0, "hy126: the hopper stays in the phone strip");
+    assert.ok(foul.arc < 1, "hy126: hopper is a skip, not a 1.4 m lift");
+    assert.ok(tip80[2] > from[2] + 0.7, "tip is already coming at the mask at r80");
+    assert.ok(tip.arc < 1, "hy109: tip is a pop, not a 2 m fly");
+    assert.ok(tip80[1] < 2.0, "hy109: the tip stays in the phone strip");
+    assert.ok(single80[2] < from[2] - 8, "single has already left the dirt at r80");
+    assert.ok(single.arc < 2, "hy99: through the hole is a skip, not a 6 m fly");
+    assert.ok(single80[1] < 3.2, "hy99: the outbound ball stays in the phone strip");
+    const fly = planOutgoing("fly-out", beatSpec("fly-out"), 3)!;
+    const hr = planOutgoing("hr", beatSpec("hr"), 3)!;
+    const fly80 = at(fly, 80);
+    const hr80 = at(hr, 80);
+    assert.ok(fly.arc < 3, "hy114: a fly is a climb, not an 18 m pop");
+    assert.ok(fly80[1] < 2.8, "hy114: the fly stays in the phone strip");
+    assert.ok(fly80[1] > single80[1], "a fly is higher than a skip");
+    assert.ok(fly80[2] < single80[2], "a fly is already deeper than a single at r80");
+    assert.ok(hr.arc < 3, "hy114: gone is a climb, not a 22 m pop");
+    assert.ok(hr80[1] < 3.2, "hy114: gone stays in the phone strip");
+    assert.ok(hr80[2] < fly80[2], "gone is already past the fly at r80");
+    assert.ok(outgoingSightT(0.08, single.durS) > 0.08 / single.durS, "a long hit is front-loaded");
+    assert.equal(outgoingSightT(0.08, 0.12), 0.08 / 0.12, "a short mitt carry stays linear");
+    assert.equal(outgoingSightT(0.15, 0.82), 0.5);
+  });
+
+  it("names foul, tip, and a single on the phone park inside 150 ms (hy119)", () => {
+    const plate = plate2dFlight({ u: 1, loc: { x: 1.5, y: 1.5 } });
+    const foul = planOutgoing("foul", beatSpec("foul"), 3)!;
+    const tip = planOutgoing("foul-tip", beatSpec("foul-tip"), 3)!;
+    const single = planOutgoing("single", beatSpec("single"), 3)!;
+    const foul80 = plate2dOutgoingSight({ plan: foul, elapsedS: 0.08, color: BALL_VISUAL.flashFoul })!;
+    const tip80 = plate2dOutgoingSight({ plan: tip, elapsedS: 0.08, color: BALL_VISUAL.flashFoulTip })!;
+    const single80 = plate2dOutgoingSight({ plan: single, elapsedS: 0.08, color: BALL_VISUAL.flashColor })!;
+    const take80 = plate2dOutgoingSight({ plan: null, mitt: true, elapsedS: 0.08 })!;
+    const missFrom = plate2dFlight({ u: 0.25, loc: { x: 1.5, y: 1.5 } });
+    const miss80 = plate2dOutgoingSight({ plan: null, mitt: true, from: missFrom, elapsedS: 0.08 })!;
+    assert.ok(miss80.top < take80.top - 4, "hy119: early miss is still incoming");
+    assert.ok(foul80.left < plate.left - 2, "pulled foul is already off the plate");
+    assert.ok(tip80.top > plate.top, "tip pops at the mask");
+    assert.ok(tip80.scale > foul80.scale, "tip is the near ball");
+    assert.ok(single80.top < plate.top - 8, "single has left the dirt");
+    assert.ok(Math.abs(take80.left - plate.left) < 1 && Math.abs(take80.top - plate.top) < 1, "take parks at the lip");
+    assert.equal(foul80.color, BALL_VISUAL.flashFoul);
+    assert.equal(tip80.color, BALL_VISUAL.flashFoulTip);
+    assert.notEqual(foul80.left, single80.left);
+    const worldFoul = outgoingPoint([0, 1.05, 0.55], foul.to, foul.arc, 0.08, foul.durS);
+    assert.ok(plate2dWorldToPark(worldFoul).left < 52, "hy127: pulled foul is still the left-park ball");
   });
 });
 
@@ -438,6 +743,21 @@ describe("result banner", () => {
     assert.equal(resultBannerVisible("idle"), false);
     assert.equal(resultBannerVisible("field"), true);
     assert.equal(resultBannerVisible("reaction"), true);
+    assert.equal(phoneParkShowsCaption({ stage: "flight" }), true, "hy86: phone hid the pitch type");
+    assert.equal(phoneParkShowsCaption({ stage: "reaction" }), true, "the beat name is the callout");
+    assert.equal(phoneParkShowsCaption({ stage: "idle", hasResult: true }), true, "hold the line until Next pitch");
+    assert.equal(phoneParkShowsCaption({ stage: "idle" }), false, "step-in flavor stays off");
+    assert.equal(phoneParkIsTheRead({ mode: "3d", phoneStrip: true }), true, "hy105: phone 3D is the park");
+    assert.equal(phoneParkIsTheRead({ mode: "3d", phoneStrip: false }), false);
+    assert.equal(phoneParkIsTheRead({ mode: "2d", phoneStrip: true }), true, "hy111: 2D fallback is the park, not Auto/Low/High");
+    assert.equal(phoneParkHidesScoreboard({ mode: "3d", phoneStrip: true, stage: "flight" }), true, "count waits");
+    assert.equal(phoneParkHidesScoreboard({ mode: "3d", phoneStrip: true, stage: "prepare" }), true);
+    assert.equal(phoneParkHidesScoreboard({ mode: "3d", phoneStrip: true, stage: "reaction" }), true, "hy108: the tell is the park");
+    assert.equal(phoneParkHidesScoreboard({ mode: "3d", phoneStrip: true, stage: "field" }), true);
+    assert.equal(phoneParkHidesScoreboard({ mode: "3d", phoneStrip: true, stage: "idle", pitchesSeen: 0 }), true, "hy106: first four seconds are the park");
+    assert.equal(phoneParkHidesScoreboard({ mode: "3d", phoneStrip: true, stage: "idle", pitchesSeen: 1 }), false, "dead ball keeps the board");
+    assert.equal(phoneParkHidesScoreboard({ mode: "3d", phoneStrip: false, stage: "flight" }), false);
+    assert.equal(phoneParkShowsCaption({ stage: "prepare" }), false, "park stays; the bar is the verb");
   });
 
   it("uses the exhibition result table and names a two-strike foul", () => {
@@ -459,10 +779,38 @@ describe("result banner", () => {
 describe("timing marker", () => {
   it("makes the gold window a swing surface during the pitch", () => {
     assert.equal(timingBarIsSwing("flight"), true);
-    assert.equal(timingBarIsSwing("prepare"), true);
+    assert.equal(timingBarIsSwing("flight", false), false, "hy75: gold bar must not swing a default sit");
+    assert.equal(timingBarIsSwing("flight", true), true);
+    assert.equal(timingBarWearsGold(true), true, "hy82: armed bar is the house");
+    assert.equal(timingBarWearsGold(false), false);
+    assert.equal(timingBarNow({ armed: true, u: 0.91 }), true, "hy84: NOW is the gold tick");
+    assert.equal(timingBarNow({ armed: true, u: 0.82 }), false, "hy74: 0.82 was a foul mill");
+    assert.equal(timingBarNow({ armed: false, u: 0.95 }), false);
+    assert.equal(timingBarNow({ armed: true }), true);
+    assert.equal(timingBarIsSwing("prepare"), false, "windup is a meter; tap is flight-only");
     assert.equal(timingBarIsSwing("idle"), false);
     assert.equal(timingBarIsSwing("situation"), false);
     assert.equal(timingBarIsSwing("field"), false);
+    assert.equal(showSwingCta({ stage: "flight" }), true, "flight without a clock still has a target");
+    assert.equal(showSwingCta({ stage: "prepare", u: 0 }), false, "windup mash trap");
+    assert.equal(showSwingCta({ stage: "idle" }), false);
+    assert.equal(showSwingCta({ stage: "flight", u: 0, windowHalf: 0.12, speed: 0.6 }), false, "tick is still on the left");
+    assert.equal(showSwingCta({ stage: "flight", u: 0.3, windowHalf: 0.12, speed: 0.6 }), false);
+    assert.equal(
+      showSwingCta({ stage: "flight", u: 0.35, windowHalf: 0.25, speed: 0.4 }),
+      false,
+      "a wide visual band must not open the fat button early",
+    );
+    assert.equal(showSwingCta({ stage: "flight", u: 1, windowHalf: 0.12, speed: 0.6 }), true, "tick is in the gold");
+    assert.equal(showSwingCta({ stage: "flight", u: 0.92, windowHalf: 0.12, speed: 0.6 }), true);
+    assert.equal(showSwingCta({ stage: "flight", u: 0.82, windowHalf: 0.12, speed: 0.6 }), false, "hy74: 0.82 was a foul mill");
+    assert.equal(showSwingCta({ stage: "flight", u: 0.9, windowHalf: 0.12, speed: 0.6 }), true);
+    assert.equal(
+      showSwingCta({ stage: "flight", u: 0.95, windowHalf: 0.12, speed: 0.6, aimed: false }),
+      false,
+      "hy75: default sit + gold mash is a foul mill",
+    );
+    assert.equal(showSwingCta({ stage: "flight", u: 0.95, windowHalf: 0.12, speed: 0.6, aimed: true }), true);
   });
 
   it("sits on the gold center at the plate and starts at release", () => {
@@ -480,6 +828,13 @@ describe("timing marker", () => {
     const wide = timingWindowRenderedPx({ windowHalf: 0.2, speed: 0.4, barWidthPx: bar });
     assert.ok(wide > 28);
     assert.equal(wide, timingWindowWidthPct(0.2, 0.4) * bar / 100);
+    assert.ok(TIMING_WINDOW_FILL >= 0.4, "P0-runtime §3.3 fill floor");
+    assert.equal(TIMING_WINDOW_FILL, 0.7, "hy121: /40 washed to a hairline");
+    assert.equal(timingWindowFillCss(), "rgb(255 209 102 / 0.7)");
+    assert.equal(timingWindowShowsFill("idle"), false, "hy122: idle is an empty track");
+    assert.equal(timingWindowShowsFill("prepare"), true);
+    assert.equal(timingWindowShowsFill("flight"), true);
+    assert.equal(timingWindowShowsFill("reaction"), false);
   });
 });
 
@@ -493,6 +848,23 @@ describe("carry to mitt on early resolve", () => {
     assert.equal(carryToMittS(1.06, 0.6), 0);
     assert.equal(carryToMittS(0.4, 0), 0);
     assert.equal(carryToMittS(Number.NaN, 0.6), 0);
+  });
+  it("names take and an early miss by the mitt inside 150 ms (hy111)", () => {
+    assert.equal(mittTellDurS(), OUTGOING_SIGHT_MS / 1000);
+    assert.equal(mittAlreadyHome(1.06), true);
+    assert.equal(mittAlreadyHome(0.25), false);
+    assert.ok(MITT_RECEIVE[1] > 0.85, "mask height, not dirt under Aoi");
+    assert.ok(MITT_RECEIVE[2] > 0.7, "this side of the plate, toward the camera");
+    const from: [number, number, number] = [-0.4, 1.43, -11.74];
+    const miss80 = outgoingPoint(from, MITT_RECEIVE, 0, 0.08, mittTellDurS());
+    const take80 = outgoingPoint(MITT_RECEIVE, MITT_RECEIVE, 0, 0.08, mittTellDurS());
+    assert.ok(miss80[2] > -8, "early miss is off Reina and in the plate half at r80");
+    assert.ok(miss80[1] > 0.7, "incoming stay above the dirt");
+    assert.deepEqual(take80, MITT_RECEIVE);
+    assert.equal(mittHoldShows("reaction"), true, "hy113: the tell holds the mitt");
+    assert.equal(mittHoldShows("idle"), false, "hy113: idle gives the plate back");
+    assert.equal(mittHoldShows("dead"), false);
+    assert.equal(mittHoldShows("prepare"), false);
   });
 });
 

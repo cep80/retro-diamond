@@ -48,6 +48,13 @@ export const SWING_BAT_YAW_DEG = -125;
 export const SWING_BAT_SWEEP_DEG = -82;
 
 /**
+ * Screen-plane through (world +Z). Tried −70 (hy45 single still vertical) and
+ * +70 (hy45b loaded the barrel back). Catcher-cam through is the zone cut,
+ * not a Z roll. Contact vs miss is flash + ball path. Keep 0.
+ */
+export const SWING_BAT_ROLL_DEG = 0;
+
+/**
  * Through only. Hands leave the right shoulder toward the plate / mound.
  * Restore planted local quats first or these stack under debug hold.
  * Positive world-X on the back arm raised the hands — keep these negative.
@@ -60,10 +67,11 @@ export const SWING_ARM_L_X_DEG = -32;
 export const SWING_ARM_L_Y_DEG = -30;
 
 /**
- * Through yaw on the spine (legs stay). Same sign as the bat. Smaller so
- * #1 still faces the catcher.
+ * Through yaw on the spine (legs stay). Same sign as the bat. Side-on
+ * (π/2): keep her profile. −36 spun her back to camera and hid the face
+ * for the whole 150 ms tell. Flip only vs a GPU still.
  */
-export const SWING_BODY_YAW_DEG = -36;
+export const SWING_BODY_YAW_DEG = -14;
 
 /**
  * Load coil. Opposite the cut so prepare is closed, not a premature swing.
@@ -105,24 +113,41 @@ function clampPhase(n: number): number {
 export const SWING_CUT_MS = 110;
 
 /**
+ * Swung miss / swinging K hold here — barrel in the zone, not follow-through.
+ * Contact, foul, and tip go to 1. §1.4: the batter tell must disagree.
+ * 0.28 left yaw at −35° and tip y ≈ 1.85; catcher-cam still read load.
+ */
+export const SWING_MISS_PHASE = 0.62;
+
+/** True when the swung beat opens all the way through. A miss stays a chop. */
+export function swingOpensThrough(beat: FieldBeat, swung: boolean): boolean {
+  return swung && ballLeavesBat(beat);
+}
+
+/**
  * −1 = coil (prepare / flight / take hold). 0 = idle. 1 = through.
  * A take never opens. Hold the coil after an unswung resolve so the 150 ms
  * tell is closed + ball-to-mitt, not an idle pop. Authored `take` stays off.
- * The cut starts on a swung resolve. Omit `throughAgeMs` (or pass ≥
- * SWING_CUT_MS) for the held through still.
+ * The cut starts on a swung resolve. `opened: false` is a miss chop.
+ * Omit `throughAgeMs` (or pass ≥ SWING_CUT_MS) for the held still.
  */
 export function swingPhase(opts: {
   stage: string;
   through: boolean;
   u: number;
   throughAgeMs?: number;
+  opened?: boolean;
 }): number {
   void opts.u;
   const age = opts.throughAgeMs;
   if (opts.through) {
-    if (age == null || !Number.isFinite(age) || age >= SWING_CUT_MS) return 1;
+    const dest = opts.opened === false ? SWING_MISS_PHASE : 1;
+    // hy124: a miss that eases coil → chop puts a plank through her
+    // skull at r80. Snap to the zone hold. Contact still eases.
+    if (opts.opened === false) return dest;
+    if (age == null || !Number.isFinite(age) || age >= SWING_CUT_MS) return dest;
     const t = Math.max(0, age / SWING_CUT_MS);
-    return clampPhase(-1 + 2 * t);
+    return clampPhase(-1 + (dest + 1) * t);
   }
   if (opts.stage === "prepare" || opts.stage === "flight") return -1;
   if (age != null && Number.isFinite(age) && age < resolveClipHoldMs({ swung: false })) return -1;
@@ -137,6 +162,24 @@ export function swingBatYawDeg(weight: number): number {
 export function swingBatSweepDeg(weight: number): number {
   const w = clampUnit(weight);
   return w === 0 ? 0 : SWING_BAT_SWEEP_DEG * w;
+}
+
+/** Yaw/sweep stop here so a through cannot weather-vane past the zone cut. */
+export function swingZoneWeight(weight: number): number {
+  return Math.min(clampUnit(weight), SWING_MISS_PHASE);
+}
+
+/** 0 at the miss hold; 1 at full through. */
+export function swingThroughExtra(weight: number): number {
+  const span = 1 - SWING_MISS_PHASE;
+  if (!(span > 0)) return 0;
+  return clampUnit((clampUnit(weight) - SWING_MISS_PHASE) / span);
+}
+
+/** Screen-plane wrap. 0 on a miss; full at through. */
+export function swingBatRollDeg(weight: number): number {
+  const extra = swingThroughExtra(weight);
+  return extra === 0 ? 0 : SWING_BAT_ROLL_DEG * extra;
 }
 
 /** Coil only. Barrel tips back; through extras stay off. */
@@ -209,11 +252,14 @@ export function swingBatWeight(opts: {
   through: boolean;
   u: number;
   throughAgeMs?: number;
+  opened?: boolean;
 }): number {
   if (opts.through) {
+    const dest = opts.opened === false ? Math.max(0, SWING_MISS_PHASE) : 1;
+    if (opts.opened === false) return dest;
     const age = opts.throughAgeMs;
-    if (age == null || !Number.isFinite(age) || age >= SWING_CUT_MS) return 1;
-    return clampUnit(age / SWING_CUT_MS);
+    if (age == null || !Number.isFinite(age) || age >= SWING_CUT_MS) return dest;
+    return clampUnit((age / SWING_CUT_MS) * dest);
   }
   return Math.max(0, swingPhase(opts));
 }
@@ -292,6 +338,36 @@ export function carryToMittS(u: number, flightDurS: number): number {
 }
 
 /**
+ * Mask-height receive, this side of the plate. Dirt y=0.55 hid the take
+ * under Aoi's legs; flight-pace carry left an early miss on Reina at r80
+ * (hy111). P0-runtime §2.3: the clip is the batter tell; the mitt pop is
+ * the ball tell. Do not flash.
+ */
+export const MITT_RECEIVE: Vec3 = [0, 1.02, 1.15];
+
+/** Take / late miss already crossed. Park at the mitt — do not hide. */
+export function mittAlreadyHome(u: number): boolean {
+  return Number.isFinite(u) && u >= 1;
+}
+
+/**
+ * Whiff and take must name the mitt inside the 150 ms tell. Flight pace
+ * left an early chop as a Reina-chest speck (hy111).
+ */
+export function mittTellDurS(): number {
+  return OUTGOING_SIGHT_MS / 1000;
+}
+
+/**
+ * Mitt pop is the 150 ms tell. `dead` only fires on a waved-off pitch, so a
+ * take used to park the ball on the plate through idle and hide the re-aim
+ * (hy113). Reaction holds it; idle gives the lip back.
+ */
+export function mittHoldShows(stage: string): boolean {
+  return stage === "reaction";
+}
+
+/**
  * Presentation-only outgoing trajectories for balls the bat touched.
  * `pull` pins the trajectory to the batter's pull side (the engine's only
  * directional claim: every non-tip foul is "Foul. Pulled."); everything else
@@ -305,19 +381,25 @@ interface OutgoingShape {
 }
 
 const OUTGOING: Partial<Record<FieldBeat, OutgoingShape>> = {
-  single: { to: [8, 0.2, -38], arc: 6, spreadX: 14 },
-  double: { to: [16, 0.2, -58], arc: 10, spreadX: 12 },
-  hr: { to: [8, 1.2, -108], arc: 22, spreadX: 18 },
-  "sac-fly": { to: [6, 0.2, -72], arc: 20, spreadX: 10 },
-  "fly-out": { to: [4, 0.2, -62], arc: 18, spreadX: 16 },
+  /** Through the hole — a low skip. arc 6 left the phone frame at r80 (hy99). */
+  single: { to: [8, 0.2, -38], arc: 1.4, spreadX: 8 },
+  // Gap liner. arc 10 was a sky speck at r80 (hy114).
+  double: { to: [12, 0.9, -50], arc: 1.7, spreadX: 12 },
+  // Deep climb. arc 22 left the locked fov at r80 (hy114).
+  hr: { to: [7, 1.75, -80], arc: 2.15, spreadX: 18 },
+  "sac-fly": { to: [6, 1.65, -58], arc: 2.0, spreadX: 10 },
+  // Caught in the air. arc 18 put y≈15 at r80 — gold flash, no ball (hy114).
+  "fly-out": { to: [5, 1.55, -52], arc: 1.85, spreadX: 16 },
   "grounder-out": { to: [6, 0.1, -22], arc: 1.2, spreadX: 10 },
   "bunt-down": { to: [1.2, 0.05, -6], arc: 0.8, spreadX: 2 },
   "bunt-out": { to: [0.8, 0.05, -5], arc: 0.8, spreadX: 2 },
-  // Pulled hopper toward the third-base coach's box, not a pop-up into the
-  // seats: the old [24, 0.5, -6] / arc 9 left the locked fov-35 frame inside
-  // 80 ms both up and sideways, and the foul must stay in frame for the beat.
-  foul: { to: [7, 0.6, -6], arc: 1.4, spreadX: 2, pull: true },
-  "foul-tip": { to: [1.5, 1.2, 4], arc: 2, spreadX: 2 },
+  // Pulled hopper, third-base, inside the locked phone fov. Chest y
+  // put coral on her cream (hy127-foul-fov). Hip height is open air
+  // left of the knickers, same slot language as the teal tip.
+  foul: { to: [2.4, 0.4, 2.3], arc: 0.35, spreadX: 0.6, pull: true },
+  // Short pop at the mask. arc 2 put the ball at y≈2.6 at r80 — a sky
+  // speck, not a tell (hy108). Family stays back-toward-camera (hy109).
+  "foul-tip": { to: [1.5, 1.2, 4], arc: 0.6, spreadX: 2 },
 };
 
 /** True when the bat touched the ball: the beats that flash and leave the bat. */
@@ -351,6 +433,42 @@ export function planOutgoing(beat: FieldBeat, spec: BeatSpec, eventCount: number
 }
 
 /**
+ * §1.4: name the beat in ~150 ms without the HUD. A single's fieldMs is
+ * 820 ms, so a linear t leaves the ball on the bat at r80. Front-load long
+ * flights so the first sight window covers half the family path. Short
+ * reaction flights (foul / tip / mitt carry) stay linear — they already
+ * finish inside the beat.
+ */
+export const OUTGOING_SIGHT_MS = 150;
+export const OUTGOING_SIGHT_COVER = 0.5;
+
+export function outgoingSightT(elapsedS: number, durS: number): number {
+  if (!(durS > 0)) return elapsedS > 0 ? 1 : 0;
+  if (!(elapsedS > 0)) return 0;
+  if (elapsedS >= durS) return 1;
+  const sightS = OUTGOING_SIGHT_MS / 1000;
+  if (durS <= sightS) return elapsedS / durS;
+  const cover = OUTGOING_SIGHT_COVER;
+  if (elapsedS <= sightS) return (elapsedS / sightS) * cover;
+  return cover + (1 - cover) * ((elapsedS - sightS) / (durS - sightS));
+}
+
+export function outgoingPoint(
+  from: Vec3,
+  to: Vec3,
+  arc: number,
+  elapsedS: number,
+  durS: number,
+): Vec3 {
+  const t = outgoingSightT(elapsedS, durS);
+  return [
+    from[0] + (to[0] - from[0]) * t,
+    from[1] + (to[1] - from[1]) * t + Math.sin(t * Math.PI) * arc,
+    from[2] + (to[2] - from[2]) * t,
+  ];
+}
+
+/**
  * Ball readability: a regulation ball (r=0.037m) is ~4px at the release point
  * from the locked camera, so the render scales it up and self-lights it. The
  * flash is a brief expanding shell at the contact point — no post-processing.
@@ -359,7 +477,7 @@ export const BALL_VISUAL = {
   radius: 0.037,
   scale: 1.9,
   /** Extra scale at release (u=0); plate (u=1) stays at `scale`. */
-  releaseScaleBoost: 1.15,
+  releaseScaleBoost: 1.4,
   color: "#f5f8ff",
   emissive: "#c9d8ff",
   emissiveIntensity: 0.7,
@@ -426,10 +544,13 @@ export function pitcherFreezesThrow(opts: {
   clipTime: number;
   throwAt: number | null | undefined;
 }): boolean {
-  // The delivery plays through: wind-up, release at the flight cue, then
-  // the follow-through. Nothing freezes on the scanned throw any more.
-  void opts;
-  return false;
+  // Wind-up plays until the scanned throw. Then hold that pose through
+  // prepare's last sight window and flight so the ball leaves the hand,
+  // not empty air after the authored chest-return (hy116).
+  if (opts.throwAt == null || !Number.isFinite(opts.throwAt)) return false;
+  if (!pitcherHoldsThrow(opts.stage)) return false;
+  if (!Number.isFinite(opts.clipTime)) return false;
+  return opts.clipTime + 1e-4 >= opts.throwAt;
 }
 
 /**
@@ -455,12 +576,22 @@ export function deliveryTimeScale(releaseS: number, prepareMs: number): number {
 }
 
 /**
- * Right-handed batter in the third-base box (x < 0). The contract rig
- * faces +Z at rotation 0; π puts her back to the catcher so #1 and the
- * ponytail-through-cap read at the locked cam (LOOK / gap §1.1). Do not
- * restore π/2 — that hides the back number as a side profile.
+ * Right-handed batter in the third-base box (x < 0). Side-on (π/2), facing
+ * the plate — user call 2026-09-14. Name her by cap, ponytail, cream/navy,
+ * and the bat. Do not silently restore π.
  */
 export const BATTER_ROTATION_Y = Math.PI / 2;
+
+/** Desktop / wide canvas. On a 390-wide strip she sits on the left frustum lip. */
+export const BATTER_BOX_X = -0.95;
+/** Half-step toward the hole so the side-on kit stays off the 390-wide lip. */
+export const BATTER_BOX_PHONE_X = -0.48;
+
+/** Phone strip only: half a step toward the hole so the side-on kit stays in frame.
+ * Camera lock does not move. */
+export function batterStandX(phoneStrip: boolean): number {
+  return phoneStrip ? BATTER_BOX_PHONE_X : BATTER_BOX_X;
+}
 
 /**
  * Authored `swing_contact` T-poses the front arm at camera-true contact.
@@ -500,9 +631,10 @@ export function throwPoseScore(handR: Vec3): number {
 /**
  * How long the ball sits on the throwing hand before flight. Earlier than
  * this, prepare is the LOOK set: empty mitt up, no baseball visible.
+ * 150 ms was one blink at 18 m. 280 ms is the same sight window as contact.
  * Must stay inside the exhibition prepare window (`EXHIBITION_PACE`).
  */
-export const THROW_SHOW_MS = 150;
+export const THROW_SHOW_MS = 280;
 
 /** True in the last `showMs` of the prepare window. */
 export function prepareShowsBall(elapsedMs: number, prepMs: number, showMs = THROW_SHOW_MS): boolean {
@@ -615,6 +747,114 @@ export function sitHitSlopPx(cellPx: number): number {
 }
 
 /**
+ * Phone sit belongs on the plate lip. The projected zone sits mid-park
+ * from the catcher cam, so a zone-centered overlay put nine gold boxes on
+ * Reina after a take (hy102). Prepare used to jump the chosen lip into the
+ * dirt (hy115). Flight stays off the zone — the bar is the window
+ * (hy104). Desktop stays on the zone. Does not change tap math.
+ */
+export function aimGridPinsToPlate(opts: { phoneStrip: boolean; landscape: boolean; stage?: string }): boolean {
+  if (!opts.phoneStrip || opts.landscape) return false;
+  return opts.stage === "idle" || opts.stage === "dead" || opts.stage === "prepare";
+}
+
+/**
+ * Phone 2D sit belongs on park-koi's home plate, not a sky keypad over a
+ * dark card (hy112). Desktop 2D keeps the centered zone card. Does not
+ * change tap math.
+ */
+export function plate2dPinsToPark(opts: { phoneStrip: boolean }): boolean {
+  return opts.phoneStrip;
+}
+
+/**
+ * Fallback flight reads mound → plate on the park photo. u=0 is the rubber
+ * on the cropped park (`object-[center_78%]`); u=1 is the lip. hy112's
+ * top=36 sat in the grass after that crop (hy118). loc only fans the last
+ * stretch so sit still shows. Does not change tap math.
+ */
+export function plate2dFlight(opts: { u: number; loc: { x: number; y: number } }): {
+  left: number;
+  top: number;
+  scale: number;
+} {
+  const t = Math.max(0, Math.min(1, Number.isFinite(opts.u) ? opts.u : 0));
+  const aimX = (opts.loc.x / 3 - 0.5) * 16;
+  const aimY = (opts.loc.y / 3 - 0.5) * 8;
+  return {
+    left: 50 + aimX * t,
+    top: 48 + 38 * t + aimY * t,
+    scale: 0.75 + t * 0.75,
+  };
+}
+
+/**
+ * Phone 2D leave matches 3D: empty park during the set, ball on the
+ * rubber for THROW_SHOW_MS, then mound → plate (hy118). Flight always
+ * shows. Does not change tap math.
+ */
+export function plate2dShowsBall(opts: {
+  stage: string;
+  elapsedMs?: number;
+  prepMs?: number;
+}): boolean {
+  if (opts.stage === "flight") return true;
+  if (opts.stage !== "prepare") return false;
+  return prepareShowsBall(opts.elapsedMs ?? 0, opts.prepMs ?? EXHIBITION_PACE.prepareMs);
+}
+
+/** World contact point the 2D park treats as the plate lip. */
+const PLATE2D_WORLD_FROM: Vec3 = [0, 1.05, 0.55];
+
+/**
+ * Map a world outgoing point onto park-koi. Plate lip is the origin.
+ * +X is first-base (screen-right); pull fouls go third (screen-left).
+ * +Z is toward the mask (down the photo); −Z is the outfield (up).
+ * Clamped so a fly/HR stays in the park (hy118 crop). Does not change tap math.
+ */
+export function plate2dWorldToPark(world: Vec3): { left: number; top: number; scale: number } {
+  const plate = plate2dFlight({ u: 1, loc: { x: 1.5, y: 1.5 } });
+  const dx = world[0] - PLATE2D_WORLD_FROM[0];
+  const dy = world[1] - PLATE2D_WORLD_FROM[1];
+  const dz = world[2] - PLATE2D_WORLD_FROM[2];
+  return {
+    left: Math.max(8, Math.min(92, plate.left + dx * 7)),
+    top: Math.max(16, Math.min(94, plate.top + dz * 5 - dy * 2)),
+    scale: Math.max(0.45, Math.min(2.2, plate.scale * (1 + dz * 0.12))),
+  };
+}
+
+/**
+ * Phone 2D §1.4 sight. Off-bat beats follow planOutgoing; miss/take park
+ * at the lip (the mitt tell). Color is the flash family — cream when dark.
+ */
+export function plate2dOutgoingSight(opts: {
+  plan: OutgoingPlan | null;
+  mitt?: boolean;
+  from?: { left: number; top: number; scale: number };
+  elapsedS: number;
+  color?: string;
+}): { left: number; top: number; scale: number; color: string } | null {
+  const cream = BALL_VISUAL.color;
+  if (opts.plan) {
+    const p = outgoingPoint(PLATE2D_WORLD_FROM, opts.plan.to, opts.plan.arc, opts.elapsedS, opts.plan.durS);
+    return { ...plate2dWorldToPark(p), color: opts.color ?? cream };
+  }
+  if (opts.mitt) {
+    const plate = plate2dFlight({ u: 1, loc: { x: 1.5, y: 1.5 } });
+    const start = opts.from ?? plate;
+    const t = Math.min(1, outgoingSightT(opts.elapsedS, mittTellDurS()));
+    return {
+      left: start.left + (plate.left - start.left) * t,
+      top: start.top + (plate.top - start.top) * t,
+      scale: start.scale + (plate.scale - start.scale) * t,
+      color: cream,
+    };
+  }
+  return null;
+}
+
+/**
  * HTML aim grid over the projected zone. The raw projection is a postage
  * stamp (~110 px). Enlarge for thumbs on a wide canvas; on a phone strip
  * never wallpaper Aoi — cap, ponytail, and #1 stay clear. Visual cells may
@@ -629,6 +869,7 @@ export function aimGridBox(rect: {
   canvasW?: number;
   /** Visible window. Canvas can be taller than the phone frame; sit must not fall off. */
   viewH?: number;
+  stage?: string;
 }): { left: number; top: number; width: number; height: number } {
   const canvasH = rect.canvasH && rect.canvasH > 0 ? rect.canvasH : 720;
   const canvasW = rect.canvasW && rect.canvasW > 0 ? rect.canvasW : 1280;
@@ -637,20 +878,37 @@ export function aimGridBox(rect: {
   const landscapePhone = canvasW >= 500 && visibleH <= 480 && canvasW > visibleH;
   const cx = rect.left + rect.width / 2;
   const cy = rect.top + rect.height / 2;
-  const maxH = Math.min(canvasH * (phoneStrip ? 0.4 : 0.46), phoneStrip ? 152 : 400);
+  const maxH = Math.min(canvasH * (phoneStrip ? 0.4 : 0.46), phoneStrip ? 126 : 400);
   const maxW = Math.min(288, canvasW * 0.64, maxH * ZONE_ASPECT);
   const width = Math.min(Math.max(rect.width * 1.6, Math.min(174, maxW)), Math.max(maxW, 1));
   const height = width / ZONE_ASPECT;
   const bottomPad = landscapePhone ? Math.max(12, Math.round(visibleH * 0.06)) : 8;
   const maxTop = visibleH - height - bottomPad;
   const bias = phoneStrip && !landscapePhone ? height * 0.22 : 0;
-  const top = Math.max(8, Math.min(cy - height / 2 + bias, maxTop));
+  const top = aimGridPinsToPlate({ phoneStrip, landscape: landscapePhone, stage: rect.stage })
+    ? maxTop
+    : Math.max(8, Math.min(cy - height / 2 + bias, maxTop));
   return { left: cx - width / 2, top, width, height };
 }
 
-/** First pitch of the session: the gold window must pulse before the tick arrives. */
-export function firstPitchSight(opts: { pitchesSeen: number; stage: string }): boolean {
-  return opts.pitchesSeen === 0 && (opts.stage === "prepare" || opts.stage === "flight");
+/**
+ * Timing-bar gold pulse. Stays up until they swing, through PA 2 — a take
+ * on pitch 1 must not retire the verb. Idle always uses the bar: a 2.2
+ * world frame on desktop step-in wallpapers Reina for the first four
+ * seconds (LOOK). Prepare/flight still light the live pitch.
+ */
+export function firstPitchSight(opts: {
+  pitchesSeen: number;
+  stage: string;
+  phoneStrip?: boolean;
+  swung?: boolean;
+  paIndex?: number;
+}): boolean {
+  void opts.phoneStrip;
+  void opts.pitchesSeen;
+  if (opts.swung) return false;
+  if ((opts.paIndex ?? 1) > 2) return false;
+  return opts.stage === "prepare" || opts.stage === "flight" || opts.stage === "idle";
 }
 
 /** World-space gold window on pitch 1 only. A frame, not a wash. Does not change timing math. */
@@ -659,13 +917,28 @@ export const FIRST_PITCH_PLATE = {
   opacityMin: 0.62,
   opacityMax: 1,
   periodS: 0.9,
-  /** True zone is a postage stamp; match the enlarged HTML aim grid. */
-  scale: 2.2,
+  /** True zone is a postage stamp; match the enlarged HTML aim grid.
+   * 2.2 put the top bar on Reina's hair at leave (hy48-release-mound). */
+  scale: 1.72,
+  /** Phone strip: 1.65 sat a card over Aoi's legs on the sit path (hy97). */
+  phoneScale: 1.52,
   /** In front of the catcher (z = 1.1) so the gold is not a torso tattoo. */
   z: 1.35,
-  /** Bar thickness in meters. A filled quad washed the catcher and hid the window. */
-  frame: 0.06,
+  /** 390 strip: z=1.35 is a near-cam billboard over the leave (hy49-phone-leave).
+   * 0.28 still read as a HUD card on the sit path (hy97). Sit nearer the
+   * plate so Aoi's legs and the dirt stay in the picture. */
+  phoneZ: 0.14,
+  /** Bar thickness in meters. 0.06 read as a card at phoneZ, not a lip. */
+  frame: 0.034,
 } as const;
+
+export function firstPitchPlateScale(phoneStrip: boolean): number {
+  return phoneStrip ? FIRST_PITCH_PLATE.phoneScale : FIRST_PITCH_PLATE.scale;
+}
+
+export function firstPitchPlateZ(phoneStrip: boolean): number {
+  return phoneStrip ? FIRST_PITCH_PLATE.phoneZ : FIRST_PITCH_PLATE.z;
+}
 
 /** Four edge bars in plate-local space. Center stays open so the catcher and ball read. */
 export function firstPitchPlateFrameBars(
@@ -692,7 +965,7 @@ export function firstPitchPlateOpacity(elapsedS: number, reduced: boolean): numb
 /**
  * Aimed cell lights while the card still says "Aim a cell."
  * No cell is pre-lit (`aimed: false`) — the first verb is pick one.
- * Window pulse stays prepare/flight only (`firstPitchSight`).
+ * Window pulse: prepare/flight, plus phone idle (`firstPitchSight`).
  */
 export function firstPitchAimSight(opts: { pitchesSeen: number; stage: string; aimed?: boolean }): boolean {
   if (opts.aimed === false) return false;
@@ -708,39 +981,133 @@ export function firstPitchSitLit(opts: { pitchesSeen: number; aimed: boolean }):
 }
 
 /**
- * Unchosen first-pitch cells stay glass so the world gold frame is the
- * window — ink fills wallpapered the plate and hid the referent.
- * The nine seats still pulse: "Aim a cell" has to have a tap target.
+ * First-pitch sit stays glass. After they pick, ink + heat pluses
+ * turned the plate into a keypad (hy107). The chosen lip still names.
+ * Unsit still pulses: "Aim a cell" has to have a tap target.
  */
 export function firstPitchSitGlass(opts: { pitchesSeen: number; aimed: boolean }): boolean {
-  return opts.pitchesSeen === 0 && !opts.aimed;
+  return opts.pitchesSeen === 0;
 }
 
 /**
- * Ink sit fills hid the incoming ball at the plate. Prepare/flight go
- * glass so the pitch stays trackable; seats stay tappable. Idle keeps
- * the lit grid so the next sit is still a verb.
+ * After a foul the ghost is the sit. Heat pluses must not out-shout it
+ * (hy77). Does not change tap math.
  */
-export function sitClearsForBall(stage: string): boolean {
-  return stage === "prepare" || stage === "flight";
+export function sitGhostLead(opts: { ghost: boolean; aimed: boolean }): boolean {
+  return opts.ghost && !opts.aimed;
 }
 
 /**
- * World gold plate is the referent for "gold window" while the card is up.
- * Independent of sit — they can still see the window before they pick a cell.
- * Bar pulse stays prepare/flight (`firstPitchSight`) so idle is not a fake pitch.
+ * The gold ghost is the re-aim seat. Prepare still needs it (hy81:
+ * Next pitch used to wipe the seat before they tapped). Flight must
+ * not wallpaper the incoming ball. Does not change tap math.
  */
-export function firstPitchPlateSight(opts: { pitchesSeen: number; stage: string }): boolean {
-  return (
-    opts.pitchesSeen === 0 &&
-    (opts.stage === "idle" || opts.stage === "prepare" || opts.stage === "flight")
-  );
+export function ghostClearsOnCue(cue: string): boolean {
+  return cue === "flight";
+}
+
+/**
+ * Ink sit fills hid the incoming ball at the plate and, after a take,
+ * wallpapered Reina the same way the 2.2 gold frame did. Prepare/flight
+ * go glass so the pitch stays trackable. Idle after a pitch goes glass
+ * so the park reads. Seats stay tappable; the aimed cell keeps a gold lip.
+ */
+export function sitClearsForBall(stage: string, pitchesSeen = 0): boolean {
+  if (stage === "prepare" || stage === "flight") return true;
+  return stage === "idle" && pitchesSeen > 0;
+}
+
+/**
+ * World 3×3 is the sit. Flight is the pitch — nine gold lips on the
+ * projected zone wallpapered the ball and Reina (hy103). Idle / dead
+ * keep the seats. Prepare after a sit hides: the leftover lip stole
+ * the leave (hy117). Unsit prepare still has seats so they can sit
+ * during the wind-up. Does not gate startPitch. Does not change tap math.
+ */
+export function worldSitShows(stage: string, aimed?: boolean): boolean {
+  if (stage === "idle" || stage === "dead") return true;
+  if (stage === "prepare") return aimed !== true;
+  return false;
+}
+
+/**
+ * Gold pulse is the aim verb. Flight already has the ball and the bar —
+ * nine pulsing seats wallpapered the incoming pitch (hy95). Prepare
+ * without a seat still pulses so they can sit during the wind-up.
+ * After a foul the ghost is the re-aim (hy98) — the other eight must
+ * not pulse over it. Does not change tap math.
+ */
+export function sitSeatsPulse(opts: { aimed: boolean; stage: string; ghost?: boolean }): boolean {
+  if (opts.aimed) return false;
+  if (opts.ghost) return false;
+  if (opts.stage === "flight") return false;
+  return opts.stage === "idle" || opts.stage === "prepare";
+}
+
+/**
+ * The gold lip is the seat they picked. Controller default aim is center —
+ * that is not a sit. After an unsit take or a new PA, Coach saying
+ * Aim a cell. must not already have a pressed cell (hy101).
+ */
+export function sitCellChosen(opts: { aimed: boolean }): boolean {
+  return opts.aimed;
+}
+
+/**
+ * Empty seats rest after they pick. Nine heat boxes on the plate
+ * were a tech demo (hy107). After a foul the ghost lip is the re-aim
+ * — the other eight rest (hy108). Unsit keeps all nine. Still tappable.
+ */
+export function sitSeatRests(opts: {
+  aimed: boolean;
+  on: boolean;
+  ghost?: boolean;
+  ghostHere?: boolean;
+}): boolean {
+  if (opts.ghost) return opts.ghostHere !== true;
+  return opts.aimed && !opts.on;
+}
+
+/**
+ * World gold plate is the desktop swing house on the live pitch only.
+ * Phone uses the timing bar (P0-runtime §3.3) — hy103 hid the 3×3 and
+ * the sit-path frame still sat a gold card over Reina and the leave
+ * (hy104). Do not retune scale / z / frame. Idle never draws it.
+ * Unsit flight stays off (hy96). Does not change tap math.
+ */
+export function firstPitchPlateSight(opts: {
+  pitchesSeen: number;
+  stage: string;
+  phoneStrip?: boolean;
+  swung?: boolean;
+  paIndex?: number;
+  aimed?: boolean;
+}): boolean {
+  void opts.pitchesSeen;
+  if (opts.phoneStrip) return false;
+  if (opts.swung) return false;
+  if ((opts.paIndex ?? 1) > 2) return false;
+  if (opts.aimed === false) return false;
+  return opts.stage === "flight";
 }
 
 /** Oversized at the mound, closer to the authored scale by the plate. */
 export function ballScaleAtFlight(u: number): number {
   const t = Math.max(0, Math.min(1, Number.isFinite(u) ? u : 0));
   return BALL_VISUAL.scale * (1 + (1 - t) * BALL_VISUAL.releaseScaleBoost);
+}
+
+/**
+ * Off-bat balls recede like the leave. A single at r80 was a 1.9 speck
+ * at z≈−12 (hy109) — gold flash without a nameable outbound. Near-camera
+ * tip/foul stay plate scale. Does not change paths or tap math (hy110).
+ */
+export function ballScaleAtOutgoing(z: number): number {
+  const near = 0.55;
+  const far = -18.44;
+  if (!Number.isFinite(z)) return BALL_VISUAL.scale;
+  const t = Math.max(0, Math.min(1, (near - z) / (near - far)));
+  return BALL_VISUAL.scale * (1 + t * BALL_VISUAL.releaseScaleBoost);
 }
 
 export interface ContactFlash {
@@ -754,6 +1121,43 @@ export function contactFlash(beat: FieldBeat): ContactFlash | null {
   if (beat === "foul-tip") return { color: BALL_VISUAL.flashFoulTip, maxScale: BALL_VISUAL.flashFoulTipScale };
   if (beat === "foul") return { color: BALL_VISUAL.flashFoul, maxScale: BALL_VISUAL.flashFoulScale };
   return { color: BALL_VISUAL.flashColor, maxScale: BALL_VISUAL.flashMaxScale };
+}
+
+/**
+ * hy125: the 3D outgoing ball wears the family color so foul / tip / contact
+ * disagree by path *and* hue. 2D already does this (hy119). A take/miss
+ * stays cream — the mitt pop is the tell. Does not change paths or tap math.
+ */
+export function outgoingBallLook(beat: FieldBeat | null | undefined): {
+  color: string;
+  emissive: string;
+} {
+  const look = beat ? contactFlash(beat) : null;
+  if (!look) return { color: BALL_VISUAL.color, emissive: BALL_VISUAL.emissive };
+  return { color: look.color, emissive: look.color };
+}
+
+/**
+ * hy126: a touched-ball outgoing must not die in her jersey. P0-4: the
+ * ball never vanishes into the batter. Take / miss stay depth-tested —
+ * those already sit on the mask. Does not change paths or tap math.
+ */
+export function outgoingBallClearsBatter(opts: { leavesBat: boolean }): boolean {
+  return opts.leavesBat;
+}
+
+/** Family spark rides the outgoing ball, not a plate wash on her cream. */
+export function flashFollowsOutgoing(opts: { leavesBat: boolean }): boolean {
+  return opts.leavesBat;
+}
+
+/**
+ * hy127: family outgoing is an unlit sight ball in front of her. The
+ * toon cream died on her jersey (hy126 foul still). Take / miss keep
+ * the toon mitt pop. Does not change paths or tap math.
+ */
+export function outgoingSightShows(opts: { leavesBat: boolean }): boolean {
+  return opts.leavesBat;
 }
 
 /**
@@ -844,7 +1248,11 @@ export function cameraPunchOffset(elapsedMs: number, reduced = false): Vec3 {
   return [b[0] * e, b[1] * e, b[2] * e];
 }
 
-/** Catcher mannequin at z=1.1 would occlude the zone; keep the mitt receive. */
+/**
+ * Catcher mannequin at z=1.1 occludes the zone (hy123). Do not mount or
+ * warm `catcher.glb`. The take tell is the ball at MITT_RECEIVE. P1 may
+ * remount a darkened receiver; keep these numbers.
+ */
 export const CATCHER_VIS = {
   color: "#12182a",
   opacity: 0.34,
@@ -853,6 +1261,51 @@ export const CATCHER_VIS = {
 /** Result chip is post-resolve only — never over the aim grid during flight. */
 export function resultBannerVisible(stage: string): boolean {
   return stage === "field" || stage === "reaction";
+}
+
+/**
+ * Live phone park is the read. Quality Auto/Low/High is a debug HUD
+ * (P0-runtime §5). The 2D cutout is a second Aoi — the world silhouette
+ * is her (hy105). 2D fallback is the same park photo, not a quality
+ * picker (hy111). Mute, Pause, and the Lantern Field chip stay.
+ */
+export function phoneParkIsTheRead(opts: { mode: string; phoneStrip: boolean }): boolean {
+  return opts.phoneStrip && (opts.mode === "3d" || opts.mode === "2d");
+}
+
+/**
+ * Count waits until the beat is over. First four seconds are the park
+ * (hy106). Leave / prepare stay the park (hy105). Field / reaction are
+ * the 150 ms tell — a box score in the stars is a tech demo (hy108).
+ */
+export function phoneParkHidesScoreboard(opts: {
+  mode: string;
+  phoneStrip: boolean;
+  stage: string;
+  pitchesSeen?: number;
+}): boolean {
+  if (!phoneParkIsTheRead(opts)) return false;
+  if (
+    opts.stage === "prepare" ||
+    opts.stage === "flight" ||
+    opts.stage === "field" ||
+    opts.stage === "reaction"
+  ) {
+    return true;
+  }
+  if ((opts.pitchesSeen ?? 0) === 0 && (opts.stage === "idle" || opts.stage === "dead")) return true;
+  return false;
+}
+
+/**
+ * Phone 3D hid the whole caption to save park (hy86). That ate the pitch
+ * type and the result callout — P0-4 / §1.4. Show flight + the beat name.
+ * Flavor idle / prepare stay off so the 3×3 still fits.
+ */
+export function phoneParkShowsCaption(opts: { stage: string; hasResult?: boolean }): boolean {
+  if (opts.stage === "flight") return true;
+  if (resultBannerVisible(opts.stage)) return true;
+  return opts.stage === "idle" && opts.hasResult === true;
 }
 
 /**
@@ -866,11 +1319,57 @@ export function timingMarkerPct(u: number): number {
 /**
  * "Swing in the gold window" is a tap target, not a diagram.
  * Same resolver as the Swing button. Idle taps still no-op — do not
- * change tap math. Prepare is armed so the first tick is not a miss
- * of the control.
+ * change tap math. Prepare used to look armed, but `tap` only accepts
+ * flight, so the windup trained "this button is dead." Meter until
+ * the tick exists; swing surface on flight. A default sit with no tap
+ * is the same foul mill as the fat button (hy75).
  */
-export function timingBarIsSwing(stage: string): boolean {
-  return stage === "prepare" || stage === "flight";
+export function timingBarIsSwing(stage: string, aimed?: boolean): boolean {
+  if (aimed === false) return false;
+  return stage === "flight";
+}
+
+/**
+ * The gold bar is the first-timer house (P0-runtime §3.3). Fat CTA is
+ * the NOW cue only — 80 ms is too late to find the target. Armed wear
+ * is presentation. Does not change tap math.
+ */
+export function timingBarWearsGold(armed: boolean): boolean {
+  return armed;
+}
+
+/**
+ * NOW is the tick in the gold — same gate as the fat CTA. The bar is
+ * already the tap target (hy82). Pulse it so they do not have to find
+ * an 80 ms button. Does not change tap math.
+ */
+export function timingBarNow(opts: { armed: boolean; u?: number }): boolean {
+  if (!opts.armed) return false;
+  if (!Number.isFinite(opts.u)) return true;
+  return opts.u! >= SWING_CTA_FROM_U;
+}
+
+/**
+ * The gold window is the verb. Prepare has no fat CTA (hy70). Flight
+ * at u=0 still trains a mash. The visual band can be wide enough that
+ * an "approach" gate flips at u≈0.35 and the fat button whiffs (hy72).
+ * Show it only when the tick is on the plate. 0.82 still fouled out a
+ * 3-PA (hy74). A default sit with no tap is a two-strike foul mill
+ * (hy75) — the fat button waits for a chosen cell. Does not change tap math.
+ */
+export const SWING_CTA_FROM_U = 0.9;
+
+export function showSwingCta(opts: {
+  stage: string;
+  u?: number;
+  windowHalf?: number;
+  speed?: number;
+  aimed?: boolean;
+}): boolean {
+  if (opts.stage !== "flight") return false;
+  if (opts.aimed === false) return false;
+  if (!Number.isFinite(opts.u)) return true;
+  return opts.u! >= SWING_CTA_FROM_U;
 }
 
 /**
@@ -878,6 +1377,27 @@ export function timingBarIsSwing(stage: string): boolean {
  * Percentage-of-bar floors miss this once the panel has padding.
  */
 export const TIMING_WINDOW_MIN_PX = 28;
+
+/**
+ * Rest fill for the gold band. P0-runtime §3.3 floor is 0.40. hy121:
+ * 0.40 washed to a center hairline on the phone bar — the first-timer
+ * house has to read as a band, not the plate tick. Does not change
+ * tap math or window width.
+ */
+export const TIMING_WINDOW_FILL = 0.7;
+
+export function timingWindowFillCss(alpha = TIMING_WINDOW_FILL): string {
+  return `rgb(255 209 102 / ${alpha})`;
+}
+
+/**
+ * P0-runtime §3.3: the gold band is a prepare/flight meter. Idle is an
+ * empty track. hy122: after hy121 the idle fill sat under the card's
+ * swing line and trained a dead mash. Does not change tap math.
+ */
+export function timingWindowShowsFill(stage: string): boolean {
+  return stage === "prepare" || stage === "flight";
+}
 
 /** Width from timing math only. The 28 px floor is CSS `minWidth`, not a %. */
 export function timingWindowWidthPct(windowHalf: number, speed: number): number {
@@ -989,10 +1509,11 @@ export const SOCKET_OFFSETS: Record<"bat_grip" | "glove" | "pitcher_glove", Sock
   // the mask). Same brown prop as the catcher — never a hair sheet, never
   // the ball in the webbing (ball stays on hand.R). Scale is presentation
   // only so the mitt is a nameable blob at the locked fov-35 camera.
+  // 2.4 spanned ~1.13 m and ate both hy44 curtains (hy46 crop: tan wall,
+  // no silver past the glove). 1.85 still faces the catcher; the peek clears.
   // rotDeg [135, 45, 180]: GPU sweep on the lifted LOOK set (2026-09-13) —
-  // world span ~[1.12, 1.12, 0.41]. Pre-lift [0, 90, 90] tumbled to a
-  // head cube (~[0.86, 0.81, 0.84]) after SET_GLOVE_LIFT_DEG.
-  pitcher_glove: { pos: [0, 0, 0], rotDeg: [135, 45, 180], scale: 2.4 },
+  // world span ~[1.12, 1.12, 0.41] at 2.4. Pre-lift [0, 90, 90] tumbled.
+  pitcher_glove: { pos: [0, 0, 0], rotDeg: [135, 45, 180], scale: 1.85 },
 };
 
 /**

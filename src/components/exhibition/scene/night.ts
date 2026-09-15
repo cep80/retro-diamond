@@ -14,12 +14,16 @@
  */
 
 import type { ExhibitionTier } from "../quality.ts";
-import type { Vec3 } from "./presentation.ts";
+import { CAMERA_FOV, type Vec3 } from "./presentation.ts";
 
 /** Night sky clear color and depth fog. Fog starts past the mound (~25m from
  * the locked camera) so Reina and the release point stay crisp. */
 export const NIGHT_SKY = "#0a1128";
 export const NIGHT_FOG = { color: "#141d42", near: 30, far: 150 } as const;
+
+/** Ground albedo after toon convert. Dirt 0.42 still read as a day infield
+ * (hy50-night). Night clay, not a void. Do not raise NIGHT_RIG.key. */
+export const GROUND_NIGHT = { grass: 0.38, dirt: 0.30 } as const;
 
 /** Moonlit-cool base so nothing is pitch black; warm key holds the plate.
  * Key stays under 1.0 — 1.7 washed the grass back to daylight. */
@@ -39,7 +43,22 @@ export const LANTERN_EMISSIVE_INTENSITY = 1.35;
  * This is the "lanterns emit" read without a bloom pass: a warm halo the
  * size of a paper lantern's light, not a hard sphere.
  */
-export const LANTERN_HALO = { color: "#ffb45e", core: "#ffd28a", size: 1.6, opacity: 0.55 } as const;
+export const LANTERN_HALO = {
+  color: "#ffb45e",
+  core: "#ffd28a",
+  size: 2.2,
+  phoneSize: 3.4,
+  opacity: 0.62,
+  phoneOpacity: 0.88,
+} as const;
+
+export function lanternHaloSize(phoneStrip: boolean): number {
+  return phoneStrip ? LANTERN_HALO.phoneSize : LANTERN_HALO.size;
+}
+
+export function lanternHaloOpacity(phoneStrip: boolean): number {
+  return phoneStrip ? LANTERN_HALO.phoneOpacity : LANTERN_HALO.opacity;
+}
 
 /** Warm light pool per lit lantern. Never shadow-casting. */
 export const LANTERN_LIGHT = { color: "#ffb45e", intensity: 11, distance: 14, decay: 2 } as const;
@@ -57,11 +76,16 @@ export const PLAY_CENTER: Vec3 = [0, 1.15, -1.2];
 /**
  * Scripted warm fills that consume the lantern point-light budget so the
  * plate and box stay lit without extra lights or bloom. Not field geo.
+ * hy57c sat them at y≈2.05 in Aoi's chest (intensity 11) and her cream
+ * peaked at 255. Clay, not jersey. Do not raise NIGHT_RIG.key.
  */
 export const SCRIPTED_PLAY_LIGHTS: readonly LanternPoint[] = [
-  { name: "scripted_plate_glow", pos: [0.2, 2.2, 0.45] },
-  { name: "scripted_box_glow", pos: [-0.85, 2.05, 0.35] },
+  { name: "scripted_plate_glow", pos: [0.15, 0.42, -0.15] },
+  { name: "scripted_box_glow", pos: [-0.4, 0.38, 0.18] },
 ];
+
+/** Dirt pools. Field lantern fixtures keep LANTERN_LIGHT (11). */
+export const SCRIPTED_PLAY_LIGHT = { color: "#ffb45e", intensity: 3.2, distance: 8, decay: 2 } as const;
 
 /**
  * Glow centers that sit inside the locked fov 35 frustum. Foul-line posts
@@ -69,11 +93,46 @@ export const SCRIPTED_PLAY_LIGHTS: readonly LanternPoint[] = [
  * are the lanterns a player can actually see.
  */
 export const FRAME_LANTERNS: readonly LanternPoint[] = [
-  { name: "frame_plate_3b", pos: [-2.35, 2.2, -3.1] },
-  { name: "frame_plate_1b", pos: [2.15, 2.2, -5.4] },
-  { name: "frame_tunnel_3b", pos: [-2.8, 2.4, -12.0] },
-  { name: "frame_tunnel_1b", pos: [2.8, 2.4, -12.0] },
+  // Halo sprites only — posts on the infield were a LOOK fail.
+  // three.js fov is vertical. On a 390×560 strip, hFOV ≈ 23°, so ±3.15 m
+  // at the plate pair sat on the lip and vanished. Stay inside that cone.
+  // y is the open phone sky (below the HTML chrome, above the sit), not the
+  // scoreboard/HUD band. x stays inside the 390×560 hFOV cone.
+  { name: "frame_plate_3b", pos: [-1.85, 2.45, -8.2] },
+  { name: "frame_plate_1b", pos: [1.85, 2.45, -8.2] },
+  { name: "frame_tunnel_3b", pos: [-2.05, 2.85, -15.2] },
+  { name: "frame_tunnel_1b", pos: [2.05, 2.85, -15.2] },
 ];
+
+/**
+ * Vertical screen fraction (0 = top) at the locked catcher cam / vFOV 33.
+ * Phone HUD covers ~0.14; sit starts ~0.60. Orbs belong in the gap.
+ */
+export function frameLanternScreenV(
+  pos: Vec3,
+  opts: { cameraY?: number; cameraZ?: number; vFovDeg?: number } = {},
+): number {
+  const cameraY = opts.cameraY ?? 1.2;
+  const cameraZ = opts.cameraZ ?? 4.4;
+  const half = ((opts.vFovDeg ?? CAMERA_FOV) * Math.PI) / 360;
+  const depth = Math.abs(pos[2] - cameraZ);
+  if (!(depth > 0) || !(half > 0)) return 0.5;
+  const ndcY = (pos[1] - cameraY) / depth / Math.tan(half);
+  return 0.5 - ndcY / 2;
+}
+
+/** Horizontal half-angle from the locked cam to a world point (radians). */
+export function frameLanternHalfAngle(pos: Vec3, cameraZ = 4.4): number {
+  const depth = Math.abs(pos[2] - cameraZ);
+  if (!(depth > 0)) return Math.PI / 2;
+  return Math.atan(Math.abs(pos[0]) / depth);
+}
+
+/** three.js vertical fov → horizontal half-angle at this aspect. */
+export function phoneStripHalfHFov(aspect: number, vFovDeg = CAMERA_FOV): number {
+  if (!(aspect > 0)) return 0;
+  return Math.atan(Math.tan((vFovDeg * Math.PI) / 360) * aspect);
+}
 
 export function lanternLightCandidates(field: readonly LanternPoint[]): LanternPoint[] {
   // FRAME_LANTERNS are no longer placed: at the catcher cam their posts stood
@@ -88,7 +147,7 @@ export function lanternLightCandidates(field: readonly LanternPoint[]): LanternP
  */
 export function lanternHaloPoints(field: readonly LanternPoint[]): LanternPoint[] {
   const facing = field.filter((p) => p.pos[2] < CAMERA_CLIP_Z);
-  return [...facing].sort((a, b) => a.name.localeCompare(b.name));
+  return [...FRAME_LANTERNS, ...facing].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** Empty grandstand / dugout / terrace blocks that otherwise read as gray daylight. */
@@ -119,19 +178,43 @@ export function standWashOn(opts: { strikes: number; stage: string }): boolean {
  * Cool pool just in front of Reina. The plate key never reaches 18 m, so
  * she reads as a black stick unless something ice-lit names the curtain.
  * Distance is shorter than the plate so this cannot wash the dirt to day.
+ * Ice, not bleach: #9ec4dc @ 5.8 lifted the navy atlas to a cream
+ * mannequin. The curtain light is the silver; the body stays navy.
  */
 export const MOUND_RIM = {
-  color: "#7aa8c8",
-  intensity: 2.2,
+  color: "#6d8ea6",
+  intensity: 4.2,
   distance: 7,
   decay: 2,
   position: [0.4, 3.15, -16.05] as Vec3,
 } as const;
 
+/** Phone strip: fewer pixels, same wash reads as a white speck. */
+export function moundRimIntensity(phoneStrip: boolean): number {
+  return phoneStrip ? 4 : MOUND_RIM.intensity;
+}
+
+/**
+ * Tight silver on the curtain only. Distance is a hair longer than the
+ * mound-to-head gap so the plate stays dark.
+ */
+export const MOUND_CURTAIN = {
+  color: "#d4d8e0",
+  intensity: 3.8,
+  distance: 3.4,
+  decay: 2,
+  position: [0.12, 2.55, -17.55] as Vec3,
+} as const;
+
 /** True when the rim cannot reach the plate (z ≈ 0) from its mound seat. */
 export function moundRimStaysOffPlate(): boolean {
   const dz = Math.abs(MOUND_RIM.position[2]);
-  return dz > MOUND_RIM.distance && MOUND_RIM.intensity < LANTERN_LIGHT.intensity;
+  const curtainDz = Math.abs(MOUND_CURTAIN.position[2]);
+  return (
+    dz > MOUND_RIM.distance &&
+    curtainDz > MOUND_CURTAIN.distance &&
+    MOUND_RIM.intensity < LANTERN_LIGHT.intensity
+  );
 }
 
 /** Locked camera sits at z ≈ 6.7; lanterns behind it are off-frame. */

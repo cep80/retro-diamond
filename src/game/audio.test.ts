@@ -11,6 +11,15 @@ describe("audio exports", () => {
   it("exports core sfx and music helpers", () => {
     assert.equal(typeof audio.setAudioEnabled, "function");
     assert.equal(typeof audio.unlockAudio, "function");
+    assert.equal(typeof audio.audioContextState, "function");
+    assert.equal(typeof audio.audioSfxPeak, "function");
+    assert.equal(typeof audio.audioMasterPeak, "function");
+    assert.equal(typeof audio.resetAudioPeaks, "function");
+    assert.equal(audio.audioContextState(), "none");
+    assert.equal(audio.audioSfxPeak(), 0);
+    assert.equal(audio.audioMasterPeak(), 0, "hy85: master peak is 0 until the graph opens");
+    audio.resetAudioPeaks();
+    assert.equal(audio.audioMasterPeak(), 0);
     assert.equal(typeof audio.startMusic, "function");
     assert.equal(typeof audio.stopMusic, "function");
     assert.equal(typeof audio.setCrowdLevel, "function");
@@ -26,6 +35,9 @@ describe("audio exports", () => {
     assert.equal(typeof audio.walkUpUrl, "function");
     assert.equal(typeof audio.fieldBedUrl, "function");
     assert.equal(typeof audio.setMasterMuted, "function");
+    assert.equal(typeof audio.careerMuteAppliesToScreen, "function");
+    assert.equal(audio.careerMuteAppliesToScreen("exhibition"), false, "hy80: career mute must not re-silence contact");
+    assert.equal(audio.careerMuteAppliesToScreen("title"), true);
     assert.equal(typeof audio.startEnding, "function");
   });
 
@@ -73,5 +85,21 @@ describe("audio exports", () => {
     assert.equal(audio.fieldBedUrl("lantern"), "/audio/lantern-field.mp3");
     assert.ok(existsSync(join(audioDir, audio.walkUpUrl("aoi").replace("/audio/", ""))));
     assert.ok(existsSync(join(audioDir, audio.fieldBedUrl().replace("/audio/", ""))));
+  });
+
+  it("contact, foul, foul-tip, miss, and take each own a distinct ear recipe", () => {
+    const five = ["miss", "foul-tip", "foul", "hit"] as const;
+    const recipes = five.map((t) => JSON.stringify(audio.CONTACT_SFX[t]));
+    assert.equal(new Set(recipes).size, five.length, "contact oscillators must not share a recipe");
+    assert.ok(audio.CONTACT_SFX["foul-tip"].tones[0]!.freq > 700, "tip is a high ping, not the woody");
+    assert.ok(audio.CONTACT_SFX.foul.tones[0]!.type === "sawtooth", "pulled foul is woody");
+    assert.ok(audio.CONTACT_SFX.miss.noise.freq > 1200, "whiff is air, not wood");
+    assert.ok(audio.CONTACT_SFX.hit.noise.vol > audio.CONTACT_SFX.miss.noise.vol, "crack must beat the walk-up");
+    assert.ok(audio.CONTACT_SFX.hit.noise.vol >= 0.24, "hy74: quiet recipes were not speaker-heard");
+    const layers = ["miss", "foul-tip", "foul", "hit", "take-strike"].map((b) => audio.RELEASE_SFX_LAYERS[b].join("|"));
+    assert.equal(new Set(layers).size, 5);
+    assert.deepEqual(audio.RELEASE_SFX_LAYERS["take-strike"], ["glove", "umpire"]);
+    assert.ok(!audio.RELEASE_SFX_LAYERS["take-strike"].some((l) => l.startsWith("contact:")), "a take is not a silent miss");
+    assert.ok(audio.RELEASE_SFX_LAYERS.miss.includes("contact:miss"));
   });
 });

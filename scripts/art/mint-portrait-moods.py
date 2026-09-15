@@ -1,7 +1,7 @@
-"""Mint focused / elated / crushed stills from each girl's key art.
+"""Mint focused / elated / crushed stills from practice keys.
 
-Circle-up 3: three portrait states, not one file plus a CSS filter.
-These are stills of the same drawing — crop and grade, not new poses.
+Game-day moods are unique generated poses. Do not overwrite those from this script.
+Practice moods stay graded crops of the practice key until unique practice poses exist.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ KEYS = {
     "kira": "kira.png",
     "yuki": "yuki.png",
 }
+PRACTICE = {k: v.replace(".png", "-practice.png") for k, v in KEYS.items()}
 
 
 def split_alpha(im: Image.Image) -> tuple[Image.Image, Image.Image]:
@@ -65,14 +66,18 @@ def crushed(im: Image.Image) -> Image.Image:
 
 
 def main() -> None:
-    for _id, name in KEYS.items():
-        src = ROOT / name
-        stem = name.replace(".png", "")
-        im = Image.open(src)
-        focused(im).save(ROOT / f"{stem}-focused.png")
-        elated(im).save(ROOT / f"{stem}-elated.png")
-        crushed(im).save(ROOT / f"{stem}-crushed.png")
-        print(stem)
+    for table in (PRACTICE,):
+        for _id, name in table.items():
+            src = ROOT / name
+            if not src.exists():
+                print("missing", name)
+                continue
+            stem = name.replace(".png", "")
+            im = Image.open(src)
+            focused(im).save(ROOT / f"{stem}-focused.png")
+            elated(im).save(ROOT / f"{stem}-elated.png")
+            crushed(im).save(ROOT / f"{stem}-crushed.png")
+            print(stem)
 
 
 if __name__ == "__main__":

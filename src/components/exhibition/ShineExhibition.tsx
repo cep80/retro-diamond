@@ -12,11 +12,12 @@
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 // useMemo is still used for derived heat below.
 import { PixelBtn } from "@/components/chrome";
-import { ShineMute } from "@/components/ShineMute";
 import { BasesDiamond, PauseOverlay } from "@/components/ShinePlateBits";
 import {
   duckCrowd,
+  isMuted,
   setCrowdLevel,
+  setMasterMuted,
   sfxAnticipation,
   sfxCrowd,
   sfxRelease,
@@ -25,12 +26,16 @@ import {
   stopCrowd,
   stopMusic,
   unlockAudio,
+  audioContextState,
+  audioSfxPeak,
+  audioMasterPeak,
+  resetAudioPeaks,
 } from "@/game/audio";
 import type { Cell } from "@/game/plate";
 import { locCell } from "@/game/plate.ts";
 import { inputNow } from "@/shine/clock.ts";
 import { crowdStem } from "@/shine/culture.ts";
-import { aoiHeat, DEFAULT_SIT, type SwingKind } from "@/shine/featured-game.ts";
+import { aoiHeat, DEFAULT_SIT, type FieldBeat, type SwingKind } from "@/shine/featured-game.ts";
 import { PlateController, plateWindowHalf, type PlateCue, type PlateSnapshot } from "@/shine/plate-controller.ts";
 import { newRun } from "@/shine/run.ts";
 import { basesLabel } from "@/shine/events.ts";
@@ -42,10 +47,19 @@ import { useShine } from "@/shine/store.ts";
 import { AimGrid } from "./AimGrid";
 import { exhibitionAudioCue, type ExhibitionAudioIo } from "./audio-cues";
 import {
+  FALLBACK_NOTE_ASSETS,
+  FALLBACK_NOTE_WEBGL,
   ONBOARDING_PROMPT,
   TIMING_ASSIST_HINT,
+  firstPitchButton,
+  firstPitchCoachLine,
+  pitchButtonIsHouse,
+  pitchDoorQuiet,
   onboardingNext,
+  sessionHasSwing,
   showTimingAssistHint,
+  sitClearsAfterFoul,
+  sitClearsOnNewPa,
   type OnboardingPhase,
 } from "./onboarding";
 import { effectiveTier, type ExhibitionQuality } from "./quality";
@@ -55,15 +69,33 @@ import { duelEnabled } from "@/components/duel-ui";
 import { likelyFamily, showsFamilyHint } from "@/shine/duel.ts";
 import { track as trackEvent } from "@/game/telemetry.ts";
 import {
+  aimGridPhoneStrip,
   ballLeavesBat,
   firstPitchSight,
   exhibitionResultReadout,
   lastFoulHeldTwo,
   latchPitchType,
+  phoneParkHidesScoreboard,
+  phoneParkIsTheRead,
+  phoneParkShowsCaption,
+  plate2dFlight,
+  plate2dOutgoingSight,
+  plate2dPinsToPark,
+  plate2dShowsBall,
+  planOutgoing,
+  contactFlash,
+  type OutgoingPlan,
+  worldSitShows,
   resultBannerVisible,
   TIMING_WINDOW_MIN_PX,
+  ghostClearsOnCue,
+  showSwingCta,
   timingBarIsSwing,
+  timingBarNow,
+  timingBarWearsGold,
   timingMarkerPct,
+  timingWindowFillCss,
+  timingWindowShowsFill,
   timingWindowWidthPct,
 } from "./scene/presentation";
 
@@ -78,6 +110,31 @@ function importExhibition3D(retry = true): Promise<{ default: typeof import("./E
 const Exhibition3D = lazy(importExhibition3D);
 
 const ENCOUNTER = { arm: "reina" as const, appearances: 3, neutral: true };
+
+/** Session mute. Career mute must not silence the five-way ear (hy78). */
+function ExhibitionMute() {
+  const careerMuted = useShine((s) => s.muted);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    setMasterMuted(false);
+    return () => setMasterMuted(careerMuted);
+  }, [careerMuted]);
+  return (
+    <PixelBtn
+      variant="ghost"
+      className="h-9 px-3 text-[10px]"
+      pressed={on}
+      onClick={() => {
+        unlockAudio();
+        const next = !on;
+        setOn(next);
+        setMasterMuted(next);
+      }}
+    >
+      {on ? "Sound" : "Mute"}
+    </PixelBtn>
+  );
+}
 
 function webglAvailable() {
   if (typeof document === "undefined") return false;
@@ -128,7 +185,7 @@ function ExhibitionPlate2D({
   const spec = snapshot.beat ? beatSpec(snapshot.beat) : null;
   const frameClass = (snapshot.stage === "field" || snapshot.stage === "reaction") && spec ? spec.css : "";
   return (
-    <div className={`relative mx-auto aspect-[3/4] w-full max-w-sm ${frameClass}`}>
+    <div className={`relative mx-auto aspect-[3/4] h-full max-h-full w-auto max-w-sm ${frameClass}`}>
       <div className="absolute inset-0 rounded-2xl border border-white/20 bg-ink/35 shadow-[inset_0_0_0_1px_rgba(255,209,102,0.15)]" />
       <div className="absolute inset-[12%]">
         <AimGrid snapshot={snapshot} heat={heat} ghost={ghost} onAim={onAim} sitChosen={sitChosen} />
@@ -180,16 +237,27 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
   });
   const [fallbackNote, setFallbackNote] = useState<string | null>(() => {
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("fallback") === "1") {
-      return "The 3D scene could not load. Same game, 2D view.";
+      return FALLBACK_NOTE_ASSETS;
     }
-    return webglAvailable() ? null : "3D is unavailable on this device. Same game, 2D view.";
+    return webglAvailable() ? null : FALLBACK_NOTE_WEBGL;
   });
   const [sceneReady, setSceneReady] = useState(false);
   const [ghost, setGhost] = useState<Cell | null>(null);
   const [u, setU] = useState(0);
   const [bookToast, setBookToast] = useState<1 | 2 | 3 | null>(null);
+  const [prepElapsed, setPrepElapsed] = useState(0);
+  const prepMsRef = useRef(EXHIBITION_PACE.prepareMs);
+  const [parkBeat, setParkBeat] = useState<{
+    beat: FieldBeat;
+    at: number;
+    plan: OutgoingPlan | null;
+    mitt: boolean;
+    from?: { left: number; top: number; scale: number };
+  } | null>(null);
+  const [parkOutElapsed, setParkOutElapsed] = useState(0);
   const [onboarding, setOnboarding] = useState<OnboardingPhase>("unseen");
   const [sitChosen, setSitChosen] = useState(false);
+  const paRef = useRef(1);
   const [madeContact, setMadeContact] = useState(false);
   const [pitchLatch, setPitchLatch] = useState<string | null>(null);
   // Control-panel geometry. The locked camera projects the plate, zone and
@@ -203,12 +271,22 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
   const [portrait, setPortrait] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(orientation: portrait)").matches,
   );
+  const [phoneHud, setPhoneHud] = useState(
+    () => typeof window !== "undefined" && aimGridPhoneStrip(window.innerWidth, window.innerHeight),
+  );
   useEffect(() => {
     const mq = window.matchMedia("(orientation: portrait)");
-    const on = () => setPortrait(mq.matches);
+    const on = () => {
+      setPortrait(mq.matches);
+      setPhoneHud(aimGridPhoneStrip(window.innerWidth, window.innerHeight));
+    };
     mq.addEventListener("change", on);
+    window.addEventListener("resize", on);
     on();
-    return () => mq.removeEventListener("change", on);
+    return () => {
+      mq.removeEventListener("change", on);
+      window.removeEventListener("resize", on);
+    };
   }, []);
   useEffect(() => {
     const el = panelRef.current;
@@ -319,15 +397,51 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
   const heat = useMemo(() => aoiHeat(controller.run), [controller]);
 
   useEffect(() => {
+    if (sitClearsOnNewPa(paRef.current, game.paIndex)) {
+      setSitChosen(false);
+      setGhost(null);
+    }
+    paRef.current = game.paIndex;
+  }, [game.paIndex]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     if (new URLSearchParams(window.location.search).get("debug") !== "1") return;
     const w = window as unknown as {
       __dsSit?: { chosen: boolean; pitchesSeen: number; stage: string };
-      __dsBar?: { swing: boolean; stage: string };
+      __dsBar?: { swing: boolean; stage: string; coach: string | null; swingCta: boolean; now?: boolean; u: number };
+      __dsAudio?: { state: string; last?: string; peak?: number; masterPeak?: number; muted?: boolean };
     };
     w.__dsSit = { chosen: sitChosen, pitchesSeen: game.pitchesSeen, stage: snapshot.stage };
-    w.__dsBar = { swing: timingBarIsSwing(snapshot.stage), stage: snapshot.stage };
-  }, [sitChosen, game.pitchesSeen, snapshot.stage]); // __dsBar follows stage via timingBarIsSwing
+    w.__dsBar = {
+      swing: timingBarIsSwing(snapshot.stage, sitChosen),
+      stage: snapshot.stage,
+      coach: firstPitchCoachLine({
+        swung: sessionHasSwing(game.events),
+        pitchesSeen: game.pitchesSeen,
+        paIndex: game.paIndex,
+        stage: snapshot.stage,
+        aimed: sitChosen,
+        cardUp: onboarding === "showing",
+      }),
+      swingCta: showSwingCta({
+        stage: snapshot.stage,
+        u,
+        windowHalf: plateWindowHalf(controller.run, game, snapshot.swing, settings.timingAssist),
+        speed: snapshot.pitch?.speed ?? 0.6,
+        aimed: sitChosen,
+      }),
+      now: timingBarNow({ armed: timingBarIsSwing(snapshot.stage, sitChosen), u }),
+      u,
+    };
+    w.__dsAudio = {
+      state: audioContextState(),
+      last: w.__dsAudio?.last,
+      peak: audioSfxPeak(),
+      masterPeak: audioMasterPeak(),
+      muted: isMuted(),
+    };
+  }, [sitChosen, game.pitchesSeen, game.events, game.paIndex, snapshot.stage, snapshot.swing, snapshot.pitch, u, controller, settings.timingAssist, onboarding]);
 
   // Audio + presentation cues. The audio mapping lives in `audio-cues.ts`
   // (shared by the 2D and 3D presentations, and unit-tested); the ghost flash
@@ -345,8 +459,23 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
       duckCrowd,
       setCrowdLevel,
       sfxRelease: (beat) => {
-        if (debug) console.info("[exhibition-audio] release", beat, Math.round(performance.now()));
+        resetAudioPeaks();
         sfxRelease(beat);
+        if (debug) {
+          const w = window as unknown as { __dsAudio?: { state: string; last?: string; peak?: number; masterPeak?: number; muted?: boolean } };
+          const stamp = () => {
+            w.__dsAudio = {
+              state: audioContextState(),
+              last: beat,
+              peak: audioSfxPeak(),
+              masterPeak: audioMasterPeak(),
+              muted: isMuted(),
+            };
+          };
+          stamp();
+          window.setTimeout(stamp, 50);
+          console.info("[exhibition-audio] release", beat, Math.round(performance.now()));
+        }
       },
       schedule: (fn, ms) => window.setTimeout(fn, ms),
     };
@@ -362,6 +491,15 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
         if (cue.t === "resolved") console.info("[exhibition-cue] resolved", cue.beat, "swung", cue.swung, Math.round(performance.now()));
       }
       exhibitionAudioCue(cue, controller.getSnapshot().game, io);
+      if (cue.t === "step-in") setOnboarding((p) => onboardingNext(p, "step-in"));
+      if (cue.t === "prepare") {
+        setOnboarding((p) => onboardingNext(p, "pitch"));
+        setPitchLatch(null);
+        setLastResult(null);
+        setParkBeat(null);
+        prepMsRef.current = cue.prepareMs;
+      }
+      if (cue.t === "idle") setParkBeat(null);
       // The Duel telemetry (build spec §6).
       if (cue.t === "call") {
         const g = controller.getSnapshot().game;
@@ -380,13 +518,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
         const g = controller.getSnapshot().game;
         trackEvent("pa_resolve", { call: g.call, beat: cue.beat, verdict: g.lastVerdict, arm: g.arm });
       }
-      if (cue.t === "step-in") setOnboarding((p) => onboardingNext(p, "step-in"));
-      if (cue.t === "prepare") {
-        setOnboarding((p) => onboardingNext(p, "pitch"));
-        setGhost(null);
-        setPitchLatch(null);
-        setLastResult(null);
-      }
+      if (ghostClearsOnCue(cue.t)) setGhost(null);
       if (cue.t === "flight") {
         const s = controller.getSnapshot();
         setPitchLatch(latchPitchType({ recognized: s.recognized, pitchType: s.pitch?.type, latched: null }).latch);
@@ -396,8 +528,20 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
         setPitchLatch((prev) => latchPitchType({ recognized: true, pitchType: s.pitch?.type, latched: prev }).latch);
       }
       if (cue.t === "resolved") {
+        if (sitClearsAfterFoul(cue.beat)) setSitChosen(false);
         if (ballLeavesBat(cue.beat)) setMadeContact(true);
         const g = controller.getSnapshot().game;
+        const spec = beatSpec(cue.beat, reduced);
+        const plan = planOutgoing(cue.beat, spec, g.events.length);
+        const liveU = controller.progress(performance.now());
+        const loc = g.live?.loc ?? { x: 1.5, y: 1.5 };
+        setParkBeat({
+          beat: cue.beat,
+          at: performance.now(),
+          plan,
+          mitt: !plan,
+          from: !plan ? plate2dFlight({ u: liveU >= 1 ? 1 : liveU, loc }) : undefined,
+        });
         setLastResult(
           exhibitionResultReadout({
             beat: cue.beat,
@@ -408,7 +552,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
       if (cue.t === "resolved" && (cue.beat === "miss" || cue.beat === "foul-tip" || cue.beat === "foul")) {
         const g = controller.getSnapshot().game;
         setGhost(locCell(g.live?.loc ?? g.lastPitches.at(-1)?.loc ?? { x: 1.5, y: 1.5 }));
-        window.setTimeout(() => setGhost(null), 400);
+        if (!sitClearsAfterFoul(cue.beat)) window.setTimeout(() => setGhost(null), 400);
       }
     });
     return () => {
@@ -416,7 +560,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
       stopCrowd();
       stopMusic();
     };
-  }, [controller]);
+  }, [controller, reduced]);
 
   // Destroy the session with the screen.
   useEffect(() => () => controller.destroy(), [controller]);
@@ -442,6 +586,36 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
       window.removeEventListener("orientationchange", resize);
     };
   }, [controller]);
+
+  // Prepare elapsed for the 2D rubber leave (hy118). Flight u is separate.
+  useEffect(() => {
+    if (snapshot.stage !== "prepare") {
+      setPrepElapsed(0);
+      return;
+    }
+    const t0 = performance.now();
+    let raf = 0;
+    const loop = () => {
+      setPrepElapsed(performance.now() - t0);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [controller, snapshot.stage]);
+
+  useEffect(() => {
+    if (!parkBeat) {
+      setParkOutElapsed(0);
+      return;
+    }
+    let raf = 0;
+    const loop = () => {
+      setParkOutElapsed((performance.now() - parkBeat.at) / 1000);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [parkBeat]);
 
   // Flight progress for the timing bar (render-only; never decides timing).
   useEffect(() => {
@@ -476,17 +650,21 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
       if (e.code === k.power && s.stage !== "flight") controller.setSwing("power");
       if (e.code === k.swing || e.code === "KeyJ" || e.code === "KeyZ") {
         e.preventDefault();
-        if (s.stage === "flight") controller.tap(s.swing, inputNow(e));
-        else if (s.stage === "idle" || s.stage === "dead") controller.startPitch();
+        unlockAudio();
+        if (s.stage === "flight") {
+          if (!sitChosen) return;
+          controller.tap(s.swing, inputNow(e));
+        } else if (s.stage === "idle" || s.stage === "dead") controller.startPitch();
         else if (s.stage === "situation") controller.stepIn();
       } else if (e.code === k.power && s.stage === "flight") {
         e.preventDefault();
+        if (!sitChosen) return;
         controller.tap("power", inputNow(e));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [controller, settings.keys]);
+  }, [controller, settings.keys, sitChosen]);
 
   const fallTo2D = useCallback((note: string) => {
     setMode("2d");
@@ -496,13 +674,13 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
   }, [replayIndex]);
 
   const onAim = useCallback((c: Cell) => {
+    unlockAudio();
     setSitChosen(true);
     controller.setAim(c);
   }, [controller]);
   const tier = effectiveTier(quality);
   const pitch = snapshot.pitch;
   const inFlight = snapshot.stage === "flight";
-  const livePitch = snapshot.stage === "prepare" || inFlight;
   const windowHalf = plateWindowHalf(controller.run, game, snapshot.swing, settings.timingAssist);
   const spec = snapshot.beat ? beatSpec(snapshot.beat, reduced) : null;
   const flightRead = inFlight
@@ -518,8 +696,60 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
       : lastResult;
   const reacting = (snapshot.stage === "field" || snapshot.stage === "reaction") && spec?.big;
   const showOnboarding = onboarding === "showing" && snapshot.stage === "idle" && !inFlight;
-  const firstPitch = firstPitchSight({ pitchesSeen: game.pitchesSeen, stage: snapshot.stage });
-  const barSwings = timingBarIsSwing(snapshot.stage);
+  const hasSwung = sessionHasSwing(game.events);
+  const firstPitch = firstPitchSight({
+    pitchesSeen: game.pitchesSeen,
+    stage: snapshot.stage,
+    phoneStrip: mode === "3d" && phoneHud,
+    swung: hasSwung,
+    paIndex: game.paIndex,
+  });
+  const coachSwing = firstPitchCoachLine({
+    swung: hasSwung,
+    pitchesSeen: game.pitchesSeen,
+    paIndex: game.paIndex,
+    stage: snapshot.stage,
+    aimed: sitChosen,
+    cardUp: showOnboarding,
+  });
+  const barSwings = timingBarIsSwing(snapshot.stage, sitChosen);
+  const windowFill = timingWindowShowsFill(snapshot.stage);
+  const swingCta = showSwingCta({
+    stage: snapshot.stage,
+    u,
+    windowHalf,
+    speed: pitch?.speed ?? 0.6,
+    aimed: sitChosen,
+  });
+  const parkCaption = phoneParkShowsCaption({
+    stage: snapshot.stage,
+    hasResult: Boolean(resultLine),
+  });
+  const parkRead = phoneParkIsTheRead({ mode, phoneStrip: phoneHud });
+  const flight2d = pitch ? plate2dFlight({ u, loc: pitch.loc }) : null;
+  const parkBall = plate2dShowsBall({
+    stage: snapshot.stage,
+    elapsedMs: prepElapsed,
+    prepMs: prepMsRef.current,
+  });
+  const parkOut = parkBeat
+    ? plate2dOutgoingSight({
+        plan: parkBeat.plan,
+        mitt: parkBeat.mitt,
+        from: parkBeat.from,
+        elapsedS: parkOutElapsed,
+        color: contactFlash(parkBeat.beat)?.color,
+      })
+    : null;
+  const parkHidesBoard = phoneParkHidesScoreboard({
+    mode,
+    phoneStrip: phoneHud,
+    stage: snapshot.stage,
+    pitchesSeen: game.pitchesSeen,
+  });
+  const doorHouse = pitchButtonIsHouse({ aimed: sitChosen });
+  const doorQuiet = pitchDoorQuiet({ aimed: sitChosen });
+  const barNow = timingBarNow({ armed: barSwings, u });
   const mood = reacting
     ? spec!.portrait === "elated"
       ? "elated"
@@ -594,7 +824,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
   return (
     <main className="relative flex h-dvh max-h-dvh flex-col overflow-hidden bg-ink text-cream" data-stage={snapshot.stage}>
       {mode === "3d" ? (
-        <SceneBoundary onError={() => fallTo2D("The 3D scene could not load. Same game, 2D view.")}>
+        <SceneBoundary onError={() => fallTo2D(FALLBACK_NOTE_ASSETS)}>
           <Suspense fallback={<SceneLoading />}>
             <div className="absolute inset-x-0 top-0" style={{ bottom: portrait ? panelH + 8 : 0 }}>
               <Exhibition3D
@@ -607,7 +837,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
                 onAim={onAim}
                 sitChosen={sitChosen}
                 onReady={() => setSceneReady(true)}
-                onFatal={() => fallTo2D("The 3D scene could not load. Same game, 2D view.")}
+                onFatal={() => fallTo2D(FALLBACK_NOTE_ASSETS)}
                 onContextLost={() => {
                   probes.current.lost += 1;
                   console.info("[exhibition] webgl_context_lost", {
@@ -621,8 +851,19 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
         </SceneBoundary>
       ) : (
         <>
-          <img src="/bg/park-koi.jpg" alt="" className="absolute inset-0 size-full object-cover object-[center_70%]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/20" />
+          <img
+            src="/bg/park-koi.jpg"
+            alt=""
+            className="absolute inset-x-0 top-0 w-full object-cover object-[center_78%]"
+            style={{
+              height: parkRead && portrait ? `calc(100dvh - ${panelH + 8}px)` : "100%",
+            }}
+          />
+          <div
+            className={`absolute inset-0 ${
+              parkRead ? "bg-gradient-to-t from-transparent via-transparent to-ink/25" : "bg-gradient-to-t from-ink via-ink/55 to-ink/20"
+            }`}
+          />
         </>
       )}
       {snapshot.paused ? (
@@ -637,10 +878,10 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
           }}
         />
       ) : null}
-      <div className="pointer-events-none relative z-10 flex flex-1 flex-col gap-3 p-4 sm:p-6">
-        <header className="pointer-events-auto flex items-start justify-between gap-3">
+      <div className="pointer-events-none relative z-10 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4 sm:p-6">
+        <header className="pointer-events-auto flex shrink-0 items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
-            {art ? (
+            {art && !parkRead ? (
               <img
                 src={art}
                 alt=""
@@ -649,43 +890,53 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
             ) : null}
             <div className="min-w-0">
               <p className="episode-chip w-fit">3D Exhibition · Lantern Field</p>
-              <p className={`mt-2 font-display text-xs uppercase tracking-widest text-grass-2 ${mode === "3d" ? "max-sm:hidden" : ""}`}>
+              <p className={`mt-2 font-display text-xs uppercase tracking-widest text-grass-2 ${parkRead || mode === "3d" ? "max-sm:hidden" : ""}`}>
                 Aoi vs {rivalName} · nothing is saved
               </p>
-              {fallbackNote ? <p className="mt-1 font-ui text-xs text-gold/90">{fallbackNote}</p> : null}
+              {fallbackNote ? (
+                <p className="mt-1 w-fit rounded-full border border-gold/50 bg-ink/80 px-2.5 py-1 font-ui text-xs leading-snug text-gold">
+                  {fallbackNote}
+                </p>
+              ) : null}
             </div>
           </div>
           <div className={`flex shrink-0 flex-col items-end gap-2 text-right font-ui text-sm text-cream/85 ${mode === "3d" ? "max-w-[11.5rem] text-[11px] sm:max-w-none sm:text-sm" : ""}`}>
             <div className="flex gap-2">
-              <ShineMute />
-              <select
-                value={quality}
-                onChange={(e) => setQuality(e.target.value as ExhibitionQuality)}
-                className="h-9 rounded-lg border border-white/20 bg-ink/70 px-2 font-display text-[10px] uppercase tracking-widest text-cream"
-                aria-label="Quality"
-              >
-                <option value="auto">Auto</option>
-                <option value="low">Low</option>
-                <option value="high">High</option>
-              </select>
+              <ExhibitionMute />
+              {!parkRead ? (
+                <select
+                  value={quality}
+                  onChange={(e) => setQuality(e.target.value as ExhibitionQuality)}
+                  className="h-9 rounded-lg border border-white/20 bg-ink/70 px-2 font-display text-[10px] uppercase tracking-widest text-cream"
+                  aria-label="Quality"
+                >
+                  <option value="auto">Auto</option>
+                  <option value="low">Low</option>
+                  <option value="high">High</option>
+                </select>
+              ) : null}
               <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={() => controller.pause("user")} ariaLabel="Pause">
                 Pause
               </PixelBtn>
             </div>
-            <p>
-              PA {game.paIndex}/{game.paTarget} · {game.count.balls}-{game.count.strikes} · Inn {game.inning} · {game.outs} out
-            </p>
-            <div className="flex items-center gap-2">
-              <BasesDiamond bases={game.bases} self={game.selfOnBase} />
-              <span className="text-xs text-muted">{basesLabel(game.bases)}</span>
-            </div>
-            <p className="text-xs text-muted">
-              {game.hits} H · {game.walks} BB · {game.ks} K · {game.runs} R
-            </p>
+            {!parkHidesBoard ? (
+              <>
+                <p>
+                  PA {game.paIndex}/{game.paTarget} · {game.count.balls}-{game.count.strikes} · Inn {game.inning} · {game.outs} out
+                </p>
+                <div className="flex items-center gap-2">
+                  <BasesDiamond bases={game.bases} self={game.selfOnBase} />
+                  <span className="text-xs text-muted">{basesLabel(game.bases)}</span>
+                </div>
+                <p className="text-xs text-muted">
+                  {game.hits} H · {game.walks} BB · {game.ks} K · {game.runs} R
+                </p>
+              </>
+            ) : null}
           </div>
         </header>
 
-        {rivalArt && (snapshot.stage === "prepare" || snapshot.stage === "idle" || snapshot.stage === "dead") && mode === "2d" ? (
+        {rivalArt && !parkRead && (snapshot.stage === "prepare" || snapshot.stage === "idle" || snapshot.stage === "dead") && mode === "2d" ? (
           <img
             src={rivalArt}
             alt=""
@@ -696,19 +947,59 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
           />
         ) : null}
 
-        <div className="flex-1" />
-
-        {mode === "2d" ? (
-          <div className="pointer-events-auto">
+        {mode === "2d" && plate2dPinsToPark({ phoneStrip: phoneHud }) ? (
+          <>
+          <div className="min-h-0 flex-1" aria-hidden />
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 z-[5]"
+            style={{ bottom: portrait ? panelH + 8 : 0 }}
+            data-plate-2d="park"
+          >
+            {parkOut ? (
+              <div
+                className="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                data-park-ball={parkBeat?.beat ?? "out"}
+                style={{
+                  left: `${parkOut.left}%`,
+                  top: `${parkOut.top}%`,
+                  transform: `translate(-50%, -50%) scale(${parkOut.scale})`,
+                  background: parkOut.color,
+                  boxShadow: `0 0 14px ${parkOut.color}`,
+                }}
+                aria-hidden
+              />
+            ) : flight2d && parkBall ? (
+              <div
+                className="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cream shadow-[0_0_12px_#f5f8ff]"
+                data-park-ball={snapshot.stage === "prepare" ? "hold" : "flight"}
+                style={{
+                  left: `${flight2d.left}%`,
+                  top: `${flight2d.top}%`,
+                  transform: `translate(-50%, -50%) scale(${flight2d.scale})`,
+                }}
+                aria-hidden
+              />
+            ) : null}
+            {worldSitShows(snapshot.stage, sitChosen) ? (
+              <div className="pointer-events-auto absolute inset-x-0 mx-auto w-32" style={{ bottom: 12, height: 120 }}>
+                <AimGrid snapshot={snapshot} heat={heat} ghost={ghost} onAim={onAim} sitChosen={sitChosen} />
+              </div>
+            ) : null}
+          </div>
+          </>
+        ) : mode === "2d" ? (
+          <div className="pointer-events-auto flex min-h-0 flex-1 items-center justify-center">
             <ExhibitionPlate2D snapshot={snapshot} u={u} heat={heat} ghost={ghost} onAim={onAim} sitChosen={sitChosen} />
           </div>
-        ) : null}
+        ) : (
+          <div className="flex-1" />
+        )}
 
         {/* Control panel: onboarding card, timing bar, caption, swing kinds,
             pitch / swing / leave. One measured block (see panelRef above). */}
         <div
           ref={panelRef}
-          className={`pointer-events-auto mx-auto w-full max-w-sm ${
+          className={`pointer-events-auto mx-auto w-full max-w-sm shrink-0 ${
             mode === "3d"
               ? "landscape:mx-0 landscape:ml-auto landscape:[@media(max-height:520px)]:max-w-[15.5rem] landscape:[@media(max-height:520px)]:max-h-[calc(100dvh-5.5rem)] landscape:[@media(max-height:520px)]:overflow-y-auto"
               : ""
@@ -718,27 +1009,28 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
           {showOnboarding ? (
             <div
               className={`mb-3 rounded-xl border border-gold/40 bg-ink/90 px-4 py-3 ${
-                mode === "3d"
-                  ? "max-sm:mb-2 max-sm:px-3 max-sm:py-2 landscape:[@media(max-height:520px)]:mb-2 landscape:[@media(max-height:520px)]:px-3 landscape:[@media(max-height:520px)]:py-2"
+                parkRead || mode === "3d"
+                  ? "max-sm:mb-2 max-sm:flex max-sm:items-center max-sm:gap-2 max-sm:px-3 max-sm:py-2 landscape:[@media(max-height:520px)]:mb-2 landscape:[@media(max-height:520px)]:flex landscape:[@media(max-height:520px)]:items-center landscape:[@media(max-height:520px)]:gap-2 landscape:[@media(max-height:520px)]:px-3 landscape:[@media(max-height:520px)]:py-2"
                   : ""
               }`}
             >
-              <p className="font-display text-sm text-cream">{ONBOARDING_PROMPT.aim}</p>
-              <div className={`mt-1 flex flex-col gap-3 landscape:[@media(max-height:520px)]:flex-row landscape:[@media(max-height:520px)]:items-center landscape:[@media(max-height:520px)]:justify-between landscape:[@media(max-height:520px)]:gap-2 ${mode === "3d" ? "max-sm:flex-row max-sm:items-center max-sm:justify-between max-sm:gap-2" : ""}`}>
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-sm text-cream">{ONBOARDING_PROMPT.aim}</p>
                 <p className="font-display text-sm text-gold">{ONBOARDING_PROMPT.swing}</p>
-                <PixelBtn
-                  variant="ghost"
-                  className={`h-10 w-full ${mode === "3d" ? "max-sm:h-8 max-sm:w-auto max-sm:shrink-0 max-sm:px-3" : ""} landscape:[@media(max-height:520px)]:h-8 landscape:[@media(max-height:520px)]:w-auto landscape:[@media(max-height:520px)]:shrink-0 landscape:[@media(max-height:520px)]:px-3`}
-                  onClick={() => setOnboarding((p) => onboardingNext(p, "dismiss"))}
-                >
-                  {ONBOARDING_PROMPT.dismiss}
-                </PixelBtn>
               </div>
+              <PixelBtn
+                variant="ghost"
+                className={`mt-3 h-10 w-full ${parkRead || mode === "3d" ? "max-sm:mt-0 max-sm:h-8 max-sm:w-auto max-sm:shrink-0 max-sm:px-3" : ""} landscape:[@media(max-height:520px)]:mt-0 landscape:[@media(max-height:520px)]:h-8 landscape:[@media(max-height:520px)]:w-auto landscape:[@media(max-height:520px)]:shrink-0 landscape:[@media(max-height:520px)]:px-3`}
+                onClick={() => setOnboarding((p) => onboardingNext(p, "dismiss"))}
+              >
+                {ONBOARDING_PROMPT.dismiss}
+              </PixelBtn>
             </div>
           ) : null}
           <div
-            className={`relative flex min-h-11 items-center touch-none select-none ${barSwings ? "cursor-pointer" : ""}`}
+            className={`relative flex min-h-11 flex-col justify-center touch-none select-none ${barSwings ? "cursor-pointer" : ""}`}
             data-timing-swing={barSwings ? "1" : "0"}
+            data-timing-now={barNow ? "1" : "0"}
             role={barSwings ? "button" : undefined}
             aria-label={barSwings ? `Swing ${snapshot.swing}` : undefined}
             aria-hidden={barSwings ? undefined : true}
@@ -746,20 +1038,35 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
               barSwings
                 ? (e) => {
                     e.preventDefault();
+                    unlockAudio();
                     controller.tap(snapshot.swing, inputNow(e.nativeEvent));
                   }
                 : undefined
             }
           >
-            <div className="relative h-5 w-full overflow-hidden rounded-full border border-cream/25 bg-ink-2">
+            {coachSwing ? (
+              <p data-first-coach className="mb-1 text-center font-display text-sm text-gold">
+                {coachSwing}
+              </p>
+            ) : null}
+            <div
+              className={`relative h-5 w-full overflow-hidden rounded-full border bg-ink-2 ${
+                barNow
+                  ? "shine-timing-now border-gold"
+                  : timingBarWearsGold(barSwings)
+                    ? "shine-timing-live border-gold"
+                    : "border-cream/25"
+              }`}
+            >
               <div
                 data-timing-window
-                className={`pointer-events-none absolute inset-y-0 border border-gold bg-gold/40 ${firstPitch && !reduced ? "shine-first-window" : firstPitch ? "bg-gold/60" : ""}`}
+                className={`pointer-events-none absolute inset-y-0 ${windowFill ? `border border-gold ${firstPitch && !reduced ? "shine-first-window" : ""}` : ""}`}
                 style={{
                   left: "50%",
                   width: `${timingWindowWidthPct(windowHalf, pitch?.speed ?? 0.6)}%`,
                   minWidth: TIMING_WINDOW_MIN_PX,
                   transform: "translateX(-50%)",
+                  background: windowFill ? timingWindowFillCss() : "transparent",
                 }}
               />
               <div className="pointer-events-none absolute inset-y-0 left-1/2 w-0.5 bg-gold" style={{ marginLeft: "-1px" }} />
@@ -769,7 +1076,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
               />
             </div>
           </div>
-          <p className={`mt-2 text-center font-display text-lg font-bold max-sm:text-base landscape:[@media(max-height:520px)]:text-base ${showOnboarding ? `${mode === "3d" ? "max-sm:hidden " : ""}landscape:[@media(max-height:520px)]:hidden` : ""}`} aria-live="polite">
+          <p data-result-line className={`mt-2 text-center font-display text-lg font-bold max-sm:text-base landscape:[@media(max-height:520px)]:text-base ${parkRead && !parkCaption ? "max-sm:hidden landscape:[@media(max-height:520px)]:hidden" : showOnboarding ? "landscape:[@media(max-height:520px)]:hidden" : ""}`} aria-live="polite">
             {snapshot.stage === "situation"
               ? "Lantern Field holds its breath."
               : snapshot.stage === "prepare"
@@ -804,8 +1111,9 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
               compact
             />
           ) : null}
+          {/* Portrait park: kinds + Leave eat the plate. Contact is the default; Pause has Title. */}
           <div className={`flex gap-2 ${
-            mode === "3d" && (showOnboarding || livePitch)
+            parkRead || mode === "3d"
               ? "max-sm:hidden landscape:[@media(max-height:520px)]:hidden"
               : showOnboarding
                 ? "landscape:[@media(max-height:520px)]:hidden"
@@ -825,24 +1133,31 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
             ))}
           </div>
           {snapshot.stage === "situation" ? (
-            <PixelBtn className="h-14" onClick={() => controller.stepIn()} disabled={!stepGateOpen}>
+            <PixelBtn className="h-14" onClick={() => { unlockAudio(); controller.stepIn(); }} disabled={!stepGateOpen}>
               {stepGateOpen ? "Step in" : "Loading the park…"}
             </PixelBtn>
           ) : null}
           {(snapshot.stage === "idle" || snapshot.stage === "dead") && !game.done ? (
-            <PixelBtn className="h-14 max-sm:h-11 landscape:[@media(max-height:520px)]:h-11" onClick={() => controller.startPitch()}>
-              {snapshot.stage === "dead"
-                ? "Back in the box"
-                : snapshot.game.events.length > 0
-                  ? "Next pitch"
-                  : "Here comes the pitch"}
-            </PixelBtn>
+            <div data-pitch-house={doorHouse ? "1" : "0"} data-pitch-quiet={doorQuiet ? "1" : "0"}>
+              <PixelBtn
+                variant={doorHouse ? "primary" : "ghost"}
+                className={
+                  doorQuiet
+                    ? "h-9 w-full font-display text-[11px] uppercase tracking-widest text-cream/55"
+                    : "h-14 w-full max-sm:h-11 landscape:[@media(max-height:520px)]:h-11"
+                }
+                onClick={() => { unlockAudio(); controller.startPitch(); }}
+              >
+                {firstPitchButton({ stage: snapshot.stage, pitchesSeen: snapshot.game.pitchesSeen })}
+              </PixelBtn>
+            </div>
           ) : null}
-          {snapshot.stage === "prepare" || inFlight ? (
+          {swingCta ? (
             <PixelBtn
               className="h-14 touch-none select-none max-sm:h-11 landscape:[@media(max-height:520px)]:h-11"
               onPointerDown={(e) => {
                 e.preventDefault();
+                unlockAudio();
                 controller.tap(snapshot.swing, inputNow(e.nativeEvent));
               }}
             >
@@ -891,7 +1206,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
           {!snapshot.done && (snapshot.stage === "situation" || snapshot.stage === "idle") ? (
             <PixelBtn
               variant="ghost"
-              className={`h-10 landscape:[@media(max-height:520px)]:hidden ${showOnboarding && mode === "3d" ? "max-sm:hidden" : ""}`}
+              className={`h-10 landscape:[@media(max-height:520px)]:hidden ${parkRead || mode === "3d" ? "max-sm:hidden" : ""}`}
               onClick={() => {
                 stopCrowd();
                 stopMusic();

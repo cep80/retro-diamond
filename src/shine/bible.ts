@@ -342,6 +342,13 @@ export function portraitSrc(id: CharacterId, mood: PortraitMood = "neutral") {
   return `/characters/${stem}-${mood}.png`;
 }
 
+/** Complex / 朝練. Shared Skyline practice whites. Identity is body + hair + cap. */
+export function practiceSrc(id: CharacterId, mood: PortraitMood = "neutral") {
+  const stem = `${portraitFile(id)}-practice`;
+  if (mood === "neutral") return `/characters/${stem}.png`;
+  return `/characters/${stem}-${mood}.png`;
+}
+
 export function portraitMood(opts: {
   leverage: boolean;
   twoStrike?: boolean;

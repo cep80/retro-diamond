@@ -18,20 +18,77 @@ import {
   type Object3D,
   type MeshStandardMaterial,
 } from "three";
-import { isEmissiveLanternMaterial } from "./night";
+import { GROUND_NIGHT, isEmissiveLanternMaterial } from "./night";
+import {
+  HERO_DESKTOP_REINA_TOON_STEPS,
+  HERO_DESKTOP_TOON_STEPS,
+  HERO_PHONE_TOON_STEPS,
+  heroUsesCappedToon,
+  type HeroLookRole,
+} from "./kit-look";
 
 let sharedRamp: DataTexture | null = null;
+let phoneAoiRamp: DataTexture | null = null;
+let desktopAoiRamp: DataTexture | null = null;
+let desktopReinaRamp: DataTexture | null = null;
+let phoneAoiRampKey = "";
+let desktopAoiRampKey = "";
+let desktopReinaRampKey = "";
 
-/** Three-step ramp. Shadow band stays deep so grass does not lift to daylight. */
-export function toonRamp(): DataTexture {
-  if (sharedRamp) return sharedRamp;
-  const data = new Uint8Array([48, 118, 200, 255]);
-  const tex = new DataTexture(data, data.length, 1, RedFormat);
+/** Shared park ramp. Shadow band stays deep so grass does not lift to daylight. */
+export const TOON_RAMP_STEPS = [48, 118, 200, 255] as const;
+
+function rampTexture(steps: ArrayLike<number>): DataTexture {
+  const tex = new DataTexture(new Uint8Array(steps), steps.length, 1, RedFormat);
   tex.magFilter = NearestFilter;
   tex.minFilter = NearestFilter;
   tex.needsUpdate = true;
-  sharedRamp = tex;
   return tex;
+}
+
+export function toonRamp(): DataTexture {
+  if (!sharedRamp) sharedRamp = rampTexture(TOON_RAMP_STEPS);
+  return sharedRamp;
+}
+
+export function heroPhoneToonRamp(): DataTexture {
+  const key = HERO_PHONE_TOON_STEPS.join(",");
+  if (!phoneAoiRamp || phoneAoiRampKey !== key) {
+    phoneAoiRamp = rampTexture(HERO_PHONE_TOON_STEPS);
+    phoneAoiRampKey = key;
+  }
+  return phoneAoiRamp;
+}
+
+export function heroDesktopToonRamp(): DataTexture {
+  const key = HERO_DESKTOP_TOON_STEPS.join(",");
+  if (!desktopAoiRamp || desktopAoiRampKey !== key) {
+    desktopAoiRamp = rampTexture(HERO_DESKTOP_TOON_STEPS);
+    desktopAoiRampKey = key;
+  }
+  return desktopAoiRamp;
+}
+
+export function heroDesktopReinaToonRamp(): DataTexture {
+  const key = HERO_DESKTOP_REINA_TOON_STEPS.join(",");
+  if (!desktopReinaRamp || desktopReinaRampKey !== key) {
+    desktopReinaRamp = rampTexture(HERO_DESKTOP_REINA_TOON_STEPS);
+    desktopReinaRampKey = key;
+  }
+  return desktopReinaRamp;
+}
+
+export function toonRampLastStep(map: { image?: { data?: ArrayLike<number> } } | null | undefined): number | null {
+  const data = map?.image?.data;
+  if (!data || data.length === 0) return null;
+  return data[data.length - 1] ?? null;
+}
+
+export function heroToonRamp(role: string, phoneStrip: boolean): DataTexture {
+  if (!heroUsesCappedToon(role as HeroLookRole, phoneStrip)) return toonRamp();
+  if (phoneStrip) return heroPhoneToonRamp();
+  if (role === "reina") return heroDesktopReinaToonRamp();
+  return heroDesktopToonRamp();
 }
 
 /** Replace exported materials with toon equivalents, preserving color/map. */
@@ -76,8 +133,8 @@ export function applyToonMaterials(root: Object3D) {
       const name = m.name ?? `${mesh.name}`;
       // Night darkening for ground surfaces. Grass keeps a little more so the
       // mid-field reads as a dark lawn, not a void; dirt stays warm-dark.
-      if (/grass/i.test(name)) toon.color.multiplyScalar(0.4);
-      else if (/dirt|infield|chalk|clay/i.test(name)) toon.color.multiplyScalar(0.42);
+      if (/grass/i.test(name)) toon.color.multiplyScalar(GROUND_NIGHT.grass);
+      else if (/dirt|infield|chalk|clay/i.test(name)) toon.color.multiplyScalar(GROUND_NIGHT.dirt);
       return toon;
     };
     if (Array.isArray(mesh.material)) mesh.material = mesh.material.map((m) => convert(m as MeshStandardMaterial));

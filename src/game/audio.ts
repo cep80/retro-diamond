@@ -33,6 +33,10 @@ let muted = false;
 /** Player mix (0..1). Applied on top of the enabled/mute gates. */
 let mix = { music: 1, sfx: 1, crowd: 1 };
 let crowdBus: GainNode | null = null;
+let sfxAnalyser: AnalyserNode | null = null;
+let masterAnalyser: AnalyserNode | null = null;
+let sfxPeak = 0;
+let masterPeak = 0;
 const walkBufs = new Map<string, AudioBuffer>();
 
 function applyMix() {
@@ -116,6 +120,11 @@ export function isMuted() {
   return muted;
 }
 
+/** Exhibition owns the master mute for the session. Career must not re-silence contact (hy80). */
+export function careerMuteAppliesToScreen(screen: string): boolean {
+  return screen !== "exhibition";
+}
+
 export function setMasterMuted(on: boolean) {
   muted = on;
   if (master) master.gain.value = on ? 0 : 0.7;
@@ -126,6 +135,38 @@ export function setAudioEnabled(next: { sfx: boolean; music: boolean }) {
   applyMix();
   if (!next.sfx && crowd) crowd.gain.gain.value = 0;
   if (!next.music) stopMusic();
+}
+
+/** Debug / HUD: "none" until the first Coach tap opens the graph. */
+export function audioContextState(): AudioContextState | "none" {
+  return ctx?.state ?? "none";
+}
+
+function tapPeak(analyser: AnalyserNode | null, held: number): number {
+  if (!analyser) return held;
+  const buf = new Uint8Array(analyser.fftSize);
+  analyser.getByteTimeDomainData(buf);
+  let peak = 0;
+  for (const v of buf) peak = Math.max(peak, Math.abs(v - 128));
+  return peak > held ? peak : held;
+}
+
+/** Peak of the SFX bus since unlock (0..128). Pre-master — can lie when muted (hy78). */
+export function audioSfxPeak(): number {
+  sfxPeak = tapPeak(sfxAnalyser, sfxPeak);
+  return sfxPeak;
+}
+
+/** Peak after the master mute. This is the speaker path (hy85). */
+export function audioMasterPeak(): number {
+  masterPeak = tapPeak(masterAnalyser, masterPeak);
+  return masterPeak;
+}
+
+/** Clear held peaks so the next release dump is this beat, not the walk-up. */
+export function resetAudioPeaks() {
+  sfxPeak = 0;
+  masterPeak = 0;
 }
 
 export function unlockAudio() {
@@ -150,6 +191,16 @@ export function unlockAudio() {
   if (ctx && sfx && !crowdBus) {
     crowdBus = ctx.createGain();
     crowdBus.connect(sfx);
+  }
+  if (ctx && sfx && !sfxAnalyser) {
+    sfxAnalyser = ctx.createAnalyser();
+    sfxAnalyser.fftSize = 256;
+    sfx.connect(sfxAnalyser);
+  }
+  if (ctx && master && !masterAnalyser) {
+    masterAnalyser = ctx.createAnalyser();
+    masterAnalyser.fftSize = 256;
+    master.connect(masterAnalyser);
   }
   applyMix();
   if (master) master.gain.value = muted ? 0 : 0.7;
@@ -366,7 +417,7 @@ export function duckCrowd(on: boolean) {
   }
   if (fileMusic) {
     fileMusic.gain.gain.cancelScheduledValues(now());
-    fileMusic.gain.gain.setTargetAtTime(on ? 0.18 : 1, now(), 0.06);
+    fileMusic.gain.gain.setTargetAtTime(on ? 0.06 : 1, now(), 0.06);
   }
   if (fieldBed) {
     fieldBed.gain.gain.cancelScheduledValues(now());
@@ -404,31 +455,50 @@ export function sfxCrack() {
   sfxContact("barrel");
 }
 
-export function sfxContact(tier: "miss" | "foul-tip" | "foul" | "hit" | "barrel") {
+export type ContactTier = "miss" | "foul-tip" | "foul" | "hit" | "barrel";
+
+type ContactTone = { freq: number; dur: number; type: OscillatorType; vol: number };
+type ContactNoise = { dur: number; vol: number; freq: number };
+
+/** Ear recipes for §1.4. Miss whoosh, tip ping, foul woody, hit crack, barrel — not one bat. */
+export const CONTACT_SFX: Record<ContactTier, { noise: ContactNoise; tones: readonly ContactTone[] }> = {
+  miss: { noise: { dur: 0.08, vol: 0.14, freq: 1800 }, tones: [{ freq: 240, dur: 0.07, type: "triangle", vol: 0.07 }] },
+  "foul-tip": { noise: { dur: 0.04, vol: 0.22, freq: 2400 }, tones: [{ freq: 880, dur: 0.05, type: "triangle", vol: 0.09 }] },
+  foul: { noise: { dur: 0.11, vol: 0.18, freq: 700 }, tones: [{ freq: 160, dur: 0.12, type: "sawtooth", vol: 0.08 }] },
+  hit: { noise: { dur: 0.07, vol: 0.26, freq: 1000 }, tones: [{ freq: 220, dur: 0.1, type: "triangle", vol: 0.13 }] },
+  barrel: {
+    noise: { dur: 0.09, vol: 0.38, freq: 800 },
+    tones: [
+      { freq: 180, dur: 0.12, type: "square", vol: 0.18 },
+      { freq: 90, dur: 0.16, type: "sawtooth", vol: 0.11 },
+    ],
+  },
+};
+
+/** Layers the ear hears on release. Take is glove+ump, not a silent miss. */
+export const RELEASE_SFX_LAYERS: Record<ReleaseBeat, readonly string[]> = {
+  k: ["umpire", "tone:196", "crowd-burst"],
+  out: ["glove", "tone:262"],
+  hit: ["contact:hit", "crowd-swell"],
+  double: ["contact:barrel", "crowd-burst"],
+  hr: ["contact:barrel", "crowd-burst", "organ"],
+  walk: ["tone:330", "tone:392"],
+  foul: ["contact:foul"],
+  "foul-tip": ["contact:foul-tip"],
+  miss: ["contact:miss", "glove"],
+  ball: ["glove"],
+  "take-strike": ["glove", "umpire"],
+  "steal-safe": ["slide", "crowd-burst"],
+  "steal-out": ["slide", "umpire"],
+  "sac-fly": ["glove", "crowd-burst"],
+  score: ["crowd-burst", "tone:392", "tone:523"],
+};
+
+export function sfxContact(tier: ContactTier) {
   if (!enabled.sfx) return;
-  if (tier === "miss") {
-    noise(0.08, 0.08, 1800);
-    tone(240, 0.07, "triangle", 0.04);
-    return;
-  }
-  if (tier === "foul-tip") {
-    noise(0.04, 0.12, 2400);
-    tone(880, 0.05, "triangle", 0.05);
-    return;
-  }
-  if (tier === "foul") {
-    noise(0.11, 0.1, 700);
-    tone(160, 0.12, "sawtooth", 0.04);
-    return;
-  }
-  if (tier === "hit") {
-    noise(0.07, 0.14, 1000);
-    tone(220, 0.1, "triangle", 0.07);
-    return;
-  }
-  noise(0.09, 0.22, 800);
-  tone(180, 0.12, "square", 0.1);
-  tone(90, 0.16, "sawtooth", 0.06);
+  const rec = CONTACT_SFX[tier];
+  noise(rec.noise.dur, rec.noise.vol, rec.noise.freq);
+  for (const t of rec.tones) tone(t.freq, t.dur, t.type, t.vol);
 }
 
 function stopFileMusic() {

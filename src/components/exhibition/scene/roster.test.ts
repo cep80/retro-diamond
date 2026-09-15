@@ -4,7 +4,7 @@ import { DEFAULT_HERO, heroKeyFor, heroLookFor, heroRequests, isHeroKey } from "
 
 const assets = {
   aoi: { url: "/models/diamond-shine/aoi.glb?v=atlas1", role: "batter" as const },
-  reina: { url: "/models/diamond-shine/reina.glb?v=hy14", role: "pitcher" as const },
+  reina: { url: "/models/diamond-shine/reina.glb?v=hy44", role: "pitcher" as const },
   miki: { url: "/models/diamond-shine/miki.glb", role: "batter" as const },
   kira: { url: "/models/diamond-shine/kira.glb", role: "pitcher" as const },
   sol: { url: "/models/diamond-shine/sol.glb", role: "pitcher" as const },

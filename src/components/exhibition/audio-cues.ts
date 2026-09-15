@@ -46,8 +46,11 @@ export function exhibitionAudioCue(cue: PlateCue, game: FeaturedGame, io: Exhibi
     return;
   }
   if (cue.t === "resolved") {
-    io.duckCrowd(false);
+    // Stay ducked through the 150 ms five-way tell. Unducking on the
+    // same frame as sfxRelease let the walk-up bury contact (hy74).
+    io.duckCrowd(true);
     io.sfxRelease(cue.spec.cue);
+    io.schedule(() => io.duckCrowd(false), 320);
     if (cue.spec.big && game.rbi > 0 && (cue.beat === "single" || cue.beat === "double" || cue.beat === "sac-fly")) {
       io.schedule(() => io.sfxRelease("score"), 260);
     }

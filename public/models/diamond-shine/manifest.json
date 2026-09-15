@@ -107,9 +107,9 @@
       }
     },
     "reina": {
-      "url": "/models/diamond-shine/reina.glb?v=hy31",
-      "bytes": 2670108,
-      "triangles": 31136,
+      "url": "/models/diamond-shine/reina.glb?v=hy44",
+      "bytes": 2668928,
+      "triangles": 31107,
       "role": "pitcher",
       "clips": {
         "idle_set": {

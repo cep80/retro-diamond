@@ -16,23 +16,28 @@ import {
   AnimationMixer,
   BackSide,
   Box3,
+  BoxGeometry,
   CanvasTexture,
   Color,
   DoubleSide,
   Fog,
   Float32BufferAttribute,
+  LinearFilter,
+  NearestFilter,
   LoopOnce,
   LoopRepeat,
   MathUtils,
   MeshBasicMaterial,
+  MeshToonMaterial,
   Matrix4,
   Quaternion,
   Vector3,
+  Group,
+  Mesh,
   type AnimationAction,
-  type Group,
-  type Mesh,
   type Object3D,
   type PerspectiveCamera,
+  type Texture,
 } from "three";
 import { GLTFLoader, type GLTF } from "three/addons/loaders/GLTFLoader.js";
 import type { Cell, Loc } from "@/game/plate";
@@ -46,10 +51,16 @@ import {
   LANTERN_EMISSIVE_INTENSITY,
   LANTERN_HALO,
   LANTERN_LIGHT,
+  SCRIPTED_PLAY_LIGHT,
   FRAME_LANTERNS,
+  frameLanternScreenV,
   lanternHaloPoints,
+  lanternHaloSize,
+  lanternHaloOpacity,
   lanternLightCandidates,
   MOUND_RIM,
+  moundRimIntensity,
+  MOUND_CURTAIN,
   NIGHT_FOG,
   NIGHT_RIG,
   NIGHT_SKY,
@@ -68,13 +79,25 @@ import {
   rewriteTrackName,
 } from "./scene/rig-bind";
 import {
+  AOI_BACK_ONE,
+  batNightAlbedo,
+  fillBlackHidesObject,
+  fillBlackPaintsMesh,
   beatFlashAt,
   HERO_LOOK,
   heroCurtainSkipsToneMap,
+  heroAtlasNearestMin,
+  heroKeepsAtlasMips,
   heroMatGlow,
+  heroNightAlbedo,
+  isBatProp,
+  REINA_LOCK_TINT,
   kitMatTint,
+  REINA_ATLAS_CURTAIN_EMIT,
   REINA_CURTAIN_EMIT,
+  reinaAtlasCurtainEmit,
   reinaCurtainWeights,
+  reinaNamedCurtainEmit,
   type HeroLookRole,
 } from "./scene/kit-look";
 import { heroKeyFor, heroLookFor, heroRequests } from "./scene/roster";
@@ -82,22 +105,27 @@ import {
   BALL_VISUAL,
   ballLeavesBat,
   ballScaleAtFlight,
+  ballScaleAtOutgoing,
   beatSightFlash,
   BATTER_ROTATION_Y,
-  SWING_CLIP_LEAD_S,
-  swingClipName,
+  batterStandX,
+  firstPitchPlateScale,
+  firstPitchPlateZ,
   CAMERA_FOV,
   CAMERA_LOCK,
   deliveryTimeScale,
   CAMERA_PUNCH,
   cameraPunchOffset,
   cameraPunchOn,
-  carryToMittS,
-  CATCHER_VIS,
+  MITT_RECEIVE,
+  mittAlreadyHome,
+  mittHoldShows,
+  mittTellDurS,
   catcherReceives,
   FIRST_PITCH_PLATE,
   aimGridBox,
   aimGridPhoneStrip,
+  worldSitShows,
   firstPitchPlateFrameBars,
   firstPitchPlateOpacity,
   firstPitchPlateSight,
@@ -105,6 +133,11 @@ import {
   flashDiscMaxScale,
   heldClipSnaps,
   pitcherFreezesThrow,
+  outgoingBallLook,
+  outgoingBallClearsBatter,
+  outgoingSightShows,
+  flashFollowsOutgoing,
+  outgoingSightT,
   planOutgoing,
   RELEASE_POINT as RELEASE_POINT_V,
   mittFaceOnScore,
@@ -119,17 +152,20 @@ import {
   swingBatRotDeg,
   swingArmLDeg,
   swingArmRDeg,
+  swingBatRollDeg,
   swingBatSweepDeg,
   swingLoadBatSweepDeg,
   swingBatWeight,
   swingBatYawDeg,
+  swingZoneWeight,
   swingBodyYawDeg,
+  swingOpensThrough,
   swingPhase,
   swingStrideM,
   swingStrideThighDeg,
   type SocketOffset,
 } from "./scene/presentation";
-import { applyToonMaterials } from "./scene/toon";
+import { applyToonMaterials, heroToonRamp, toonRampLastStep } from "./scene/toon";
 import { releaseActorMixer } from "./scene/actor-mixer";
 import type { ExhibitionTier } from "./quality";
 
@@ -149,7 +185,7 @@ const _batQ = new Quaternion();
 const _batM = new Matrix4();
 const _batMInv = new Matrix4();
 let throwHandReady = false;
-const MITT_POINT = new Vector3(0, 0.55, 0.9);
+const MITT_POINT = new Vector3(MITT_RECEIVE[0], MITT_RECEIVE[1], MITT_RECEIVE[2]);
 const ZONE = { halfW: 0.2159, top: 1.05, bottom: 0.45 };
 const WORLD_UP = new Vector3(0, 1, 0);
 const WORLD_X = new Vector3(1, 0, 0);
@@ -239,16 +275,60 @@ function applySetGloveLift(arm: Object3D, deg: readonly [number, number, number]
   if (deg[2] !== 0) arm.rotateOnWorldAxis(WORLD_Z, MathUtils.degToRad(deg[2]));
 }
 
+function hideOutgoingSight(sight: Mesh | null) {
+  if (sight) sight.visible = false;
+}
+
+function paintOutgoingSight(
+  sight: Mesh | null,
+  opts: { pos: Vector3; scale: number; color: string; show: boolean },
+) {
+  if (!sight) return;
+  const mat = sight.material;
+  if (mat && !Array.isArray(mat)) {
+    const basic = mat as MeshBasicMaterial;
+    basic.color.set(opts.color);
+    basic.toneMapped = false;
+    basic.depthTest = false;
+    basic.depthWrite = false;
+  }
+  sight.position.copy(opts.pos);
+  sight.scale.setScalar(opts.scale);
+  sight.renderOrder = 20;
+  sight.visible = opts.show;
+}
+
+function paintBallLook(
+  mesh: Mesh,
+  look: { color: string; emissive: string },
+  opts?: { throughBatter?: boolean },
+) {
+  const mat = mesh.material;
+  if (!mat || Array.isArray(mat)) return;
+  const toon = mat as MeshToonMaterial;
+  toon.color.set(look.color);
+  if (toon.emissive) toon.emissive.set(look.emissive);
+  // Family hues have to survive the night grade. Cream incoming stays mapped.
+  toon.toneMapped = look.color === BALL_VISUAL.color;
+  const through = Boolean(opts?.throughBatter);
+  toon.depthTest = !through;
+  toon.depthWrite = !through;
+  mesh.renderOrder = through ? 12 : 0;
+}
+
 function applySwingBatPose(bat: Object3D, weight: number, phase: number) {
   const rot = swingBatRotDeg(weight);
   bat.rotation.set(MathUtils.degToRad(rot[0]), MathUtils.degToRad(rot[1]), MathUtils.degToRad(rot[2]));
+  const zone = swingZoneWeight(weight);
   const override = debugBatYawOverride();
-  const yaw = override != null ? override * weight : swingBatYawDeg(weight);
+  const yaw = override != null ? override * zone : swingBatYawDeg(zone);
   if (yaw !== 0) bat.rotateOnWorldAxis(WORLD_UP, MathUtils.degToRad(yaw));
-  // World +Z hung the barrel at her hip. Through −X tips into the tunnel;
-  // coil +X tips back toward the catcher so load reads from behind.
-  const sweep = swingBatSweepDeg(weight) + swingLoadBatSweepDeg(phase);
+  // Yaw + sweep stop at the zone cut. Dest 1 on those axes weather-vaned
+  // to a vertical bat (hy44 single r400). World-Z roll did not read.
+  const sweep = swingBatSweepDeg(zone) + swingLoadBatSweepDeg(phase);
   if (sweep !== 0) bat.rotateOnWorldAxis(WORLD_X, MathUtils.degToRad(sweep));
+  const roll = swingBatRollDeg(weight);
+  if (roll !== 0) bat.rotateOnWorldAxis(WORLD_Z, MathUtils.degToRad(roll));
 }
 
 function batBarrelTip(bat: Object3D, into: Vector3): Vector3 {
@@ -296,8 +376,8 @@ interface ZoneRect {
   viewH?: number;
 }
 
-function gridBoxStyle(rect: ZoneRect): CSSProperties {
-  return aimGridBox(rect);
+function gridBoxStyle(rect: ZoneRect, stage?: string): CSSProperties {
+  return aimGridBox({ ...rect, stage });
 }
 
 interface Props {
@@ -370,16 +450,18 @@ export default function Exhibition3D(props: Props) {
 
   useEffect(() => {
     if (!debugFpsEnabled() || !zoneRect) return;
-    const box = aimGridBox(zoneRect);
+    const box = aimGridBox({ ...zoneRect, stage: props.snapshot.stage });
+    const phoneStrip = aimGridPhoneStrip(zoneRect.canvasW ?? 0, zoneRect.canvasH ?? 0);
     (window as unknown as { __dsGrid?: unknown }).__dsGrid = {
       ...box,
       w: Math.round(box.width),
       h: Math.round(box.height),
       canvasH: zoneRect.canvasH ?? null,
       canvasW: zoneRect.canvasW ?? null,
-      phoneStrip: aimGridPhoneStrip(zoneRect.canvasW ?? 0, zoneRect.canvasH ?? 0),
+      phoneStrip,
+      batterX: batterStandX(phoneStrip),
     };
-  }, [zoneRect]);
+  }, [zoneRect, props.snapshot.stage]);
 
   if (!manifest) {
     return (
@@ -389,7 +471,7 @@ export default function Exhibition3D(props: Props) {
     );
   }
 
-  const showGrid = props.snapshot.stage !== "field" && props.snapshot.stage !== "reaction";
+  const showGrid = worldSitShows(props.snapshot.stage, props.sitChosen);
 
   return (
     <div className="absolute inset-0" style={{ background: NIGHT_SKY }}>
@@ -419,7 +501,7 @@ export default function Exhibition3D(props: Props) {
         />
       ) : null}
       {zoneRect && showGrid ? (
-        <div className="absolute" style={gridBoxStyle(zoneRect)}>
+        <div className="absolute" style={gridBoxStyle(zoneRect, props.snapshot.stage)}>
           <AimGrid snapshot={props.snapshot} heat={props.heat} ghost={props.ghost} onAim={props.onAim} sitChosen={props.sitChosen} compact />
         </div>
       ) : null}
@@ -434,6 +516,7 @@ function SceneRoot({
   snapshot,
   tier,
   reduced,
+  sitChosen,
   manifest,
   onReady,
   onZoneRect,
@@ -457,13 +540,12 @@ function SceneRoot({
       pitcher: manifest.assets[pitcherKey] ?? manifest.assets.reina,
     };
   }, [manifest]);
-  const [fieldGltf, batterGltf, pitcherGltf, catcherGltf, propsGltf] = useLoader(
+  const [fieldGltf, batterGltf, pitcherGltf, propsGltf] = useLoader(
     GLTFLoader,
     [
       manifest.assets.field.url,
       heroes.batter.url,
       heroes.pitcher.url,
-      manifest.assets.catcher.url,
       manifest.assets.props.url,
     ],
     (loader) => {
@@ -472,6 +554,8 @@ function SceneRoot({
   );
   const { camera, gl, scene, size } = useThree();
   const paused = snapshot.paused;
+  const phoneStrip = aimGridPhoneStrip(size.width, size.height);
+  const batterX = batterStandX(phoneStrip);
 
   // Boost lantern emissives and collect glow centers before the toon convert
   // (toon preserves emissive; the authored non-black check needs the source).
@@ -481,24 +565,50 @@ function SceneRoot({
     [lanternCandidates, tier],
   );
   const lanternHalos = useMemo(() => lanternHaloPoints(lanternCandidates), [lanternCandidates]);
+  useLayoutEffect(() => {
+    applyHeroNightExposure(batterGltf.scene, heroLookFor("batter"), phoneStrip);
+    applyHeroNightExposure(pitcherGltf.scene, heroLookFor("pitcher"), phoneStrip);
+    applyBatNightLook(propsGltf.scene, phoneStrip);
+  }, [batterGltf, pitcherGltf, propsGltf, phoneStrip]);
+  useEffect(() => {
+    if (!debugFpsEnabled()) return;
+    (window as unknown as { __dsNight?: unknown }).__dsNight = {
+      phoneStrip,
+      tier,
+      canvas: [size.width, size.height],
+      albedo: {
+        aoi: heroNightAlbedo(heroLookFor("batter"), phoneStrip),
+        reina: heroNightAlbedo(heroLookFor("pitcher"), phoneStrip),
+        bat: batNightAlbedo(phoneStrip),
+      },
+      batMats: collectBatNightDump(propsGltf.scene),
+      aoiMats: collectHeroNightDump(batterGltf.scene),
+      reinaMats: collectHeroNightDump(pitcherGltf.scene),
+      phoneAoiRamp: phoneStrip,
+      frames: FRAME_LANTERNS.map((l) => ({
+        name: l.name,
+        pos: l.pos,
+        screenV: Number(frameLanternScreenV(l.pos).toFixed(3)),
+      })),
+      halos: lanternHalos.length,
+    };
+  }, [phoneStrip, tier, size.width, size.height, lanternHalos, propsGltf, batterGltf, pitcherGltf]);
 
   // Toon-convert everything once.
   useMemo(() => {
     applyToonMaterials(fieldGltf.scene);
     applyToonMaterials(batterGltf.scene);
     applyToonMaterials(pitcherGltf.scene);
-    applyToonMaterials(catcherGltf.scene);
     applyToonMaterials(propsGltf.scene);
     applyHeroLook(batterGltf.scene, heroLookFor("batter"));
     applyHeroLook(pitcherGltf.scene, heroLookFor("pitcher"));
-    applyCatcherReadability(catcherGltf.scene);
     darkenEmptyStands(fieldGltf.scene);
     fieldGltf.scene.traverse((obj) => {
       const mesh = obj as Mesh;
       if (mesh.isMesh && isLanternGlowNode(mesh.name)) mesh.castShadow = false;
     });
     return true;
-  }, [fieldGltf, batterGltf, pitcherGltf, catcherGltf, propsGltf]);
+  }, [fieldGltf, batterGltf, pitcherGltf, propsGltf]);
 
   const standMats = useMemo(() => collectStandMats(fieldGltf.scene), [fieldGltf]);
   const washStands = standWashOn({ strikes: snapshot.game.count.strikes, stage: snapshot.stage });
@@ -613,7 +723,7 @@ function SceneRoot({
     <>
       <CameraLock controller={controller} paused={paused} reduced={reduced} />
       <NightSky />
-      <NightLighting desktop={tier === "desktop"} lanterns={lanternLights} />
+      <NightLighting desktop={tier === "desktop"} lanterns={lanternLights} phoneStrip={phoneStrip} />
       {/* FrameLanterns off: at the catcher cam they stood on the infield. */}
       <LanternHalos points={lanternHalos} />
       <primitive object={fieldGltf.scene} />
@@ -623,7 +733,7 @@ function SceneRoot({
         controller={controller}
         paused={paused}
         reduced={reduced}
-        position={[-0.95, 0, 0.55]}
+        position={[batterX, 0, 0.55]}
         rotationY={BATTER_ROTATION_Y}
         propMesh={findProp(propsGltf, "prop_bat")}
         propSocket={heroes.batter.sockets?.bat_grip ?? "hand.R"}
@@ -638,14 +748,14 @@ function SceneRoot({
         position={[MOUND.x, 0, MOUND.z]}
         rotationY={0}
         bodyScale={HERO_LOOK.reina.height}
-        propMesh={null}
+        propMesh={findProp(propsGltf, "prop_mitt")}
         propSocket={heroes.pitcher.sockets?.glove ?? "hand.L"}
         propOffset={SOCKET_OFFSETS.pitcher_glove}
       />
-      {/* No catcher: the camera is the catcher. The blockout mitt props are
-          off too — the brown blob read worse than an empty hand. */}
+      {/* LOOK: empty closed mitt up near the face is Reina's mark at 18 m.
+          The ball stays on hand.R — never in the webbing. */}
       <Ball controller={controller} paused={paused} />
-      <FirstPitchPlate snapshot={snapshot} reduced={reduced} paused={paused} />
+      <FirstPitchPlate snapshot={snapshot} reduced={reduced} paused={paused} aimed={sitChosen} />
       <LookProofHook />
     </>
   );
@@ -671,16 +781,19 @@ function LookProofHook() {
           light.intensity = 0;
           return;
         }
+        const sprite = obj as { isSprite?: boolean; visible?: boolean };
+        if (sprite.isSprite) {
+          sprite.visible = false;
+          return;
+        }
         const mesh = obj as Mesh & { isSkinnedMesh?: boolean };
         if (!mesh.isMesh) return;
-        if (/firstPitch|halo|lantern/i.test(mesh.name)) {
+        if (fillBlackHidesObject("mesh", mesh.name, Boolean(mesh.isSkinnedMesh))) {
           mesh.visible = false;
           return;
         }
-        const hero =
-          Boolean(mesh.isSkinnedMesh) || /kit_curtain|prop_bat|prop_mitt/i.test(mesh.name);
-        if (!hero) {
-          mesh.visible = false;
+        if (!fillBlackPaintsMesh(mesh.name)) {
+          meshes += 1;
           return;
         }
         const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
@@ -709,17 +822,29 @@ function FirstPitchPlate({
   snapshot,
   reduced,
   paused,
+  aimed,
 }: {
   snapshot: PlateSnapshot;
   reduced: boolean;
+  aimed?: boolean;
   paused: boolean;
 }) {
   const mats = useRef<MeshBasicMaterial[]>([]);
   const elapsed = useRef(0);
   const wasOn = useRef(false);
-  const on = firstPitchPlateSight({ pitchesSeen: snapshot.game.pitchesSeen, stage: snapshot.stage });
-  const w = ZONE.halfW * 2 * FIRST_PITCH_PLATE.scale;
-  const h = (ZONE.top - ZONE.bottom) * FIRST_PITCH_PLATE.scale;
+  const { size } = useThree();
+  const phoneStrip = aimGridPhoneStrip(size.width, size.height);
+  const on = firstPitchPlateSight({
+    pitchesSeen: snapshot.game.pitchesSeen,
+    stage: snapshot.stage,
+    phoneStrip,
+    swung: snapshot.game.events.some((e) => e.t === "swing"),
+    paIndex: snapshot.game.paIndex,
+    aimed,
+  });
+  const plateScale = firstPitchPlateScale(phoneStrip);
+  const w = ZONE.halfW * 2 * plateScale;
+  const h = (ZONE.top - ZONE.bottom) * plateScale;
   const bars = firstPitchPlateFrameBars(w, h);
   useFrame((_, delta) => {
     if (on && !wasOn.current) elapsed.current = 0;
@@ -733,13 +858,16 @@ function FirstPitchPlate({
         opacity: Number(opacity.toFixed(3)),
         stage: snapshot.stage,
         pitchesSeen: snapshot.game.pitchesSeen,
+        aimed: aimed !== false,
         bars: bars.length,
+        scale: plateScale,
+        z: firstPitchPlateZ(phoneStrip),
       };
     }
   });
   if (!on) return null;
   return (
-    <group name="firstPitchPlate" position={[0, (ZONE.top + ZONE.bottom) / 2, FIRST_PITCH_PLATE.z]}>
+    <group name="firstPitchPlate" position={[0, (ZONE.top + ZONE.bottom) / 2, firstPitchPlateZ(phoneStrip)]}>
       {bars.map((b, i) => (
         <mesh key={i} position={[b.x, b.y, 0]} renderOrder={8}>
           <planeGeometry args={[b.w, b.h]} />
@@ -763,6 +891,28 @@ function FirstPitchPlate({
 
 function findProp(gltf: GLTF, name: string): Object3D | null {
   return gltf.scene.getObjectByName(name) ?? null;
+}
+
+/** Navy varsity 1. Atlas has no kit_number_back. Parent to chest. */
+function makeAoiBackOne(): Group {
+  const g = new Group();
+  g.name = "aoi_back_one";
+  const mat = new MeshBasicMaterial({
+    color: AOI_BACK_ONE.color,
+    toneMapped: false,
+    depthTest: AOI_BACK_ONE.depthTest,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  });
+  const stem = new Mesh(new BoxGeometry(AOI_BACK_ONE.stemW, AOI_BACK_ONE.stemH, AOI_BACK_ONE.depth), mat);
+  stem.name = "aoi_back_one_stem";
+  const serif = new Mesh(new BoxGeometry(AOI_BACK_ONE.stemW * 0.7, AOI_BACK_ONE.stemW * 0.55, AOI_BACK_ONE.depth), mat);
+  serif.name = "aoi_back_one_serif";
+  serif.position.set(-AOI_BACK_ONE.stemW * 0.55, AOI_BACK_ONE.stemH * 0.32, 0);
+  g.add(stem, serif);
+  return g;
 }
 
 /** Socket bone lookup: contract `hand.R`, compact `handR`, Mixamo `RightHand`. */
@@ -828,6 +978,9 @@ function applyHeroLook(root: Object3D, role: HeroLookRole) {
       };
       const tint = kitMatTint(named.name ?? "", role, Boolean(named.map));
       if (tint && named.color) named.color.set(tint);
+      if (role === "reina" && /lock/i.test(named.name ?? "") && named.color) {
+        named.color.set(REINA_LOCK_TINT);
+      }
       const glow = heroMatGlow(named.name ?? "", role);
       if (glow && named.emissive) {
         named.emissive.set(glow.color);
@@ -839,9 +992,162 @@ function applyHeroLook(root: Object3D, role: HeroLookRole) {
       if (heroCurtainSkipsToneMap(named.name ?? "", role)) {
         (named as { toneMapped?: boolean }).toneMapped = false;
       }
-      if (role === "reina" && !/curtain/i.test(named.name ?? "") && !/kit_curtain/i.test(mesh.name)) {
+      if (role === "reina" && !/curtain|lock/i.test(named.name ?? "") && !/kit_curtain/i.test(mesh.name)) {
         applyReinaCurtainEmit(mesh, named);
       }
+      applyHeroNightMips(named, role);
+    }
+  });
+}
+
+function applyHeroNightMips(
+  mat: { map?: unknown },
+  role: HeroLookRole,
+) {
+  const map = mat.map as Texture | undefined;
+  if (map && !heroKeepsAtlasMips(role)) {
+    map.generateMipmaps = false;
+    map.minFilter = heroAtlasNearestMin(role) ? NearestFilter : LinearFilter;
+    map.magFilter = LinearFilter;
+    map.needsUpdate = true;
+  }
+}
+
+type NightAlbedoMat = {
+  name?: string;
+  color?: { r: number; g: number; b: number; setRGB: (r: number, g: number, b: number) => void };
+  gradientMap?: unknown;
+  emissiveIntensity?: number;
+  toneMapped?: boolean;
+  userData?: { nightAlbedoBase?: { r: number; g: number; b: number }; curtainVerts?: number };
+};
+
+function isBatObject(obj: Object3D): boolean {
+  let walk: Object3D | null = obj;
+  while (walk) {
+    const mats = (walk as Mesh).isMesh
+      ? Array.isArray((walk as Mesh).material)
+        ? ((walk as Mesh).material as { name?: string }[])
+        : [((walk as Mesh).material as { name?: string } | undefined)]
+      : [];
+    if (isBatProp(walk.name, mats.map((m) => m?.name ?? "").join(" "))) return true;
+    walk = walk.parent;
+  }
+  return false;
+}
+
+function collectHeroNightDump(root: Object3D) {
+  const rows: {
+    mat: string;
+    rgb: [number, number, number];
+    dim?: number;
+    ramp?: number | null;
+    toneMapped?: boolean;
+    atlasMin?: string;
+  }[] = [];
+  root.traverse((obj) => {
+    const mesh = obj as Mesh;
+    if (!mesh.isMesh) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const mat of mats) {
+      const named = mat as NightAlbedoMat & { name?: string; map?: { minFilter?: number } };
+      const name = named.name ?? "";
+      if (!/skin_hero|kit_/i.test(name)) continue;
+      if (rows.some((r) => r.mat === name)) continue;
+      if (!named.color) continue;
+      const base = named.userData?.nightAlbedoBase;
+      const minF = named.map?.minFilter;
+      rows.push({
+        mat: name,
+        rgb: [Number(named.color.r.toFixed(3)), Number(named.color.g.toFixed(3)), Number(named.color.b.toFixed(3))],
+        dim: base ? Number((named.color.r / (base.r || 1)).toFixed(3)) : undefined,
+        ramp: toonRampLastStep(named.gradientMap as { image?: { data?: ArrayLike<number> } }),
+        toneMapped: named.toneMapped !== false,
+        atlasMin: minF === NearestFilter ? "nearest" : minF === LinearFilter ? "linear" : minF != null ? String(minF) : undefined,
+      });
+    }
+  });
+  return rows;
+}
+
+function collectBatNightDump(root: Object3D) {
+  const rows: {
+    mesh: string;
+    mat: string;
+    rgb: [number, number, number];
+    dim?: number;
+    ramp?: number | null;
+    toneMapped?: boolean;
+  }[] = [];
+  root.traverse((obj) => {
+    const mesh = obj as Mesh;
+    if (!mesh.isMesh || !isBatObject(mesh)) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const mat of mats) {
+      const named = mat as NightAlbedoMat & { name?: string };
+      if (!named.color) continue;
+      const base = named.userData?.nightAlbedoBase;
+      rows.push({
+        mesh: mesh.name,
+        mat: named.name ?? "",
+        rgb: [Number(named.color.r.toFixed(3)), Number(named.color.g.toFixed(3)), Number(named.color.b.toFixed(3))],
+        dim: base
+          ? Number((named.color.r / (base.r || 1)).toFixed(3))
+          : undefined,
+        ramp: toonRampLastStep(named.gradientMap as { image?: { data?: ArrayLike<number> } }),
+        toneMapped: named.toneMapped !== false,
+      });
+    }
+  });
+  return rows;
+}
+
+function applyBatNightLook(root: Object3D, phoneStrip: boolean) {
+  const dim = batNightAlbedo(phoneStrip);
+  const ramp = heroToonRamp("aoi", phoneStrip);
+  root.traverse((obj) => {
+    const mesh = obj as Mesh;
+    if (!mesh.isMesh || !isBatObject(mesh)) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const mat of mats) {
+      const named = mat as NightAlbedoMat;
+      if (named.gradientMap) named.gradientMap = ramp;
+      if (!named.color) continue;
+      const ud = (named.userData ??= {});
+      if (!ud.nightAlbedoBase) {
+        ud.nightAlbedoBase = { r: named.color.r, g: named.color.g, b: named.color.b };
+      }
+      const base = ud.nightAlbedoBase;
+      named.color.setRGB(base.r * dim, base.g * dim, base.b * dim);
+    }
+  });
+}
+
+function applyHeroNightExposure(root: Object3D, role: HeroLookRole, phoneStrip: boolean) {
+  const dim = heroNightAlbedo(role, phoneStrip);
+  const ramp = heroToonRamp(role, phoneStrip);
+  root.traverse((obj) => {
+    const mesh = obj as Mesh;
+    if (!mesh.isMesh) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const mat of mats) {
+      const named = mat as NightAlbedoMat;
+      if (named.gradientMap) named.gradientMap = ramp;
+      if (role === "reina" && named.emissiveIntensity != null) {
+        if (named.userData?.curtainVerts) {
+          named.emissiveIntensity = reinaAtlasCurtainEmit(phoneStrip);
+        } else if (/curtain/i.test(named.name ?? "")) {
+          named.emissiveIntensity = reinaNamedCurtainEmit(phoneStrip);
+          named.toneMapped = !heroCurtainSkipsToneMap(named.name ?? "", role, phoneStrip);
+        }
+      }
+      if (!named.color) continue;
+      const ud = (named.userData ??= {});
+      if (!ud.nightAlbedoBase) {
+        ud.nightAlbedoBase = { r: named.color.r, g: named.color.g, b: named.color.b };
+      }
+      const base = ud.nightAlbedoBase;
+      named.color.setRGB(base.r * dim, base.g * dim, base.b * dim);
     }
   });
 }
@@ -908,26 +1214,10 @@ function applyReinaCurtainEmit(
   };
   named.customProgramCacheKey = () => "reina-curtain-emit";
   named.userData = { ...(named.userData ?? {}), curtainVerts: lit };
-  mat.emissive.set(REINA_CURTAIN_EMIT.color);
-  mat.emissiveIntensity = REINA_CURTAIN_EMIT.intensity;
+  mat.emissive.set(REINA_ATLAS_CURTAIN_EMIT.color);
+  mat.emissiveIntensity = REINA_ATLAS_CURTAIN_EMIT.intensity;
   mat.emissiveMap = null;
   mat.needsUpdate = true;
-}
-
-function applyCatcherReadability(root: Object3D) {
-  root.traverse((obj) => {
-    const mesh = obj as Mesh;
-    if (!mesh.isMesh) return;
-    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    for (const mat of mats) {
-      const m = mat as MeshBasicMaterial & { emissive?: { set: (c: string) => void } };
-      if (m.color) m.color.set(CATCHER_VIS.color);
-      m.transparent = true;
-      m.opacity = CATCHER_VIS.opacity;
-      if (m.emissive) m.emissive.set("#000000");
-    }
-    mesh.castShadow = false;
-  });
 }
 
 function CameraLock({
@@ -1066,17 +1356,22 @@ function glowTexture(): CanvasTexture {
  */
 function LanternHalos({ points }: { points: readonly LanternPoint[] }) {
   const map = useMemo(glowTexture, []);
+  const { size } = useThree();
+  const phoneStrip = aimGridPhoneStrip(size.width, size.height);
+  const halo = lanternHaloSize(phoneStrip);
+  const haloOpacity = lanternHaloOpacity(phoneStrip);
   return (
     <>
       {points.map((l) => (
-        <sprite key={l.name} position={l.pos} scale={[LANTERN_HALO.size, LANTERN_HALO.size, 1]} renderOrder={2}>
+        <sprite key={l.name} position={l.pos} scale={[halo, halo, 1]} renderOrder={2}>
           <spriteMaterial
             map={map}
             color={LANTERN_HALO.color}
-            opacity={LANTERN_HALO.opacity}
+            opacity={haloOpacity}
             blending={AdditiveBlending}
             transparent
             depthWrite={false}
+            depthTest={false}
             toneMapped={false}
             fog={false}
           />
@@ -1086,7 +1381,15 @@ function LanternHalos({ points }: { points: readonly LanternPoint[] }) {
   );
 }
 
-function NightLighting({ desktop, lanterns }: { desktop: boolean; lanterns: readonly LanternPoint[] }) {
+function NightLighting({
+  desktop,
+  lanterns,
+  phoneStrip,
+}: {
+  desktop: boolean;
+  lanterns: readonly LanternPoint[];
+  phoneStrip: boolean;
+}) {
   return (
     <>
       <color attach="background" args={[NIGHT_SKY]} />
@@ -1112,23 +1415,35 @@ function NightLighting({ desktop, lanterns }: { desktop: boolean; lanterns: read
       <directionalLight color={NIGHT_RIG.fill.color} intensity={NIGHT_RIG.fill.intensity} position={NIGHT_RIG.fill.position} />
       <pointLight
         color={MOUND_RIM.color}
-        intensity={MOUND_RIM.intensity}
+        intensity={moundRimIntensity(phoneStrip)}
         distance={MOUND_RIM.distance}
         decay={MOUND_RIM.decay}
         position={MOUND_RIM.position}
         castShadow={false}
       />
-      {lanterns.map((l) => (
-        <pointLight
-          key={l.name}
-          color={LANTERN_LIGHT.color}
-          intensity={LANTERN_LIGHT.intensity}
-          distance={LANTERN_LIGHT.distance}
-          decay={LANTERN_LIGHT.decay}
-          position={l.pos}
-          castShadow={false}
-        />
-      ))}
+      <pointLight
+        color={MOUND_CURTAIN.color}
+        intensity={MOUND_CURTAIN.intensity}
+        distance={MOUND_CURTAIN.distance}
+        decay={MOUND_CURTAIN.decay}
+        position={MOUND_CURTAIN.position}
+        castShadow={false}
+      />
+      {lanterns.map((l) => {
+        const scripted = l.name.startsWith("scripted_");
+        const spec = scripted ? SCRIPTED_PLAY_LIGHT : LANTERN_LIGHT;
+        return (
+          <pointLight
+            key={l.name}
+            color={spec.color}
+            intensity={spec.intensity}
+            distance={spec.distance}
+            decay={spec.decay}
+            position={l.pos}
+            castShadow={false}
+          />
+        );
+      })}
     </>
   );
 }
@@ -1232,8 +1547,7 @@ function CharacterActor({
   const current = useRef<AnimationAction | null>(null);
   const batProp = useRef<Object3D | null>(null);
   const batThrough = useRef(false);
-  /** True while the authored swing clip owns the batter's bones. */
-  const clipSwing = useRef(false);
+  const batOpened = useRef(true);
   const throughAt = useRef(0);
   const throwAt = useRef<number | null>(null);
   const throwScanGltf = useRef<GLTF | null>(null);
@@ -1346,6 +1660,7 @@ function CharacterActor({
                   emit: number;
                   emitHex: string | null;
                   emitMap: boolean;
+                  toneMapped?: boolean;
                   curtainVerts?: number;
                 }[] = [];
                 gltf.scene.traverse((o) => {
@@ -1357,6 +1672,7 @@ function CharacterActor({
                       name?: string;
                       map?: unknown;
                       emissiveIntensity?: number;
+                      toneMapped?: boolean;
                       emissive?: { getHexString?: () => string };
                     };
                     const name = named.name ?? "";
@@ -1369,11 +1685,25 @@ function CharacterActor({
                       emit: Number((named.emissiveIntensity ?? 0).toFixed(2)),
                       emitHex: em?.getHexString ? `#${em.getHexString()}` : null,
                       emitMap: Boolean((named as { userData?: { curtainVerts?: number } }).userData?.curtainVerts),
+                      toneMapped: named.toneMapped !== false,
                       curtainVerts: (named as { userData?: { curtainVerts?: number } }).userData?.curtainVerts,
                     });
                   }
                 });
                 return rows;
+              })()
+            : undefined,
+        backOne:
+          asset.role === "batter"
+            ? (() => {
+                const one = gltf.scene.getObjectByName("aoi_back_one");
+                if (!one) return null;
+                one.updateWorldMatrix(true, false);
+                const p = one.getWorldPosition(new Vector3());
+                return {
+                  pos: [Number(p.x.toFixed(3)), Number(p.y.toFixed(3)), Number(p.z.toFixed(3))],
+                  visible: one.visible,
+                };
               })()
             : undefined,
       };
@@ -1637,6 +1967,39 @@ function CharacterActor({
     };
   }, [gltf, propMesh, propSocket, propOffset]);
 
+  // Aoi #1: atlas has no kit_number_back. Chest wrap, not a card.
+  useEffect(() => {
+    if (asset.role !== "batter") return;
+    const chest = findSocketBone(gltf.scene, "chest");
+    if (!chest) return;
+    const stale = chest.getObjectByName("aoi_back_one");
+    if (stale) chest.remove(stale);
+    const instance = makeAoiBackOne();
+    chest.updateWorldMatrix(true, false);
+    const ws = new Vector3();
+    chest.getWorldScale(ws);
+    const inv = new Vector3(1 / Math.max(ws.x, 1e-6), 1 / Math.max(ws.y, 1e-6), 1 / Math.max(ws.z, 1e-6));
+    instance.scale.multiply(inv);
+    instance.position.set(AOI_BACK_ONE.pos[0] * inv.x, AOI_BACK_ONE.pos[1] * inv.y, AOI_BACK_ONE.pos[2] * inv.z);
+    instance.rotation.set(
+      MathUtils.degToRad(AOI_BACK_ONE.rotDeg[0]),
+      MathUtils.degToRad(AOI_BACK_ONE.rotDeg[1]),
+      MathUtils.degToRad(AOI_BACK_ONE.rotDeg[2]),
+    );
+    chest.add(instance);
+    return () => {
+      chest.remove(instance);
+      instance.traverse((o) => {
+        const mesh = o as Mesh;
+        if (!mesh.isMesh) return;
+        mesh.geometry.dispose();
+        const mat = mesh.material;
+        if (Array.isArray(mat)) for (const m of mat) m.dispose();
+        else mat.dispose();
+      });
+    };
+  }, [gltf, asset.role]);
+
   // Cue-driven acting.
   useEffect(() => {
     return controller.onCue((cue: PlateCue) => {
@@ -1678,48 +2041,21 @@ function CharacterActor({
             current.current = idle;
           }
         }
-        if (cue.t === "flight") {
-          // The authored swing (stance → load → stride → hip turn → contact →
-          // follow → finish) starts with the pitch, slowed so the frame just
-          // before contact lands when the ball reaches the plate (u = 1). A
-          // tap lets it run through at full speed; a take holds it up.
-          const name = swingClipName(controller.getSnapshot().swing);
-          const contact = asset.clips[name]?.markers?.contact ?? 0.667;
-          const action = play(name, { once: true, fade: 0.1 });
-          if (action) {
-            action.timeScale = Math.max(0.15, (contact - SWING_CLIP_LEAD_S) / Math.max(0.2, cue.durationS));
-            clipSwing.current = true;
-          }
-        }
+        // Authored swing_contact T-poses the front arm and yanks her off
+        // side-on. Idle stays on the mixer; runtime swingPhase owns the cut.
+        // Do not play `take` — that clip floats the front foot.
         if (cue.t === "resolved") {
           batThrough.current = cue.swung;
+          batOpened.current = swingOpensThrough(cue.beat, cue.swung);
           throughAt.current = performance.now();
-          const swing = current.current;
-          const clip = swing?.getClip();
-          if (swing && clip && clip.name !== idleName && clipSwing.current) {
-            if (cue.swung) {
-              const contact = asset.clips[clip.name]?.markers?.contact ?? 0.667;
-              swing.time = Math.max(swing.time, contact - SWING_CLIP_LEAD_S);
-              swing.timeScale = 1;
-              swing.paused = false;
-            } else {
-              // Check swing: hold wherever the load / stride got to.
-              swing.paused = true;
-            }
-          }
-        }
-        // Do not play `take`. The clip floats the front foot and reads as a swing.
-        if (cue.t === "reaction") {
-          // Gap §4: faces are off-camera. Authored react_* move the arms and
-          // steal the 150 ms through tell. Body stays idle; the bat holds.
         }
         if (cue.t === "idle") {
           // ?debug=1 freezes the 150 ms tell (take coil, or swung bat arc).
           if (debugFpsEnabled() && (current.current?.paused || batThrough.current || throughAt.current > 0)) return;
           batThrough.current = false;
+          batOpened.current = true;
           throughAt.current = 0;
           restoreBatSocket(batProp.current);
-          clipSwing.current = false;
           backToIdle();
         }
         return;
@@ -1748,16 +2084,19 @@ function CharacterActor({
         delivery.timeScale = 0;
         if (throwAt.current != null) delivery.time = throwAt.current;
         mixer.update(0);
+        gltf.scene.updateMatrixWorld(true);
+        rememberThrowingHand(swingRig.current.handR);
       }
     }
     mixer.update(paused || debugHoldClock() ? 0 : delta);
-    if (asset.role === "batter" && !clipSwing.current) {
+    if (asset.role === "batter") {
       const stage = controller.getSnapshot().stage;
       const u = controller.progress(performance.now());
       const through = batThrough.current || debugForceBatThrough();
+      const opened = debugForceBatThrough() ? true : batOpened.current;
       const throughAgeMs = throughAt.current > 0 ? performance.now() - throughAt.current : undefined;
-      const phase = swingPhase({ stage, through, u, throughAgeMs });
-      const w = swingBatWeight({ stage, through, u, throughAgeMs });
+      const phase = swingPhase({ stage, through, u, throughAgeMs, opened });
+      const w = swingBatWeight({ stage, through, u, throughAgeMs, opened });
       const { spine, thighL, armR, armL } = swingRig.current;
       // mixer.update(0) (pause / ?debug=1 hold) does not rewrite bones.
       // rotateOnWorldAxis then stacks — through stills kicked foot.L to y=1.8.
@@ -1808,9 +2147,10 @@ function CharacterActor({
       const stage = controller.getSnapshot().stage;
       const u = controller.progress(performance.now());
       const through = batThrough.current || debugForceBatThrough();
+      const opened = debugForceBatThrough() ? true : batOpened.current;
       const throughAgeMs = throughAt.current > 0 ? performance.now() - throughAt.current : undefined;
-      const phase = swingPhase({ stage, through, u, throughAgeMs });
-      const batW = swingBatWeight({ stage, through, u, throughAgeMs });
+      const phase = swingPhase({ stage, through, u, throughAgeMs, opened });
+      const batW = swingBatWeight({ stage, through, u, throughAgeMs, opened });
       const tip = batProp.current ? batBarrelTip(batProp.current, _batTip) : null;
       w.__dsPose = {
         ...(w.__dsPose ?? {}),
@@ -1825,8 +2165,9 @@ function CharacterActor({
                 phase: Number(phase.toFixed(3)),
                 age: throughAgeMs != null ? Number(throughAgeMs.toFixed(0)) : null,
                 w: Number(batW.toFixed(3)),
-                yaw: Number(swingBatYawDeg(batW).toFixed(1)),
-                sweep: Number((swingBatSweepDeg(batW) + swingLoadBatSweepDeg(phase)).toFixed(1)),
+                yaw: Number(swingBatYawDeg(swingZoneWeight(batW)).toFixed(1)),
+                sweep: Number((swingBatSweepDeg(swingZoneWeight(batW)) + swingLoadBatSweepDeg(phase)).toFixed(1)),
+                roll: Number(swingBatRollDeg(batW).toFixed(1)),
                 armR: swingArmRDeg(batW),
                 body: Number(swingBodyYawDeg(phase).toFixed(1)),
                 stride: Number(swingStrideM(phase).toFixed(3)),
@@ -1936,11 +2277,24 @@ function CharacterActor({
 // ── ball ─────────────────────────────────────────────────────────────────────
 
 function Ball({ controller, paused }: { controller: PlateController; paused: boolean }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
+  const batterXRef = useRef(batterStandX(aimGridPhoneStrip(size.width, size.height)));
+  batterXRef.current = batterStandX(aimGridPhoneStrip(size.width, size.height));
   const ref = useRef<Mesh>(null);
   const flashRef = useRef<Mesh>(null);
   const discRef = useRef<Mesh>(null);
-  const outgoing = useRef<{ from: Vector3; to: Vector3; arc: number; durS: number; elapsed: number } | null>(null);
+  const sightRef = useRef<Mesh>(null);
+  const outgoing = useRef<{
+    from: Vector3;
+    to: Vector3;
+    arc: number;
+    durS: number;
+    elapsed: number;
+    hold?: boolean;
+    color: string;
+    emissive: string;
+    leavesBat?: boolean;
+  } | null>(null);
   const flash = useRef<{ at: Vector3; elapsed: number; color: string; maxScale: number } | null>(null);
   const lastCross = useRef<Vector3>(plateCross({ x: 1.5, y: 1.5 }));
   // Where the flight ball was on the last rendered frame, so an early resolve
@@ -1955,7 +2309,7 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
   useEffect(() => {
     return controller.onCue((cue: PlateCue) => {
       // A new pitch or a waved-off dead ball resets any leftover flight state.
-      if (cue.t === "prepare" || cue.t === "dead") {
+      if (cue.t === "prepare" || cue.t === "dead" || cue.t === "idle") {
         outgoing.current = null;
         flash.current = null;
         flight.current.origin = null;
@@ -1981,16 +2335,23 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
         beat: cue.beat,
         swung: cue.swung,
         cross: lastCross.current.toArray() as [number, number, number],
+        batterX: batterXRef.current,
       });
       flash.current = look ? { at: new Vector3(at[0], at[1], at[2]), elapsed: 0, color: look.color, maxScale: look.maxScale } : null;
       if (!ballLeavesBat(cue.beat)) {
-        // Whiff / take / walk / K: the ball still ends in the mitt. When the
-        // swing resolved early it is mid-tunnel; finish the trip at flight pace.
-        const remain = carryToMittS(flight.current.u, flight.current.durS);
-        outgoing.current =
-          remain > 0
-            ? { from: flight.current.pos.clone(), to: MITT_POINT.clone(), arc: 0, durS: remain, elapsed: 0 }
-            : null;
+        // Whiff / take / walk / K: the mitt is the 150 ms ball tell. A take
+        // that already crossed used to hide; an early chop used to sit on
+        // Reina at r80 (hy111). Hold after arrival. Do not flash.
+        const home = mittAlreadyHome(flight.current.u);
+        outgoing.current = {
+          from: home ? MITT_POINT.clone() : flight.current.pos.clone(),
+          to: MITT_POINT.clone(),
+          arc: 0,
+          durS: mittTellDurS(),
+          elapsed: 0,
+          hold: true,
+          ...outgoingBallLook(cue.beat),
+        };
         return;
       }
       // Off-bat beats get the presentation flight from planOutgoing.
@@ -2002,6 +2363,8 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
             arc: plan.arc,
             durS: plan.durS,
             elapsed: 0,
+            ...outgoingBallLook(cue.beat),
+            leavesBat: true,
           }
         : null;
     });
@@ -2012,6 +2375,19 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
     if (!mesh) return;
     const frozen = debugHoldClock();
     const step = frozen || paused ? 0 : delta;
+
+    // hy126: family spark rides this frame's outgoing point, not last frame's plate.
+    const ride = outgoing.current;
+    if (ride && flash.current && flashFollowsOutgoing({ leavesBat: Boolean(ride.leavesBat) })) {
+      const tRide = outgoingSightT(ride.elapsed + step, ride.durS);
+      if (tRide >= 1 && ride.hold) {
+        flash.current.at.copy(ride.to);
+      } else {
+        const rideAt = ride.from.clone().lerp(ride.to, tRide);
+        rideAt.y += Math.sin(tRide * Math.PI) * ride.arc;
+        flash.current.at.copy(rideAt);
+      }
+    }
 
     // Contact flash: an expanding, fading shell; freezes under pause / hold.
     const fl = flashRef.current;
@@ -2030,6 +2406,8 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
           fl.scale.setScalar(scale);
           const mat = fl.material as MeshBasicMaterial;
           mat.color.set(f.color);
+          mat.toneMapped = false;
+          mat.depthTest = false;
           mat.opacity = opacity;
           fl.visible = t < 1;
         }
@@ -2039,6 +2417,8 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
           disc.scale.setScalar(1 + t * (flashDiscMaxScale(f.maxScale) - 1));
           const mat = disc.material as MeshBasicMaterial;
           mat.color.set(f.color);
+          mat.toneMapped = false;
+          mat.depthTest = false;
           mat.opacity = (1 - t) * FLASH_SIGHT.discOpacity;
           disc.visible = t < 1;
         }
@@ -2057,13 +2437,18 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
             visible: Boolean(d?.visible),
             ms: Number((f.elapsed * 1000).toFixed(0)),
             at: f.at.toArray().map((n) => Number(n.toFixed(2))),
+            toneMapped: false,
+            follow: flashFollowsOutgoing({ leavesBat: Boolean(outgoing.current?.leavesBat) }),
           }
         : { visible: false };
     }
 
     const s = controller.getSnapshot();
+    const sight = sightRef.current;
     if (s.stage === "prepare") {
-      // LOOK set: empty mitt, no ball. Last 150 ms is the throw-hand hold.
+      hideOutgoingSight(sight);
+      // LOOK set: empty mitt, no ball. Last THROW_SHOW_MS is the throw-hand
+      // hold (hy116): freeze at throwAt lights throwHandReady.
       if (!throwHandReady) {
         mesh.visible = false;
         if (debugFpsEnabled()) {
@@ -2071,6 +2456,7 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
         }
         return;
       }
+      paintBallLook(mesh, outgoingBallLook(null));
       mesh.position.copy(liveReleaseOrigin);
       mesh.scale.setScalar(ballScaleAtFlight(0));
       mesh.visible = true;
@@ -2080,6 +2466,7 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
           pos: liveReleaseOrigin.toArray().map((v) => Number(v.toFixed(2))),
           visible: true,
           scale: mesh.scale.x,
+          type: s.pitch?.type ?? null,
         };
       }
       return;
@@ -2091,6 +2478,7 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
       }
     }
     if (frozen && s.stage === "flight") {
+      hideOutgoingSight(sight);
       mesh.visible = true;
       return;
     }
@@ -2105,13 +2493,21 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
       // Slight presentation arc by pitch type; never decides anything.
       const drop = s.pitch.type === "curve" ? 0.35 : s.pitch.type === "changeup" ? 0.22 : s.pitch.type === "slider" ? 0.15 : 0.08;
       p.y += Math.sin(Math.min(u, 1) * Math.PI) * drop;
+      hideOutgoingSight(sight);
+      paintBallLook(mesh, outgoingBallLook(null));
       mesh.position.copy(p);
       mesh.scale.setScalar(ballScaleAtFlight(Math.min(u, 1)));
       mesh.visible = true;
       flight.current.u = u;
       flight.current.pos.copy(p);
       if (debugFpsEnabled()) {
-        (window as unknown as { __dsBall?: unknown }).__dsBall = { u: Number(u.toFixed(3)), pos: p.toArray().map((v) => Number(v.toFixed(2))), visible: mesh.visible, scale: mesh.scale.x };
+        (window as unknown as { __dsBall?: unknown }).__dsBall = {
+          u: Number(u.toFixed(3)),
+          pos: p.toArray().map((v) => Number(v.toFixed(2))),
+          visible: mesh.visible,
+          scale: mesh.scale.x,
+          type: s.pitch.type,
+        };
       }
       return;
     }
@@ -2121,17 +2517,63 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
     // `prepare` is not in the Stage union any more; keep the guard as written.
     if (out && s.stage !== "flight" && (s.stage as string) !== "prepare") {
       out.elapsed += step;
-      const t = Math.min(1, out.elapsed / out.durS);
+      const t = outgoingSightT(out.elapsed, out.durS);
+      if (t >= 1 && out.hold) {
+        const keep = mittHoldShows(s.stage);
+        hideOutgoingSight(sight);
+        paintBallLook(mesh, { color: out.color, emissive: out.emissive }, {
+          throughBatter: outgoingBallClearsBatter({ leavesBat: Boolean(out.leavesBat) }),
+        });
+        mesh.position.copy(out.to);
+        mesh.scale.setScalar(ballScaleAtOutgoing(out.to.z));
+        mesh.visible = keep;
+        if (flash.current && flashFollowsOutgoing({ leavesBat: Boolean(out.leavesBat) })) {
+          flash.current.at.copy(out.to);
+        }
+        if (debugFpsEnabled()) {
+          (window as unknown as { __dsBall?: unknown }).__dsBall = {
+            out: 1,
+            pos: out.to.toArray().map((v) => Number(v.toFixed(2))),
+            visible: keep,
+            scale: mesh.scale.x,
+            hold: true,
+            color: out.color,
+          };
+        }
+        return;
+      }
       const p = out.from.clone().lerp(out.to, t);
       p.y += Math.sin(t * Math.PI) * out.arc;
+      paintBallLook(mesh, { color: out.color, emissive: out.emissive }, {
+        throughBatter: outgoingBallClearsBatter({ leavesBat: Boolean(out.leavesBat) }),
+      });
       mesh.position.copy(p);
-      mesh.scale.setScalar(BALL_VISUAL.scale);
-      mesh.visible = t < 1;
+      mesh.scale.setScalar(ballScaleAtOutgoing(p.z));
+      const showSight = outgoingSightShows({ leavesBat: Boolean(out.leavesBat) });
+      paintOutgoingSight(sight, {
+        pos: p,
+        scale: ballScaleAtOutgoing(p.z),
+        color: out.color,
+        show: t < 1 && showSight,
+      });
+      mesh.visible = t < 1 && !showSight;
+      if (flash.current && flashFollowsOutgoing({ leavesBat: Boolean(out.leavesBat) })) {
+        flash.current.at.copy(p);
+      }
       if (debugFpsEnabled()) {
-        (window as unknown as { __dsBall?: unknown }).__dsBall = { out: Number(t.toFixed(3)), pos: p.toArray().map((v) => Number(v.toFixed(2))), visible: mesh.visible, scale: mesh.scale.x };
+        (window as unknown as { __dsBall?: unknown }).__dsBall = {
+          out: Number(t.toFixed(3)),
+          pos: p.toArray().map((v) => Number(v.toFixed(2))),
+          visible: t < 1,
+          scale: ballScaleAtOutgoing(p.z),
+          color: out.color,
+          through: outgoingBallClearsBatter({ leavesBat: Boolean(out.leavesBat) }),
+          sight: showSight,
+        };
       }
       return;
     }
+    hideOutgoingSight(sight);
     mesh.visible = false;
   });
 
@@ -2146,9 +2588,14 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
           emissiveIntensity={BALL_VISUAL.emissiveIntensity}
         />
       </mesh>
+      {/* hy127: unlit family tell. The toon ball dies on her cream. */}
+      <mesh ref={sightRef} visible={false} renderOrder={20}>
+        <sphereGeometry args={[BALL_VISUAL.radius, 16, 12]} />
+        <meshBasicMaterial color={BALL_VISUAL.color} depthTest={false} depthWrite={false} toneMapped={false} />
+      </mesh>
       <mesh ref={flashRef} visible={false}>
         <sphereGeometry args={[0.07, 12, 8]} />
-        <meshBasicMaterial color={BALL_VISUAL.flashColor} transparent opacity={0.85} depthWrite={false} />
+        <meshBasicMaterial color={BALL_VISUAL.flashColor} transparent opacity={0.85} depthWrite={false} depthTest={false} toneMapped={false} />
       </mesh>
       {/* Camera-facing disc: the color tell at the locked fov-35 camera. */}
       <mesh ref={discRef} visible={false}>
@@ -2158,8 +2605,10 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
           transparent
           opacity={FLASH_SIGHT.discOpacity}
           depthWrite={false}
+          depthTest={false}
           side={DoubleSide}
           blending={AdditiveBlending}
+          toneMapped={false}
         />
       </mesh>
     </>

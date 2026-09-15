@@ -3,10 +3,10 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { PixelBtn } from "@/components/chrome";
 import { ShineMute } from "@/components/ShineMute";
-import { setMasterMuted, setMix, sfxCowbell, sfxSelect, startEnding, startMusic, stopMusic, unlockAudio } from "@/game/audio";
+import { careerMuteAppliesToScreen, setMasterMuted, setMix, sfxCowbell, sfxSelect, startEnding, startMusic, stopMusic, unlockAudio } from "@/game/audio";
 import { ShineHelp, ShineSettings } from "@/components/ShineSettings";
 import { nextOfficial, turnMeta, ROOKIE_CALENDAR, calendarPeekLine } from "@/shine/calendar.ts";
-import { BIBLE, endingMood, isPitcherStyle, parkSrc, portraitSrc, sheet, workMood } from "@/shine/bible.ts";
+import { BIBLE, endingMood, isPitcherStyle, parkSrc, portraitSrc, practiceSrc, sheet, workMood } from "@/shine/bible.ts";
 import { coachBrief, workComparison } from "@/shine/coach.ts";
 import { NEVER_SOLD, SKUS, cosmeticClasses, previewClaimable } from "@/shine/commerce.ts";
 import { kitAccent } from "@/shine/stage.ts";
@@ -528,7 +528,7 @@ function Complex() {
   const mood = MOOD_LABELS[moodLevel(run.mood)];
   const who = sheet(run.characterId);
   const pitcher = isPitcherStyle(who.style);
-  const art = portraitSrc(run.characterId, workMood(run.mood));
+  const art = practiceSrc(run.characterId, workMood(run.mood));
   const brief = coachBrief(run);
   const comparison = run.lastWork && run.lastWork.turn === run.turn - 1 ? workComparison(run) : null;
   const next = nextOfficial(run.turn);
@@ -1064,8 +1064,9 @@ export function ShineApp() {
 
   useEffect(() => {
     if (!hydrated) return;
+    if (!careerMuteAppliesToScreen(screen)) return;
     setMasterMuted(muted);
-  }, [hydrated, muted]);
+  }, [hydrated, muted, screen]);
 
   useEffect(() => {
     if (!hydrated) return;

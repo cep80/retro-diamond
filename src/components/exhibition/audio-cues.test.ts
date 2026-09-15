@@ -58,7 +58,7 @@ describe("exhibition audio cues", () => {
     assert.notEqual(beatSpec("foul-tip").cue, beatSpec("foul").cue);
   });
 
-  it("every field beat releases its own audio cue and unducks the crowd", () => {
+  it("every field beat releases its own audio cue and keeps the song ducked through the tell", () => {
     const beats: FieldBeat[] = [
       "miss",
       "foul-tip",
@@ -77,9 +77,12 @@ describe("exhibition audio cues", () => {
       "ball",
     ];
     for (const beat of beats) {
-      const { calls, io } = recordingIo();
+      const { calls, scheduled, io } = recordingIo();
       exhibitionAudioCue(resolvedCue(beat), gameWith({}), io);
-      assert.deepEqual(calls, ["duck:false", `release:${beatSpec(beat).cue}`], `resolved audio for ${beat}`);
+      assert.deepEqual(calls, ["duck:true", `release:${beatSpec(beat).cue}`], `resolved audio for ${beat}`);
+      assert.equal(scheduled[0]?.ms, 320);
+      scheduled[0]!.fn();
+      assert.equal(calls.at(-1), "duck:false");
     }
   });
 
@@ -96,10 +99,11 @@ describe("exhibition audio cues", () => {
   it("an RBI single chases the release with the score sting", () => {
     const { calls, scheduled, io } = recordingIo();
     exhibitionAudioCue(resolvedCue("single"), gameWith({ rbi: 1 }), io);
-    assert.equal(scheduled.length, 1);
-    assert.equal(scheduled[0]!.ms, 260);
-    scheduled[0]!.fn();
-    assert.deepEqual(calls, ["duck:false", "release:hit", "release:score"]);
+    assert.equal(scheduled.length, 2);
+    assert.equal(scheduled[0]!.ms, 320);
+    assert.equal(scheduled[1]!.ms, 260);
+    scheduled[1]!.fn();
+    assert.deepEqual(calls, ["duck:true", "release:hit", "release:score"]);
   });
 
   it("non-scoring beats never schedule the score sting", () => {
@@ -107,7 +111,8 @@ describe("exhibition audio cues", () => {
     exhibitionAudioCue(resolvedCue("hr"), gameWith({ rbi: 2 }), io);
     exhibitionAudioCue(resolvedCue("k"), gameWith({ rbi: 2 }), io);
     exhibitionAudioCue(resolvedCue("single"), gameWith({ rbi: 0 }), io);
-    assert.equal(scheduled.length, 0);
+    assert.equal(scheduled.length, 3);
+    assert.ok(scheduled.every((s) => s.ms === 320));
   });
 
   it("flight, recognized, reaction, idle, paused cues stay silent", () => {

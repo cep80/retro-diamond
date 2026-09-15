@@ -49,14 +49,14 @@ export const MANIFEST_URL = "/models/diamond-shine/manifest.json";
 /**
  * Head preloads + the warm fetch. Must stay in lockstep with
  * `public/models/diamond-shine/manifest.json` (including `?v=`).
- * A Tencent drop bumps both.
+ * A Tencent drop bumps both. hy123: do not warm catcher.glb — the
+ * mannequin is not mounted (z=1.1 covers the zone).
  */
 export const EXHIBITION_WARM_HREFS = [
   MANIFEST_URL,
   "/models/diamond-shine/lantern-field.glb",
   "/models/diamond-shine/aoi.glb?v=atlas1",
-  "/models/diamond-shine/reina.glb?v=hy14",
-  "/models/diamond-shine/catcher.glb",
+  "/models/diamond-shine/reina.glb?v=hy44",
   "/models/diamond-shine/props.glb",
 ] as const;
 
