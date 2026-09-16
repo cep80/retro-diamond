@@ -27,7 +27,7 @@ import common as C
 
 HY14 = os.path.join(C.REPO_ROOT, "content", "3d", "revisions", "reina-hy14-2026-09-14", "reina.glb")
 OUT = os.path.join(C.MODELS_DIR, "reina.glb")
-CACHE = "hy143"
+CACHE = "hy146"
 
 # Blender Z-up after glTF import. Face −Y, back +Y, up +Z.
 # Extract clones stay for close-up hair (edge-on at 18 m).
@@ -35,11 +35,17 @@ CACHE = "hy143"
 # vanish on export (hy32's 8-vert strips did). Parked beside
 # the jersey, temple → past the glove — not hy22's 0.39 m doors.
 # hy37's 0.10 m ribbon / 0.68 hang was a chest bob at 18 m.
+# hy145: mid-band wider but mitt 1.85 owned fill-black maxW.
+# Hip flare past the (smaller) mitt — temple stays narrow.
+# hy146: pinch_ribbon rescales the flared span to RIBBON_W, so outer
+# = park + RIBBON_W/2 (+~0.035 skin). 0.28/0.24 hit 0.435; 0.24/0.20
+# lands 0.381 (skin spread 0.041); park 0.235 clears 0.38.
 Z_TOP = 1.58
-Z_BOT = 0.55
+Z_BOT = 0.42
 MAX_ABS_X = 0.22
-RIBBON_W = 0.16
-SOLIDIFY = 0.018
+RIBBON_W = 0.20
+SOLIDIFY = 0.022
+OUTER_MAX = 0.38
 
 
 def _min_back_y(z):
@@ -49,8 +55,8 @@ def _min_back_y(z):
 PIVOT = (0.0, 0.05, 1.50)
 YAW_DEG = 86.0
 CAM_PULL = 0.055
-OUT_X = 0.03
-FLARE_MAX = 0.08
+OUT_X = 0.04
+FLARE_MAX = 0.12
 
 
 def _is_silver(rgb):
@@ -369,7 +375,7 @@ def pinch_ribbon(obj, sx):
     if span < 1e-4:
         return
     mid = (min(xs) + max(xs)) * 0.5
-    park = sx * 0.24
+    park = sx * 0.235
     scale = RIBBON_W / span
     for v in obj.data.vertices:
         wp = mw @ v.co
@@ -391,7 +397,7 @@ def stretch_hang(obj):
     for v in obj.data.vertices:
         wp = mw @ v.co
         t = (wp.z - z0) / span
-        wp.z = 0.52 + t * (1.54 - 0.52)
+        wp.z = 0.40 + t * (1.54 - 0.40)
         v.co = imw @ wp
     obj.data.update()
 
@@ -461,11 +467,13 @@ def make_lock_strand(sx, name, img, uv_box, mid, z0, z1, half0, half1, y, phase)
 
 LOCK_STRANDS = (
     # mid, z0, z1, half_hip, half_temple, y, phase
-    # Three camera-facing ribbons. hy37's 2 cm locks vanished at 18 m.
+    # Four camera-facing ribbons. hy37's 2 cm locks vanished at 18 m.
     # hy36's 0.26 mid was a shawl. Stay inside 0.33 or it is a door.
-    (0.235, 0.58, 1.46, 0.024, 0.020, -0.070, 0.15),
-    (0.200, 0.64, 1.40, 0.022, 0.018, -0.052, 0.85),
-    (0.165, 0.70, 1.34, 0.020, 0.016, -0.038, 1.55),
+    # hy144 stick: halves ~0.02 were invisible — widen under 0.10 slab gate.
+    (0.250, 0.48, 1.48, 0.038, 0.030, -0.070, 0.15),
+    (0.220, 0.54, 1.42, 0.034, 0.028, -0.052, 0.85),
+    (0.185, 0.60, 1.36, 0.030, 0.024, -0.038, 1.55),
+    (0.155, 0.66, 1.30, 0.026, 0.020, -0.028, 2.20),
 )
 
 
@@ -535,7 +543,7 @@ def add_clones(arm, body):
             raise RuntimeError("%s height %.3f — clone is wrong" % (name, height))
         if width > 0.36:
             raise RuntimeError("%s width %.3f — door span" % (name, width))
-        if max(abs(post[0]), abs(post[1])) > 0.33:
+        if max(abs(post[0]), abs(post[1])) > OUTER_MAX:
             raise RuntimeError("%s outer %.3f — hy22 door" % (name, max(abs(post[0]), abs(post[1]))))
         if post[4] > 1.15:
             raise RuntimeError("%s does not hang past the glove" % name)
@@ -553,7 +561,7 @@ def add_clones(arm, body):
                 raise RuntimeError("%s height %.3f — lock is wrong" % (name, height))
             if width > 0.10:
                 raise RuntimeError("%s width %.3f — strand is a slab" % (name, width))
-            if max(abs(pre[0]), abs(pre[1])) > 0.33:
+            if max(abs(pre[0]), abs(pre[1])) > OUTER_MAX:
                 raise RuntimeError("%s outer %.3f — hy22 door" % (name, max(abs(pre[0]), abs(pre[1]))))
             join_lock_to_body(body, strip, bone)
             names.append(name)
@@ -587,6 +595,40 @@ def _purge_curtains():
             bpy.data.objects.remove(o, do_unlink=True)
 
 
+def _purge_joined_locks(body):
+    """Joined locks live in the body mesh — object purge cannot drop them.
+    Delete every face on mat_hair_lock before a re-run so hy145 does not
+    stack on hy143."""
+    mats = list(body.data.materials)
+    lock_idx = {
+        i
+        for i, m in enumerate(mats)
+        if m and "hair_lock" in m.name.lower()
+    }
+    if not lock_idx:
+        print("[clone] no joined lock mats to purge")
+        return
+    bpy.ops.object.select_all(action="DESELECT")
+    body.select_set(True)
+    bpy.context.view_layer.objects.active = body
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="DESELECT")
+    bpy.ops.object.mode_set(mode="OBJECT")
+    n_faces = 0
+    for poly in body.data.polygons:
+        if poly.material_index in lock_idx:
+            poly.select = True
+            n_faces += 1
+    if not n_faces:
+        print("[clone] joined lock mats present but no faces")
+        return
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.delete(type="FACE")
+    bpy.ops.mesh.delete_loose()
+    bpy.ops.object.mode_set(mode="OBJECT")
+    print("[clone] purged", n_faces, "joined lock faces")
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
     src = HY14 if (argv and argv[0] == "hy14") else OUT
@@ -603,6 +645,7 @@ def main():
     arm = arms[0]
     body = max(meshes, key=lambda o: len(o.data.vertices))
     print("[clone] body", body.name, "verts", len(body.data.vertices), "arm", arm.name, "world", _world_aabb(body))
+    _purge_joined_locks(body)
     add_clones(arm, body)
     C.export_glb(OUT, animations=True)
     import glb_webp

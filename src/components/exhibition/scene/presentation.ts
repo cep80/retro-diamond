@@ -1578,10 +1578,12 @@ export const SOCKET_OFFSETS: Record<"bat_grip" | "glove" | "pitcher_glove", Sock
   // the ball in the webbing (ball stays on hand.R). Scale is presentation
   // only so the mitt is a nameable blob at the locked fov-35 camera.
   // 2.4 spanned ~1.13 m and ate both hy44 curtains (hy46 crop: tan wall,
-  // no silver past the glove). 1.85 still faces the catcher; the peek clears.
+  // no silver past the glove). 1.85 still faced the catcher but owned the
+  // fill-black AABB (hy145: maxW 88 = mitt; curtain mid only 79). 1.65
+  // keeps face-on ≥0.7 and lets hip curtain read past the glove.
   // rotDeg [135, 45, 180]: GPU sweep on the lifted LOOK set (2026-09-13) —
   // world span ~[1.12, 1.12, 0.41] at 2.4. Pre-lift [0, 90, 90] tumbled.
-  pitcher_glove: { pos: [0, 0, 0], rotDeg: [135, 45, 180], scale: 1.85 },
+  pitcher_glove: { pos: [0, 0, 0], rotDeg: [135, 45, 180], scale: 1.65 },
 };
 
 /**

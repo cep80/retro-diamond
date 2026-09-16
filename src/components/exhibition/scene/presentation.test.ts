@@ -446,7 +446,7 @@ describe("contact flash", () => {
     assert.deepEqual(releaseFromThrowingHand(null), RELEASE_POINT);
     assert.deepEqual(releaseFromThrowingHand([Number.NaN, 1, -18]), RELEASE_POINT);
     const mitt = SOCKET_OFFSETS.pitcher_glove.scale ?? 0;
-    assert.ok(mitt >= 1.8 && mitt < 2.1, "mitt reads at 18 m; 2.4 ate the curtain peek");
+    assert.ok(mitt >= 1.6 && mitt < 1.85, "mitt reads at 18 m; 2.4 ate the curtain peek, 1.85 owned the hip curtain (hy145)");
     assert.equal(SOCKET_OFFSETS.glove.scale, undefined, "catcher mitt stays identity");
     assert.equal(mittFacesCatcher([0.24, 0.89, 0.66]), false, "edge-on at 18 m is a speck");
     assert.equal(mittFacesCatcher([0.86, 0.81, 0.84]), false, "tumbled cube after the set lift");

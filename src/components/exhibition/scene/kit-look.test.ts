@@ -120,7 +120,7 @@ describe("Hunyuan / LOOK kit bind", () => {
     assert.equal(kitMatTint("mat_hair_sculpt", "reina", false), HERO_LOOK.reina.hair);
     assert.ok(HERO_LOOK.reina.height > HERO_LOOK.aoi.height);
     assert.ok(HERO_LOOK.reina.height >= 1.2, "18 m needs more than a 1.12 speck");
-    assert.ok(HERO_LOOK.reina.height < 1.3, "tallest, not a giant on the mound");
+    assert.ok(HERO_LOOK.reina.height <= 1.36, "tallest for LOOK curtain, not a giant");
     assert.equal(HERO_LOOK.reina.accent, "#7ad7ff");
   });
 
