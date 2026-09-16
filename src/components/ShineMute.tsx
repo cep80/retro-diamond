@@ -1,6 +1,6 @@
 "use client";
 
-import { PixelBtn } from "@/components/chrome";
+import { PixelBtn } from "@/components/pixel-btn";
 import { setMasterMuted, unlockAudio } from "@/game/audio";
 import { useShine } from "@/shine/store.ts";
 

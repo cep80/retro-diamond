@@ -35,8 +35,12 @@ import { DEFAULT_SETTINGS, type CharacterId, type ClubhouseCard, type ShineScree
 
 export type { LiveGame, RunBackup } from "./persist.ts";
 
+export type ShineOverlay = "settings" | "help" | null;
+
 export interface ShineState {
   screen: ShineScreen;
+  /** Settings/help sit on top of the live screen. Never swap exhibition away. */
+  overlay: ShineOverlay;
   run: TraineeRun | null;
   clubhouse: ClubhouseCard[];
   weeklyGuest: TraineeRun | null;
@@ -54,7 +58,7 @@ export interface ShineState {
   liveGame: LiveGame | null;
   /** Rolling backups taken at turn boundaries; newest first, capped at 3. */
   backups: RunBackup[];
-  /** Where the settings/help screen returns to. */
+  /** Legacy return target if a save still has screen === settings/help. */
   returnTo: ShineScreen;
   claimSku: (id: string) => void;
   startRun: (id: CharacterId, parentId?: string | null, sparks?: Spark[]) => void;
@@ -121,6 +125,7 @@ export const useShine = create<ShineState>()(
   persist(
     (set, get) => ({
       screen: "title",
+      overlay: null,
       run: null,
       clubhouse: [],
       weeklyGuest: null,
@@ -156,9 +161,16 @@ export const useShine = create<ShineState>()(
           backups: backups.filter((_, i) => i !== index),
         });
       },
-      openSettings: () => set({ returnTo: get().screen === "settings" || get().screen === "help" ? get().returnTo : get().screen, screen: "settings" }),
-      openHelp: () => set({ returnTo: get().screen === "settings" || get().screen === "help" ? get().returnTo : get().screen, screen: "help" }),
-      closeOverlay: () => set({ screen: get().returnTo }),
+      openSettings: () => set({ overlay: "settings" }),
+      openHelp: () => set({ overlay: "help" }),
+      closeOverlay: () => {
+        const { screen, returnTo } = get();
+        if (screen === "settings" || screen === "help") {
+          set({ overlay: null, screen: returnTo === "settings" || returnTo === "help" ? "title" : returnTo });
+          return;
+        }
+        set({ overlay: null });
+      },
       claimSku: (id) => {
         const sku = SKUS.find((s) => s.id === id);
         if (!sku) return;
@@ -198,12 +210,12 @@ export const useShine = create<ShineState>()(
           backups: pushBackup(get().backups, get().run, "Before this run started"),
         });
       },
-      openSelect: () => set({ screen: "select" }),
-      openShop: () => set({ screen: "shop" }),
-      openWall: () => set({ screen: "wall" }),
-      openTitle: () => set({ screen: "title" }),
+      openSelect: () => set({ overlay: null, screen: "select" }),
+      openShop: () => set({ overlay: null, screen: "shop" }),
+      openWall: () => set({ overlay: null, screen: "wall" }),
+      openTitle: () => set({ overlay: null, screen: "title" }),
       // The exhibition session itself lives in component memory, never in the store.
-      openExhibition: () => set({ screen: "exhibition" }),
+      openExhibition: () => set({ overlay: null, screen: "exhibition" }),
       openWeekly: () => {
         const { run } = get();
         set({
@@ -421,6 +433,7 @@ export const useShine = create<ShineState>()(
           ...current,
           ...incoming,
           screen: keepLiveExhibitionScreen(current.screen, incoming.screen),
+          overlay: current.overlay ?? null,
         };
       },
     },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PixelBtn } from "@/components/chrome";
+import { PixelBtn } from "@/components/pixel-btn";
 import { portraitSrc } from "@/shine/bible.ts";
 import type { Bases } from "@/shine/events.ts";
 import { rivalPortraitId, type ScoutingReport } from "@/shine/rivals.ts";

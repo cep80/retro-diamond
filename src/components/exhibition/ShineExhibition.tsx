@@ -11,7 +11,7 @@
 
 import { Component, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 // useMemo is still used for derived heat below.
-import { PixelBtn } from "@/components/chrome";
+import { PixelBtn } from "@/components/pixel-btn";
 import { BasesDiamond, PauseOverlay } from "@/components/ShinePlateBits";
 import {
   duckCrowd,
@@ -225,6 +225,7 @@ export function ShineExhibition() {
 function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; replayIndex: number }) {
   const openTitle = useShine((s) => s.openTitle);
   const openSettings = useShine((s) => s.openSettings);
+  const overlay = useShine((s) => s.overlay);
   const settings = useShine((s) => s.settings);
   const reduced = settings.reducedMotion;
 
@@ -246,7 +247,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
   const [u, setU] = useState(0);
   const [bookToast, setBookToast] = useState<1 | 2 | 3 | null>(null);
   const [prepElapsed, setPrepElapsed] = useState(0);
-  const prepMsRef = useRef(EXHIBITION_PACE.prepareMs);
+  const prepMsRef = useRef<number>(EXHIBITION_PACE.prepareMs);
   const [parkBeat, setParkBeat] = useState<{
     beat: FieldBeat;
     at: number;
@@ -332,6 +333,10 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
     });
   }
   const controller = controllerRef.current;
+
+  useEffect(() => {
+    if (overlay) controller.pause("user");
+  }, [overlay, controller]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

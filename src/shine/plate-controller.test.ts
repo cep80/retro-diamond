@@ -377,6 +377,23 @@ describe("the Duel: calls", () => {
     assert.ok(c.getSnapshot().book.length > before, "takes open the book");
     assert.ok(cues.some((q) => q.t === "book"), "a book cue fired");
   });
+
+  it("a tap during Take is ignored; the pitch still resolves as a take", () => {
+    const { c, sched } = makeDuelController("duel-take-tap");
+    c.setCall("take");
+    const durS = intoFlight(c, sched);
+    c.tap("contact", sched.now());
+    assert.equal(c.getSnapshot().stage, "flight", "Take holds the swing");
+    assert.equal(
+      c.getSnapshot().game.events.filter((e) => e.t === "swing").length,
+      0,
+    );
+    sched.advance(durS * 1000 * (FLIGHT_RESOLVE_U + 0.05));
+    assert.ok(
+      c.getSnapshot().game.events.some((e) => e.t === "take"),
+      "untouched Take still resolves as a take",
+    );
+  });
 });
 
 describe("the Duel: cards", () => {

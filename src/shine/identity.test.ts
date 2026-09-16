@@ -41,6 +41,8 @@ describe("shine identity", () => {
         assert.match(src, /\/bg\/diamond-shine-hero\.png/);
         assert.doesNotMatch(src, /diamond-rise-hero/);
         assert.doesNotMatch(src, /onClick=\{resetRun\}/);
+        assert.doesNotMatch(src, /from ["']@\/components\/chrome/);
+        assert.doesNotMatch(src, /from ["']@\/game\/store/);
       }
       if (f.endsWith("ShinePlate.tsx") || f.endsWith("ShineMound.tsx")) {
         assert.match(src, /openTitle/);

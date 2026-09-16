@@ -96,7 +96,7 @@ describe("audio exports", () => {
     assert.ok(audio.CONTACT_SFX.miss.noise.freq > 1200, "whiff is air, not wood");
     assert.ok(audio.CONTACT_SFX.hit.noise.vol > audio.CONTACT_SFX.miss.noise.vol, "crack must beat the walk-up");
     assert.ok(audio.CONTACT_SFX.hit.noise.vol >= 0.24, "hy74: quiet recipes were not speaker-heard");
-    const layers = ["miss", "foul-tip", "foul", "hit", "take-strike"].map((b) => audio.RELEASE_SFX_LAYERS[b].join("|"));
+    const layers = (["miss", "foul-tip", "foul", "hit", "take-strike"] as const).map((b) => audio.RELEASE_SFX_LAYERS[b].join("|"));
     assert.equal(new Set(layers).size, 5);
     assert.deepEqual(audio.RELEASE_SFX_LAYERS["take-strike"], ["take-leather", "ump-call"]);
     assert.ok(audio.TAKE_STRIKE_SFX.leather.vol >= 0.2, "hy131: take leather must clear the lantern bed");

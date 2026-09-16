@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PixelBtn } from "@/components/chrome";
+import { PixelBtn } from "@/components/pixel-btn";
 import { sfxSelect } from "@/game/audio";
 import { TIMING_ASSIST_FLIGHT, TIMING_ASSIST_WINDOW } from "@/shine/beats.ts";
 import { TIMING_TOLERANCE_MS } from "@/shine/clock.ts";

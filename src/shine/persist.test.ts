@@ -45,6 +45,7 @@ describe("persist", () => {
 
   it("does not evict a live exhibition when persist hydrates title", () => {
     assert.equal(keepLiveExhibitionScreen("exhibition", "title"), "exhibition");
+    assert.equal(keepLiveExhibitionScreen("exhibition", "settings"), "exhibition");
     assert.equal(keepLiveExhibitionScreen("title", "title"), "title");
     assert.equal(keepLiveExhibitionScreen("complex", "title"), "title");
   });

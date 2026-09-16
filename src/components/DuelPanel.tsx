@@ -4,7 +4,7 @@
  * the owner decides what a call does. Logic lives in duel-ui.ts.
  * Build spec: design/diamond-shine-duel-build-spec-2026-09-14.md §4.
  */
-import { PixelBtn } from "@/components/chrome";
+import { PixelBtn } from "@/components/pixel-btn";
 import { callAllowed, type CoachCardId, type DuelCall, type PitchFamily } from "@/shine/duel.ts";
 import { CALL_LABEL, CARD_LABEL, CARD_ROW, HAND, bookRows, duelPrompt, likelyTag } from "./duel-ui";
 

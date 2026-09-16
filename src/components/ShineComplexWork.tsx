@@ -1,5 +1,5 @@
 import type { CSSProperties, Dispatch, SetStateAction } from "react";
-import { PixelBtn } from "@/components/chrome";
+import { PixelBtn } from "@/components/pixel-btn";
 import { ShineMute } from "@/components/ShineMute";
 import { clubhouseOpen, looksUnlocked, powerStationsUnlocked, type CalendarBeat } from "@/shine/calendar.ts";
 import { sheet } from "@/shine/bible.ts";

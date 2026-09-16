@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import { PixelBtn } from "@/components/chrome";
+import { PixelBtn } from "@/components/pixel-btn";
 import { ShineMute } from "@/components/ShineMute";
 import { careerMuteAppliesToScreen, setMasterMuted, setMix, sfxCowbell, sfxSelect, startEnding, startMusic, stopMusic, unlockAudio } from "@/game/audio";
 import { ShineHelp, ShineSettings } from "@/components/ShineSettings";
@@ -1030,6 +1030,7 @@ function Establishing() {
 
 export function ShineApp() {
   const screen = useShine((s) => s.screen);
+  const overlay = useShine((s) => s.overlay);
   const hydrated = useShine((s) => s.hydrated);
   const setHydrated = useShine((s) => s.setHydrated);
   const openExhibition = useShine((s) => s.openExhibition);
@@ -1087,8 +1088,8 @@ export function ShineApp() {
         </div>
       </main>
     );
-  } else if (screen === "settings") view = <ShineSettings />;
-  else if (screen === "help") view = <ShineHelp />;
+  } else if (screen === "settings" && !overlay) view = <ShineSettings />;
+  else if (screen === "help" && !overlay) view = <ShineHelp />;
   else if (screen === "title") view = <Title />;
   else if (screen === "shop") view = <Shop />;
   else if (screen === "wall") view = <Wall />;
@@ -1112,6 +1113,16 @@ export function ShineApp() {
       data-reduced-motion={settings.reducedMotion ? "true" : undefined}
     >
       {view}
+      {overlay === "settings" ? (
+        <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="Settings">
+          <ShineSettings />
+        </div>
+      ) : null}
+      {overlay === "help" ? (
+        <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="How it works">
+          <ShineHelp />
+        </div>
+      ) : null}
     </div>
   );
 }

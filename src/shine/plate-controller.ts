@@ -432,6 +432,7 @@ export class PlateController {
     if (!c || !p || this.stage !== "flight" || isFrozen(c) || this.pauseReason) return;
     const progress = progressAt(c, inputTimestamp);
     const practice = this.game.kind === "practice";
+    if (this.duel && !practice && this.game.call === "take") return;
     const nextKind = practice ? "contact" : kind;
     let timingErr = (progress - 1) * Math.max(0.2, p.speed);
     if (this.assist) timingErr /= TIMING_ASSIST_WINDOW;

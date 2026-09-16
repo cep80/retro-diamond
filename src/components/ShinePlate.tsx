@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PixelBtn } from "@/components/chrome";
+import { PixelBtn } from "@/components/pixel-btn";
 import { ShineMute } from "@/components/ShineMute";
 import { BasesDiamond, PauseOverlay, ScoutingCard, usePlatePause } from "@/components/ShinePlateBits";
 import {
@@ -226,6 +226,7 @@ function HitterPlate() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, pitch, recognized]);
 
+  const overlay = useShine((s) => s.overlay);
   const { paused, pauseReason, pause, resume } = usePlatePause({
     onFreeze: () => {
       if (clock.current && stageRef.current === "flight") {
@@ -250,6 +251,10 @@ function HitterPlate() {
       return true;
     },
   });
+
+  useEffect(() => {
+    if (overlay) pause("user");
+  }, [overlay, pause]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -487,6 +492,7 @@ function HitterPlate() {
     if (!c || stageRef.current !== "flight" || isFrozen(c)) return;
     const progress = progressAt(c, now);
     const nextKind = practice ? "contact" : kind;
+    if (game.duel && !practice && game.call === "take") return;
     let timingErr = (progress - 1) * Math.max(0.2, pitch.speed);
     if (assist) timingErr /= TIMING_ASSIST_WINDOW;
     if (game.duel && !practice) {

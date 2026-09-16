@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PixelBtn } from "@/components/chrome";
+import { PixelBtn } from "@/components/pixel-btn";
 import { ShineMute } from "@/components/ShineMute";
 import { PauseOverlay, usePlatePause } from "@/components/ShinePlateBits";
 import {
@@ -198,6 +198,7 @@ export function ShineMound() {
     return () => window.clearTimeout(t);
   }, [game?.done, game?.kind, game?.pgMet, reduced]);
 
+  const overlay = useShine((s) => s.overlay);
   const { paused, pauseReason, pause, resume } = usePlatePause({
     onFreeze: () => {
       if (clock.current && stageRef.current === "flight") {
@@ -247,6 +248,10 @@ export function ShineMound() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   });
+
+  useEffect(() => {
+    if (overlay) pause("user");
+  }, [overlay, pause]);
 
   if (!run || !game) return null;
   const who = sheet(run.characterId);
