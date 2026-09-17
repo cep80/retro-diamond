@@ -692,10 +692,17 @@ export function prepareShowsBall(elapsedMs: number, prepMs: number, showMs = THR
  */
 export const SET_GLOVE_LIFT_DEG: Vec3 = [-40, -40, 20];
 
-export function pitcherSetGloveLift(opts: { stage: string; ballOut: boolean }): Vec3 {
+/**
+ * Farm close-up (action-art spec §4): the full lift parks the mitt on her
+ * face from 3 m (the plate-cam "gold sight cover"). The still needs the
+ * face; half the lift keeps the mitt at the chest, set, not a bib.
+ */
+export const FARM_SET_GLOVE_LIFT = 0.5;
+export function pitcherSetGloveLift(opts: { stage: string; ballOut: boolean; close?: boolean }): Vec3 {
   if (opts.ballOut) return [0, 0, 0];
   if (opts.stage === "flight" || opts.stage === "reaction" || opts.stage === "field") return [0, 0, 0];
   if (opts.stage !== "idle" && opts.stage !== "prepare" && opts.stage !== "situation") return [0, 0, 0];
+  if (opts.close) return SET_GLOVE_LIFT_DEG.map((d) => d * FARM_SET_GLOVE_LIFT) as unknown as Vec3;
   return SET_GLOVE_LIFT_DEG;
 }
 
@@ -1633,5 +1640,5 @@ export type FarmCameraKey = "plate" | "batter" | "mound";
 export const FARM_CAMERAS: Record<FarmCameraKey, { position: Vec3; lookAt: Vec3; fov: number }> = {
   plate: { position: [...CAMERA_LOCK.position] as Vec3, lookAt: [...CAMERA_LOCK.lookAt] as Vec3, fov: CAMERA_FOV },
   batter: { position: [-0.4, 1.45, 2.55], lookAt: [-0.95, 1.25, 0.5], fov: 30 },
-  mound: { position: [-0.45, 1.8, -15.9], lookAt: [0, 1.6, -18.44], fov: 28 },
+  mound: { position: [-0.55, 2.25, -15.4], lookAt: [0, 1.5, -18.44], fov: 28 },
 };

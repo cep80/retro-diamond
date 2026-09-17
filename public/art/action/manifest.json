@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "renderedAt": "2026-09-17T02:11:30.218Z",
+  "renderedAt": "2026-09-17T11:16:15.765Z",
   "girls": {
     "aoi": {
       "role": "batter",
@@ -142,7 +142,7 @@
       "stills": {
         "set": {
           "url": "/art/action/reina/set.webp",
-          "bytes": 24844,
+          "bytes": 20714,
           "w": 720,
           "h": 960,
           "source": {
@@ -152,7 +152,7 @@
         },
         "windup": {
           "url": "/art/action/reina/windup.webp",
-          "bytes": 28194,
+          "bytes": 25100,
           "w": 720,
           "h": 960,
           "source": {
@@ -162,7 +162,7 @@
         },
         "release": {
           "url": "/art/action/reina/release.webp",
-          "bytes": 28626,
+          "bytes": 24614,
           "w": 720,
           "h": 960,
           "source": {
@@ -172,7 +172,7 @@
         },
         "follow": {
           "url": "/art/action/reina/follow.webp",
-          "bytes": 30096,
+          "bytes": 23830,
           "w": 720,
           "h": 960,
           "source": {
@@ -184,7 +184,7 @@
       "clips": {
         "k": {
           "url": "/art/action/reina/k.webm",
-          "bytes": 269895,
+          "bytes": 231892,
           "w": 720,
           "h": 960,
           "durationS": 3.4167,
@@ -213,7 +213,7 @@
         },
         "walk": {
           "url": "/art/action/reina/walk.webm",
-          "bytes": 224666,
+          "bytes": 196815,
           "w": 720,
           "h": 960,
           "durationS": 2.2083,
@@ -377,7 +377,7 @@
       "stills": {
         "set": {
           "url": "/art/action/kira/set.webp",
-          "bytes": 25258,
+          "bytes": 24232,
           "w": 720,
           "h": 960,
           "source": {
@@ -387,7 +387,7 @@
         },
         "windup": {
           "url": "/art/action/kira/windup.webp",
-          "bytes": 32978,
+          "bytes": 29714,
           "w": 720,
           "h": 960,
           "source": {
@@ -397,7 +397,7 @@
         },
         "release": {
           "url": "/art/action/kira/release.webp",
-          "bytes": 31454,
+          "bytes": 28498,
           "w": 720,
           "h": 960,
           "source": {
@@ -407,7 +407,7 @@
         },
         "follow": {
           "url": "/art/action/kira/follow.webp",
-          "bytes": 32302,
+          "bytes": 28298,
           "w": 720,
           "h": 960,
           "source": {
@@ -419,7 +419,7 @@
       "clips": {
         "k": {
           "url": "/art/action/kira/k.webm",
-          "bytes": 259510,
+          "bytes": 239442,
           "w": 720,
           "h": 960,
           "durationS": 3.4167,
@@ -448,7 +448,7 @@
         },
         "walk": {
           "url": "/art/action/kira/walk.webm",
-          "bytes": 216286,
+          "bytes": 200398,
           "w": 720,
           "h": 960,
           "durationS": 2.2083,
@@ -612,7 +612,7 @@
       "stills": {
         "set": {
           "url": "/art/action/sol/set.webp",
-          "bytes": 33884,
+          "bytes": 30690,
           "w": 720,
           "h": 960,
           "source": {
@@ -622,7 +622,7 @@
         },
         "windup": {
           "url": "/art/action/sol/windup.webp",
-          "bytes": 33720,
+          "bytes": 32742,
           "w": 720,
           "h": 960,
           "source": {
@@ -632,7 +632,7 @@
         },
         "release": {
           "url": "/art/action/sol/release.webp",
-          "bytes": 32774,
+          "bytes": 33218,
           "w": 720,
           "h": 960,
           "source": {
@@ -642,7 +642,7 @@
         },
         "follow": {
           "url": "/art/action/sol/follow.webp",
-          "bytes": 36044,
+          "bytes": 32872,
           "w": 720,
           "h": 960,
           "source": {
@@ -654,7 +654,7 @@
       "clips": {
         "k": {
           "url": "/art/action/sol/k.webm",
-          "bytes": 260462,
+          "bytes": 234828,
           "w": 720,
           "h": 960,
           "durationS": 3.4167,
@@ -683,7 +683,7 @@
         },
         "walk": {
           "url": "/art/action/sol/walk.webm",
-          "bytes": 216230,
+          "bytes": 196771,
           "w": 720,
           "h": 960,
           "durationS": 2.2083,

@@ -85,6 +85,9 @@ import {
   fillBlackPaintsMesh,
   beatFlashAt,
   HERO_LOOK,
+  heroCloseAlbedo,
+  heroCloseHidesMat,
+  heroCloseRampRole,
   heroCurtainSkipsToneMap,
   heroAtlasNearestMin,
   heroKeepsAtlasMips,
@@ -589,8 +592,8 @@ function SceneRoot({
   );
   const lanternHalos = useMemo(() => lanternHaloPoints(lanternCandidates), [lanternCandidates]);
   useLayoutEffect(() => {
-    applyHeroNightExposure(batterGltf.scene, heroLookFor("batter"), phoneStrip);
-    applyHeroNightExposure(pitcherGltf.scene, heroLookFor("pitcher"), phoneStrip);
+    applyHeroNightExposure(batterGltf.scene, heroLookFor("batter"), phoneStrip, farmOn());
+    applyHeroNightExposure(pitcherGltf.scene, heroLookFor("pitcher"), phoneStrip, farmOn());
     applyBatNightLook(propsGltf.scene, phoneStrip);
   }, [batterGltf, pitcherGltf, propsGltf, phoneStrip]);
   useEffect(() => {
@@ -623,8 +626,8 @@ function SceneRoot({
     applyToonMaterials(batterGltf.scene);
     applyToonMaterials(pitcherGltf.scene);
     applyToonMaterials(propsGltf.scene);
-    applyHeroLook(batterGltf.scene, heroLookFor("batter"));
-    applyHeroLook(pitcherGltf.scene, heroLookFor("pitcher"));
+    applyHeroLook(batterGltf.scene, heroLookFor("batter"), farmOn());
+    applyHeroLook(pitcherGltf.scene, heroLookFor("pitcher"), farmOn());
     darkenEmptyStands(fieldGltf.scene);
     fieldGltf.scene.traverse((obj) => {
       const mesh = obj as Mesh;
@@ -1023,7 +1026,8 @@ function darkenEmptyStands(root: Object3D) {
   });
 }
 
-function applyHeroLook(root: Object3D, role: HeroLookRole) {
+/** `close`: farm close-up, no far-view lamps (see heroCloseHidesMat). */
+function applyHeroLook(root: Object3D, role: HeroLookRole, close = false) {
   root.traverse((obj) => {
     const mesh = obj as Mesh;
     if (!mesh.isMesh) return;
@@ -1041,7 +1045,10 @@ function applyHeroLook(root: Object3D, role: HeroLookRole) {
       if (role === "reina" && /lock/i.test(named.name ?? "") && named.color) {
         named.color.set(REINA_LOCK_TINT);
       }
-      const glow = heroMatGlow(named.name ?? "", role);
+      if (close && heroCloseHidesMat(named.name ?? "", mesh.name, role)) {
+        (named as { visible?: boolean }).visible = false;
+      }
+      const glow = close ? null : heroMatGlow(named.name ?? "", role);
       if (glow && named.emissive) {
         named.emissive.set(glow.color);
         named.emissiveIntensity = glow.intensity;
@@ -1049,10 +1056,10 @@ function applyHeroLook(root: Object3D, role: HeroLookRole) {
         named.emissive.set("#000000");
         named.emissiveIntensity = 0;
       }
-      if (heroCurtainSkipsToneMap(named.name ?? "", role)) {
+      if (!close && heroCurtainSkipsToneMap(named.name ?? "", role)) {
         (named as { toneMapped?: boolean }).toneMapped = false;
       }
-      if (role === "reina" && !/curtain|lock/i.test(named.name ?? "") && !/kit_curtain/i.test(mesh.name)) {
+      if (!close && role === "reina" && !/curtain|lock/i.test(named.name ?? "") && !/kit_curtain/i.test(mesh.name)) {
         applyReinaCurtainEmit(mesh, named);
       }
       applyHeroNightMips(named, role);
@@ -1183,9 +1190,9 @@ function applyBatNightLook(root: Object3D, phoneStrip: boolean) {
   });
 }
 
-function applyHeroNightExposure(root: Object3D, role: HeroLookRole, phoneStrip: boolean) {
-  const dim = heroNightAlbedo(role, phoneStrip);
-  const ramp = heroToonRamp(role, phoneStrip);
+function applyHeroNightExposure(root: Object3D, role: HeroLookRole, phoneStrip: boolean, close = false) {
+  const dim = close ? heroCloseAlbedo(role) : heroNightAlbedo(role, phoneStrip);
+  const ramp = close ? heroToonRamp(heroCloseRampRole(role), false) : heroToonRamp(role, phoneStrip);
   root.traverse((obj) => {
     const mesh = obj as Mesh;
     if (!mesh.isMesh) return;
@@ -1193,7 +1200,7 @@ function applyHeroNightExposure(root: Object3D, role: HeroLookRole, phoneStrip: 
     for (const mat of mats) {
       const named = mat as NightAlbedoMat;
       if (named.gradientMap) named.gradientMap = ramp;
-      if (role === "reina" && named.emissiveIntensity != null) {
+      if (!close && role === "reina" && named.emissiveIntensity != null) {
         if (named.userData?.curtainVerts) {
           named.emissiveIntensity = reinaAtlasCurtainEmit(phoneStrip);
         } else if (/curtain/i.test(named.name ?? "")) {
@@ -2240,7 +2247,7 @@ function CharacterActor({
     if (asset.role === "pitcher") {
       const stage = controller.getSnapshot().stage;
       const farmStage = FARM.clip.pitcher === "idle_set" || !FARM.clip.pitcher ? "idle" : "flight";
-      const lift = debugSetGloveLift() ?? pitcherSetGloveLift({ stage: farmOn() ? farmStage : stage, ballOut: throwHandReady });
+      const lift = debugSetGloveLift() ?? pitcherSetGloveLift({ stage: farmOn() ? farmStage : stage, ballOut: throwHandReady, close: farmOn() });
       const armL = swingRig.current.armL;
       if (armL && lift.some((n) => n !== 0)) {
         if (!plantedSetArmL.current) plantedSetArmL.current = armL.quaternion.clone();

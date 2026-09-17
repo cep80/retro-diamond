@@ -226,6 +226,33 @@ export function heroMatGlow(
   return null;
 }
 
+/**
+ * Farm close-ups (`?farm=1`, action-art spec §4): the mound camera sits
+ * 3 m from the pitcher, not 18. Every far-view lamp above — curtain sheets,
+ * hair / sleeve glow, skip-ACES — is what bleached Reina to a white
+ * mannequin in the mound stills (hy146 sheets were the "wings"). Close
+ * keeps her tints, ramp and albedo (Kira reads fine on those) and drops
+ * the lamps; the `kit_curtain_*` sheets hide, since the atlas already has
+ * her silver length.
+ */
+export function heroCloseHidesMat(matName: string, meshName: string, role: HeroLookRole): boolean {
+  return role === "reina" && /curtain|lock/i.test(`${matName} ${meshName}`);
+}
+
+/**
+ * Close night exposure: the capped 156 ramp and 0.72 albedo that keep her
+ * navy at 18 m leave a 3 m face as grey clay under the mound rim. Close
+ * takes Aoi's desktop ramp and the phone albedo; navy is in the atlas.
+ */
+export const HERO_CLOSE_ALBEDO = 0.86;
+export function heroCloseAlbedo(role: HeroLookRole): number {
+  return role === "reina" ? HERO_CLOSE_ALBEDO : HERO_NIGHT_ALBEDO[role];
+}
+export function heroCloseRampRole(_role: HeroLookRole): HeroLookRole {
+  return "aoi";
+}
+
+
 /** Named curtain locks skip ACES so 6 px of silver still reads on the 390 strip.
  * Desktop sheets are full height — skip-ACES is the cream oval (hy63).
  * Never the atlas — that would wash the navy jersey. */

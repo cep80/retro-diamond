@@ -99,6 +99,7 @@ import {
   mittFaceOnScore,
   mittFacesCatcher,
   pitcherSetGloveLift,
+  FARM_SET_GLOVE_LIFT,
   SET_GLOVE_LIFT_DEG,
   setMittNearFace,
   SOCKET_OFFSETS,
@@ -466,6 +467,11 @@ describe("contact flash", () => {
     assert.deepEqual(pitcherSetGloveLift({ stage: "prepare", ballOut: false }), SET_GLOVE_LIFT_DEG);
     assert.deepEqual(pitcherSetGloveLift({ stage: "prepare", ballOut: true }), [0, 0, 0], "throw hand owns the leave");
     assert.deepEqual(pitcherSetGloveLift({ stage: "flight", ballOut: false }), [0, 0, 0]);
+    // Farm close-up: half the lift so the mitt sits at the chest, off her face.
+    const close = pitcherSetGloveLift({ stage: "idle", ballOut: false, close: true });
+    assert.deepEqual(close, SET_GLOVE_LIFT_DEG.map((d) => d * FARM_SET_GLOVE_LIFT));
+    assert.ok(Math.abs(close[0]) < Math.abs(SET_GLOVE_LIFT_DEG[0]) && close[0] !== 0, "lifted, but less");
+    assert.deepEqual(pitcherSetGloveLift({ stage: "flight", ballOut: false, close: true }), [0, 0, 0]);
     assert.equal(setMittNearFace([0.225, 1.496, -18.247], [0, 1.774, -18.44]), false, "authored idle is chest");
     assert.equal(setMittNearFace([0.085, 1.696, -18.254], [0, 1.774, -18.441]), true);
     const set = throwPoseScore([0.005, 1.411, -18.276]);
@@ -992,6 +998,8 @@ describe("action art: the live scene behind a flag", () => {
     assert.ok(FARM_CAMERAS.batter.position[2] > 0 && FARM_CAMERAS.batter.position[2] < 3, "catcher side, close");
     assert.ok(FARM_CAMERAS.batter.lookAt[0] < 0, "looks at the RH box");
     assert.ok(FARM_CAMERAS.mound.lookAt[2] < -18 && FARM_CAMERAS.mound.position[2] > -18.44, "on the mound, from the plate side");
+    assert.ok(FARM_CAMERAS.mound.position[1] > FARM_CAMERAS.mound.lookAt[1] + 0.5, "above the mitt, looking down at the face");
+    assert.ok(FARM_CAMERAS.mound.position[2] - FARM_CAMERAS.mound.lookAt[2] >= 2.8, "far enough for head to shin");
     for (const k of ["plate", "batter", "mound"] as const) {
       assert.ok(FARM_CAMERAS[k].fov >= 25 && FARM_CAMERAS[k].fov <= 40, k);
     }

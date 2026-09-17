@@ -10,6 +10,10 @@ import {
   aoiBackOneOnCameraWrap,
   aoiBackOneWrapYaw,
   batNightAlbedo,
+  heroCloseAlbedo,
+  heroCloseHidesMat,
+  heroCloseRampRole,
+  HERO_CLOSE_ALBEDO,
   BAT_NIGHT_ALBEDO,
   beatFlashAt,
   HERO_LOOK,
@@ -214,5 +218,21 @@ describe("whiff flash point", () => {
     );
     assert.deepEqual(beatFlashAt({ beat: "foul", swung: true, cross: plate }), plate);
     assert.deepEqual(beatFlashAt({ beat: "take-strike", swung: false, cross: plate }), plate);
+  });
+});
+
+describe("farm close look", () => {
+  it("hides Reina's far-view curtain sheets and joined locks, never the atlas", () => {
+    assert.equal(heroCloseHidesMat("mat_hair_curtain", "kit_curtain_L", "reina"), true);
+    assert.equal(heroCloseHidesMat("mat_hair_lock", "mesh_reina", "reina"), true);
+    assert.equal(heroCloseHidesMat("mat_skin_hero", "mesh_reina", "reina"), false);
+    assert.equal(heroCloseHidesMat("mat_hair_curtain", "kit_curtain_L", "aoi"), false);
+  });
+  it("brightens Reina to the phone albedo on Aoi's desktop ramp; Aoi is unchanged", () => {
+    assert.equal(heroCloseAlbedo("reina"), HERO_CLOSE_ALBEDO);
+    assert.ok(HERO_CLOSE_ALBEDO > HERO_NIGHT_ALBEDO.reina);
+    assert.equal(heroCloseAlbedo("aoi"), HERO_NIGHT_ALBEDO.aoi);
+    assert.equal(heroCloseRampRole("reina"), "aoi");
+    assert.equal(heroCloseRampRole("aoi"), "aoi");
   });
 });
