@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   ACTION_MANIFEST_URL,
+  AOI_FAMILY_REEL,
   actionAssetUrls,
   actionBudget,
   BATTER_POSES,
@@ -15,10 +16,13 @@ import {
   CUT_IN_STEP_MS,
   cutInFrame,
   cutInTotalMs,
+  defaultAngleFor,
   fallbackPose,
+  familyCutIn,
   focusFor,
   GIRL_STILLS_BUDGET_BYTES,
   moneyBeatFor,
+  outcomeFamily,
   pictureFor,
   PITCHER_POSES,
   RELEASE_HOLD_U,
@@ -102,6 +106,20 @@ describe("action art: cue → picture", () => {
     assert.equal(p.card, "Foul. Pulled. Still two.");
   });
 
+  it("names hr / k / walk with their own still once the swing settles", () => {
+    type Beat = (typeof ALL_BEATS)[number];
+    const settled = (beat: Beat, swung: boolean) => pictureFor(view({ stage: "reaction", beat, swung, resolvedAtMs: 0, nowMs: CONTACT_HOLD_MS }));
+    const fresh = (beat: Beat, swung: boolean) => pictureFor(view({ stage: "reaction", beat, swung, resolvedAtMs: 0, nowMs: 0 }));
+    assert.equal(settled("hr", true).batter, "celebrate");
+    assert.equal(fresh("hr", true).batter, "contact", "the contact hold comes first");
+    assert.equal(settled("k", true).batter, "crushed");
+    assert.equal(settled("k", false).batter, "crushed", "a called third strike crushes too");
+    assert.equal(settled("walk", false).batter, "trot");
+    assert.equal(fresh("walk", false).batter, "take");
+    assert.equal(settled("single", true).batter, "follow", "a plain hit keeps the follow-through");
+    assert.equal(settled("take-strike", false).batter, "take");
+  });
+
   it("covers every beat after the resolve without an empty picture", () => {
     for (const beat of ALL_BEATS) {
       const swung = !["take-strike", "ball", "walk", "k"].includes(beat);
@@ -109,7 +127,39 @@ describe("action art: cue → picture", () => {
       assert.ok(BATTER_POSES.includes(p.batter), beat);
       assert.ok(PITCHER_POSES.includes(p.pitcher), beat);
       assert.ok(p.card && p.card.length > 0, beat);
+      assert.ok(p.family, beat);
+      assert.equal(p.angle, "three_quarter", beat);
     }
+  });
+});
+
+describe("action art: Hybrid E five-family grammar", () => {
+  it("maps beats to hit / foul / tip / whiff / take", () => {
+    assert.equal(outcomeFamily("single", true), "hit");
+    assert.equal(outcomeFamily("foul", true), "foul");
+    assert.equal(outcomeFamily("foul-tip", true), "tip");
+    assert.equal(outcomeFamily("miss", true), "whiff");
+    assert.equal(outcomeFamily("k", true), "whiff");
+    assert.equal(outcomeFamily("k", false), "take");
+    assert.equal(outcomeFamily("take-strike", false), "take");
+    assert.equal(outcomeFamily("walk", false), "take");
+    assert.equal(outcomeFamily(null, false), null);
+  });
+
+  it("keeps pictureFor cut-ins aligned with familyCutIn", () => {
+    for (const row of AOI_FAMILY_REEL) {
+      assert.equal(outcomeFamily(row.beat, row.swung), row.family, row.family);
+      const p = pictureFor(view({ stage: "reaction", beat: row.beat, swung: row.swung, resolvedAtMs: 0 }));
+      assert.equal(p.family, row.family, row.family);
+      assert.deepEqual(p.cutIn, familyCutIn(row.family), row.family);
+      assert.equal(p.batter, row.pose, row.family);
+    }
+  });
+
+  it("defaults Hybrid E angles to three_quarter on both roles", () => {
+    assert.equal(defaultAngleFor("batter"), "three_quarter");
+    assert.equal(defaultAngleFor("pitcher"), "three_quarter");
+    assert.equal(pictureFor(view({ stage: "prepare" })).angle, "three_quarter");
   });
 });
 

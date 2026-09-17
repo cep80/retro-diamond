@@ -63,6 +63,7 @@ const POSES = {
     take: { clip: "take", t: 0.55 },
     celebrate: { clip: "react_success", t: 0.8 },
     crushed: { clip: "react_disappoint", t: 0.8 },
+    trot: { clip: "run", t: 0.4 },
   },
   pitcher: {
     set: { clip: "idle_set", t: 0.5 },
@@ -71,7 +72,11 @@ const POSES = {
     follow: { clip: "follow_through", t: 0.4 },
   },
 };
+/** §4.2 Hybrid E cameras (PA film bible): 3/4 hero cards, not catcher-lock as product film.
+ * Farm slot names map to __dsFarm.camera(); see design/diamond-shine-action-farm-angles-2026-09-17.md.
+ * Side-scroll is mini-games only — never a farm default here. */
 const CAMERA = { batter: "batter", pitcher: "mound" };
+const ANGLE = { batter: "three_quarter", pitcher: "three_quarter" };
 
 /** §4.3 clip timelines: segments of (clip, from, to) at CLIP_FPS; marker = where the authored marker lands. */
 const CLIPS = {
@@ -131,7 +136,12 @@ const browser = await chromium.launch({
 });
 
 const existing = existsSync(join(outDir, "manifest.json")) ? JSON.parse(readFileSync(join(outDir, "manifest.json"), "utf8")) : null;
-const manifest = { version: 1, renderedAt: new Date().toISOString(), girls: { ...(existing?.girls ?? {}) } };
+const manifest = {
+  version: 1,
+  film: "hybrid-e",
+  renderedAt: new Date().toISOString(),
+  girls: { ...(existing?.girls ?? {}) },
+};
 
 async function openFarm(pair) {
   const page = await browser.newPage({ viewport: { width: STILL_W, height: STILL_H }, deviceScaleFactor: 1 });
@@ -223,13 +233,24 @@ async function renderGirl(page, girl, role) {
   if (wantStills) {
     for (const [key, spec] of Object.entries(POSES[role])) {
       if (only.length && !only.includes(key)) continue;
+      if (art.stills[key]?.source?.imported) {
+        console.log(`  ${girl}/${key}.webp  kept (imported ${art.stills[key].source.imported})`);
+        continue;
+      }
       const png = join(scratch, `${girl}-${key}.png`);
       const webp = join(dir, `${key}.webp`);
       await pose(page, role, spec.clip, spec.t);
       await shoot(page, png);
       pngToWebp(png, webp);
       const { w, h } = probeDims(webp);
-      art.stills[key] = { url: `${urlBase}/${girl}/${key}.webp`, bytes: statSync(webp).size, w, h, source: { clip: spec.clip, t: spec.t } };
+      art.stills[key] = {
+        url: `${urlBase}/${girl}/${key}.webp`,
+        bytes: statSync(webp).size,
+        w,
+        h,
+        angle: ANGLE[role],
+        source: { clip: spec.clip, t: spec.t },
+      };
       console.log(`  ${girl}/${key}.webp ${fmt(art.stills[key].bytes)}  ${spec.clip}@${spec.t}`);
     }
   }
@@ -272,6 +293,7 @@ async function renderGirl(page, girl, role) {
         durationS: Number((Number.isFinite(durationS) ? durationS : frames / CLIP_FPS).toFixed(4)),
         markerS: spec.markerS,
         poster: `${urlBase}/${girl}/${beat}.webp`,
+        angle: ANGLE[role],
         source: { fps: CLIP_FPS, segments: spec.segments },
       };
       console.log(`  ${girl}/${beat}.webm ${fmt(art.clips[beat].bytes)}  ${frames} frames, marker ${spec.markerS}s`);

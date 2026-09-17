@@ -2,10 +2,13 @@
  * Action art: the 2D presentation vocabulary for the plate.
  *
  * Phase 2 of the hook plan replaces the live 3D scene with stills at every
- * cue and a short clip on money beats. This module is the pure half: pose
- * keys, the cue → picture rule, clip alignment math, budgets, and the
- * manifest shape the farm writes. No DOM, no timers, no controller.
+ * cue and a short clip on money beats. Hybrid E (PA film bible 2026-09-17):
+ * multi-angle cards (3/4 + profile), not a locked catcher plane. This module
+ * is the pure half: pose keys, the cue → picture rule, five-family grammar,
+ * clip alignment math, budgets, and the manifest shape the farm writes.
+ * No DOM, no timers, no controller.
  * Build spec: design/diamond-shine-action-art-build-spec-2026-09-16.md.
+ * Film language: design/diamond-shine-pa-film-2026-09-17.md.
  */
 import { ballLeavesBat, exhibitionResultReadout } from "../components/exhibition/scene/presentation.ts";
 import type { Stage } from "./beats.ts";
@@ -13,18 +16,54 @@ import type { DuelCall } from "./duel.ts";
 import type { FieldBeat, SwingKind } from "./featured-game.ts";
 import type { CharacterId } from "./types.ts";
 
-export const BATTER_POSES = ["stance", "load", "cut", "contact", "follow", "take", "celebrate", "crushed"] as const;
+export const BATTER_POSES = ["stance", "load", "cut", "contact", "follow", "take", "celebrate", "crushed", "trot"] as const;
 export type BatterPose = (typeof BATTER_POSES)[number];
 export const PITCHER_POSES = ["set", "windup", "release", "follow"] as const;
 export type PitcherPose = (typeof PITCHER_POSES)[number];
 export const MONEY_BEATS = ["hr", "k", "walk", "spurt", "unique", "curtain"] as const;
 export type MoneyBeat = (typeof MONEY_BEATS)[number];
 
+/** Hybrid E farm / LOOK angles. Side-scroll is mini-games only — not listed. */
+export const ACTION_ANGLES = ["three_quarter", "profile", "catcher_crop"] as const;
+export type ActionAngle = (typeof ACTION_ANGLES)[number];
+
+/** Default angle for a role on the featured plate (PA film bible §1). */
+export function defaultAngleFor(role: "batter" | "pitcher"): ActionAngle {
+  return "three_quarter";
+}
+
+/** Five-family stranger gate (PA film bible §2). */
+export const OUTCOME_FAMILIES = ["hit", "foul", "tip", "whiff", "take"] as const;
+export type OutcomeFamily = (typeof OUTCOME_FAMILIES)[number];
+
+export function outcomeFamily(beat: FieldBeat | null, swung: boolean): OutcomeFamily | null {
+  if (!beat) return null;
+  if (beat === "foul-tip") return "tip";
+  if (beat === "foul") return "foul";
+  if (beat === "miss") return "whiff";
+  if (beat === "k") return swung ? "whiff" : "take";
+  if (beat === "take-strike" || beat === "ball" || beat === "walk") return "take";
+  if (ballLeavesBat(beat)) return "hit";
+  return swung ? "whiff" : "take";
+}
+
+/**
+ * Cut-in strip implied by the family. Used by tests and farm QA; `pictureFor`
+ * stays the runtime authority and must agree.
+ */
+export function familyCutIn(family: OutcomeFamily | null): readonly BatterPose[] | null {
+  if (family === "hit" || family === "foul" || family === "tip") return ["load", "cut", "contact"];
+  if (family === "whiff") return ["load", "cut"];
+  return null;
+}
+
 export interface ActionStill {
   url: string;
   bytes: number;
   w: number;
   h: number;
+  /** Hybrid E angle this still was farmed at. Optional on legacy manifests. */
+  angle?: ActionAngle;
   /** Farm provenance: which authored clip and time produced the still. */
   source?: { clip: string; t: number };
 }
@@ -38,6 +77,7 @@ export interface ActionClip {
   /** Seconds into the clip where contact / release / the sting lands. Aligned to the resolve cue. */
   markerS: number;
   poster?: string;
+  angle?: ActionAngle;
   /** Farm provenance: the authored segments stitched at `fps`. */
   source?: { fps: number; segments: [clip: string, from: number, to: number][] };
 }
@@ -51,6 +91,8 @@ export interface GirlArt {
 export interface ActionManifest {
   version: 1;
   renderedAt: string;
+  /** Declares Hybrid E when present; older manifests omit it. */
+  film?: "hybrid-e";
   girls: Partial<Record<CharacterId, GirlArt>>;
 }
 
@@ -99,6 +141,10 @@ export interface ActionPicture {
   card: string | null;
   /** Slow push-in on the pitcher during the wind-up. */
   pushIn: boolean;
+  /** Hybrid E five-family tag after resolve; null before. */
+  family: OutcomeFamily | null;
+  /** Angle the focused plate should prefer. */
+  angle: ActionAngle;
 }
 
 export interface StingFlags {
@@ -120,31 +166,113 @@ export function moneyBeatFor(beat: FieldBeat | null, flags: StingFlags = {}): Mo
 
 const AFTER_STAGES: ReadonlySet<Stage> = new Set(["field", "reaction"]);
 
+/**
+ * The still that names the beat once the swing has settled (stranger test
+ * 2026-09-17: five of five read the HR marker as a hit and the walk marker
+ * as a K, because those beats reused the contact / follow frames). After
+ * CONTACT_HOLD_MS a home run is her watching it go, a strikeout is her
+ * crushed, a walk is the bat down and the trot to first. Null keeps the
+ * row's own pose.
+ */
+export function settledBatterPose(beat: FieldBeat | null): BatterPose | null {
+  if (beat === "hr") return "celebrate";
+  if (beat === "k") return "crushed";
+  if (beat === "walk") return "trot";
+  return null;
+}
+
 export function pictureFor(view: ActionView, flags: StingFlags = {}, twoStrikeHold = false): ActionPicture {
   const { stage, beat } = view;
   const tapped = view.tappedAtU !== null;
   if (stage === "prepare") {
-    return { pitcher: "windup", batter: "stance", cutIn: null, clip: null, card: null, pushIn: !view.reduced };
+    return {
+      pitcher: "windup",
+      batter: "stance",
+      cutIn: null,
+      clip: null,
+      card: null,
+      pushIn: !view.reduced,
+      family: null,
+      angle: defaultAngleFor("pitcher"),
+    };
   }
   if (stage === "flight") {
-    if (tapped) return { pitcher: "release", batter: "cut", cutIn: ["load", "cut"], clip: null, card: null, pushIn: false };
-    return { pitcher: "release", batter: view.call === "take" ? "take" : "stance", cutIn: null, clip: null, card: null, pushIn: false };
+    if (tapped) {
+      return {
+        pitcher: "release",
+        batter: "cut",
+        cutIn: ["load", "cut"],
+        clip: null,
+        card: null,
+        pushIn: false,
+        family: null,
+        angle: defaultAngleFor("batter"),
+      };
+    }
+    const early = view.u < RELEASE_HOLD_U;
+    return {
+      pitcher: "release",
+      batter: view.call === "take" ? "take" : "stance",
+      cutIn: null,
+      clip: null,
+      card: null,
+      pushIn: false,
+      family: null,
+      angle: defaultAngleFor(early ? "pitcher" : "batter"),
+    };
   }
   if (AFTER_STAGES.has(stage) && beat) {
     const card = exhibitionResultReadout({ beat, twoStrikeHold });
     const clip = moneyBeatFor(beat, flags);
+    const family = outcomeFamily(beat, view.swung);
+    const since = view.resolvedAtMs === null ? 0 : view.nowMs - view.resolvedAtMs;
+    const settled = since >= CONTACT_HOLD_MS ? settledBatterPose(beat) : null;
     if (!view.swung) {
-      return { pitcher: "follow", batter: "take", cutIn: null, clip, card, pushIn: false };
+      return {
+        pitcher: "follow",
+        batter: settled ?? "take",
+        cutIn: null,
+        clip,
+        card,
+        pushIn: false,
+        family,
+        angle: defaultAngleFor("batter"),
+      };
     }
     if (ballLeavesBat(beat)) {
-      const since = view.resolvedAtMs === null ? 0 : view.nowMs - view.resolvedAtMs;
-      const batter: BatterPose = since >= CONTACT_HOLD_MS ? "follow" : "contact";
-      return { pitcher: "follow", batter, cutIn: ["load", "cut", "contact"], clip, card, pushIn: false };
+      const batter: BatterPose = since >= CONTACT_HOLD_MS ? (settled ?? "follow") : "contact";
+      return {
+        pitcher: "follow",
+        batter,
+        cutIn: ["load", "cut", "contact"],
+        clip,
+        card,
+        pushIn: false,
+        family,
+        angle: defaultAngleFor("batter"),
+      };
     }
-    return { pitcher: "follow", batter: "follow", cutIn: ["load", "cut"], clip, card, pushIn: false };
+    return {
+      pitcher: "follow",
+      batter: settled ?? "follow",
+      cutIn: ["load", "cut"],
+      clip,
+      card,
+      pushIn: false,
+      family,
+      angle: defaultAngleFor("batter"),
+    };
   }
-  // situation / idle / dead / paused: both at rest.
-  return { pitcher: "set", batter: "stance", cutIn: null, clip: null, card: null, pushIn: false };
+  return {
+    pitcher: "set",
+    batter: "stance",
+    cutIn: null,
+    clip: null,
+    card: null,
+    pushIn: false,
+    family: null,
+    angle: defaultAngleFor("batter"),
+  };
 }
 
 /** Flight holds the pitcher's release still this far into the flight before the batter plate. */
@@ -285,4 +413,13 @@ export const ACTION_PRELOAD_HREFS: readonly string[] = [
   ACTION_MANIFEST_URL,
   ...actionStillHrefs("aoi", "batter"),
   ...actionStillHrefs("reina", "pitcher"),
+];
+
+/** Aoi five-family stranger-gate samples (PA film bible §2). */
+export const AOI_FAMILY_REEL: readonly { family: OutcomeFamily; beat: FieldBeat; swung: boolean; pose: BatterPose }[] = [
+  { family: "hit", beat: "single", swung: true, pose: "contact" },
+  { family: "foul", beat: "foul", swung: true, pose: "contact" },
+  { family: "tip", beat: "foul-tip", swung: true, pose: "contact" },
+  { family: "whiff", beat: "miss", swung: true, pose: "follow" },
+  { family: "take", beat: "take-strike", swung: false, pose: "take" },
 ];

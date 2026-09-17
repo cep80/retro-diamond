@@ -1,6 +1,7 @@
 {
   "version": 1,
-  "renderedAt": "2026-09-17T11:16:15.765Z",
+  "film": "hybrid-e",
+  "renderedAt": "2026-09-17T14:54:12.168Z",
   "girls": {
     "aoi": {
       "role": "batter",
@@ -83,6 +84,17 @@
           "source": {
             "clip": "react_disappoint",
             "t": 0.8
+          }
+        },
+        "trot": {
+          "url": "/art/action/aoi/trot.webp",
+          "bytes": 20764,
+          "w": 720,
+          "h": 960,
+          "angle": "three_quarter",
+          "source": {
+            "clip": "run",
+            "t": 0.4
           }
         }
       },
@@ -319,6 +331,17 @@
             "clip": "react_disappoint",
             "t": 0.8
           }
+        },
+        "trot": {
+          "url": "/art/action/miki/trot.webp",
+          "bytes": 17734,
+          "w": 720,
+          "h": 960,
+          "angle": "three_quarter",
+          "source": {
+            "clip": "run",
+            "t": 0.4
+          }
         }
       },
       "clips": {
@@ -553,6 +576,17 @@
           "source": {
             "clip": "react_disappoint",
             "t": 0.8
+          }
+        },
+        "trot": {
+          "url": "/art/action/yuki/trot.webp",
+          "bytes": 19442,
+          "w": 720,
+          "h": 960,
+          "angle": "three_quarter",
+          "source": {
+            "clip": "run",
+            "t": 0.4
           }
         }
       },

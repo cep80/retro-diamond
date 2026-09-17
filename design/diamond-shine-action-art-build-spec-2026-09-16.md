@@ -2,7 +2,8 @@
 
 **Status:** BUILD SPEC. Everything here names a file, a type, a number, or a test. If it is not here, it is not in Phase 2.
 **Authored:** 2026-09-16 · **Owner:** product (Coach) · **Gate:** hook plan §3.3 (a stranger names the beat from one still without the HUD; first pitch interactive < 3 s on a mid phone).
-**Binds:** `diamond-shine-hook-plan-2026-09-14.md` §3 (cue → picture, asset plan, sync rule), `diamond-shine-plate-spec-2026-09-14.md` §1–§2 (one pace, the bar is the truth), `pitch/STYLE.md` (line, palette, cleanup, QA six).
+**Binds:** `diamond-shine-hook-plan-2026-09-14.md` §3 (Hybrid E cue → picture), `diamond-shine-pa-film-2026-09-17.md` (BINDING film language), `diamond-shine-plate-spec-2026-09-14.md` §1–§2 (one pace, the bar is the truth), `pitch/STYLE.md` (line, palette, cleanup, QA six).
+**Angle farm:** `diamond-shine-action-farm-angles-2026-09-17.md` (3/4 + profile; catcher crop optional).
 **Touches:** `src/shine/action-art.ts` (new), `src/components/action/ActionStage.tsx` (new), `src/components/exhibition/ShineExhibition.tsx`, `src/components/exhibition/Exhibition3D.tsx` (farm hooks only), `src/components/ShinePlate.tsx`, `scripts/action-farm.mjs` (new), `public/art/action/**` (new), tests beside each.
 **Does not touch:** `plate-controller.ts` timing, `featured-game.ts`, the Duel, the Blender pipeline, work math, calendar.
 
@@ -84,6 +85,9 @@ Rules, in order:
 | field / reaction, swung and touched (`ballLeavesBat`) | follow | contact → follow after `CONTACT_HOLD_MS` | `[load, cut, contact]` | `moneyBeatFor(beat)` | result line |
 | field / reaction, swung and missed | follow | follow | `[load, cut]` | `k` if beat = k | result line |
 | field / reaction, take | follow | take | null | `walk` / `k` | result line |
+| any of the three, after `CONTACT_HOLD_MS`, beat ∈ {hr, k, walk} | follow | `settledBatterPose(beat)`: hr → celebrate, k → crushed, walk → trot | as above | as above | result line |
+
+The settled row exists because of the 2026-09-17 stranger test: with the HR and walk pictures sharing the contact / release frames, five of five named HR as a hit and walk as a K. One picture per beat, or the beat is not readable from a still.
 
 `moneyBeatFor(beat, { spurt, unique, curtain })` → `"hr"` for hr, `"k"` for k, `"walk"` for walk, else the sting flags in priority `curtain > unique > spurt`, else null. The 2D layer draws the ball as a growing dot from `plate2dFlight` (unchanged) and pops the pitch type at `recognized` (unchanged); no picture decides an outcome.
 
