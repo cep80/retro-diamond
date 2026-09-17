@@ -1605,3 +1605,33 @@ export function mittFaceOnScore(span: Vec3): number {
   if (![sx, sy, sz].every((n) => Number.isFinite(n) && n > 0)) return Number.NEGATIVE_INFINITY;
   return (sx * sy) / sz;
 }
+
+/**
+ * Phase 2 (action art): the live scene is no longer the shipped presentation.
+ * It renders only behind `?scene=3d` and doubles as the render farm behind
+ * `?farm=1`. `?fallback=1` still forces 2D for the fallback proofs.
+ * Build spec: design/diamond-shine-action-art-build-spec-2026-09-16.md §3.1.
+ */
+export type SceneMode = "2d" | "3d";
+export function sceneMode(search: string, webgl: boolean): SceneMode {
+  const q = new URLSearchParams(search);
+  if (q.get("fallback") === "1") return "2d";
+  if (q.get("scene") === "3d" && webgl) return "3d";
+  return "2d";
+}
+export function farmEnabled(search: string): boolean {
+  return new URLSearchParams(search).get("farm") === "1";
+}
+
+export type FarmCameraKey = "plate" | "batter" | "mound";
+/**
+ * Farm cameras (spec §4.1). `plate` is the locked catcher cam. `batter`
+ * frames her side-on in the RH box (she stands at x ≈ -0.95, z ≈ 0.5,
+ * facing +X) from the catcher side, waist to cap. `mound` is a catcher-side
+ * close-up on the arm; she is ~2.05 tall in scene units, head at y ≈ 2.04.
+ */
+export const FARM_CAMERAS: Record<FarmCameraKey, { position: Vec3; lookAt: Vec3; fov: number }> = {
+  plate: { position: [...CAMERA_LOCK.position] as Vec3, lookAt: [...CAMERA_LOCK.lookAt] as Vec3, fov: CAMERA_FOV },
+  batter: { position: [-0.4, 1.45, 2.55], lookAt: [-0.95, 1.25, 0.5], fov: 30 },
+  mound: { position: [-0.45, 1.8, -15.9], lookAt: [0, 1.6, -18.44], fov: 28 },
+};

@@ -18,7 +18,7 @@ import { PILGRIMAGE_LINE, shineIsoWeek, weatherLine, weeklySit } from "@/shine/p
 import { PG_INDEX } from "@/shine/run.ts";
 import { ShinePlate } from "./ShinePlate";
 import { ShineExhibition } from "./exhibition/ShineExhibition";
-import { warmExhibitionAssets } from "./exhibition/scene/manifest";
+import { warmActionExhibition } from "./action/action-manifest";
 import { MOOD_LABELS, moodLevel } from "@/shine/training.ts";
 import { useShine } from "@/shine/store.ts";
 import { catchWithCoachScene, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
@@ -44,7 +44,7 @@ function Title() {
   useEffect(() => {
     unlockAudio();
     startMusic("title");
-    warmExhibitionAssets();
+    warmActionExhibition();
     return () => stopMusic();
   }, []);
 
@@ -1045,7 +1045,7 @@ export function ShineApp() {
   const settings = useShine((s) => s.settings);
 
   useEffect(() => {
-    warmExhibitionAssets();
+    warmActionExhibition();
   }, []);
 
   useEffect(() => {

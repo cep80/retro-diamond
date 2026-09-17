@@ -719,6 +719,69 @@
   animation: shine-saved-chip 900ms ease-out both;
 }
 
+/* Action art (build spec §2): the pitcher plate pushes in over the wind-up;
+   the cut-in strip on Go wears CSS speed lines, no image. */
+.shine-push-in {
+  animation: shine-push-in var(--push-in-ms, 520ms) ease-out both;
+}
+
+@keyframes shine-push-in {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.06);
+  }
+}
+
+.shine-speed-lines {
+  background-image: repeating-linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0 9px,
+    rgba(255, 255, 255, 0.55) 9px 11px,
+    rgba(255, 255, 255, 0) 11px 26px
+  );
+  mix-blend-mode: screen;
+  animation: shine-speed-lines 90ms linear infinite;
+}
+
+@keyframes shine-speed-lines {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 52px 0;
+  }
+}
+
+.shine-cut-in {
+  animation: shine-cut-in 70ms steps(1, end) both;
+}
+
+@keyframes shine-cut-in {
+  0% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.shine-outcome-card {
+  animation: shine-outcome-card 220ms ease-out both;
+}
+
+@keyframes shine-outcome-card {
+  0% {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 /* Shine root: text scale and reduced motion apply to every Shine screen. */
 .shine-root {
   font-size: calc(1rem * var(--text-scale, 1));

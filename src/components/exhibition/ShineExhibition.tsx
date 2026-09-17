@@ -45,6 +45,9 @@ import { rivalProfile } from "@/shine/rivals.ts";
 import { useShine } from "@/shine/store.ts";
 
 import { AimGrid } from "./AimGrid";
+import { ActionStage } from "@/components/action/ActionStage";
+import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
+import type { ActionManifest, ActionView } from "@/shine/action-art.ts";
 import { exhibitionAudioCue, type ExhibitionAudioIo } from "./audio-cues";
 import {
   FALLBACK_NOTE_ASSETS,
@@ -64,6 +67,7 @@ import {
 } from "./onboarding";
 import { effectiveTier, type ExhibitionQuality } from "./quality";
 import { EXHIBITION_PACE } from "./scene/presentation";
+import { warmExhibitionAssets } from "./scene/manifest";
 import { DuelPanel } from "@/components/DuelPanel";
 import { duelEnabled } from "@/components/duel-ui";
 import { likelyFamily, showsFamilyHint } from "@/shine/duel.ts";
@@ -79,11 +83,8 @@ import {
   phoneParkIsTheRead,
   phoneParkShowsCaption,
   plate2dFlight,
-  plate2dOutgoingSight,
   plate2dPinsToPark,
-  plate2dShowsBall,
   planOutgoing,
-  contactFlash,
   type OutgoingPlan,
   worldSitShows,
   resultBannerVisible,
@@ -97,6 +98,7 @@ import {
   timingWindowFillCss,
   timingWindowShowsFill,
   timingWindowWidthPct,
+  sceneMode,
 } from "./scene/presentation";
 
 /** Retry once on a transient chunk-fetch failure (dev dep re-optimization; prod CDN blips). */
@@ -110,6 +112,8 @@ function importExhibition3D(retry = true): Promise<{ default: typeof import("./E
 const Exhibition3D = lazy(importExhibition3D);
 
 const ENCOUNTER = { arm: "reina" as const, appearances: 3, neutral: true };
+/** Step in waits for the two girls' stills this long at most (first pitch < 3 s). */
+const ACTION_GATE_MS = 1500;
 
 /** Session mute. Career mute must not silence the five-way ear (hy78). */
 function ExhibitionMute() {
@@ -230,23 +234,34 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
   const reduced = settings.reducedMotion;
 
   const [quality, setQuality] = useState<ExhibitionQuality>("auto");
-  const [mode, setMode] = useState<"3d" | "2d">(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("fallback") === "1") {
-      return "2d";
-    }
-    return webglAvailable() ? "3d" : "2d";
-  });
+  // Phase 2: 2D action art is the presentation. The live scene renders only
+  // behind ?scene=3d (the render farm). ?fallback=1 keeps proving the notes.
+  const [mode, setMode] = useState<"3d" | "2d">(() =>
+    typeof window === "undefined" ? "2d" : sceneMode(window.location.search, webglAvailable()),
+  );
   const [fallbackNote, setFallbackNote] = useState<string | null>(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("fallback") === "1") {
-      return FALLBACK_NOTE_ASSETS;
-    }
-    return webglAvailable() ? null : FALLBACK_NOTE_WEBGL;
+    if (typeof window === "undefined") return null;
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("fallback") === "1") return FALLBACK_NOTE_ASSETS;
+    if (q.get("scene") === "3d" && !webglAvailable()) return FALLBACK_NOTE_WEBGL;
+    return null;
   });
   const [sceneReady, setSceneReady] = useState(false);
+  // Action art (build spec §3.1): the manifest, the step gate on the two
+  // girls' stills (or 1.5 s), and the cue state the stage draws from.
+  const [actionManifest, setActionManifest] = useState<ActionManifest | null>(null);
+  const [artReady, setArtReady] = useState(false);
+  const [actionCue, setActionCue] = useState<Pick<ActionView, "tappedAtU" | "resolvedAtMs" | "swung" | "swingKind" | "beat">>({
+    tappedAtU: null,
+    resolvedAtMs: null,
+    swung: false,
+    swingKind: null,
+    beat: null,
+  });
+  const clipsWarmed = useRef(false);
   const [ghost, setGhost] = useState<Cell | null>(null);
   const [u, setU] = useState(0);
   const [bookToast, setBookToast] = useState<1 | 2 | 3 | null>(null);
-  const [prepElapsed, setPrepElapsed] = useState(0);
   const prepMsRef = useRef<number>(EXHIBITION_PACE.prepareMs);
   const [parkBeat, setParkBeat] = useState<{
     beat: FieldBeat;
@@ -397,6 +412,28 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
     };
   }, [controller]);
 
+  useEffect(() => {
+    if (mode === "3d") warmExhibitionAssets();
+  }, [mode]);
+
+  useEffect(() => {
+    let alive = true;
+    const gate = window.setTimeout(() => {
+      if (alive) setArtReady(true);
+    }, ACTION_GATE_MS);
+    loadActionManifest().then((m) => {
+      if (!alive) return;
+      setActionManifest(m);
+      return warmActionArt(m, ["aoi", ENCOUNTER.arm]).then(() => {
+        if (alive) setArtReady(true);
+      });
+    });
+    return () => {
+      alive = false;
+      window.clearTimeout(gate);
+    };
+  }, []);
+
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
   const game = snapshot.game;
   const heat = useMemo(() => aoiHeat(controller.run), [controller]);
@@ -503,6 +540,11 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
         setLastResult(null);
         setParkBeat(null);
         prepMsRef.current = cue.prepareMs;
+        setActionCue({ tappedAtU: null, resolvedAtMs: null, swung: false, swingKind: null, beat: null });
+        if (!clipsWarmed.current) {
+          clipsWarmed.current = true;
+          loadActionManifest().then((m) => preloadActionClips(m, ["aoi", ENCOUNTER.arm]));
+        }
       }
       if (cue.t === "idle") setParkBeat(null);
       // The Duel telemetry (build spec §6).
@@ -539,6 +581,13 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
         const spec = beatSpec(cue.beat, reduced);
         const plan = planOutgoing(cue.beat, spec, g.events.length);
         const liveU = controller.progress(performance.now());
+        setActionCue({
+          tappedAtU: cue.swung ? liveU : null,
+          resolvedAtMs: performance.now(),
+          swung: cue.swung,
+          swingKind: cue.swingKind,
+          beat: cue.beat,
+        });
         const loc = g.live?.loc ?? { x: 1.5, y: 1.5 };
         setParkBeat({
           beat: cue.beat,
@@ -591,22 +640,6 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
       window.removeEventListener("orientationchange", resize);
     };
   }, [controller]);
-
-  // Prepare elapsed for the 2D rubber leave (hy118). Flight u is separate.
-  useEffect(() => {
-    if (snapshot.stage !== "prepare") {
-      setPrepElapsed(0);
-      return;
-    }
-    const t0 = performance.now();
-    let raf = 0;
-    const loop = () => {
-      setPrepElapsed(performance.now() - t0);
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [controller, snapshot.stage]);
 
   useEffect(() => {
     if (!parkBeat) {
@@ -731,21 +764,9 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
     hasResult: Boolean(resultLine),
   });
   const parkRead = phoneParkIsTheRead({ mode, phoneStrip: phoneHud });
-  const flight2d = pitch ? plate2dFlight({ u, loc: pitch.loc }) : null;
-  const parkBall = plate2dShowsBall({
-    stage: snapshot.stage,
-    elapsedMs: prepElapsed,
-    prepMs: prepMsRef.current,
-  });
-  const parkOut = parkBeat
-    ? plate2dOutgoingSight({
-        plan: parkBeat.plan,
-        mitt: parkBeat.mitt,
-        from: parkBeat.from,
-        elapsedS: parkOutElapsed,
-        color: contactFlash(parkBeat.beat)?.color,
-      })
-    : null;
+  // The reaction clock: parkBeat's rAF ticks from the resolve cue to idle, so
+  // the stage's contact hold and clip end re-render without a clock of their own.
+  const reactionNowMs = parkBeat ? parkBeat.at + parkOutElapsed * 1000 : null;
   const parkHidesBoard = phoneParkHidesScoreboard({
     mode,
     phoneStrip: phoneHud,
@@ -765,7 +786,19 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
   const art = portraitSrc("aoi", mood);
   const rivalArt = portraitSrc("reina", snapshot.stage === "prepare" ? "focused" : "neutral");
   const rivalName = rivalProfile(game.arm).name;
-  const stepGateOpen = mode === "2d" || sceneReady;
+  const stepGateOpen = mode === "2d" ? artReady : sceneReady;
+  const actionView: ActionView = {
+    stage: snapshot.stage,
+    beat: actionCue.beat ?? snapshot.beat,
+    swung: actionCue.swung,
+    swingKind: actionCue.swingKind,
+    call: snapshot.duel ? snapshot.call : null,
+    u,
+    tappedAtU: actionCue.tappedAtU,
+    resolvedAtMs: actionCue.resolvedAtMs,
+    nowMs: reactionNowMs ?? (typeof performance !== "undefined" ? performance.now() : 0),
+    reduced,
+  };
 
   useEffect(() => {
     const p = probes.current;
@@ -894,7 +927,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
               />
             ) : null}
             <div className="min-w-0">
-              <p className="episode-chip w-fit">3D Exhibition · Lantern Field</p>
+              <p className="episode-chip w-fit">Exhibition · Lantern Field</p>
               <p className={`mt-2 font-display text-xs uppercase tracking-widest text-grass-2 ${parkRead || mode === "3d" ? "max-sm:hidden" : ""}`}>
                 Aoi vs {rivalName} · nothing is saved
               </p>
@@ -908,7 +941,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
           <div className={`flex shrink-0 flex-col items-end gap-2 text-right font-ui text-sm text-cream/85 ${mode === "3d" ? "max-w-[11.5rem] text-[11px] sm:max-w-none sm:text-sm" : ""}`}>
             <div className="flex gap-2">
               <ExhibitionMute />
-              {!parkRead ? (
+              {mode === "3d" && !parkRead ? (
                 <select
                   value={quality}
                   onChange={(e) => setQuality(e.target.value as ExhibitionQuality)}
@@ -941,7 +974,7 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
           </div>
         </header>
 
-        {rivalArt && !parkRead && (snapshot.stage === "prepare" || snapshot.stage === "idle" || snapshot.stage === "dead") && mode === "2d" ? (
+        {rivalArt && !parkRead && !actionManifest && (snapshot.stage === "prepare" || snapshot.stage === "idle" || snapshot.stage === "dead") && mode === "2d" ? (
           <img
             src={rivalArt}
             alt=""
@@ -952,49 +985,28 @@ function ExhibitionSession({ onReplay, replayIndex }: { onReplay: () => void; re
           />
         ) : null}
 
-        {mode === "2d" && plate2dPinsToPark({ phoneStrip: phoneHud }) ? (
-          <>
-          <div className="min-h-0 flex-1" aria-hidden />
+        {mode === "2d" ? (
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 z-[5]"
-            style={{ bottom: portrait ? panelH + 8 : 0 }}
-            data-plate-2d="park"
+            className={`pointer-events-auto relative z-[5] flex min-h-0 flex-1 items-center justify-center ${
+              plate2dPinsToPark({ phoneStrip: phoneHud }) ? "px-2 pt-1" : ""
+            }`}
+            data-plate-2d={actionManifest ? "stage" : "park"}
           >
-            {parkOut ? (
-              <div
-                className="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full"
-                data-park-ball={parkBeat?.beat ?? "out"}
-                style={{
-                  left: `${parkOut.left}%`,
-                  top: `${parkOut.top}%`,
-                  transform: `translate(-50%, -50%) scale(${parkOut.scale})`,
-                  background: parkOut.color,
-                  boxShadow: `0 0 14px ${parkOut.color}`,
-                }}
-                aria-hidden
-              />
-            ) : flight2d && parkBall ? (
-              <div
-                className="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cream shadow-[0_0_12px_#f5f8ff]"
-                data-park-ball={snapshot.stage === "prepare" ? "hold" : "flight"}
-                style={{
-                  left: `${flight2d.left}%`,
-                  top: `${flight2d.top}%`,
-                  transform: `translate(-50%, -50%) scale(${flight2d.scale})`,
-                }}
-                aria-hidden
-              />
-            ) : null}
-            {worldSitShows(snapshot.stage, sitChosen) ? (
-              <div className="pointer-events-auto absolute inset-x-0 mx-auto w-32" style={{ bottom: 12, height: 120 }}>
+            <ActionStage
+              view={actionView}
+              batterId="aoi"
+              armId={game.arm}
+              manifest={actionManifest}
+              pitch={pitch}
+              recognized={inFlight && snapshot.recognized ? flightRead : null}
+              twoStrikeHold={lastFoulHeldTwo(game.events)}
+              prepareMs={prepMsRef.current}
+              fallback={<ExhibitionPlate2D snapshot={snapshot} u={u} heat={heat} ghost={ghost} onAim={onAim} sitChosen={sitChosen} />}
+            >
+              {worldSitShows(snapshot.stage, sitChosen) ? (
                 <AimGrid snapshot={snapshot} heat={heat} ghost={ghost} onAim={onAim} sitChosen={sitChosen} />
-              </div>
-            ) : null}
-          </div>
-          </>
-        ) : mode === "2d" ? (
-          <div className="pointer-events-auto flex min-h-0 flex-1 items-center justify-center">
-            <ExhibitionPlate2D snapshot={snapshot} u={u} heat={heat} ghost={ghost} onAim={onAim} sitChosen={sitChosen} />
+              ) : null}
+            </ActionStage>
           </div>
         ) : (
           <div className="flex-1" />

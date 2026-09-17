@@ -27,11 +27,13 @@ describe("exhibition warm / preload", () => {
     );
   });
 
-  it("emits fetch preloads for the park before JS hydrates", () => {
+  it("preloads the action manifest and the two girls' stills, not the GLBs (action art §3.3)", () => {
     const links = exhibitionPreloadLinks();
-    assert.equal(links.length, EXHIBITION_WARM_HREFS.length);
-    assert.ok(links.every((l) => l.rel === "preload" && l.as === "fetch" && l.crossOrigin === "use-credentials"));
-    assert.ok(links.some((l) => l.href.includes("aoi.glb")));
-    assert.ok(links.some((l) => l.href.includes("reina.glb")));
+    assert.ok(links.every((l) => l.rel === "preload"));
+    const manifest = links.find((l) => l.href === "/art/action/manifest.json");
+    assert.ok(manifest && manifest.as === "fetch" && manifest.crossOrigin === "use-credentials");
+    assert.ok(links.some((l) => l.href === "/art/action/aoi/stance.webp" && l.as === "image"));
+    assert.ok(links.some((l) => l.href === "/art/action/reina/release.webp" && l.as === "image"));
+    assert.ok(!links.some((l) => l.href.endsWith(".glb")), "GLBs are farm-only now");
   });
 });

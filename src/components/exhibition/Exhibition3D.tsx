@@ -113,6 +113,7 @@ import {
   firstPitchPlateZ,
   CAMERA_FOV,
   CAMERA_LOCK,
+  FARM_CAMERAS,
   deliveryLeaveStartMs,
   deliveryTimeScale,
   plantSinkY,
@@ -169,6 +170,7 @@ import {
   swingStrideThighDeg,
   type SocketOffset,
 } from "./scene/presentation";
+import type { FarmCameraKey } from "./scene/presentation";
 import { applyToonMaterials, heroToonRamp, toonRampLastStep } from "./scene/toon";
 import { releaseActorMixer } from "./scene/actor-mixer";
 import type { ExhibitionTier } from "./quality";
@@ -407,6 +409,23 @@ function debugFpsEnabled() {
 function debugHoldClock() {
   return typeof window !== "undefined" && Boolean((window as { __dsHoldClock?: boolean }).__dsHoldClock);
 }
+
+/**
+ * Render farm (`?farm=1`, spec §4.1): actors scrub authored clips to a time,
+ * the camera sits on a FARM_CAMERAS preset, and the ball hides so the 2D
+ * layer can draw it. The runtime swing drive and the set-glove lift step
+ * aside so the authored pose is what renders.
+ */
+function farmOn() {
+  return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("farm") === "1";
+}
+type FarmScrub = (clip: string, t: number) => unknown;
+const FARM = {
+  actors: {} as Partial<Record<CharacterAsset["role"], FarmScrub>>,
+  clip: {} as Partial<Record<CharacterAsset["role"], string>>,
+  camera: "plate" as FarmCameraKey,
+  hideBall: false,
+};
 
 export default function Exhibition3D(props: Props) {
   const [manifest, setManifest] = useState<SceneManifest | null>(null);
@@ -761,8 +780,45 @@ function SceneRoot({
       <Ball controller={controller} paused={paused} />
       <FirstPitchPlate snapshot={snapshot} reduced={reduced} paused={paused} aimed={sitChosen} />
       <LookProofHook />
+      <FarmHook />
     </>
   );
+}
+
+/** ?farm=1: `window.__dsFarm` for scripts/action-farm.mjs (spec §4.1). */
+function FarmHook() {
+  useEffect(() => {
+    if (!farmOn()) return;
+    const w = window as unknown as {
+      __dsFarm?: unknown;
+      __dsHoldClock?: boolean;
+      __dsFillBlack?: () => number;
+    };
+    w.__dsFarm = {
+      ready: () => Boolean(FARM.actors.batter && FARM.actors.pitcher),
+      actors: () => Object.keys(FARM.actors),
+      pose: (role: CharacterAsset["role"], clip: string, t: number) => FARM.actors[role]?.(clip, t) ?? { ok: false, role, clip },
+      camera: (key: FarmCameraKey) => {
+        FARM.camera = key in FARM_CAMERAS ? key : "plate";
+        return FARM.camera;
+      },
+      ball: (visible: boolean) => {
+        FARM.hideBall = !visible;
+        return !FARM.hideBall;
+      },
+      hold: (on: boolean) => {
+        w.__dsHoldClock = on;
+        return on;
+      },
+      fillBlack: () => w.__dsFillBlack?.() ?? 0,
+    };
+    return () => {
+      delete w.__dsFarm;
+      FARM.camera = "plate";
+      FARM.hideBall = false;
+    };
+  }, []);
+  return null;
 }
 
 /** ?debug=1: `window.__dsFillBlack()` for the LOOK test at the locked cam. */
@@ -1255,6 +1311,16 @@ function CameraLock({
 
   useFrame((_, delta) => {
     const cam = camera as PerspectiveCamera;
+    if (farmOn()) {
+      const preset = FARM_CAMERAS[FARM.camera];
+      cam.position.set(preset.position[0], preset.position[1], preset.position[2]);
+      cam.lookAt(preset.lookAt[0], preset.lookAt[1], preset.lookAt[2]);
+      if (cam.fov !== preset.fov) {
+        cam.fov = preset.fov;
+        cam.updateProjectionMatrix();
+      }
+      return;
+    }
     if (punch.current.active && !paused) {
       punch.current.elapsed += delta * 1000;
       if (punch.current.elapsed >= CAMERA_PUNCH.durationMs) {
@@ -1568,6 +1634,57 @@ function CharacterActor({
       holdTimer.current = null;
     }
   }, []);
+
+  /** Pose the mesh at `t` seconds into an authored clip and report the key bones. */
+  const scrubClip = useCallback(
+    (clip: string, t: number) => {
+      const action = actionFor(clip);
+      if (!action) return { ok: false, clip };
+      clearHold();
+      for (const other of Object.values(actions)) {
+        if (other !== action) other.stop();
+      }
+      action.reset();
+      action.paused = true;
+      action.enabled = true;
+      action.setEffectiveWeight(1);
+      action.setLoop(LoopOnce, 1);
+      action.play();
+      action.time = Math.max(0, Math.min(Number(t) || 0, action.getClip().duration));
+      mixer.update(0);
+      gltf.scene.updateMatrixWorld(true);
+      current.current = action;
+      FARM.clip[asset.role] = clip;
+      const hr = swingRig.current.handR;
+      const hl = swingRig.current.handL;
+      const head = findSocketBone(gltf.scene, "head");
+      const footL = swingRig.current.footL;
+      hr?.updateWorldMatrix(true, false);
+      hl?.updateWorldMatrix(true, false);
+      head?.updateWorldMatrix(true, false);
+      footL?.updateWorldMatrix(true, false);
+      return {
+        ok: true,
+        clip,
+        time: Number(action.time.toFixed(4)),
+        duration: Number(action.getClip().duration.toFixed(4)),
+        handR: hr ? hr.getWorldPosition(_handR).toArray().map((n) => Number(n.toFixed(3))) : null,
+        handL: hl ? hl.getWorldPosition(_handL).toArray().map((n) => Number(n.toFixed(3))) : null,
+        head: head ? head.getWorldPosition(new Vector3()).toArray().map((n) => Number(n.toFixed(3))) : null,
+        footL: footL ? footL.getWorldPosition(new Vector3()).toArray().map((n) => Number(n.toFixed(3))) : null,
+      };
+    },
+    [actionFor, actions, asset.role, clearHold, gltf, mixer],
+  );
+
+  useEffect(() => {
+    if (!farmOn()) return;
+    FARM.actors[asset.role] = scrubClip;
+    return () => {
+      delete FARM.actors[asset.role];
+      delete FARM.clip[asset.role];
+    };
+  }, [asset.role, scrubClip]);
 
   const holdPose = useCallback(
     (ms: number) => {
@@ -1894,45 +2011,13 @@ function CharacterActor({
         faceOn: Number(mittFaceOnScore(span).toFixed(2)),
       };
     };
-    w.__dsScrubPitcher = (t: number, clip = "pitch_delivery") => {
-      const action = actionFor(clip);
-      if (!action) return { ok: false, clip };
-      clearHold();
-      action.reset();
-      action.paused = true;
-      action.enabled = true;
-      action.setEffectiveWeight(1);
-      action.setLoop(LoopOnce, 1);
-      action.play();
-      action.time = Math.max(0, Math.min(Number(t) || 0, action.getClip().duration));
-      mixer.update(0);
-      gltf.scene.updateMatrixWorld(true);
-      current.current = action;
-      const hr = swingRig.current.handR;
-      const hl = swingRig.current.handL;
-      const head = findSocketBone(gltf.scene, "head");
-      const footL = swingRig.current.footL;
-      hr?.updateWorldMatrix(true, false);
-      hl?.updateWorldMatrix(true, false);
-      head?.updateWorldMatrix(true, false);
-      footL?.updateWorldMatrix(true, false);
-      return {
-        ok: true,
-        clip,
-        time: Number(action.time.toFixed(4)),
-        duration: Number(action.getClip().duration.toFixed(4)),
-        handR: hr ? hr.getWorldPosition(_handR).toArray().map((n) => Number(n.toFixed(3))) : null,
-        handL: hl ? hl.getWorldPosition(_handL).toArray().map((n) => Number(n.toFixed(3))) : null,
-        head: head ? head.getWorldPosition(new Vector3()).toArray().map((n) => Number(n.toFixed(3))) : null,
-        footL: footL ? footL.getWorldPosition(new Vector3()).toArray().map((n) => Number(n.toFixed(3))) : null,
-      };
-    };
+    w.__dsScrubPitcher = (t: number, clip = "pitch_delivery") => scrubClip(clip, t);
     return () => {
       delete w.__dsScrubPitcher;
       delete w.__dsMittRot;
       delete w.__dsProbeGlove;
     };
-  }, [asset.role, actionFor, mixer, gltf, clearHold]);
+  }, [asset.role, actionFor, mixer, gltf, clearHold, scrubClip]);
 
   useEffect(() => {
     return () => {
@@ -2111,7 +2196,7 @@ function CharacterActor({
         plantDone.current = true;
       }
     }
-    if (asset.role === "batter") {
+    if (asset.role === "batter" && !farmOn()) {
       const stage = controller.getSnapshot().stage;
       const u = controller.progress(performance.now());
       const through = batThrough.current || debugForceBatThrough();
@@ -2154,7 +2239,8 @@ function CharacterActor({
     }
     if (asset.role === "pitcher") {
       const stage = controller.getSnapshot().stage;
-      const lift = debugSetGloveLift() ?? pitcherSetGloveLift({ stage, ballOut: throwHandReady });
+      const farmStage = FARM.clip.pitcher === "idle_set" || !FARM.clip.pitcher ? "idle" : "flight";
+      const lift = debugSetGloveLift() ?? pitcherSetGloveLift({ stage: farmOn() ? farmStage : stage, ballOut: throwHandReady });
       const armL = swingRig.current.armL;
       if (armL && lift.some((n) => n !== 0)) {
         if (!plantedSetArmL.current) plantedSetArmL.current = armL.quaternion.clone();
@@ -2405,6 +2491,13 @@ function Ball({ controller, paused }: { controller: PlateController; paused: boo
   useFrame((_, delta) => {
     const mesh = ref.current;
     if (!mesh) return;
+    if (FARM.hideBall) {
+      mesh.visible = false;
+      if (sightRef.current) sightRef.current.visible = false;
+      if (flashRef.current) flashRef.current.visible = false;
+      if (discRef.current) discRef.current.visible = false;
+      return;
+    }
     const frozen = debugHoldClock();
     const step = frozen || paused ? 0 : delta;
 

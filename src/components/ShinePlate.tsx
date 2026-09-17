@@ -52,6 +52,10 @@ import { hashId as duelHashId, makeRng as duelRng } from "@/game/data.ts";
 import { track as trackEvent } from "@/game/telemetry.ts";
 import { bookLines } from "@/shine/rivals.ts";
 import { isPitcherStyle, parkSrc, portraitClass, portraitMood, portraitSrc, sheet } from "@/shine/bible.ts";
+import { ActionStage } from "@/components/action/ActionStage";
+import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
+import { lastFoulHeldTwo } from "@/components/exhibition/scene/presentation";
+import type { ActionManifest, ActionView } from "@/shine/action-art.ts";
 import { careerStill } from "@/shine/ending.ts";
 import { turnMeta } from "@/shine/calendar.ts";
 import type { TraineeRun } from "@/shine/types.ts";
@@ -118,6 +122,17 @@ function HitterPlate() {
   const [restored, setRestored] = useState(false);
   const [savedChip, setSavedChip] = useState(false);
   const [bookToast, setBookToast] = useState<1 | 2 | 3 | null>(null);
+  // Action art (build spec §3.2): the stage draws the same lifecycle from
+  // stills; the cue state below is what `pictureFor` needs beyond `stage`.
+  const [actionManifest, setActionManifest] = useState<ActionManifest | null>(null);
+  const [actionCue, setActionCue] = useState<Pick<ActionView, "tappedAtU" | "resolvedAtMs" | "swung" | "swingKind">>({
+    tappedAtU: null,
+    resolvedAtMs: null,
+    swung: false,
+    swingKind: null,
+  });
+  const [reactionNow, setReactionNow] = useState(0);
+  const clipsWarmed = useRef(false);
   const duelKeys = useRef<{ setCall: (c: DuelCall) => void; fireCard: (c: CoachCardId) => void }>({ setCall: () => {}, fireCard: () => {} });
 
   const clock = useRef<PlateClock | null>(null);
@@ -203,6 +218,33 @@ function HitterPlate() {
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game?.paIndex, game?.count.balls, game?.count.strikes, stage === "idle"]);
+
+  useEffect(() => {
+    let alive = true;
+    loadActionManifest().then((m) => {
+      if (alive) setActionManifest(m);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (!run || !game) return;
+    loadActionManifest().then((m) => warmActionArt(m, [run.characterId, game.arm]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run?.characterId, game?.arm]);
+
+  // The reaction clock for the stage's contact hold and clip end.
+  useEffect(() => {
+    if (stage !== "field" && stage !== "reaction") return;
+    let id = 0;
+    const loop = () => {
+      setReactionNow(performance.now());
+      id = requestAnimationFrame(loop);
+    };
+    id = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(id);
+  }, [stage]);
 
   // Flight loop. Progress comes from the authoritative clock, never from frame deltas.
   useEffect(() => {
@@ -361,8 +403,14 @@ function HitterPlate() {
   }
 
   /** Field → reaction → idle, with the release cue at the first frame the field shows. */
-  function land(next: FeaturedGame) {
+  function land(next: FeaturedGame, swungAt: { kind: SwingKind; u: number } | null = null) {
     const b = fieldBeatFor(next);
+    setActionCue({
+      tappedAtU: swungAt ? swungAt.u : null,
+      resolvedAtMs: performance.now(),
+      swung: Boolean(swungAt),
+      swingKind: swungAt?.kind ?? null,
+    });
     if (next.duel) {
       trackEvent("pa_resolve", { call: next.call, beat: b, card: next.cardArmed, verdict: next.lastVerdict, arm: next.arm });
       next.cardArmed = null;
@@ -433,6 +481,11 @@ function HitterPlate() {
   duelKeys.current = { setCall, fireCard };
 
   function startPitch() {
+    setActionCue({ tappedAtU: null, resolvedAtMs: null, swung: false, swingKind: null });
+    if (!clipsWarmed.current && run && game) {
+      clipsWarmed.current = true;
+      loadActionManifest().then((m) => preloadActionClips(m, [run.characterId, game.arm]));
+    }
     if (!run || !game || game.done || paused) return;
     const s = stageRef.current;
     if (s !== "idle" && s !== "dead") return;
@@ -502,7 +555,7 @@ function HitterPlate() {
     }
     const next = { ...game };
     resolveSwing(run, next, pitch, aim, timingErr, nextKind);
-    land(next);
+    land(next, { kind: nextKind, u: progress });
   }
 
   function leave() {
@@ -535,6 +588,19 @@ function HitterPlate() {
   const ballTop = pitch ? (pitch.loc.y / 3) * 100 : 50;
   const ballScale = reduced ? 0.9 : 0.35 + Math.min(1, u) * 0.9;
   const inFlight = stage === "flight";
+  const actionView: ActionView = {
+    stage,
+    beat,
+    swung: actionCue.swung,
+    swingKind: actionCue.swingKind,
+    call: game.duel && !practice ? game.call : null,
+    u,
+    tappedAtU: actionCue.tappedAtU,
+    resolvedAtMs: actionCue.resolvedAtMs,
+    nowMs: stage === "field" || stage === "reaction" ? reactionNow : performance.now(),
+    reduced,
+  };
+  const sitInStage = stage === "situation" || stage === "prepare" || stage === "idle" || stage === "dead";
   const frameClass = stage === "field" || stage === "reaction" ? (spec?.css ?? "") : "";
   const fieldCaption = stage === "field" && spec ? spec.label : null;
   const showingBeat = stage === "field" || stage === "reaction";
@@ -665,73 +731,125 @@ function HitterPlate() {
           <p className="rounded-xl border border-white/20 bg-ink/80 px-4 py-2 font-ui text-sm text-cream/80">{game.runnerLine}</p>
         ) : null}
 
+        <ActionStage
+          view={actionView}
+          batterId={run.characterId}
+          armId={game.arm}
+          manifest={actionManifest}
+          pitch={pitch}
+          recognized={inFlight && recognized && pitch?.type ? pitch.type.toUpperCase() : null}
+          twoStrikeHold={lastFoulHeldTwo(game.events)}
+          className={`!w-full ${frameClass}`}
+          fallback={
         <div className={`relative mx-auto aspect-[3/4] w-full max-w-sm ${frameClass}`}>
-          <div className="absolute inset-0 rounded-2xl border border-white/20 bg-ink/35 shadow-[inset_0_0_0_1px_rgba(255,209,102,0.15)]" />
-          {stage === "situation" && (practice || game.kind === "gate") && art ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <img src={art} alt="" className={`character-cutout h-48 w-auto object-contain sm:h-56 ${portraitClass(mood)}`} />
+              <div className="absolute inset-0 rounded-2xl border border-white/20 bg-ink/35 shadow-[inset_0_0_0_1px_rgba(255,209,102,0.15)]" />
+              {stage === "situation" && (practice || game.kind === "gate") && art ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <img src={art} alt="" className={`character-cutout h-48 w-auto object-contain sm:h-56 ${portraitClass(mood)}`} />
+                </div>
+              ) : (
+                <div className="absolute inset-[12%] grid grid-cols-3 grid-rows-3 gap-1" role="grid" aria-label="Sit">
+                  {[0, 1, 2].map((row) =>
+                    [0, 1, 2].map((col) => {
+                      const cell = { row: row as 0 | 1 | 2, col: col as 0 | 1 | 2 };
+                      const on = cellKey(aim) === cellKey(cell);
+                      const h = heat[row * 3 + col] ?? 0;
+                      const hot = h > 0.25;
+                      const cold = h < -0.25;
+                      const scoutHere = scoutCol !== null && col === scoutCol;
+                      const ghostHere = ghost && cellKey(ghost) === cellKey(cell);
+                      return (
+                        <button
+                          key={cellKey(cell)}
+                          type="button"
+                          aria-pressed={on}
+                          className={`relative min-h-0 rounded-md border font-display text-[10px] uppercase tracking-wide ${
+                            on ? "border-gold text-cream" : scoutHere ? "border-grass-2 text-cream" : "border-white/20 text-cream/80"
+                          } ${on && hot && !reduced ? "shine-hot-shimmer" : ""} ${ghostHere ? "shine-ghost-cell" : ""}`}
+                          style={{
+                            background: hot ? "rgb(255 113 143 / 0.38)" : cold ? "rgb(120 234 220 / 0.18)" : "rgb(8 17 39 / 0.55)",
+                          }}
+                          onClick={() => setAim(cell)}
+                        >
+                          {sitLabel(who.style, cell, homeSit) || (hot ? "+" : cold ? "×" : "")}
+                        </button>
+                      );
+                    }),
+                  )}
+                </div>
+              )}
+              {rivalArt && (stage === "prepare" || stage === "idle" || stage === "dead") && !showingBeat ? (
+                <img
+                  src={rivalArt}
+                  alt=""
+                  className={`character-cutout pointer-events-none absolute -top-3 right-2 h-14 w-auto object-contain opacity-80 sm:h-16 ${
+                    stage === "prepare" && !reduced ? "shine-rival-windup" : ""
+                  }`}
+                  aria-hidden
+                />
+              ) : null}
+              {pitch && (stage === "flight" || stage === "paused") ? (
+                <div
+                  className="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cream shadow-[0_0_12px_#f5f8ff]"
+                  style={{
+                    left: `${12 + (ballLeft / 100) * 76}%`,
+                    top: `${12 + (ballTop / 100) * 76}%`,
+                    transform: `translate(-50%, -50%) scale(${ballScale})`,
+                    opacity: Math.min(1, 0.35 + u),
+                  }}
+                  aria-hidden
+                />
+              ) : null}
+              {fieldCaption ? (
+                <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
+                  <p className="rounded-full border border-white/25 bg-ink/85 px-3 py-1 font-display text-xs uppercase tracking-widest text-cream">
+                    {fieldCaption}
+                  </p>
+                </div>
+              ) : null}
             </div>
-          ) : (
-            <div className="absolute inset-[12%] grid grid-cols-3 grid-rows-3 gap-1" role="grid" aria-label="Sit">
-              {[0, 1, 2].map((row) =>
-                [0, 1, 2].map((col) => {
-                  const cell = { row: row as 0 | 1 | 2, col: col as 0 | 1 | 2 };
-                  const on = cellKey(aim) === cellKey(cell);
-                  const h = heat[row * 3 + col] ?? 0;
-                  const hot = h > 0.25;
-                  const cold = h < -0.25;
-                  const scoutHere = scoutCol !== null && col === scoutCol;
-                  const ghostHere = ghost && cellKey(ghost) === cellKey(cell);
-                  return (
-                    <button
-                      key={cellKey(cell)}
-                      type="button"
-                      aria-pressed={on}
-                      className={`relative min-h-0 rounded-md border font-display text-[10px] uppercase tracking-wide ${
-                        on ? "border-gold text-cream" : scoutHere ? "border-grass-2 text-cream" : "border-white/20 text-cream/80"
-                      } ${on && hot && !reduced ? "shine-hot-shimmer" : ""} ${ghostHere ? "shine-ghost-cell" : ""}`}
-                      style={{
-                        background: hot ? "rgb(255 113 143 / 0.38)" : cold ? "rgb(120 234 220 / 0.18)" : "rgb(8 17 39 / 0.55)",
-                      }}
-                      onClick={() => setAim(cell)}
-                    >
-                      {sitLabel(who.style, cell, homeSit) || (hot ? "+" : cold ? "×" : "")}
-                    </button>
-                  );
-                }),
+          }
+        >
+          {sitInStage ? (
+            <div className="absolute inset-0">
+          {stage === "situation" && (practice || game.kind === "gate") && art ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <img src={art} alt="" className={`character-cutout h-48 w-auto object-contain sm:h-56 ${portraitClass(mood)}`} />
+                </div>
+              ) : (
+                <div className="absolute inset-[12%] grid grid-cols-3 grid-rows-3 gap-1" role="grid" aria-label="Sit">
+                  {[0, 1, 2].map((row) =>
+                    [0, 1, 2].map((col) => {
+                      const cell = { row: row as 0 | 1 | 2, col: col as 0 | 1 | 2 };
+                      const on = cellKey(aim) === cellKey(cell);
+                      const h = heat[row * 3 + col] ?? 0;
+                      const hot = h > 0.25;
+                      const cold = h < -0.25;
+                      const scoutHere = scoutCol !== null && col === scoutCol;
+                      const ghostHere = ghost && cellKey(ghost) === cellKey(cell);
+                      return (
+                        <button
+                          key={cellKey(cell)}
+                          type="button"
+                          aria-pressed={on}
+                          className={`relative min-h-0 rounded-md border font-display text-[10px] uppercase tracking-wide ${
+                            on ? "border-gold text-cream" : scoutHere ? "border-grass-2 text-cream" : "border-white/20 text-cream/80"
+                          } ${on && hot && !reduced ? "shine-hot-shimmer" : ""} ${ghostHere ? "shine-ghost-cell" : ""}`}
+                          style={{
+                            background: hot ? "rgb(255 113 143 / 0.38)" : cold ? "rgb(120 234 220 / 0.18)" : "rgb(8 17 39 / 0.55)",
+                          }}
+                          onClick={() => setAim(cell)}
+                        >
+                          {sitLabel(who.style, cell, homeSit) || (hot ? "+" : cold ? "×" : "")}
+                        </button>
+                      );
+                    }),
+                  )}
+                </div>
               )}
             </div>
-          )}
-          {rivalArt && (stage === "prepare" || stage === "idle" || stage === "dead") && !showingBeat ? (
-            <img
-              src={rivalArt}
-              alt=""
-              className={`character-cutout pointer-events-none absolute -top-3 right-2 h-14 w-auto object-contain opacity-80 sm:h-16 ${
-                stage === "prepare" && !reduced ? "shine-rival-windup" : ""
-              }`}
-              aria-hidden
-            />
           ) : null}
-          {pitch && (stage === "flight" || stage === "paused") ? (
-            <div
-              className="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cream shadow-[0_0_12px_#f5f8ff]"
-              style={{
-                left: `${12 + (ballLeft / 100) * 76}%`,
-                top: `${12 + (ballTop / 100) * 76}%`,
-                transform: `translate(-50%, -50%) scale(${ballScale})`,
-                opacity: Math.min(1, 0.35 + u),
-              }}
-              aria-hidden
-            />
-          ) : null}
-          {fieldCaption ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
-              <p className="rounded-full border border-white/25 bg-ink/85 px-3 py-1 font-display text-xs uppercase tracking-widest text-cream">
-                {fieldCaption}
-              </p>
-            </div>
-          ) : null}
-        </div>
+        </ActionStage>
 
         <div className="mx-auto w-full max-w-sm">
           <div className={`relative h-3 overflow-hidden rounded-full bg-ink-2 ${gutsOn && !reduced ? "shine-leverage-bar" : ""}`} aria-hidden>

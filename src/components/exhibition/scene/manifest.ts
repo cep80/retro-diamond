@@ -9,6 +9,8 @@
  * entries written by `hero_swap.py`; `scene/roster.ts` picks the slot.
  */
 
+import { ACTION_PRELOAD_HREFS } from "../../../shine/action-art.ts";
+
 export interface ClipMeta {
   duration: number;
   /** Seconds from clip start, e.g. { release: 0.9 } or { contact: 0.35 }. */
@@ -60,22 +62,32 @@ export const EXHIBITION_WARM_HREFS = [
   "/models/diamond-shine/props.glb",
 ] as const;
 
+/**
+ * Head preloads. Phase 2 (action art): the 2D stage is the shipped
+ * presentation, so the title preloads the action manifest and Aoi's and
+ * Reina's stills, not the GLBs. The farm scene (`?scene=3d`) loads its
+ * own GLBs on mount; `warmExhibitionAssets` stays for that path.
+ */
 export function exhibitionPreloadLinks(): {
   rel: "preload";
   href: string;
-  as: "fetch";
+  as: "fetch" | "image";
   type?: string;
-  crossOrigin: "use-credentials";
+  crossOrigin?: "use-credentials";
 }[] {
-  return EXHIBITION_WARM_HREFS.map((href) => ({
-    rel: "preload" as const,
-    href,
-    as: "fetch" as const,
-    type: href.endsWith(".json") ? "application/json" : "model/gltf-binary",
-    // three.js FileLoader uses credentials: "include" when withCredentials is set.
-    // as=fetch preloads only match include or omit — never same-origin.
-    crossOrigin: "use-credentials" as const,
-  }));
+  return ACTION_PRELOAD_HREFS.map((href) =>
+    href.endsWith(".json")
+      ? {
+          rel: "preload" as const,
+          href,
+          as: "fetch" as const,
+          type: "application/json",
+          // as=fetch preloads only match include or omit — never same-origin;
+          // loadActionManifest fetches with credentials: "include".
+          crossOrigin: "use-credentials" as const,
+        }
+      : { rel: "preload" as const, href, as: "image" as const, type: "image/webp" },
+  );
 }
 
 export async function loadManifest(): Promise<SceneManifest> {

@@ -79,6 +79,9 @@ import {
   firstPitchPlateZ,
   CAMERA_FOV,
   CAMERA_LOCK,
+  FARM_CAMERAS,
+  farmEnabled,
+  sceneMode,
   deliveryLeaveStartMs,
   deliveryTimeScale,
   plantSinkY,
@@ -968,5 +971,29 @@ describe("pitch-type latch", () => {
     assert.equal(named.text, "SLIDER");
     const held = latchPitchType({ recognized: false, pitchType: "slider", latched: named.latch });
     assert.equal(held.text, "SLIDER");
+  });
+});
+
+describe("action art: the live scene behind a flag", () => {
+  it("opens in 2D unless ?scene=3d asks for the farm scene on a WebGL device", () => {
+    assert.equal(sceneMode("", true), "2d");
+    assert.equal(sceneMode("?exhibit=1", true), "2d");
+    assert.equal(sceneMode("?scene=3d", true), "3d");
+    assert.equal(sceneMode("?scene=3d", false), "2d", "no WebGL: still 2D");
+    assert.equal(sceneMode("?scene=3d&fallback=1", true), "2d", "fallback proof wins");
+    assert.equal(farmEnabled("?farm=1"), true);
+    assert.equal(farmEnabled("?scene=3d"), false);
+  });
+
+  it("pins the farm cameras: plate is the locked cam, the others frame one girl", () => {
+    assert.deepEqual(FARM_CAMERAS.plate.position, CAMERA_LOCK.position);
+    assert.deepEqual(FARM_CAMERAS.plate.lookAt, CAMERA_LOCK.lookAt);
+    assert.equal(FARM_CAMERAS.plate.fov, CAMERA_FOV);
+    assert.ok(FARM_CAMERAS.batter.position[2] > 0 && FARM_CAMERAS.batter.position[2] < 3, "catcher side, close");
+    assert.ok(FARM_CAMERAS.batter.lookAt[0] < 0, "looks at the RH box");
+    assert.ok(FARM_CAMERAS.mound.lookAt[2] < -18 && FARM_CAMERAS.mound.position[2] > -18.44, "on the mound, from the plate side");
+    for (const k of ["plate", "batter", "mound"] as const) {
+      assert.ok(FARM_CAMERAS[k].fov >= 25 && FARM_CAMERAS[k].fov <= 40, k);
+    }
   });
 });
