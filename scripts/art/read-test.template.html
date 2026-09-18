@@ -1,0 +1,268 @@
+<title>Lantern Field Read Test</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --ink: #0f1220;
+    --panel: #181c30;
+    --line: #2a3050;
+    --cream: #f3ead6;
+    --muted: #9aa0ba;
+    --gold: #f0b45a;
+    --gold-ink: #2a1c05;
+    --good: #7fd6a0;
+    --bad: #f08a8a;
+    --display: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+    --body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "DM Mono", ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--cream);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.5;
+    padding-block: 24px 40px;
+    padding-inline: 16px;
+  }
+  .wrap { max-width: 480px; margin-inline: auto; display: flex; flex-direction: column; gap: 20px; }
+  h1, h2 {
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h1 { font-size: 40px; font-weight: 700; }
+  h2 { font-size: 26px; font-weight: 600; }
+  p { margin: 0; }
+  .eyebrow {
+    font-family: var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 14px;
+    color: var(--gold);
+  }
+  .muted { color: var(--muted); }
+  .btn {
+    font: 600 18px/1 var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--gold);
+    color: var(--gold-ink);
+    border: 0;
+    border-radius: 6px;
+    padding: 16px 20px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .btn.ghost { background: transparent; color: var(--cream); border: 1px solid var(--line); }
+  .btn:focus-visible, .choice:focus-visible, textarea:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .still {
+    aspect-ratio: 3 / 4;
+    max-width: 100%;
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--line);
+  }
+  .still img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .choice {
+    font: 600 20px/1 var(--display);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--panel);
+    color: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 18px 12px;
+    min-height: 60px;
+    cursor: pointer;
+  }
+  .choice:hover { border-color: var(--gold); }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .counter { font-family: var(--display); font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .code {
+    font: 500 34px/1.2 var(--mono);
+    letter-spacing: 0.16em;
+    background: var(--panel);
+    border: 1px dashed var(--gold);
+    border-radius: 8px;
+    padding: 18px;
+    text-align: center;
+    user-select: all;
+  }
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 110px;
+    background: var(--panel);
+    color: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font: 500 15px/1.5 var(--mono);
+    padding: 12px;
+    resize: vertical;
+  }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+  th { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; color: var(--muted); font-size: 14px; }
+  td.n { text-align: right; }
+  .pass { color: var(--good); font-weight: 600; }
+  .fail { color: var(--bad); font-weight: 600; }
+  .toast { color: var(--good); font-size: 14px; min-height: 20px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+  details[open] summary { margin-bottom: 12px; }
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+  .legend { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 14px; color: var(--muted); }
+  .legend b { font-family: var(--mono); color: var(--cream); }
+  .thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .thumbs figure { margin: 0; }
+  .thumbs img { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); }
+  .thumbs figcaption { font-size: 12px; color: var(--muted); text-align: center; margin-top: 4px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .still img { transition: opacity 120ms ease; }
+  }
+</style>
+
+<div class="wrap">
+  <section id="intro" class="stack">
+    <p class="eyebrow">Diamond Shine · Lantern Field</p>
+    <h1>What just happened?</h1>
+    <p>You'll see four pictures from a night baseball game. Each one is the moment right after a pitch. Pick what happened. No baseball knowledge needed, just your first read. It takes under a minute.</p>
+    <button class="btn" id="start" type="button">Start</button>
+    <p class="muted" style="font-size:14px">Running this test yourself? The tally is at the bottom of the page.</p>
+  </section>
+
+  <section id="trial" class="stack" hidden>
+    <div class="row">
+      <span class="eyebrow">Pick one</span>
+      <span class="counter" id="counter">1 of 4</span>
+    </div>
+    <div class="still"><img id="still" alt="A player at Lantern Field, just after the pitch" src=""></div>
+    <div class="choices" role="group" aria-label="What happened">
+      <button class="choice" type="button" data-answer="H">Hit</button>
+      <button class="choice" type="button" data-answer="K">Strikeout</button>
+      <button class="choice" type="button" data-answer="W">Walk</button>
+      <button class="choice" type="button" data-answer="R">Home run</button>
+    </div>
+  </section>
+
+  <section id="done" class="stack" hidden>
+    <p class="eyebrow">Thank you</p>
+    <h1>That's it</h1>
+    <p>Send this code back to whoever gave you the link. It only records your four picks.</p>
+    <div class="code" id="code">DS-····</div>
+    <button class="btn" id="copy" type="button">Copy code</button>
+    <p class="toast" id="toast"></p>
+  </section>
+
+  <details id="tally-wrap">
+    <summary>Tally (for whoever is running the test)</summary>
+    <div class="stack">
+      <h2>Tally</h2>
+      <p class="muted">Paste each tester's code on its own line. Codes hold four picks in the fixed order hit, strikeout, walk, home run, so <b style="font-family:var(--mono)">DS-HKWR</b> is a perfect read. The gate from the build spec is 4 of 5 per beat.</p>
+      <textarea id="codes" placeholder="DS-HKWR&#10;DS-HKWK"></textarea>
+      <table id="results">
+        <thead><tr><th>Beat</th><th>Still shown</th><th class="n">Named right</th><th>Gate</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="legend">
+        <b>H</b><span>Hit</span>
+        <b>K</b><span>Strikeout</span>
+        <b>W</b><span>Walk</span>
+        <b>R</b><span>Home run</span>
+      </div>
+    </div>
+  </details>
+</div>
+
+<script>
+  // Beat order is fixed for the code; display order is shuffled per tester.
+  const BEATS = [
+    { key: "hit", answer: "H", label: "Hit", still: "Aoi, contact", src: "{{HIT}}" },
+    { key: "k", answer: "K", label: "Strikeout", still: "Reina, K marker", src: "{{K}}" },
+    { key: "walk", answer: "W", label: "Walk", still: "Reina, walk marker", src: "{{WALK}}" },
+    { key: "hr", answer: "R", label: "Home run", still: "Aoi, HR marker", src: "{{HR}}" },
+  ];
+  const $ = (id) => document.getElementById(id);
+  const picks = {};
+  let order = [];
+  let at = 0;
+
+  function shuffle(a) {
+    const b = a.slice();
+    for (let i = b.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [b[i], b[j]] = [b[j], b[i]];
+    }
+    return b;
+  }
+
+  function showTrial() {
+    const beat = order[at];
+    $("counter").textContent = `${at + 1} of ${order.length}`;
+    $("still").src = beat.src;
+    window.scrollTo({ top: 0 });
+  }
+
+  $("start").addEventListener("click", () => {
+    order = shuffle(BEATS);
+    at = 0;
+    $("intro").hidden = true;
+    $("trial").hidden = false;
+    showTrial();
+  });
+
+  for (const b of document.querySelectorAll(".choice")) {
+    b.addEventListener("click", () => {
+      picks[order[at].key] = b.dataset.answer;
+      at += 1;
+      if (at < order.length) return showTrial();
+      $("trial").hidden = true;
+      $("done").hidden = false;
+      $("code").textContent = "DS-" + BEATS.map((x) => picks[x.key] || "?").join("");
+      window.scrollTo({ top: 0 });
+    });
+  }
+
+  $("copy").addEventListener("click", async () => {
+    const text = $("code").textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      $("toast").textContent = "Copied. Paste it in a message to the person who sent you here.";
+    } catch {
+      $("toast").textContent = "Copy failed. Select the code and copy it by hand.";
+    }
+  });
+
+  // Tally: parse codes, count right answers per beat, 4-of-5 gate.
+  function parseCodes(text) {
+    return text.toUpperCase().match(/DS-[HKWR?]{4}/g) || [];
+  }
+  function renderTally() {
+    const codes = parseCodes($("codes").value);
+    const rows = BEATS.map((beat, i) => {
+      const right = codes.filter((c) => c[3 + i] === beat.answer).length;
+      const n = codes.length;
+      const gate = n === 0 ? "" : right / n >= 0.8 ? "pass" : "fail";
+      return `<tr><td>${beat.label}</td><td class="muted">${beat.still}</td><td class="n">${right} / ${n}</td><td class="${gate}">${gate ? (gate === "pass" ? "≥ 4 of 5" : "below") : "–"}</td></tr>`;
+    });
+    $("rows").innerHTML = rows.join("");
+    try { localStorage.setItem("ds-read-test-codes", $("codes").value); } catch {}
+  }
+  $("codes").addEventListener("input", renderTally);
+  try {
+    const saved = localStorage.getItem("ds-read-test-codes");
+    if (saved) $("codes").value = saved;
+  } catch {}
+  $("thumbs").innerHTML = BEATS.map((b) => `<figure><img src="${b.src}" alt="${b.still}"><figcaption>${b.label}</figcaption></figure>`).join("");
+  renderTally();
+</script>
