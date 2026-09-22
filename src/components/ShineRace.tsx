@@ -23,7 +23,7 @@ import { locCell } from "@/shine/core/zone.ts";
 import { track as trackEvent } from "@/lib/telemetry.ts";
 import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
 import { CONTACT_HOLD_MS } from "@/shine/action-art.ts";
-import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sheet } from "@/shine/bible.ts";
+import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { crowdStem } from "@/shine/culture.ts";
@@ -38,6 +38,7 @@ import type { CharacterId, TraineeRun } from "@/shine/types.ts";
 import { ShineMound } from "./ShineMound";
 
 const EXHIBITION_APPEARANCES = 3;
+const FILM_WARM_CAP_MS = 2500;
 const HITTERS = BIBLE.filter((c) => !isPitcherStyle(c.style));
 const ARMS = BIBLE.filter((c) => isPitcherStyle(c.style));
 
@@ -273,12 +274,22 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const decisionU = useRef<number | null>(null);
   const clipsWarmed = useRef(false);
 
+  // Go waits for her stills so the 120 ms cut-in never draws an empty frame.
+  // A slow network gets FILM_WARM_CAP_MS, then Go opens anyway.
+  const [filmWarm, setFilmWarm] = useState(false);
   useEffect(() => {
     let alive = true;
     loadActionManifest().then((m) => {
       if (!alive) return;
       setManifest(m);
-      void warmActionArt(m, [run.characterId, game.arm]);
+      const girls = [run.characterId, game.arm];
+      const cap = new Promise<void>((r) => window.setTimeout(r, FILM_WARM_CAP_MS));
+      void Promise.race([warmActionArt(m, girls), cap]).then(() => {
+        if (alive) setFilmWarm(true);
+      });
+      // Clips at step-in, not at the first wind-up: a first-pitch HR has its clip.
+      clipsWarmed.current = true;
+      preloadActionClips(m, girls);
     });
     return () => {
       alive = false;
@@ -573,11 +584,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
             prepareMs={reduced ? RACE_PACE.prepareMsReduced : RACE_PACE.prepareMs}
             heroMood={heroMood}
             className="!h-auto !w-full"
-            fallback={
-              <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-ink/35">
-                <img src={portraitSrc(run.characterId, "focused")} alt="" className="absolute inset-0 size-full object-cover shine-mound-close" aria-hidden />
-              </div>
-            }
+            fallback={<div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-ink/35" aria-busy="true" />}
           >
             {sitGrid ? <SitZone aim={plate.aim} onSit={(c) => race.setSit(c)} ghost={ghost} label="Sit" /> : null}
           </ActionStage>
@@ -617,7 +624,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           <div className="flex flex-col gap-2">
             {prompt ? <p className="text-center font-ui text-sm text-cream/85">{prompt}</p> : null}
             {basepath ? <p className="text-center font-ui text-sm text-gold">{basepath}</p> : null}
-            <PixelBtn className="h-14 text-sm shine-go" onClick={go} ariaLabel={goLabel({ practice, stage })}>
+            <PixelBtn className="h-14 text-sm shine-go" onClick={go} disabled={!filmWarm} ariaLabel={goLabel({ practice, stage })}>
               {goLabel({ practice, stage })}
             </PixelBtn>
           </div>
