@@ -106,7 +106,7 @@ function Title() {
               openExhibition();
             }}
           >
-            Exhibition · Aoi vs Reina
+            Exhibition · Pick a pair
           </PixelBtn>
           <div className="shine-title-menu">
             <PixelBtn

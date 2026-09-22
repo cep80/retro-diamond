@@ -26,6 +26,13 @@ export const RACE_COPY = {
   leavePractice: "Back to the complex",
   title: "Title",
   paused: "Time",
+  exhibitionChip: "Exhibition",
+  exhibitionPick: "Three at-bats under the lanterns. Nothing carries.",
+  atThePlate: "At the plate",
+  onTheMound: "On the mound",
+  playBall: "Play ball",
+  otherMatchup: "Pick another pair",
+  exhibitionClose: (arm: string) => `Three at-bats against ${arm}. Nothing carries. Run it again.`,
 } as const;
 
 /** The coach line under the pick, or null once she has seen a pitch. */

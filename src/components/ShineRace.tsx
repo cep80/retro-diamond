@@ -23,7 +23,7 @@ import { locCell } from "@/shine/core/zone.ts";
 import { track as trackEvent } from "@/lib/telemetry.ts";
 import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
 import { CONTACT_HOLD_MS } from "@/shine/action-art.ts";
-import { isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sheet } from "@/shine/bible.ts";
+import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { crowdStem } from "@/shine/culture.ts";
@@ -32,12 +32,33 @@ import type { PlateCue } from "@/shine/plate-controller.ts";
 import { RaceController, type RaceCue } from "@/shine/race-controller.ts";
 import { RACE_PACE } from "@/shine/race.ts";
 import { newRun } from "@/shine/run.ts";
-import { featuredParkId, parkSkyClass, plateRead } from "@/shine/stage.ts";
+import { featuredParkId, kitAccent, parkSkyClass, plateRead } from "@/shine/stage.ts";
 import { useShine } from "@/shine/store.ts";
-import type { TraineeRun } from "@/shine/types.ts";
+import type { CharacterId, TraineeRun } from "@/shine/types.ts";
 import { ShineMound } from "./ShineMound";
 
-const EXHIBITION_ENCOUNTER: EncounterConfig = { arm: "reina", appearances: 3, neutral: true };
+const EXHIBITION_APPEARANCES = 3;
+const HITTERS = BIBLE.filter((c) => !isPitcherStyle(c.style));
+const ARMS = BIBLE.filter((c) => isPitcherStyle(c.style));
+
+interface Matchup {
+  batter: CharacterId;
+  arm: CharacterId;
+}
+
+/** `?batter=miki&pitcher=kira` skips the pick (captures, read tests). */
+function matchupFromUrl(): Matchup | null {
+  if (typeof window === "undefined") return null;
+  const q = new URLSearchParams(window.location.search);
+  const batter = HITTERS.find((c) => c.id === q.get("batter"))?.id;
+  const arm = ARMS.find((c) => c.id === q.get("pitcher"))?.id;
+  return batter || arm ? { batter: batter ?? "aoi", arm: arm ?? "reina" } : null;
+}
+
+function exhibitionArmName(game: FeaturedGame): string {
+  const arm = game.encounter?.arm;
+  return arm && arm !== "academy" ? sheet(arm).name : "the Academy";
+}
 
 function kindFor(run: TraineeRun, weekly: boolean): GameKind {
   if (weekly) return "weekly";
@@ -78,18 +99,101 @@ export function ShinePlate() {
   );
 }
 
-/** The exhibition: Aoi vs Reina, three plate appearances, in memory only. */
+/** The exhibition: any hitter against any arm, three plate appearances, in memory only. */
 export function ShineExhibition() {
+  const [matchup, setMatchup] = useState<Matchup | null>(matchupFromUrl);
+  if (!matchup) return <ExhibitionPick initial={{ batter: "aoi", arm: "reina" }} onPlay={setMatchup} />;
+  return <ExhibitionGame key={`${matchup.batter}-${matchup.arm}`} matchup={matchup} onChange={() => setMatchup(null)} />;
+}
+
+function ExhibitionGame({ matchup, onChange }: { matchup: Matchup; onChange: () => void }) {
   const [attempt, setAttempt] = useState(1);
+  const encounter = useMemo<EncounterConfig>(() => ({ arm: matchup.arm, appearances: EXHIBITION_APPEARANCES, neutral: true }), [matchup.arm]);
   const run = useMemo(() => {
-    const r = newRun("aoi");
+    const r = newRun(matchup.batter);
     if (typeof window !== "undefined") {
       const seed = new URLSearchParams(window.location.search).get("seed");
       r.rngSeed = seed ?? `exhibition-${attempt}-${Date.now().toString(36)}`;
     }
     return r;
-  }, [attempt]);
-  return <RaceSession key={attempt} mode="exhibition" run={run} kind="lantern-classic" encounter={EXHIBITION_ENCOUNTER} onReplay={() => setAttempt((n) => n + 1)} />;
+  }, [attempt, matchup.batter]);
+  return (
+    <RaceSession
+      key={attempt}
+      mode="exhibition"
+      run={run}
+      kind="lantern-classic"
+      encounter={encounter}
+      onReplay={() => setAttempt((n) => n + 1)}
+      onChangeMatchup={onChange}
+    />
+  );
+}
+
+function ExhibitionPick({ initial, onPlay }: { initial: Matchup; onPlay: (m: Matchup) => void }) {
+  const openTitle = useShine((s) => s.openTitle);
+  const [pick, setPick] = useState<Matchup>(initial);
+  const batter = sheet(pick.batter);
+  const arm = sheet(pick.arm);
+  const row = (cast: typeof BIBLE, side: keyof Matchup) =>
+    cast.map((c) => {
+      const on = pick[side] === c.id;
+      const face = careerFilmSrc(c.id);
+      return (
+        <button
+          key={c.id}
+          type="button"
+          aria-pressed={on}
+          onClick={() => {
+            sfxSelect();
+            setPick((p) => ({ ...p, [side]: c.id }));
+          }}
+          className="shine-cast-card"
+          style={on ? { ["--shine-accent" as string]: kitAccent(c.id) } : undefined}
+        >
+          {face ? <img src={face} alt="" /> : null}
+          <span className="shine-cast-meta">
+            <span className="shine-kana block text-[11px] text-gold">{c.jp}</span>
+            <span className="mt-0.5 block font-display text-xs font-bold uppercase tracking-wide">
+              #{c.number} {c.name}
+            </span>
+          </span>
+        </button>
+      );
+    });
+  return (
+    <main className="shine-stage text-cream" style={{ ["--shine-accent" as string]: kitAccent(pick.batter) }}>
+      <img src={parkSrc(batter.parkId)} alt="" className="absolute inset-0 size-full object-cover" />
+      <div className="shine-stage-wash absolute inset-0" />
+      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-4 py-6 sm:px-8">
+        <div className="flex items-center justify-between gap-3">
+          <p className="episode-chip w-fit">{RACE_COPY.exhibitionChip}</p>
+          <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
+            {RACE_COPY.title}
+          </PixelBtn>
+        </div>
+        <h1 className="mt-4 font-display text-2xl font-bold uppercase tracking-tight sm:text-3xl">
+          {batter.name} <span className="text-gold">vs</span> {arm.name}
+        </h1>
+        <p className="mt-1 font-ui text-sm text-cream/80">{RACE_COPY.exhibitionPick}</p>
+        <p className="mt-5 font-display text-[10px] uppercase tracking-widest text-gold">{RACE_COPY.atThePlate}</p>
+        <div className="mt-2 grid grid-cols-3 gap-2">{row(HITTERS, "batter")}</div>
+        <p className="mt-5 font-display text-[10px] uppercase tracking-widest text-gold">{RACE_COPY.onTheMound}</p>
+        <div className="mt-2 grid grid-cols-3 gap-2">{row(ARMS, "arm")}</div>
+        <PixelBtn
+          className="mt-6 h-14 justify-between px-5 text-sm"
+          onClick={() => {
+            unlockAudio();
+            sfxSelect();
+            onPlay(pick);
+          }}
+        >
+          {RACE_COPY.playBall}
+          <span aria-hidden>→</span>
+        </PixelBtn>
+      </div>
+    </main>
+  );
 }
 
 interface SessionProps {
@@ -99,6 +203,7 @@ interface SessionProps {
   encounter?: EncounterConfig;
   restore?: { game: FeaturedGame; aim: Cell; swing: "contact" | "power" | "bunt" };
   onReplay?: () => void;
+  onChangeMatchup?: () => void;
 }
 
 function RaceSession(props: SessionProps) {
@@ -130,7 +235,7 @@ function RaceSession(props: SessionProps) {
   return <RaceFrame race={race} {...props} />;
 }
 
-function RaceFrame({ race, mode, run, kind, restore, onReplay }: SessionProps & { race: RaceController }) {
+function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }: SessionProps & { race: RaceController }) {
   void restore;
   const finishGame = useShine((s) => s.finishGame);
   const openTitle = useShine((s) => s.openTitle);
@@ -551,12 +656,15 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay }: SessionProps & 
               })}
             </p>
             {basepath && !countDate ? <p className="text-center font-ui text-sm text-gold">{basepath}</p> : null}
-            <p className="text-center font-ui text-sm text-cream/80">{exhibition ? "Three at-bats against Reina. Nothing carries; run it again." : plateRead(run, game)}</p>
+            <p className="text-center font-ui text-sm text-cream/80">{exhibition ? RACE_COPY.exhibitionClose(exhibitionArmName(game)) : plateRead(run, game)}</p>
             {boxLine(game) ? <p className="text-center font-ui text-xs text-muted">{boxLine(game)}</p> : null}
             {exhibition ? (
               <>
                 <PixelBtn className="h-12" onClick={() => onReplay?.()}>
                   {RACE_COPY.again}
+                </PixelBtn>
+                <PixelBtn variant="ghost" className="h-11" onClick={() => onChangeMatchup?.()}>
+                  {RACE_COPY.otherMatchup}
                 </PixelBtn>
                 <PixelBtn variant="ghost" className="h-11" onClick={leave}>
                   {RACE_COPY.title}
