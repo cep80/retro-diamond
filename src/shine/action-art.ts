@@ -262,9 +262,21 @@ export function plate2dFlight(opts: { u: number; loc: { x: number; y: number } }
   };
 }
 
+/**
+ * The race decides swing or take at release, so `tappedAtU` is known for the
+ * whole flight. Showing her cut before the ball gets there gives the pitch
+ * away; the cut lands this far (flight progress) ahead of her swing point.
+ */
+export const CUT_LEAD_U = 0.08;
+
+/** True once the flight has reached her swing; before that a swing and a take look the same. */
+export function swingShowing(view: Pick<ActionView, "u" | "tappedAtU">): boolean {
+  return view.tappedAtU !== null && view.u >= view.tappedAtU - CUT_LEAD_U;
+}
+
 export function pictureFor(view: ActionView, flags: StingFlags = {}, twoStrikeHold = false): ActionPicture {
   const { stage, beat } = view;
-  const tapped = view.tappedAtU !== null;
+  const tapped = swingShowing(view);
   if (stage === "prepare") {
     return {
       pitcher: "windup",
@@ -381,7 +393,7 @@ export type ActionFocus = "pitcher" | "batter";
 export function focusFor(view: Pick<ActionView, "stage" | "u" | "tappedAtU">, hasPitcher = true): ActionFocus {
   if (!hasPitcher) return "batter";
   if (view.stage === "prepare") return "pitcher";
-  if (view.stage === "flight" && view.tappedAtU === null && view.u < RELEASE_HOLD_U) return "pitcher";
+  if (view.stage === "flight" && !swingShowing(view) && view.u < RELEASE_HOLD_U) return "pitcher";
   return "batter";
 }
 

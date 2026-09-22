@@ -29,6 +29,7 @@ import {
   pictureFor,
   PITCHER_POSES,
   RELEASE_HOLD_U,
+  CUT_LEAD_U,
   STILLS_BUDGET_BYTES,
   stillFor,
   type ActionManifest,
@@ -95,6 +96,13 @@ describe("action art: cue → picture", () => {
     const after = pictureFor(view({ stage: "flight", u: 0.9, tappedAtU: 0.88 }));
     assert.equal(after.batter, "cut");
     assert.deepEqual(after.cutIn, ["load", "cut"]);
+  });
+
+  it("does not give the swing away at release: a decided swing looks like a take until the ball arrives", () => {
+    const early = pictureFor(view({ stage: "flight", u: 0.3, tappedAtU: 0.85 }));
+    const take = pictureFor(view({ stage: "flight", u: 0.3 }));
+    assert.deepEqual([early.batter, early.cutIn], [take.batter, take.cutIn]);
+    assert.equal(pictureFor(view({ stage: "flight", u: 0.85 - CUT_LEAD_U, tappedAtU: 0.85 })).batter, "cut");
   });
 
   it("a Take call coils her during the flight", () => {
@@ -202,7 +210,8 @@ describe("action art: focus", () => {
     assert.equal(focusFor(view({ stage: "prepare" })), "pitcher");
     assert.equal(focusFor(view({ stage: "flight", u: RELEASE_HOLD_U / 2 })), "pitcher");
     assert.equal(focusFor(view({ stage: "flight", u: RELEASE_HOLD_U })), "batter");
-    assert.equal(focusFor(view({ stage: "flight", u: 0.05, tappedAtU: 0.05 })), "batter", "a Go always cuts to her");
+    assert.equal(focusFor(view({ stage: "flight", u: 0.05, tappedAtU: 0.1 })), "batter", "her swing cuts to her");
+    assert.equal(focusFor(view({ stage: "flight", u: 0.05, tappedAtU: 0.85 })), "pitcher", "a decided swing does not steal the release");
     for (const stage of ["situation", "idle", "dead", "field", "reaction"] as const) {
       assert.equal(focusFor(view({ stage })), "batter", stage);
     }

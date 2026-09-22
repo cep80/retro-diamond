@@ -565,7 +565,6 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
             view={actionView}
             batterId={run.characterId}
             armId={game.arm}
-            focus="batter"
             manifest={manifest}
             pitch={plate.pitch}
             recognized={recognized}
