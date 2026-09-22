@@ -16,7 +16,7 @@ We are **not** a batting sim. Nobody reads the ball by eye, nobody aims a swing 
 
 | Beat | Who acts | Input | Fiction |
 |---|---|---|---|
-| **Sit** | Coach | tap a cell on the 3×3 (PA 2+: a call — Sit hard / Sit soft / Take; PA 3+: one card) | "Sit on this pitch." Wit reveals a hot cell. |
+| **Sit** | Coach | tap a cell on the 3×3 | "Sit on this pitch." Wit reveals a hot cell. |
 | **Go** | Coach | one press, **before** the pitch | The green light. The PA auto-plays from here; nothing is tapped in flight. |
 | **She swings** | Athlete (auto) | none | `race.ts` decides swing / take and her timing from Contact, Eye, Guts, the count and how far the pitch landed from the sit. Load, cut, contact / follow play from the stills. |
 | **Result** | Sim | none | Timing error × location error × stats → beat. Sportswriter line. Money clip on HR / K / walk. PA card. |
@@ -45,7 +45,7 @@ The tapped window, timing bar, and live 3D pace fork are **dead**. Watch-only ra
 
 ### §3.1 — HUD lock (beta, 2026-09-20)
 
-The plate is a film, not an instrument panel. Shipped in `ShineRace` / `DuelPanel` / `race-ui.ts`:
+The plate is a film, not an instrument panel. Shipped in `ShineRace` / `race-ui.ts`:
 
 | Element | Rule |
 |---|---|
@@ -57,7 +57,7 @@ The plate is a film, not an instrument panel. Shipped in `ShineRace` / `DuelPane
 | Onboarding | One ghost line (`RACE_COPY.firstPick`). No card, no Skip. |
 | Outcome | Stage pill during field/reaction; one caption under the frame; PA card after. `cardVerdict` drops a sentence the line already said. |
 | Approach | **None.** No Contact/Power/Bunt picker. |
-| Duel | On. Progressive hand: PA 1 = sit + Go + book line 1; PA 2 adds Take and family sits; PA 3 adds Protect and one card. |
+| Duel | **Off for 1.0** (2026-09-22). One pick per at-bat: sit, then Go. `RaceController` defaults `duel: false`; `DuelPanel`, calls and cards are parked code, not shipped. Reopening it is a design call, not a bug fix. |
 | Leave | Pause has Title. |
 
 **Render farm only:** Blender cameras may produce stills. They are not the shipped plate.
