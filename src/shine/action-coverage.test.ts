@@ -41,7 +41,10 @@ const BEATS: { beat: FieldBeat; swung: boolean }[] = [
   { beat: "k", swung: false },
   { beat: "walk", swung: false },
   { beat: "take-strike", swung: false },
-  { beat: "take-ball", swung: false },
+  { beat: "ball", swung: false },
+  { beat: "fly-out", swung: true },
+  { beat: "double", swung: true },
+  { beat: "foul-tip", swung: true },
 ];
 
 function view(over: Partial<ActionView>): ActionView {
