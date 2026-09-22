@@ -52,6 +52,7 @@ import { pitcherRivalBat } from "@/shine/rivals.ts";
 import { useShine } from "@/shine/store.ts";
 import { uniqueName, uniqueShouldFire } from "@/shine/unique.ts";
 import type { GameKind } from "@/shine/featured-game.ts";
+import { SuspendableTimers } from "@/shine/suspendable.ts";
 
 function kindFor(turn: number): GameKind {
   const t = turnMeta(turn).type;
@@ -91,7 +92,8 @@ export function ShineMound() {
   const [ghost, setGhost] = useState<Cell | null>(null);
 
   const raf = useRef(0);
-  const timers = useRef<number[]>([]);
+  // Field / reaction / next-batter waits stop with the pause (and a hidden tab).
+  const [timers] = useState(() => new SuspendableTimers());
   const stageRef = useRef<Stage>("idle");
   stageRef.current = stage;
   const flightStart = useRef(0);
@@ -105,15 +107,10 @@ export function ShineMound() {
   const throwRef = useRef<() => void>(() => {});
   gameRef.current = game;
 
-  const later = useCallback((fn: () => void, ms: number) => {
-    const id = window.setTimeout(fn, ms);
-    timers.current.push(id);
-    return id;
-  }, []);
+  const later = useCallback((fn: () => void, ms: number) => timers.set(fn, ms), [timers]);
 
   function clearTimers() {
-    for (const t of timers.current) window.clearTimeout(t);
-    timers.current = [];
+    timers.clearAll();
   }
 
   useEffect(() => {
@@ -177,10 +174,12 @@ export function ShineMound() {
 
   const { paused, pauseReason, pause, resume } = usePlatePause({
     onFreeze: () => {
+      timers.suspend();
       duckCrowd(false);
     },
     onResume: () => {
       if (stageRef.current === "flight") flightStart.current = performance.now() - u * flightMs();
+      timers.resume();
       return true;
     },
   });
@@ -242,24 +241,27 @@ export function ShineMound() {
     if (overlay) pause("user");
   }, [overlay, pause]);
 
+  // One listener for the life of the mound; it reads the latest state through the ref.
+  const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  onKeyRef.current = (e: KeyboardEvent) => {
+    if (e.repeat) return;
+    if (e.code === settings.keys.pause || e.code === "Escape") {
+      e.preventDefault();
+      if (paused) resume();
+      else pause("user");
+      return;
+    }
+    if (paused) return;
+    if (e.code === "Enter" || e.code === "Space") {
+      e.preventDefault();
+      throwIt();
+    }
+  };
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      if (e.code === settings.keys.pause || e.code === "Escape") {
-        e.preventDefault();
-        if (paused) resume();
-        else pause("user");
-        return;
-      }
-      if (paused) return;
-      if (e.code === "Enter" || e.code === "Space") {
-        e.preventDefault();
-        throwIt();
-      }
-    };
+    const onKey = (e: KeyboardEvent) => onKeyRef.current(e);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined" || new URLSearchParams(window.location.search).get("debug") !== "1") return;
