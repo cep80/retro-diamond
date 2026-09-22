@@ -8,7 +8,7 @@ import { clamp } from "./core/rng.ts";
 import type { Ballplayer, PitchType } from "./core/zone.ts";
 import type { Cell, Loc, PitchCall } from "./core/zone.ts";
 import { academyBatter, academyPitcher, traineeBatter } from "./actors.ts";
-import { sheet } from "./bible.ts";
+import { isPitcherStyle, sheet } from "./bible.ts";
 import { weeklySit } from "./pilgrimage.ts";
 import { duelFastballRate } from "./duel.ts";
 import type { CharacterId, Tells, TraineeRun } from "./types.ts";
@@ -232,6 +232,17 @@ export function pitcherRivalBat(id: CharacterId): CharacterId {
   if (id === "sol") return "aoi";
   if (id === "kira") return "aoi";
   return "aoi";
+}
+
+/**
+ * Who bats the weekly look. It is always a plate appearance and never
+ * touches the career, so a hitter lead bats it herself (null = use the
+ * career run), a pitcher lead hands the bat to her rival, and a player
+ * with no career gets Aoi.
+ */
+export function weeklyGuestFor(lead: CharacterId | null): CharacterId | null {
+  if (!lead) return "aoi";
+  return isPitcherStyle(sheet(lead).style) ? pitcherRivalBat(lead) : null;
 }
 
 export type Adaptation =

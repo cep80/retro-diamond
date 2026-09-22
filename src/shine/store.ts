@@ -17,6 +17,7 @@ import {
 import { canTrain, treatmentAvailable, treatmentForced } from "./training.ts";
 import { applyParentPeak, pickInheritSparks } from "./ending.ts";
 import { decodeCard } from "./carry.ts";
+import { weeklyGuestFor } from "./rivals.ts";
 import { yearVoice } from "./culture.ts";
 import { previewClaimable, SKUS } from "./commerce.ts";
 import { isPitcherStyle, lightCardFrom, sheet } from "./bible.ts";
@@ -217,16 +218,16 @@ export const useShine = create<ShineState>()(
       // The exhibition session itself lives in component memory, never in the store.
       openExhibition: () => set({ overlay: null, screen: "exhibition" }),
       openWeekly: () => {
-        const { run } = get();
+        const guest = weeklyGuestFor(get().run?.characterId ?? null);
         set({
           screen: "weekly",
-          weeklyGuest: run ? null : newRun("aoi"),
+          weeklyGuest: guest ? newRun(guest) : null,
         });
       },
       closeWeekly: () => {
-        const { run, weeklyGuest } = get();
+        const { run } = get();
         set({
-          screen: run && !weeklyGuest ? "complex" : "title",
+          screen: run ? "complex" : "title",
           weeklyGuest: null,
           lastLine: "Lantern Classic does not sunset.",
         });
@@ -329,9 +330,9 @@ export const useShine = create<ShineState>()(
       },
       finishGame: (kind, pg, sg, reached, hr, read, lastSpurt, box, carry) => {
         if (kind === "weekly") {
-          const { run, weeklyGuest } = get();
+          const { run } = get();
           set({
-            screen: run && !weeklyGuest ? "complex" : "title",
+            screen: run ? "complex" : "title",
             weeklyGuest: null,
             liveGame: null,
             lastLine: "That's the week's look. Lantern Classic does not sunset.",

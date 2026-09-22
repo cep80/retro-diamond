@@ -31,3 +31,12 @@ test("a rival never pitches to herself in the weekly look", () => {
   assert.notEqual(arm, sit.arm);
   assert.equal(opposingArm({ characterId: "aoi" }, "weekly"), sit.arm);
 });
+
+test("a pitcher lead hands the weekly bat to her rival; a hitter bats it herself", async () => {
+  const { weeklyGuestFor } = await import("./rivals.ts");
+  assert.equal(weeklyGuestFor(null), "aoi");
+  for (const hitter of ["aoi", "miki", "yuki"] as const) assert.equal(weeklyGuestFor(hitter), null);
+  assert.equal(weeklyGuestFor("reina"), "miki");
+  assert.equal(weeklyGuestFor("sol"), "aoi");
+  assert.equal(weeklyGuestFor("kira"), "aoi");
+});
