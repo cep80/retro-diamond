@@ -1,4 +1,4 @@
-import { sheet } from "./bible.ts";
+import { isPitcherStyle, sheet } from "./bible.ts";
 import type { CharacterId, EndingRank } from "./types.ts";
 
 export type ParkCulture = "jp" | "blend" | "us";
@@ -15,6 +15,26 @@ export function pastBlurb(id: CharacterId) {
 /** Curtain Call still path. Cap in hand, no bat — presentation only. */
 export function curtainStillSrc(skin: "otachidai" | "dugout") {
   return skin === "otachidai" ? "/bg/park-koi.jpg" : "/bg/stadium.jpg";
+}
+
+/**
+ * The girl on お立ち台. Celebrate and hitter follow stills hold a bat — retired.
+ * Aoi has the locked cap-in-hand still. Miki walks off with the bat on the ground.
+ * Yuki's trot is the steal: she is already running, no bat in the frame.
+ * Pitchers hold the glove.
+ */
+export function curtainFilmSrc(id: CharacterId) {
+  if (id === "aoi") return "/art/curtain/aoi.png";
+  if (isPitcherStyle(sheet(id).style)) return `/art/action/${id}/follow.webp`;
+  return `/art/action/${id}/trot.webp`;
+}
+
+/** The line under the Call. It names the still, not a pose she does not have. */
+export function curtainCaption(id: CharacterId) {
+  if (id === "aoi") return "Cap in hand. No bat.";
+  if (id === "yuki") return "She's going.";
+  if (isPitcherStyle(sheet(id).style)) return "The glove stays.";
+  return "The bat is down.";
 }
 
 /** Ending rank as the emotional frame label (before sparks / box score). */
@@ -51,14 +71,40 @@ export function workMorningLine(parkId: string) {
   if (parkId === "koi") return "Morning at the complex. 朝練.";
   if (parkId === "heat" || parkId === "dusters" || parkId === "range") return "Early work. The sun is already up.";
   if (parkId === "north") return "Morning. The poles wait if she'll go.";
-  return "Early work. You set the stations.";
+  return "Early work. The complex is already awake.";
 }
 
-/** Story, not a gacha. Mentor C rotates at year-start. */
+/** Story, not a gacha. Mentor C rotates at year-start. She does not change parks. */
+const RETIRED_YEAR_VOICE = "She's moving to the Palms organization. A new voice arrives.";
+const RETIRED_REACH = "She was on. The goal she came for stayed open.";
+const RETIRED_K = "She struck out. The sit never found the pitch.";
+
 export function yearVoice(year: 1 | 2 | 3) {
-  if (year === 2) return "She's moving to the Palms organization. A new voice arrives.";
-  if (year === 3) return "Senior camp. The skip who threw BP in Classic is gone. Legs lie. Energy is back to 80.";
-  return "The year is open. Work.";
+  if (year === 2) return "Last year's coach moved on. A new voice arrives.";
+  if (year === 3) return "The Stretch is next.";
+  return "The year is open.";
+}
+
+/** A saved miss line from before the reach count still names what she did. */
+export function dateSpeech(line: string) {
+  if (line === RETIRED_REACH) return "She reached once. The date asked for two.";
+  if (line === RETIRED_K) return "She put the ball in play. She never got on.";
+  return line;
+}
+
+/** Fan mail quotes a date she actually sat. No napkin invents a count. */
+export function fanLetter(run: { characterId: CharacterId; highlights?: { kind: string; label: string; line: string }[] }): string {
+  const last = [...(run.highlights ?? [])].reverse().find((h) => h.kind === "game");
+  const who = sheet(run.characterId);
+  if (!last) return `They wrote from the seats. They already call her number ${who.number}.`;
+  return `${last.label}. ${last.line} Row J kept the napkin. They already call her number ${who.number}.`;
+}
+
+/** Campus speech. A saved year-start line from before the coach rewrite still speaks the new one. */
+export function morningSpeech(lastLine: string | null, year: 1 | 2 | 3, parkId: string) {
+  if (!lastLine) return workMorningLine(parkId);
+  if (lastLine === RETIRED_YEAR_VOICE) return yearVoice(year);
+  return dateSpeech(lastLine);
 }
 
 /** Sacred-date host. Culture follows this park, not the girl's home. */
@@ -92,6 +138,13 @@ export function crowdStem(parkId: string): CrowdStem {
 
 export function curtainSkin(parkId: string): "otachidai" | "dugout" {
   return parkCulture(parkId) === "jp" ? "otachidai" : "dugout";
+}
+
+/** Lantern's Call is お立ち台. The sheet line stays the home-park dugout for Kings. */
+export function curtainCallLine(call: string, skin: "otachidai" | "dugout"): string {
+  if (skin === "otachidai" && call.startsWith("Dugout.")) return `お立ち台.${call.slice("Dugout.".length)}`;
+  if (skin === "dugout" && call.startsWith("お立ち台.")) return `Dugout.${call.slice("お立ち台.".length)}`;
+  return call;
 }
 
 /** Presentation only. Never a plate constant. */
@@ -152,10 +205,10 @@ const RECAP_JP = [
   "応援団 does not sit down.",
   "お立ち台 waits if she earned it.",
   "The towels keep time with her name.",
-  "First Light still lives in the 3rd.",
+  "The bleachers kept the verse.",
   "Koi holds. The booth stays quiet.",
   "She bows to the field. Flavor.",
-  "朝練 is already tomorrow.",
+  "The last verse is still in the bleachers.",
   "The pinch of dirt stays in the pocket.",
 ];
 
@@ -173,16 +226,13 @@ const RECAP_BLEND = [
 ];
 
 const RECAP_US = [
-  "Walk-up sting. Curtain call from the dugout.",
+  "Walk-up sting. The dugout stays put.",
   "PA plays her hook. No encore promised.",
   "In the 7th, the organ finds her.",
   "Dugout step. Cap. Crowd.",
-  "The booth follows the park, not the score.",
-  "Night Classic lights. She does not look up.",
-  "Harbor wind. The still is dirt on white pants.",
+  "The booth stays with her. The score can wait.",
+  "Harbor wind. The lights stay on.",
   "Stars. Bullpen door, not the sky.",
-  "Stretch baseball. The date is on the plate.",
-  "The Show is a park, not a menu.",
 ];
 
 export function recapLine(parkId: string, inning: number): string {

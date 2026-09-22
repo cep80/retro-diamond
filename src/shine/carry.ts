@@ -1,4 +1,4 @@
-import { uid } from "../game/data.ts";
+import { uid } from "./core/rng.ts";
 import { sheet } from "./bible.ts";
 import { cardAltLook, peakStatKey } from "./ending.ts";
 import type { CharacterId, ClubhouseCard, EndingRank, Spark, SparkKind, TraineeStatKey, TraineeStats } from "./types.ts";

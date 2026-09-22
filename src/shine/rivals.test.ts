@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { makeRng } from "../game/data.ts";
+import { makeRng } from "./core/rng.ts";
 import { bookLines, fatigueLine } from "./rivals.ts";
-import { arsenal } from "../game/plate.ts";
+import { arsenal } from "./core/zone.ts";
 import {
   ADAPT_MIN_SAMPLES,
   armForInning,

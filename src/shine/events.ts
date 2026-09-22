@@ -3,7 +3,7 @@
  * reads display copy. Every claim the game makes to the player ("she scored
  * from first") must be provable from these records.
  */
-import type { PitchType } from "../game/types.ts";
+import type { PitchType } from "./core/zone.ts";
 
 export interface Bases {
   first: boolean;

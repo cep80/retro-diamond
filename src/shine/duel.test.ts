@@ -37,7 +37,7 @@ import {
   type DuelCall,
   type VerdictOutcome,
 } from "./duel.ts";
-import type { PitchType } from "../game/types.ts";
+import type { PitchType } from "./core/zone.ts";
 
 const base = (over: Partial<CallContext> = {}): CallContext => ({
   call: "sit-cell",
@@ -166,7 +166,7 @@ describe("legality and the book", () => {
 
 describe("verdict lines", () => {
   const calls: DuelCall[] = ["sit-cell", "sit-hard", "sit-soft", "protect", "take"];
-  const outcomes: VerdictOutcome[] = ["reach", "foul", "miss", "take-strike", "take-ball", "walk", "k"];
+  const outcomes: VerdictOutcome[] = ["reach", "out", "foul", "miss", "take-strike", "take-ball", "walk", "k"];
   const types: PitchType[] = ["fastball", "slider", "curve", "changeup"];
 
   it("has a line for every call × outcome × pitch, in the house voice", () => {
@@ -178,6 +178,7 @@ describe("verdict lines", () => {
             assert.ok(line.length > 6, `${call}/${outcome}/${pitchType}`);
             assert.doesNotMatch(line, /!/, "no exclamation marks");
             assert.doesNotMatch(line, /SKILL|undefined|null/);
+            if (outcome === "out") assert.doesNotMatch(line, /Got it|Found grass|didn't miss/);
           }
         }
       }
@@ -191,6 +192,7 @@ describe("verdict lines", () => {
     assert.equal(verdictLine({ call: "protect", outcome: "foul", pitchType: "curve" }), "Protected. Still two.");
     assert.equal(verdictLine({ call: "take", outcome: "take-strike", pitchType: "fastball", strikes: 2 }), "Took it for a read. Strike two.");
     assert.equal(verdictLine({ call: "take", outcome: "take-ball", pitchType: "slider" }), "Took it. Ball. She showed the slider.");
+    assert.equal(verdictLine({ call: "sit-cell", outcome: "out", pitchType: "fastball", satCell: 1 }), "Sat away. It came in. Out.");
     assert.equal(verdictLine({ call: "sit-cell", outcome: "reach", pitchType: "fastball", card: "green-light" }), "Green light. She didn't miss.");
   });
 });

@@ -32,6 +32,22 @@ describe("plate beats", () => {
     assert.notEqual(beatSpec("k").portrait, beatSpec("single").portrait);
   });
 
+  it("the race lets a swing finish on screen and leaves the big beats alone", () => {
+    for (const b of ["miss", "foul", "foul-tip"] as FieldBeat[]) {
+      const s = beatSpec(b, false, "race");
+      assert.ok(s.reactionMs >= 900, `${b} holds long enough to read as a swing (${s.reactionMs})`);
+      assert.equal(s.fieldMs, 0);
+      assert.equal(s.big, false);
+    }
+    assert.ok(beatSpec("take-strike", false, "race").reactionMs > beatSpec("take-strike").reactionMs);
+    assert.ok(beatSpec("ball", false, "race").reactionMs > beatSpec("ball").reactionMs);
+    for (const b of BIG) assert.deepEqual(beatSpec(b, false, "race"), beatSpec(b));
+    for (const b of [...ORDINARY, ...BIG]) {
+      const s = beatSpec(b, true, "race");
+      assert.ok(s.fieldMs <= 320 && s.reactionMs <= 600, `${b} reduced under race pace`);
+    }
+  });
+
   it("caps everything under reduced motion", () => {
     for (const b of [...ORDINARY, ...BIG]) {
       const s = beatSpec(b, true);
@@ -45,5 +61,7 @@ describe("plate beats", () => {
     assert.equal(moundBeatSpec("k").portrait, "elated");
     assert.equal(moundBeatSpec("hr").portrait, "crushed");
     assert.equal(moundBeatSpec("ball").fieldMs, 0);
+    assert.ok(moundBeatSpec("take-strike").reactionMs >= 700, "a glove look holds her follow-through");
+    assert.ok(moundBeatSpec("ball").reactionMs >= 700);
   });
 });

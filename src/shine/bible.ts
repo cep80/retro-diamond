@@ -1,5 +1,5 @@
 import { goalIdForVerb, type GoalId } from "./goals.ts";
-import type { CharacterId, StyleId, TraineeStats } from "./types.ts";
+import type { CharacterId, GoalMark, StyleId, TraineeStats } from "./types.ts";
 
 export type OutingGrade = "A" | "C" | "D" | "G";
 
@@ -71,15 +71,15 @@ const RAW_BIBLE: RawSheet[] = [
     sg: "See 4 pitches at the Gate. An outfield fly at First Light.",
     past: "Her mother grounded into the Series-ending DP in '81. Aoi is not asked to rewrite it in Rookie year.",
     letters:
-      "I was in the upper deck the day you walked twice and scored from second on a bunt — Row J at Lantern Field, behind the first-base chalk. My daughter kept score on a napkin. You were down 3-1 in the seventh, runners on the corners, a 3-1 count, and the pitch came low and away and you just watched it. I had forgotten that was legal. We called you Number One before anyone else did.",
+      "Row J at Lantern Field. My daughter kept score on a napkin and wrote your number before she wrote the count. We called you Number One before the inning was over. She still has the napkin.",
     yearStills: {
-      rookie: "First Light. The ball came low and she was already reading it.",
-      classic: "Lantern Classic. She reached third on a walk, a passed ball, and the steal she was told not to try.",
+      rookie: "First Light. She reached.",
+      classic: "Lantern Classic and Night Classic.",
       senior: "Skyline Series. Three quality at-bats. The third one was for her.",
     },
     unique: "Table-setter. Cleanup Hour belongs to Ember later.",
     walkUp: "First Light",
-    curtainCall: "お立ち台. She does not look at the camera until you nod.",
+    curtainCall: "お立ち台. She's already looking.",
     endings: {
       miss2: "The Academy path closed. She still ran it.",
       lantern: "Lanterns stay lit for the ones who didn't make the Show.",
@@ -273,8 +273,8 @@ const RAW_BIBLE: RawSheet[] = [
     letters:
       "My daughter has been to the Palms seventeen times this summer because of you specifically and she keeps a chart: your at-bats, the count when you first looked at the coach, the count when you went. On a 1-1 in the sixth you went anyway — two outs, runner on third — and Bernardi, the catcher, did not throw. She asked why. I said because he knew.",
     yearStills: {
-      rookie: "First Light. She got to second on the walk and the first pitch to the next batter.",
-      classic: "Lantern Classic. Stolen base in the seventh. The crowd stood before she touched the bag.",
+      rookie: "First Light. She stole second and kept going.",
+      classic: "Lantern Classic. She scored from first and kept going.",
       senior: "Finale. Stolen third in the ninth. She was past it before anyone called it.",
     },
     unique: "First-to-third green light.",
@@ -309,6 +309,146 @@ export function sheet(id: CharacterId) {
   return BIBLE.find((c) => c.id === id)!;
 }
 
+const ONE_PUNCHOUT = "One punchout. The date asked for three.";
+const TWO_PUNCHOUTS = "Two punchouts. The date asked for three.";
+const NO_PUNCHOUTS = "The outs are in. The punchouts weren't.";
+
+/** The First Light card, when the date already said how many punchouts came. */
+export function lightCardFrom(line: string | null | undefined): string | null {
+  if (line === ONE_PUNCHOUT || line === TWO_PUNCHOUTS || line === NO_PUNCHOUTS) return line;
+  return null;
+}
+
+/** A First Light miss keeps the punchouts she actually got. */
+export function firstLightStill(card?: string | null): string {
+  if (card === ONE_PUNCHOUT || card === TWO_PUNCHOUTS) return card;
+  return "The punchouts weren't there.";
+}
+
+/** The year-end still names the date she just sat. A miss does not borrow a steal. */
+export function yearStillLine(
+  id: CharacterId,
+  turn: number,
+  results: readonly GoalMark[],
+  defining?: { kind: string; outcome: string; pitches: { result: string }[] } | null,
+  lightCard?: string | null,
+) {
+  const who = sheet(id);
+  if (id === "yuki" && turn <= 20) {
+    if (results[1] === "missed") return "First Light. The steal didn't come.";
+    if (results[1] === "met") return "First Light. She stole second.";
+  }
+  if (id === "yuki" && turn <= 40) {
+    if (results[2] === "met") return who.yearStills.classic;
+    if (results[3] === "met") return "Night Classic. She reached twice.";
+    return "Lantern Classic and Night Classic. Neither date held.";
+  }
+  if (id === "yuki" && turn > 40) {
+    const stretch = results[4];
+    const series = results[5];
+    const finale = results[6];
+    if (stretch === "missed" && series === "missed" && finale !== "met" && finale !== "missed") {
+      return "The Stretch and Skyline Series. Neither date held.";
+    }
+    if (stretch === "missed" && series === "missed" && finale === "missed") {
+      return "The Stretch, Skyline Series, and Diamond Finale. None of the dates held.";
+    }
+    const bits: string[] = [];
+    if (stretch === "met") bits.push("The Stretch. She stole late.");
+    else if (stretch === "missed") bits.push("The Stretch. The late steal didn't come.");
+    if (series === "met") bits.push("Skyline Series. She scored without a hit.");
+    else if (series === "missed") bits.push("Skyline Series. The run without a hit didn't come.");
+    if (finale === "met") bits.push("Diamond Finale. She stole with a runner in scoring position.");
+    else if (finale === "missed") bits.push("Diamond Finale. The steal with a runner in scoring position didn't come.");
+    if (bits.length) return bits.join(" ");
+  }
+  if (id === "aoi" && turn <= 20) {
+    if (results[1] === "missed") return "First Light. She didn't reach.";
+    if (results[1] === "met") {
+      const pa = defining?.kind === "first-light" ? defining : null;
+      const single = pa?.pitches.some((p) => p.result === "single") ?? false;
+      if (pa?.outcome === "She scored." && single) return "First Light. She singled and scored.";
+      if (pa?.outcome === "She scored.") return "First Light. She scored.";
+      return who.yearStills.rookie;
+    }
+  }
+  if (id === "aoi" && turn <= 40) {
+    const lantern = results[2] === "met";
+    const night = results[3] === "met";
+    if (lantern && night) return "Lantern Classic. She drove in a run. Night Classic. She reached twice.";
+    if (lantern) return "Lantern Classic. She drove in a run. Night Classic didn't.";
+    if (night) return "Night Classic. She reached twice. Lantern Classic didn't.";
+    return "Lantern Classic and Night Classic. Neither date held.";
+  }
+  if (id === "reina" && turn <= 20) {
+    const gate = results[0] === "met";
+    const light = results[1] === "met";
+    if (gate && light) return "The Gate. Three outs. First Light. Three punchouts.";
+    if (gate) return `The Gate. Three outs. First Light. ${firstLightStill(lightCard)}`;
+    if (light) return "The Gate didn't hold. First Light. Three punchouts.";
+    return "The Gate and First Light. Neither date held.";
+  }
+  if (id === "reina" && turn <= 40) {
+    const lantern = results[2] === "met";
+    const night = results[3] === "met";
+    if (lantern && night) return "Lantern Classic. Five innings. Three runs or fewer. Night Classic. Two punchouts, back to back.";
+    if (lantern) return "Lantern Classic. Five innings. Three runs or fewer. Night Classic. The punchouts didn't come back to back.";
+    if (night) return "Night Classic. Two punchouts, back to back. Lantern Classic. She didn't get the five innings.";
+    return "Lantern Classic. She didn't get the five innings. Night Classic. The punchouts didn't come back to back.";
+  }
+  if (id === "sol" && turn <= 20) {
+    const gate = results[0] === "met";
+    const light = results[1] === "met";
+    if (gate && light) return "The Gate. Three outs. First Light. Three punchouts.";
+    if (gate) return `The Gate. Three outs. First Light. ${firstLightStill(lightCard)}`;
+    if (light) return "The Gate didn't hold. First Light. Three punchouts.";
+    return "The Gate and First Light. Neither date held.";
+  }
+  if (id === "sol" && turn <= 40) {
+    const lantern = results[2] === "met";
+    const night = results[3] === "met";
+    if (lantern && night) return "Lantern Classic. Five innings. Three runs or fewer. Night Classic. Two punchouts, back to back.";
+    if (lantern) return "Lantern Classic. Five innings. Three runs or fewer. Night Classic. The punchouts didn't come back to back.";
+    if (night) return "Night Classic. Two punchouts, back to back. Lantern Classic. She didn't get the five innings.";
+    return "Lantern Classic. She didn't get the five innings. Night Classic. The punchouts didn't come back to back.";
+  }
+  if (id === "kira" && turn <= 20) {
+    const gate = results[0] === "met";
+    const light = results[1] === "met";
+    if (gate && light) return "The Gate. Three outs. First Light. The lead held.";
+    if (gate) return "The Gate. Three outs. First Light. The lead is gone.";
+    if (light) return "The Gate didn't hold. First Light. The lead held.";
+    return "The Gate and First Light. Neither date held.";
+  }
+  if (id === "kira" && turn <= 40) {
+    const lantern = results[2] === "met";
+    const night = results[3] === "met";
+    if (lantern && night) return "Lantern Classic. She struck out the side. Night Classic. She came in with runners and stranded them.";
+    if (night) return "Lantern Classic. The side wasn't struck out. Night Classic. She came in with runners and stranded them.";
+    if (lantern) return "Lantern Classic. She struck out the side. Night Classic. The runners scored.";
+    return "Lantern Classic. The side wasn't struck out. Night Classic. The runners scored.";
+  }
+  if (id === "miki" && turn <= 20) {
+    const gate = results[0] === "met";
+    const light = results[1] === "met";
+    if (gate && light) return "The Gate. Three pitches in one look. First Light. She didn't strike out.";
+    if (gate) return "The Gate. Three pitches in one look. First Light. She struck out.";
+    if (light) return "The Gate didn't hold. First Light. She didn't strike out.";
+    return "The Gate and First Light. Neither date held.";
+  }
+  if (id === "miki" && turn <= 40) {
+    const lantern = results[2] === "met";
+    const night = results[3] === "met";
+    if (lantern && night) return "Lantern Classic. She fouled one off with two strikes. Night Classic. She took it to 3-2.";
+    if (lantern) return "Lantern Classic. She fouled one off with two strikes. Night Classic. The count never got to 3-2.";
+    if (night) return "Night Classic. She took it to 3-2. Lantern Classic. The two-strike foul didn't come.";
+    return "Lantern Classic. The two-strike foul didn't come. Night Classic. The count never got to 3-2.";
+  }
+  if (turn <= 20) return who.yearStills.rookie;
+  if (turn <= 40) return who.yearStills.classic;
+  return who.yearStills.senior;
+}
+
 /** The official date on this turn, if any. */
 export function officialFor(id: CharacterId, turn: number) {
   return sheet(id).official.find((g) => g.turn === turn) ?? null;
@@ -319,10 +459,10 @@ export function isPitcherStyle(style: StyleId) {
 }
 
 export function outingCopy(grade: OutingGrade) {
-  if (grade === "A") return "She goes the distance. Featured games run 10–14 minutes.";
-  if (grade === "D") return "Sprint closer. Games run under 4 minutes.";
+  if (grade === "A") return "She goes the distance. The date stays until the inning is hers.";
+  if (grade === "D") return "The ninth only.";
   if (grade === "G") return "The long fight. Guts when trailing.";
-  return "Standard outing. Featured games run 4–7 minutes.";
+  return "Guts turns on in high leverage.";
 }
 
 export type PortraitMood = "neutral" | "focused" | "elated" | "crushed";
@@ -347,6 +487,46 @@ export function practiceSrc(id: CharacterId, mood: PortraitMood = "neutral") {
   const stem = `${portraitFile(id)}-practice`;
   if (mood === "neutral") return `/characters/${stem}.png`;
   return `/characters/${stem}-${mood}.png`;
+}
+
+/** The year stands her on film, not a practice portrait. */
+export function careerFilmSrc(id: CharacterId) {
+  return `/art/action/${id}/${isPitcherStyle(sheet(id).style) ? "set" : "stance"}.webp`;
+}
+
+/** A talking beat uses the same plate stills as the year, never a cutout. */
+export function sceneFilmSrc(id: CharacterId, mood: PortraitMood = "neutral") {
+  const pitcher = isPitcherStyle(sheet(id).style);
+  if (mood === "elated") return `/art/action/${id}/${pitcher ? "follow" : "celebrate"}.webp`;
+  if (mood === "crushed") return `/art/action/${id}/${pitcher ? "follow" : "crushed"}.webp`;
+  if (mood === "focused") return `/art/action/${id}/${pitcher ? "set" : "load"}.webp`;
+  return careerFilmSrc(id);
+}
+
+/** Winning Live still. Authored film, not a portrait cutout. */
+export function endingFilmSrc(id: CharacterId, ending: "S" | "A" | "B" | "C" | "D" | "never-quit") {
+  const pitcher = isPitcherStyle(sheet(id).style);
+  if (ending === "S" || ending === "A" || ending === "never-quit") {
+    return `/art/action/${id}/${pitcher ? "follow" : "celebrate"}.webp`;
+  }
+  if (ending === "D" || ending === "C") {
+    return `/art/action/${id}/${pitcher ? "follow" : "crushed"}.webp`;
+  }
+  return `/art/action/${id}/${pitcher ? "set" : "follow"}.webp`;
+}
+
+/**
+ * Looping money clip under the Winning Live still.
+ * A pitcher B stands on the set still. A walk clip would cover the rubber.
+ */
+export function endingClipSrc(id: CharacterId, ending: "S" | "A" | "B" | "C" | "D" | "never-quit"): string | null {
+  const pitcher = isPitcherStyle(sheet(id).style);
+  if (ending === "S" || ending === "A" || ending === "never-quit") {
+    return pitcher ? `/art/action/${id}/k.webm` : `/art/action/${id}/hr.webm`;
+  }
+  if (ending === "D" || ending === "C") return pitcher ? `/art/action/${id}/walk.webm` : `/art/action/${id}/k.webm`;
+  if (pitcher) return null;
+  return `/art/action/${id}/walk.webm`;
 }
 
 export function portraitMood(opts: {

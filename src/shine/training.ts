@@ -1,4 +1,4 @@
-import { clamp } from "../game/data.ts";
+import { clamp } from "./core/rng.ts";
 import { sheet } from "./bible.ts";
 import type { StationId, TraineeRun, TraineeStatKey, TrainOutcome } from "./types.ts";
 

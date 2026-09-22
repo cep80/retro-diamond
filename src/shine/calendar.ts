@@ -1,4 +1,4 @@
-import type { TurnType } from "./types.ts";
+import type { StyleId, TurnType } from "./types.ts";
 
 export interface CalendarBeat {
   turn: number;
@@ -49,6 +49,15 @@ export function turnMeta(turn: number) {
   return CAREER_CALENDAR[turn - 1] ?? CAREER_CALENDAR[0]!;
 }
 
+/** The date name the Coach sees. Work is a morning. Pitchers do not get a cage night. */
+export function dateLabel(beat: Pick<CalendarBeat, "type" | "label">, style: StyleId): string {
+  const pitcher = style === "ace" || style === "closer";
+  if (pitcher && beat.type === "tutorial-plate") return "Practice in the Bullpen";
+  if (pitcher && beat.type === "mentor-event") return "Bullpen Coach";
+  if (beat.type === "work" || beat.type === "semi-free") return "Morning";
+  return beat.label;
+}
+
 export function looksUnlocked(turn: number) {
   return turn > 5;
 }
@@ -67,6 +76,17 @@ export function yearOf(turn: number): 1 | 2 | 3 {
   return 3;
 }
 
+export const PLATE_TURNS: TurnType[] = [
+  "tutorial-plate",
+  "gate",
+  "first-light",
+  "lantern-classic",
+  "night-classic",
+  "stretch",
+  "series",
+  "finale",
+];
+
 export function nextOfficial(turn: number) {
   const upcoming = CAREER_CALENDAR.find(
     (b) =>
@@ -82,21 +102,39 @@ export function nextOfficial(turn: number) {
   return upcoming ?? CAREER_CALENDAR[CAREER_CALENDAR.length - 1]!;
 }
 
+/** The next beat the Coach sits — year-end and year doors, not only the next plate. */
+export function nextNamedBeat(turn: number) {
+  const upcoming = CAREER_CALENDAR.find(
+    (b) =>
+      b.turn > turn &&
+      (PLATE_TURNS.includes(b.type) || b.type === "forced-scene" || b.type === "year-start"),
+  );
+  return upcoming ?? CAREER_CALENDAR[CAREER_CALENDAR.length - 1]!;
+}
+
+/** How far the next date is, in the Coach's language. */
+export function daysAwayLabel(n: number): string {
+  if (n <= 0) return "today";
+  if (n === 1) return "1 day";
+  return `${n} days`;
+}
+
+/** After-PA / campus line: what happens next, in days. */
+export function nextDateLine(fromTurn: number, lastType?: TurnType): string {
+  if (lastType === "finale") return "The year is over. Hold the still.";
+  const next = nextNamedBeat(fromTurn);
+  const left = next.turn - fromTurn;
+  if (next.type === "forced-scene") {
+    return left <= 1 ? `${next.label} is tomorrow.` : `${next.label} is in ${daysAwayLabel(left)}.`;
+  }
+  if (next.type === "year-start") return `${next.label} is in ${daysAwayLabel(Math.max(1, left))}.`;
+  return `${next.label} is in ${daysAwayLabel(Math.max(1, left))}.`;
+}
+
 /** Turn 4 card. Names the next date. Never a formula tooltip. */
 export function calendarPeekLine(turn: number) {
   const next = nextOfficial(turn);
   const left = next.turn - turn;
-  if (left <= 1) return `${next.label} is in 1 turn.`;
-  return `${next.label} is in ${left} turns.`;
+  if (left <= 1) return `${next.label} is in 1 day.`;
+  return `${next.label} is in ${left} days.`;
 }
-
-export const PLATE_TURNS: TurnType[] = [
-  "tutorial-plate",
-  "gate",
-  "first-light",
-  "lantern-classic",
-  "night-classic",
-  "stretch",
-  "series",
-  "finale",
-];

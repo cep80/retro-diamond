@@ -2,10 +2,10 @@
  * Diamond Shine plate oracle. Pure formulas from GD circle-up #1 §4.
  * Does not import GM Player types or engine HUD.
  */
-import { clamp } from "../game/data.ts";
-import { CENTER, CONTACT_WINDOW, POWER_WINDOW, deliveryWindows, locationError, windowMiss, type Cell, type Loc } from "../game/plate.ts";
+import { clamp } from "./core/rng.ts";
+import { CENTER, CONTACT_WINDOW, POWER_WINDOW, deliveryWindows, locationError, windowMiss, type Cell, type Loc } from "./core/zone.ts";
 import { protectSaves, type CallMods } from "./duel.ts";
-import type { DeliveryWindows } from "../game/plate.ts";
+import type { DeliveryWindows } from "./core/zone.ts";
 
 import type { Spark, StyleId } from "./types.ts";
 import { sparkCount } from "./ending.ts";
@@ -207,6 +207,11 @@ export function resolveContact(
       return { quality: 0.1, locationQ: 0, timingQ: 0, reach: true, hr: false, foul: true, foulKind: "pull" };
     }
     return { ...miss, timingQ };
+  }
+  if (mods.foulBand != null && timingQ < mods.foulBand) {
+    // Mistimed but on it: late clips it back, early pulls it.
+    const foulKind: FoulKind = timingErr > 0 ? "tip" : "pull";
+    return { quality: 0.1, locationQ: 0, timingQ, reach: true, hr: false, foul: true, foulKind };
   }
   const locErr = locationError(aimCell, actualLoc);
   const barrel = (barrelRadius(contact) + styleBarrelBonus(style, powerSwing)) * (mods.barrelMult ?? 1);

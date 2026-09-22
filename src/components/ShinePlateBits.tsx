@@ -3,8 +3,48 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
 import { portraitSrc } from "@/shine/bible.ts";
+import type { Cell } from "@/shine/core/zone.ts";
 import type { Bases } from "@/shine/events.ts";
 import { rivalPortraitId, type ScoutingReport } from "@/shine/rivals.ts";
+
+function cellKey(c: Cell) {
+  return `${c.row}-${c.col}`;
+}
+
+/** Glass 3×3 on her body. Heat marks stay off. */
+export function SitZone({
+  aim,
+  onSit,
+  ghost,
+  label,
+}: {
+  aim: Cell;
+  onSit: (c: Cell) => void;
+  ghost: Cell | null;
+  label: string;
+}) {
+  return (
+    <div className="shine-sit-plate" role="grid" aria-label={label}>
+      {[0, 1, 2].map((row) =>
+        [0, 1, 2].map((col) => {
+          const cell = { row: row as 0 | 1 | 2, col: col as 0 | 1 | 2 };
+          const on = cellKey(aim) === cellKey(cell);
+          const ghostHere = ghost !== null && cellKey(ghost) === cellKey(cell);
+          return (
+            <button
+              key={cellKey(cell)}
+              type="button"
+              aria-pressed={on}
+              aria-label={`${label} ${row + 1} ${col + 1}`}
+              className={`shine-sit-cell ${ghostHere ? "shine-ghost-cell" : ""}`}
+              onClick={() => onSit(cell)}
+            />
+          );
+        }),
+      )}
+    </div>
+  );
+}
 
 export type PauseReason = "user" | "hidden" | null;
 
@@ -55,11 +95,13 @@ export function PauseOverlay({
   onResume,
   onSettings,
   onTitle,
+  resumeLabel = "Back in the box",
 }: {
   reason: PauseReason;
   onResume: () => void;
   onSettings: () => void;
   onTitle: () => void;
+  resumeLabel?: string;
 }) {
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-ink/80 p-6" role="dialog" aria-modal="true" aria-label="Paused">
@@ -73,7 +115,7 @@ export function PauseOverlay({
         </p>
         <div className="mt-4 flex flex-col gap-2">
           <PixelBtn className="h-12" onClick={onResume}>
-            Back in the box
+            {resumeLabel}
           </PixelBtn>
           <PixelBtn variant="ghost" className="h-11" onClick={onSettings}>
             Settings

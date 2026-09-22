@@ -20,6 +20,7 @@ describe("action art: rendered manifest", { skip: manifest ? false : "no public/
 
   it("is version 1 with a render date", () => {
     assert.equal(m.version, 1);
+    assert.equal(m.film, "hybrid-e");
     assert.ok(!Number.isNaN(Date.parse(m.renderedAt)), m.renderedAt);
   });
 

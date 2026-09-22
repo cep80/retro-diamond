@@ -91,22 +91,24 @@ Everything here is pacing and legibility over the locked work math and calendar.
 
 ## 3. Phase 2 — Action images and anime clips (the race view, replaced)
 
-The 3D exhibition is retired as a live mode. The controller, the cue system, the pace, and the 24 fps clip fix stay. The Blender heroes become a render farm.
+The 3D exhibition is retired as a live mode. The controller, the cue system, the pace, and the 24 fps clip fix stay. The Blender heroes / flagged live scene become a **render farm**. Featured presentation is **Hybrid E** (cue → multi-angle cards). Binding film language: [`diamond-shine-pa-film-2026-09-17.md`](diamond-shine-pa-film-2026-09-17.md). **Side-scroll (B) is mini-games only** — not the career plate camera.
 
-### 3.1 Cue → picture
+### 3.1 Cue → picture (Hybrid E)
 
-| Cue | What draws |
-|---|---|
-| prepare | Pitcher key visual, wind-up pose, her book panel. Slow push-in. |
-| flight | Batter key visual in stance from the catcher side; ball as a growing dot on the zone; pitch-type pop at reveal. |
-| Go | Swing cut-in: 3–4 action stills (load, cut, contact) with speed lines and hitstop. Take: coil still with "…" |
-| resolved | Outcome card + verdict line. |
-| money beats | Clip: home run, strikeout, walk-off, Last Spurt, unique firing, curtain call. |
+| Cue | What draws | Angle |
+|---|---|---|
+| prepare | Pitcher key visual, wind-up hold, her book panel. Slow push-in. | Pitcher 3/4 or profile (mitt = mask) |
+| flight | Batter key visual in stance; ball as a growing dot on the zone; pitch-type pop at reveal. Early flight may hold pitcher release. | Batter **3/4** (face / hair / kit). Not full-frame catcher-back as the only plane. |
+| Go | Swing cut-in: 3–4 action stills (load, cut, contact) with speed lines and hitstop. Take: coil still with "…" | Profile / 3/4 action stills |
+| resolved | Outcome card + verdict line (five-family grammar). | Family still |
+| money beats | Clip: home run, strikeout, walk-off, Last Spurt, unique firing, curtain call. | Signature angle per beat |
+
+Night park is a background plate behind the 3:4 card. Catcher-back crops are optional only for Aoi’s #1.
 
 ### 3.2 Asset plan
 
-- **Stills:** 6 girls × ~8 poses (stance, load, cut, contact, follow, take, celebrate, crushed) plus 4 pitcher poses for the arms = ~70 renders. Source: the HY3D heroes in Blender with the toon pass, from the locked catcher angle, cleaned to `STYLE.md`. Same pipeline as portraits.
-- **Clips:** 6 money beats × 6 girls = 36, three to five seconds, contact/release timestamp in a manifest so the runtime aligns them to the resolve cue exactly as the 3D clips were. Sources, in order of trust: Blender toon renders of the heroes (consistent, cheap), hand-animated cut-ins for two signature moments (Aoi's REACH, Kira's door point), generated video only where a still + motion can't sell it and only after a consistency pass.
+- **Stills:** 6 girls × ~8 poses (stance, load, cut, contact, follow, take, celebrate, crushed) plus 4 pitcher poses for the arms = ~70 renders. Source: HY3D heroes with the toon pass from **3/4 and profile** farm cameras (see `diamond-shine-action-farm-angles-2026-09-17.md`), cleaned to `STYLE.md`. Same pipeline as portraits.
+- **Clips:** Full set 6 money beats × 6 girls = 36; **MVP ships 12** (two per girl), three to five seconds, contact/release timestamp in a manifest so the runtime aligns them to the resolve cue. Sources, in order of trust: farm / Blender toon renders (consistent, cheap), hand-animated cut-ins for two signature moments (Aoi's REACH, Kira's door point), generated video only where a still + motion can't sell it and only after a consistency pass.
 - **Budget:** ≤ 6 MB stills total, ≤ 25 MB clips total, lazy per girl. Phone-first.
 
 ### 3.3 Sync rule (unchanged from the plate spec)
@@ -152,9 +154,10 @@ Playtest protocol for every gate: five people, phone, no instructions, screen-re
 | Keep | Retire |
 |---|---|
 | `PlateController`, cues, one pace, `EXHIBITION_PACE` → plate default | Live 3D scene (`Exhibition3D.tsx`) as a shipped mode; keep behind a flag for the render farm |
-| Career locks, work math, calendar, fail clock, fans, sparks, uniques | Frame lanterns, catcher, mitts, the 3D onboarding copy |
-| Blender pipeline, HY3D heroes, `reclip.py`, 24 fps validator | Camera / stance / hold rules in the exhibition docs (superseded) |
-| Weekly / friends / replays schema | Timing-meter-only plate |
+| Career locks, work math, calendar, fail clock, fans, sparks, uniques | Frame lanterns, catcher, mitts, the 3D onboarding copy as product UX |
+| Action art (`action-art.ts`, `ActionStage`), Hybrid E PA film bible | Catcher-cam-only / “no cuts” as the shipped plate language |
+| Blender / farm pipeline, HY3D heroes, `reclip.py`, 24 fps validator | Timing-meter-only plate |
+| Weekly / friends / replays schema | Side-scroll as career PA (parked for mini-games) |
 
 ---
 

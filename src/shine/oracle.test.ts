@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { makeRng } from "../game/data.ts";
+import { makeRng } from "./core/rng.ts";
 import {
   barrelRadius,
   buntSuccessChance,
@@ -31,7 +31,7 @@ import {
   witLastPitchUnlock,
   CENTER,
 } from "./oracle.ts";
-import { cellLoc } from "../game/plate.ts";
+import { cellLoc } from "./core/zone.ts";
 
 describe("shine oracle", () => {
   it("widens the contact window as Contact rises", () => {

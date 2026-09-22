@@ -1,8 +1,9 @@
 /**
  * Ace three-act and Closer in-medias-res featured games.
- * Player throws; CPU bats. Kick + release from the oracle, not the GM engine HUD.
+ * The Coach sits the glove and picks the pitch; she throws. Kick and release
+ * come from her sheet (`decideDelivery`), not a tap.
  */
-import { hashId, makeRng, clamp } from "../game/data.ts";
+import { hashId, makeRng, clamp } from "./core/rng.ts";
 import {
   arsenal,
   cellLoc,
@@ -15,9 +16,10 @@ import {
   windowMiss,
   type Cell,
   type Loc,
-} from "../game/plate.ts";
-import type { ParkId, PitchType } from "../game/types.ts";
-import { parkById } from "../game/parks.ts";
+} from "./core/zone.ts";
+import type { ParkId } from "./core/parks.ts";
+import type { PitchType } from "./core/zone.ts";
+import { parkById } from "./core/parks.ts";
 import { traineePitcher } from "./actors.ts";
 import { officialFor, sheet } from "./bible.ts";
 import { datePark } from "./culture.ts";
@@ -32,11 +34,13 @@ import {
   leverageIndex,
   resolveContact,
 } from "./oracle.ts";
+import { gaussianFrom, statSigma } from "./duel.ts";
+import type { FieldBeat, GameKind } from "./featured-game.ts";
 import { hitterAdaptation, pitcherRivalBat, recordPitcherTell, rivalLineup } from "./rivals.ts";
-import type { GameKind } from "./featured-game.ts";
 import { EMPTY_TELLS, type Tells, type TraineeRun } from "./types.ts";
 
 export const ACE_ACT1_BATTERS = 6;
+
 export const DELIVERY_DUR = 1.2;
 
 export interface PitchingGame {
@@ -104,34 +108,47 @@ function tickPitcherSg(_run: TraineeRun, game: PitchingGame) {
 function noteCallback(run: TraineeRun, game: PitchingGame, what: "stuff" | "control" | "stamina" | "guts" | "wit") {
   if (game.callback || !run.lastWork || game.kind === "practice") return;
   if (run.lastWork.stat !== what) return;
-  const to = run.lastWork.to;
   game.callback =
     what === "stuff"
-      ? `Side work. That one bit. Stuff ${to}.`
+      ? "Bullpen. That one bit."
       : what === "control"
-        ? `Bullpen. The glove was a target. Control ${to}.`
+        ? "Bullpen. The glove was a target."
         : what === "stamina"
-          ? `The poles. She still has the arm. Stamina ${to}.`
+          ? "The poles. She still has the arm."
           : what === "guts"
-            ? `Situational. Runners on, and the window held. Guts ${to}.`
-            : `Charting. She knew what he was sitting on. Wit ${to}.`;
+            ? "Situational. Runners on, and the window held."
+            : "Charting. She knew what he was sitting on.";
 }
 
 function stagePark(run: TraineeRun, kind: string) {
   return parkById(datePark(kind, sheet(run.characterId).parkId) as ParkId);
 }
 
-function closerSit(kind: GameKind, r: () => number) {
+function closerSit(kind: GameKind, r: () => number, pgId: PitcherPgId | null) {
   if (kind === "practice") {
     return { inning: 1, outs: 0, scoreDiff: 0, runners: 0, inherited: 0 };
   }
   if (kind === "gate" || kind === "first-light") {
     return { inning: 9, outs: 0, scoreDiff: 1, runners: 0, inherited: 0 };
   }
+  if (pgId === "strand-inherited") {
+    if (r() < 0.67) return { inning: 9, outs: 0, scoreDiff: 1, runners: 1, inherited: 1 };
+    return { inning: 8, outs: 0, scoreDiff: 2, runners: 2, inherited: 2 };
+  }
+  if (pgId === "four-out") return { inning: 8, outs: 2, scoreDiff: 1, runners: 0, inherited: 0 };
+  if (pgId === "clean-ninth") return { inning: 9, outs: 0, scoreDiff: 1, runners: 0, inherited: 0 };
+  if (pgId === "k-side") return { inning: 9, outs: 0, scoreDiff: 1, runners: 0, inherited: 0 };
   const roll = r();
   if (roll < 0.7) return { inning: 9, outs: 0, scoreDiff: 1 + Math.floor(r() * 3), runners: 0, inherited: 0 };
   if (roll < 0.9) return { inning: 9, outs: 0, scoreDiff: 1, runners: 1, inherited: 1 };
   return { inning: 8, outs: 0, scoreDiff: 2, runners: 2, inherited: 2 };
+}
+
+function aceSit(pgId: PitcherPgId | null) {
+  if (pgId === "escape-jam") return { inning: 7, outs: 0, scoreDiff: 0, runners: 2, inherited: 0 };
+  if (pgId === "escape-loaded-jam") return { inning: 7, outs: 0, scoreDiff: 0, runners: 3, inherited: 0 };
+  if (pgId === "k-side") return { inning: 9, outs: 0, scoreDiff: 1, runners: 0, inherited: 0 };
+  return null;
 }
 
 function batterFor(run: TraineeRun, game: Pick<PitchingGame, "battersFaced" | "kind">) {
@@ -143,9 +160,9 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
   const who = sheet(run.characterId);
   const role = who.style === "closer" ? "closer" : "ace";
   const r = makeRng(hashId(`${run.rngSeed}|${kind}|mound`));
-  const sit = role === "closer" ? closerSit(kind, r) : { inning: 1, outs: 0, scoreDiff: 0, runners: 0, inherited: 0 };
   const official = officialFor(run.characterId, run.turn);
   const pgId = official && isPitcherPg(official.pgId) ? official.pgId : null;
+  const sit = role === "closer" ? closerSit(kind, r, pgId) : (aceSit(pgId) ?? { inning: 1, outs: 0, scoreDiff: 0, runners: 0, inherited: 0 });
   const sgId = official && isPitcherSg(official.sgId) ? official.sgId : null;
   const tells = run.tells ?? EMPTY_TELLS;
   const batter = rivalLineup({ characterId: run.characterId, year: run.year }, 0);
@@ -185,10 +202,36 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
     done: false,
     banner:
       kind === "practice"
-        ? "Kick, then release. The glove is the window."
+        ? "Sit the glove. Then Go."
         : role === "closer"
-          ? "Ninth. HOLD the lead."
-          : "COMMAND. One time through.",
+          ? pgId === "k-side"
+            ? "Ninth. Strike out the side."
+            : pgId === "four-out"
+              ? "Two outs. HOLD the lead."
+              : kind === "gate"
+                ? "Three outs. The Gate opens."
+                : pgId === "strand-inherited"
+                  ? "Runners on. Strand them."
+                  : sit.inherited > 0
+                    ? "Runners on. HOLD the lead."
+                    : "Ninth. HOLD the lead."
+          : pgId === "escape-loaded-jam"
+            ? "Bases loaded. The inning has to end."
+            : pgId === "escape-jam"
+              ? "Runners on. The inning has to end."
+              : pgId === "k-side"
+                ? "Ninth. Strike out the side."
+                : pgId === "innings-5"
+                  ? "Five innings. Three runs or fewer."
+                  : pgId === "quality-start"
+                    ? "Six innings. Three runs or fewer."
+                    : pgId === "k-3"
+                      ? "Three punchouts."
+                      : pgId === "k-consecutive"
+                        ? "Two punchouts, back to back."
+                        : kind === "gate"
+                          ? "Three outs. The Gate opens."
+                          : "COMMAND. One time through.",
     simLog: [],
     hotCell: hot,
     consecutiveInnings: 1,
@@ -232,6 +275,50 @@ export function pitchingArsenal(run: TraineeRun) {
   return arsenal(traineePitcher(run, false, 1)).map((p) => p.type);
 }
 
+/** She picks the pitch. The Coach sits the glove. */
+export function decidePitch(run: TraineeRun, game: PitchingGame): PitchType {
+  const mix = pitchingArsenal(run);
+  const r = makeRng(hashId(`${run.rngSeed}|${game.kind}|p${game.pitchCount}|type`));
+  if (game.count.strikes >= 2) return mix.find((t) => t !== "fastball") ?? mix[0] ?? "fastball";
+  if (game.count.balls === 0 && game.count.strikes === 0) return mix[0] ?? "fastball";
+  return mix[Math.floor(r() * mix.length)] ?? "fastball";
+}
+
+/** Kick and release from her sheet. The Coach sits the glove; nothing is tapped. */
+export interface DeliveryDecision {
+  kickT: number;
+  releaseT: number;
+}
+
+/** Stuff makes the swing miss. The fastball less than the other three. */
+export function stuffWhiff(stuff: number, type: PitchType, fatigueStuff = 1): number {
+  const bite = type === "fastball" ? 3.4 : 5.2;
+  return 1 + (clamp(stuff, 1, 20) / 20) * fatigueStuff * bite;
+}
+
+export function decideDelivery(run: TraineeRun, game: PitchingGame, type: PitchType, target: Cell): DeliveryDecision {
+  const windows = pitchingWindows(run, game);
+  const r = makeRng(hashId(`${run.rngSeed}|${game.kind}|p${game.pitchCount}|${type}|${target.row}${target.col}|race`));
+  const first = game.count.balls === 0 && game.count.strikes === 0;
+  const p = traineePitcher(run, first, game.consecutiveInnings);
+  const fat = fatigue(p, game.pitchCount);
+  const control = p.control * fat.control;
+  const onHot = Boolean(game.hotCell && game.hotCell.row === target.row && game.hotCell.col === target.col);
+  const sigma = statSigma(control) * (onHot ? 0.55 : 1);
+  return {
+    kickT: clamp(windows.kick.at + gaussianFrom(r) * sigma, 0, DELIVERY_DUR),
+    releaseT: clamp(windows.release.at + gaussianFrom(r) * sigma, 0, DELIVERY_DUR),
+  };
+}
+
+/** The field beat ActionStage already knows, from the mound beat. */
+export function moundFieldBeat(beat: MoundBeat): FieldBeat | null {
+  if (beat === "none") return null;
+  if (beat === "out") return "fly-out";
+  if (beat === "hit") return "single";
+  return beat;
+}
+
 function evaluatePg(_run: TraineeRun, game: PitchingGame) {
   if (game.kind === "practice") return true;
   if (game.pgId) return evalPitcherPg(game.pgId, goalView(game));
@@ -270,6 +357,22 @@ function recordK(game: PitchingGame) {
   game.maxKStreak = Math.max(game.maxKStreak, game.kStreak);
 }
 
+/** Innings the date asked her to sit. Null when the ask is not a length. */
+function satInningsOuts(game: PitchingGame): number | null {
+  if (game.pgId === "innings-5") return 15;
+  if (game.pgId === "quality-start") return 18;
+  return null;
+}
+
+/** A pull only counts if it happens on a batter she faced. */
+function livePull(run: TraineeRun, game: PitchingGame): "arm" | "runs" | null {
+  const p = traineePitcher(run, false, game.consecutiveInnings);
+  if (fatigue(p, game.pitchCount).tank < 0.22) return "arm";
+  const ip = game.inningsOuts / 3;
+  if (game.outs === 0 && ip >= 1 && game.earnedRuns / ip > 6) return "runs";
+  return null;
+}
+
 function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   game.count = { balls: 0, strikes: 0 };
   game.battersFaced += 1;
@@ -281,8 +384,12 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   const gateDone = game.kind === "gate" && game.outsRecorded >= 3;
   const practiceDone = game.kind === "practice" && game.pitchCount >= 3;
   const act1Done = game.role === "ace" && game.act === 1 && game.battersFaced >= ACE_ACT1_BATTERS;
-  const kGoalDone = game.pgId === "k-3" && game.strikeouts >= 3;
+  const kGoalDone =
+    (game.pgId === "k-3" && game.strikeouts >= 3) || (game.pgId === "k-consecutive" && game.maxKStreak >= 2);
   const closerDone = game.role === "closer" && (game.outsRecorded >= (game.pgId === "four-out" ? 4 : 3) || game.blown);
+  const satOuts = satInningsOuts(game);
+  const jamDate = game.pgId === "escape-jam" || game.pgId === "escape-loaded-jam";
+  const aceSide = game.role === "ace" && game.pgId === "k-side";
 
   if (practiceDone || gateDone || kGoalDone || closerDone) {
     game.done = true;
@@ -294,24 +401,51 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
       : game.kind === "gate"
         ? "The Gate still opens."
         : game.role === "closer"
-          ? "Blown. The lead is gone."
-          : "Primary Goal slips.";
+          ? game.blown
+            ? "Blown. The lead is gone."
+            : "HOLD slipped."
+          : "The goal slipped.";
     tickPitcherSg(run, game);
     return;
   }
 
-  if (act1Done && game.kind !== "practice" && game.kind !== "gate" && game.kind !== "first-light") {
-    game.act = 2;
-    game.banner = "Innings 2–5. The middle.";
-    game.simLog = ["The lineup turns. She stays on."];
+  if (satOuts != null) {
+    const pull = game.inningsOuts < satOuts ? livePull(run, game) : null;
+    if (game.inningsOuts >= satOuts || pull) {
+      game.lifted = pull != null;
+      if (pull === "arm") game.simLog = [`Inn ${game.inning}: lifted. The arm is gone.`];
+      if (pull === "runs") game.simLog = ["ERA crossed 6. She's lifted."];
+      game.done = true;
+      game.pgMet = evaluatePg(run, game);
+      game.banner = pull ? "Pulled. The bullpen takes it." : game.pgMet ? "COMMAND." : "The goal slipped.";
+      tickPitcherSg(run, game);
+      return;
+    }
+    game.banner = "Next batter.";
     tickPitcherSg(run, game);
     return;
   }
 
-  if (act1Done) {
+  if (jamDate && (game.earnedRuns > 0 || game.inning > 7)) {
     game.done = true;
     game.pgMet = evaluatePg(run, game);
-    game.banner = game.pgMet ? "COMMAND." : "Primary Goal slips.";
+    game.banner = game.pgMet ? "COMMAND." : "The goal slipped.";
+    tickPitcherSg(run, game);
+    return;
+  }
+
+  if (aceSide && game.outsRecorded >= 3) {
+    game.done = true;
+    game.pgMet = evaluatePg(run, game);
+    game.banner = game.pgMet ? "COMMAND." : "The goal slipped.";
+    tickPitcherSg(run, game);
+    return;
+  }
+
+  if (act1Done && !jamDate && !aceSide) {
+    game.done = true;
+    game.pgMet = evaluatePg(run, game);
+    game.banner = game.pgMet ? "COMMAND." : "The goal slipped.";
     tickPitcherSg(run, game);
     return;
   }
@@ -435,6 +569,8 @@ export function resolveDelivery(
 
   if (game.kind === "practice") {
     const ok = release < 0.45 && kick < 0.45;
+    push(game.events, { t: "pitch", pa: game.battersFaced, n: game.pitchCount, type, inZone: ok });
+    push(game.events, { t: "take", pa: game.battersFaced, strike: ok });
     game.banner = ok ? "That's the glove." : "Missed the window.";
     if (ok) game.sgMet = true;
     if (game.pitchCount >= 3) {
@@ -462,7 +598,7 @@ export function resolveDelivery(
     if (inZone) {
       game.count.strikes += 1;
       if (type === "curve") game.curveForStrike = true;
-      game.banner = "Take. Strike.";
+      game.banner = "Strike. Looking.";
       push(game.events, { t: "take", pa: game.battersFaced, strike: true });
       if (game.count.strikes >= 3) {
         recordK(game);
@@ -494,6 +630,7 @@ export function resolveDelivery(
   }
 
   const li = leverageIndex(game.scoreDiff, game.inning, game.outs, game.runners >= 2, game.count);
+  swing.error *= stuffWhiff(p.stuff, type, fat.stuff);
   const contact = resolveContact(
     swing.error,
     swing.aim,

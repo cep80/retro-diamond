@@ -2,20 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
-import { sfxSelect } from "@/game/audio";
-import { TIMING_ASSIST_FLIGHT, TIMING_ASSIST_WINDOW } from "@/shine/beats.ts";
-import { TIMING_TOLERANCE_MS } from "@/shine/clock.ts";
+import { sfxSelect } from "@/shine/audio.ts";
 import { useShine } from "@/shine/store.ts";
 import { DEFAULT_KEYS, type KeyMap } from "@/shine/types.ts";
 
 const KEY_LABELS: { id: keyof KeyMap; label: string; note: string }[] = [
-  { id: "swing", label: "Swing", note: "Contact swing at the plate." },
-  { id: "power", label: "Power swing", note: "Narrower window, more carry." },
-  { id: "bunt", label: "Bunt", note: "Lay it down." },
-  { id: "contact", label: "Contact (alt)", note: "Second key for the contact swing." },
-  { id: "kick", label: "Kick", note: "Start the delivery on the mound." },
-  { id: "release", label: "Release", note: "Let it go." },
-  { id: "pause", label: "Pause", note: "Freezes the clock. The attempt is saved." },
+  { id: "pause", label: "Pause", note: "Freezes the film. The attempt is saved." },
 ];
 
 function keyName(code: string) {
@@ -92,31 +84,9 @@ export function ShineSettings() {
 
         <section className="mt-4 rounded-2xl border border-line bg-panel/90 p-4">
           <p className="font-display text-[10px] uppercase tracking-widest text-gold">Play</p>
-          <label className="mt-3 flex items-start gap-3 font-ui text-sm">
-            <input type="checkbox" className="mt-1" checked={settings.duel} onChange={(e) => setSettings({ duel: e.target.checked })} />
-            <span>
-              The Duel (preview)
-              <span className="block text-xs text-muted">
-                Call the pitch before it comes: sit a cell, sit hard or soft, protect, or take. Three coach cards a game. Her book opens as you
-                play her. Off keeps the plate exactly as it was.
-              </span>
-            </span>
-          </label>
-          <label className="mt-3 flex items-start gap-3 font-ui text-sm">
-            <input
-              type="checkbox"
-              className="mt-1"
-              checked={settings.timingAssist}
-              onChange={(e) => setSettings({ timingAssist: e.target.checked })}
-            />
-            <span>
-              Timing assist
-              <span className="block text-xs text-muted">
-                Pitches arrive {Math.round((TIMING_ASSIST_FLIGHT - 1) * 100)}% slower and the swing window is {Math.round((TIMING_ASSIST_WINDOW - 1) * 100)}%
-                wider. Goals resolve the same. Rivals read the same tells. Shown on the HUD when it's on.
-              </span>
-            </span>
-          </label>
+          <p className="mt-3 font-ui text-sm text-cream/80">
+            Sit the zone under her. Press Go. Watch her. She picks the pitch. The mound is the same verb. Nothing is timed in flight.
+          </p>
           <label className="mt-3 flex items-start gap-3 font-ui text-sm">
             <input
               type="checkbox"
@@ -154,9 +124,7 @@ export function ShineSettings() {
               Reset
             </button>
           </div>
-          <p className="mt-1 font-ui text-xs text-muted">
-            Pointer and touch always work. Keyboard timing is read at key-down. Tolerance ±{TIMING_TOLERANCE_MS} ms.
-          </p>
+          <p className="mt-1 font-ui text-xs text-muted">Enter or Space is Go. The 3×3 is the sit.</p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {KEY_LABELS.map((k) => (
               <li key={k.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 px-3 py-2">
@@ -197,7 +165,7 @@ export function ShineSettings() {
                     <span>
                       {b.label}
                       <span className="block text-[11px] text-muted">
-                        Turn {b.run.turn} · {new Date(b.at).toLocaleString()}
+                        Day {b.run.turn} · {new Date(b.at).toLocaleString()}
                       </span>
                     </span>
                     {confirmRestore === i ? (
@@ -231,7 +199,7 @@ export function ShineSettings() {
             Done
           </PixelBtn>
           <PixelBtn variant="ghost" className="h-12" onClick={openHelp}>
-            How the plate works
+            How a date works
           </PixelBtn>
         </div>
       </div>
@@ -241,28 +209,32 @@ export function ShineSettings() {
 
 const TEACH_CARDS: { title: string; body: string }[] = [
   {
-    title: "The window",
-    body: "Every pitch has a timing window in milliseconds. Your swing is stamped the instant you press — pointer-down or key-down — against the same clock that moves the ball. Contact grows it. Power shrinks it and adds carry. Guts opens it when the game is on the line.",
+    title: "The race",
+    body: "You are her Coach. Sit a cell on the zone under her, press Go, and watch. She decides the swing from who she is and where you sat her. Nothing is tapped in flight.",
   },
   {
-    title: "The ?",
-    body: "After Live looks open, the pitch starts as a ? and resolves in flight. Eye resolves it earlier. Wit shows more of the pitcher's book on the HUD.",
+    title: "The sit",
+    body: "The 3×3 is where she looks. The right cell tightens her hands. A cell two away leaves her guessing. That is the whole pick.",
   },
   {
-    title: "Goals",
-    body: "Every date has a Primary Goal and a Support Goal. Both are checked against the game's own record — pitches, takes, contact, bases, runs — never against a description. What the card says is exactly what has to happen.",
+    title: "The mound",
+    body: "Reina, Sol, and Kira throw. Sit the glove under her, press Go. She picks the pitch. Same verb as the plate.",
+  },
+  {
+    title: "The date",
+    body: "She came for something: REACH, HOLD, COMMAND, FIGHT, RUN. You watch whether she got it. The smaller ask can hold one miss. A second official miss folds the year.",
   },
   {
     title: "Rivals",
-    body: "Reina, Sol, and Kira pitch differently and read you differently. They only adjust to what you have actually shown them — first-pitch swings, two-strike chases — and the scouting card says what they've seen.",
+    body: "The girl across from her remembers what you have actually shown. She does not read a scouting report you never played.",
   },
   {
-    title: "Pause and recovery",
-    body: "Pause or switching tabs freezes the clock; the ball does not move. If the page closes mid-game, the plate appearance is restored at the last pitch boundary. Backups of the career sit under Settings.",
+    title: "Mood and the shop",
+    body: "The morning shows her mood. One tap, one line. The shop is looks only. Sparks, the plate, Clubhouse cards, the Finale, and Never Quit are never sold.",
   },
   {
     title: "Training",
-    body: "The Coaching decision shows the Need (what the next test asks), the Choice (the station that moves it), and the Next test. After the work, the change is shown in the unit the plate uses. In the game, a chip says when a pitch touched what you worked on.",
+    body: "One station. One line. The countdown to the next date stays on.",
   },
 ];
 
@@ -274,7 +246,7 @@ export function ShineHelp() {
       <div className="title-wash absolute inset-0" />
       <div className="relative z-10 mx-auto max-w-3xl px-4 py-8 sm:px-8">
         <div className="flex items-center justify-between gap-3">
-          <p className="episode-chip w-fit">How the plate works</p>
+          <p className="episode-chip w-fit">How a date works</p>
           <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={closeOverlay}>
             Back
           </PixelBtn>

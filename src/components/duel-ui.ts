@@ -7,7 +7,7 @@ import { BOOK_WIT_2, BOOK_WIT_3, type CoachCardId, type DuelCall, type PitchFami
 import type { ShineSettings } from "../shine/types.ts";
 
 export const DUEL_PROMPT = {
-  first: "Sit on a cell. Then give her the green light in the gold.",
+  first: "Take lets her watch one. Sit hard or soft if you trust the book.",
   twoStrikes: "Two strikes. Protect holds the count.",
 } as const;
 
@@ -39,11 +39,40 @@ export const HAND_KEYS: Record<string, DuelCall> = {
 };
 export const CARD_KEYS: Record<string, CoachCardId> = { KeyQ: "green-light", KeyW: "spurt", KeyE: "her-call" };
 
-/** `settings.duel`, or `?duel=1` on the URL. Default off: the plate stays byte-identical. */
+/**
+ * The Duel is the product (AAA lock 2026-09-18): on by default. `?duel=0`
+ * is the dev off-switch, `?duel=1` forces it on over a saved-off setting.
+ */
 export function duelEnabled(settings: Pick<ShineSettings, "duel">, search?: string): boolean {
-  if (settings.duel) return true;
   const q = search ?? (typeof window === "undefined" ? "" : window.location.search);
-  return new URLSearchParams(q).get("duel") === "1";
+  const flag = new URLSearchParams(q).get("duel");
+  if (flag === "0") return false;
+  if (flag === "1") return true;
+  return settings.duel;
+}
+
+/**
+ * Progressive hand (AAA lock): PA 1 is the 3×3 and Go — no call buttons.
+ * PA 2 adds Take and the family sits. PA 3 adds Protect. The systems
+ * (book, verdict, 70/30) run from pitch one regardless.
+ */
+export function handFor(paIndex: number): readonly DuelCall[] {
+  if (paIndex <= 1) return [];
+  if (paIndex === 2) return ["sit-cell", "sit-hard", "sit-soft", "take"];
+  return HAND;
+}
+
+/** Coach cards: one chip on PA 3, the row from PA 4. */
+export function cardsFor(paIndex: number): readonly CoachCardId[] {
+  if (paIndex <= 2) return [];
+  if (paIndex === 3) return ["green-light"];
+  return CARD_ROW;
+}
+
+/** PA 1 reads only the open first line; later PAs see what the rest costs. */
+export function bookRowsFor(rows: readonly BookRow[], paIndex: number): BookRow[] {
+  if (paIndex <= 1) return rows.filter((r) => r.line === 1 && r.open);
+  return [...rows];
 }
 
 export interface BookRow {
@@ -67,9 +96,14 @@ export function bookRows(book: readonly string[], wit: number, takes: number): B
   ];
 }
 
-/** The onboarding line for the moment, or null. First PA only, then the first two-strike count. */
-export function duelPrompt(opts: { firstPa: boolean; strikes: number; canCall: boolean }): string | null {
+/**
+ * The onboarding line for the moment, or null. The first hand (PA 2, the
+ * first look), then the first two-strike count. No hand, no prompt — PA 1
+ * has one coach line already.
+ */
+export function duelPrompt(opts: { firstPa: boolean; strikes: number; canCall: boolean; handSize?: number }): string | null {
   if (!opts.canCall) return null;
+  if (opts.handSize === 0) return null;
   if (opts.firstPa) return DUEL_PROMPT.first;
   if (opts.strikes >= 2) return DUEL_PROMPT.twoStrikes;
   return null;

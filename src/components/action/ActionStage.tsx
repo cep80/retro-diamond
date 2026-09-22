@@ -1,27 +1,32 @@
 "use client";
 
 /**
- * The action stage (build spec §2): a 3:4 frame drawn from 2D action stills
- * at every cue and a short clip on money beats. Layers, back to front:
- * pitcher plate (wind-up, release), batter plate (Go → reaction), the cut-in
- * strip on Go, the ball, the money-beat clip, the outcome card. Missing art
- * degrades one layer at a time; with no manifest the `fallback` renders.
+ * The action stage (build spec §2 / PA film bible Hybrid E): a 3:4 frame
+ * drawn from 2D action stills at every cue and a short clip on money beats.
+ * Night park is a backdrop behind the card — not a live 3D scene.
+ * Layers, back to front: park plate, pitcher plate (wind-up, release),
+ * batter plate (Go → reaction), the cut-in strip on Go, the ball, the
+ * money-beat clip, the outcome card. Missing art degrades one layer at a
+ * time; with no manifest the `fallback` renders.
  *
  * The component never reads the controller. The parent feeds `ActionView`
  * and re-renders on its own clocks (flight u, the reaction rAF).
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { track as trackEvent } from "@/game/telemetry.ts";
+import { track as trackEvent } from "@/lib/telemetry.ts";
 import {
   clipEndsAtMs,
   clipFor,
   clipOwner,
+  holdBeatPoster,
   clipSeekS,
   cutInFrame,
   focusFor,
   pictureFor,
+  plate2dFlight,
   stillFor,
   type ActionClip,
+  type ActionFocus,
   type ActionManifest,
   type ActionView,
   type BatterPose,
@@ -32,7 +37,7 @@ import {
 import type { LivePitch } from "@/shine/featured-game.ts";
 import type { RivalArmId } from "@/shine/rivals.ts";
 import type { CharacterId } from "@/shine/types.ts";
-import { plate2dFlight } from "@/components/exhibition/scene/presentation";
+import { portraitSrc, type PortraitMood } from "@/shine/bible.ts";
 
 export interface ActionStageProps {
   view: ActionView;
@@ -47,6 +52,15 @@ export interface ActionStageProps {
   twoStrikeHold?: boolean;
   /** Wind-up length, for the push-in. */
   prepareMs?: number;
+  /** Her portrait mood on the mound-close hero (sit / flight / idle). Default focused. */
+  heroMood?: PortraitMood;
+  /**
+   * Force who fills the frame. The mound race watches the trainee throw;
+   * the plate race leaves this unset and follows `focusFor`.
+   */
+  focus?: ActionFocus;
+  /** Hide the outcome chip (bullpen looks are glove reads, not called strikes). */
+  quietCard?: boolean;
   /** Mounts inside the frame (the sit grid during situation / prepare). */
   children?: ReactNode;
   /** Drawn instead of the stage when there is no art at all. */
@@ -62,6 +76,14 @@ function reportMissing(layer: string, what: string) {
   trackEvent("art_missing", { layer, what });
 }
 
+/** The portrait mood that stands in for a missing still. */
+export function portraitMoodForPose(pose: BatterPose | PitcherPose): PortraitMood {
+  if (pose === "celebrate") return "elated";
+  if (pose === "crushed") return "crushed";
+  if (pose === "stance" || pose === "trot" || pose === "set") return "neutral";
+  return "focused";
+}
+
 function Plate({
   girl,
   pose,
@@ -69,6 +91,7 @@ function Plate({
   className,
   style,
   role,
+  mood,
 }: {
   girl: GirlArt | undefined;
   pose: BatterPose | PitcherPose;
@@ -76,12 +99,30 @@ function Plate({
   className?: string;
   style?: React.CSSProperties;
   role: "batter" | "pitcher";
+  mood?: PortraitMood;
 }) {
   const still = stillFor(girl, pose);
   useEffect(() => {
     if (!still) reportMissing("still", `${id}/${pose}`);
   }, [still, id, pose]);
-  if (!still) return null;
+  if (!still) {
+    // No drawn still for this girl and pose: her anime portrait carries the
+    // beat with a mood, so a cast member without a still pack still reads.
+    if (id === "academy") return null;
+    return (
+      <img
+        src={portraitSrc(id as CharacterId, mood ?? portraitMoodForPose(pose))}
+        alt=""
+        draggable={false}
+        className={`pointer-events-none absolute inset-0 size-full select-none object-cover shine-mound-close ${className ?? ""}`}
+        style={style}
+        data-action-plate={role}
+        data-action-pose={pose}
+        data-action-hero="portrait"
+        aria-hidden
+      />
+    );
+  }
   return (
     <img
       src={still.url}
@@ -172,6 +213,9 @@ export function ActionStage({
   flags,
   twoStrikeHold,
   prepareMs,
+  heroMood = "focused",
+  focus: focusProp,
+  quietCard = false,
   children,
   fallback,
   className,
@@ -179,15 +223,25 @@ export function ActionStage({
   const batter = manifest?.girls[batterId];
   const pitcher = armId === "academy" ? undefined : manifest?.girls[armId];
   const picture = useMemo(() => pictureFor(view, flags, twoStrikeHold), [view, flags, twoStrikeHold]);
-  const focus = focusFor(view);
+  const focus = focusProp ?? focusFor(view, Boolean(pitcher));
   const [clipDone, setClipDone] = useState<number | null>(null);
-  const money = view.resolvedAtMs !== null && clipDone !== view.resolvedAtMs ? clipFor(picture.clip, clipOwner(view), { batter, pitcher }) : null;
+  // A money clip is sticky: once it starts for a resolve it plays to its end
+  // even after the plate returns to idle (the race's next pick waits on it).
+  const stickyClip = useRef<{ key: number; role: ActionFocus; clip: ActionClip } | null>(null);
+  const fresh = view.resolvedAtMs !== null && clipDone !== view.resolvedAtMs ? clipFor(picture.clip, focusProp ?? clipOwner(view), { batter, pitcher }) : null;
+  if (fresh && view.resolvedAtMs !== null) stickyClip.current = { key: view.resolvedAtMs, ...fresh };
+  const money =
+    view.resolvedAtMs !== null && stickyClip.current?.key === view.resolvedAtMs && clipDone !== view.resolvedAtMs && view.nowMs < clipEndsAtMs(stickyClip.current.clip, view.resolvedAtMs)
+      ? stickyClip.current
+      : null;
 
   useEffect(() => {
     if (!manifest) reportMissing("manifest", "none");
   }, [manifest]);
 
-  if (!manifest || !batter) {
+  // Only a missing manifest bails to the fallback. A girl without a still
+  // pack still gets the stage: `Plate` draws her portrait hero per beat.
+  if (!manifest) {
     return <>{fallback ?? null}</>;
   }
 
@@ -197,15 +251,28 @@ export function ActionStage({
   const cutIdx = picture.cutIn && sinceResolve >= 0 ? cutInFrame(picture.cutIn, sinceResolve, view.reduced) : -1;
   const cutPose = cutIdx >= 0 && picture.cutIn ? picture.cutIn[cutIdx] : null;
   const underClip = money?.role === "batter" ? stillFor(batter, picture.batter) : money ? stillFor(pitcher, picture.pitcher) : null;
-  const showCard = picture.card && view.stage !== "idle" && view.stage !== "situation";
+  const showCard = !quietCard && picture.card && view.stage !== "idle" && view.stage !== "situation";
   const resolvedKey = view.resolvedAtMs ?? 0;
+  const heldPoster = holdBeatPoster({
+    clipActive: Boolean(money),
+    stage: view.stage,
+    poster: stickyClip.current?.key === resolvedKey ? stickyClip.current.clip.poster : null,
+  });
 
   return (
     <div
       className={`relative mx-auto aspect-[3/4] h-full max-h-full w-auto max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-ink/35 shadow-[inset_0_0_0_1px_rgba(255,209,102,0.15)] ${className ?? ""}`}
       data-action-stage={focus}
       data-action-stage-pose={focus === "pitcher" ? picture.pitcher : picture.batter}
+      data-pa-film="hybrid-e"
+      data-pa-angle={picture.angle}
+      data-pa-family={picture.family ?? ""}
     >
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(255,209,102,0.12),transparent_55%),linear-gradient(180deg,#0a1128_0%,#121a2e_45%,#1a2744_100%)]"
+        data-pa-park="lantern-night"
+        aria-hidden
+      />
       {focus === "pitcher" ? (
         <Plate
           girl={pitcher}
@@ -216,9 +283,16 @@ export function ActionStage({
           style={picture.pushIn ? ({ "--push-in-ms": `${prepareMs ?? 520}ms` } as React.CSSProperties) : undefined}
         />
       ) : (
-        <Plate girl={batter} pose={cutPose ?? picture.batter} id={batterId} role="batter" className={cutPose ? "shine-cut-in" : ""} />
+        <Plate
+          girl={batter}
+          pose={cutPose ?? picture.batter}
+          id={batterId}
+          role="batter"
+          mood={heroMood}
+          className={cutPose ? "shine-cut-in" : ""}
+        />
       )}
-      {cutPose && !view.reduced ? <div className="shine-speed-lines pointer-events-none absolute inset-0" data-action-cut-in={cutIdx} aria-hidden /> : null}
+      {cutPose && !view.reduced && !quietCard ? <div className="shine-speed-lines pointer-events-none absolute inset-0" data-action-cut-in={cutIdx} aria-hidden /> : null}
       {ball ? (
         <div
           className="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cream shadow-[0_0_12px_#f5f8ff]"
@@ -248,6 +322,16 @@ export function ActionStage({
           nowMs={view.nowMs}
           poster={underClip?.url ?? money.clip.poster}
           onDone={() => setClipDone(resolvedKey)}
+        />
+      ) : null}
+      {heldPoster ? (
+        <img
+          src={heldPoster}
+          alt=""
+          draggable={false}
+          className="pointer-events-none absolute inset-0 size-full select-none object-cover"
+          data-action-hold={view.beat ?? ""}
+          aria-hidden
         />
       ) : null}
       {children ? <div className="absolute inset-[12%]">{children}</div> : null}

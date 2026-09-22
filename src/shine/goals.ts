@@ -3,7 +3,7 @@
  * display only; nothing here reads them. Adding a goal means adding an id, a
  * verb mapping in the bible, and one evaluator branch.
  */
-import type { PitchType } from "../game/types.ts";
+import type { PitchType } from "./core/zone.ts";
 import { type Bases, type PlateEvent, risp, runnersOn } from "./events.ts";
 
 export type HitterPgId =
@@ -110,6 +110,32 @@ export function goalIdForVerb(verb: string): GoalId | null {
   const v = verb.trim();
   for (const [re, id] of VERB_TO_ID) if (re.test(v)) return id;
   return null;
+}
+
+/** The day's ask in the Coach's mouth. The verb string stays the goal key. */
+const SPOKEN_GOAL: Record<string, string> = {
+  "Pitch 5+ innings, ≤3 ER": "Five innings, three runs or fewer",
+  "Three quality at-bats": "Three balls in play",
+  "Hit with RISP": "A hit with runners on",
+  "Quality start": "A long start",
+  "See 3 pitches in one PA": "Three pitches in one look",
+  "See 2 pitches in one PA": "Two pitches in one look",
+  "Get a hit in the 7th+": "A hit late",
+  "Enter with inherited runners and strand": "Come in with runners and strand them",
+  "Steal in the 7th+": "Steal late",
+  "Steal with RISP": "Steal with runners on",
+  "Make contact on a breaking ball": "Put the bat on a breaking ball",
+  "Come to bat with runners on": "Come up with runners on",
+  "Foul off a 2-strike pitch": "Foul one off with two strikes",
+  "Work a 3-2 count": "Take it to 3-2",
+  "Work a full count": "Take it to 3-2",
+  "Consecutive strikeouts": "Strikeouts back to back",
+  "Escape a bases-loaded jam": "Get out of the bases loaded",
+  "Escape a jam": "Get out of the jam",
+};
+
+export function speakGoal(verb: string): string {
+  return SPOKEN_GOAL[verb] ?? verb;
 }
 
 /** Player-facing definition of exactly what counts. Shown on the goal card. */

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { makeRng } from "../game/data.ts";
+import { makeRng } from "./core/rng.ts";
 import { advanceRunners, basesLabel, drawBases, emptyBases, risp, runnerCount, runnersOn } from "./events.ts";
 
 describe("bases and runner advancement", () => {

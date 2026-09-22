@@ -1,7 +1,7 @@
 "use client";
 
 import { PixelBtn } from "@/components/pixel-btn";
-import { setMasterMuted, unlockAudio } from "@/game/audio";
+import { setMasterMuted, unlockAudio } from "@/shine/audio.ts";
 import { useShine } from "@/shine/store.ts";
 
 export function ShineMute() {

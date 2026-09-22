@@ -1,4 +1,4 @@
-import { hashId } from "../game/data.ts";
+import { hashId } from "./core/rng.ts";
 import type { RivalArmId } from "./rivals.ts";
 
 export type Weather = "clear" | "dusk" | "night" | "heat" | "wind" | "drizzle" | "cold";

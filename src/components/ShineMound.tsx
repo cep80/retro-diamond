@@ -1,9 +1,16 @@
 "use client";
 
+/**
+ * The mound race: sit the glove, press Go, watch her throw the date.
+ * She picks every pitch. Kick and release come from her sheet. No timing input.
+ */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
+import { dateHeadline, leaveLabel, middleRead, moundRead, moundSituation } from "@/components/race-ui";
+import { ActionStage } from "@/components/action/ActionStage";
+import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
 import { ShineMute } from "@/components/ShineMute";
-import { PauseOverlay, usePlatePause } from "@/components/ShinePlateBits";
+import { PauseOverlay, SitZone, usePlatePause } from "@/components/ShinePlateBits";
 import {
   duckCrowd,
   setCrowdLevel,
@@ -16,30 +23,32 @@ import {
   stopCrowd,
   stopMusic,
   unlockAudio,
-} from "@/game/audio";
-import type { Cell } from "@/game/plate";
-import type { PitchType } from "@/game/types";
-import { moundBeatSpec, PREPARE_MS, PREPARE_MS_REDUCED, TIMING_ASSIST_FLIGHT, type Stage } from "@/shine/beats.ts";
-import { deadBall, freezeClock, inputNow, isFrozen, resumeClock, secondsAt, startClock, type PlateClock } from "@/shine/clock.ts";
+} from "@/shine/audio.ts";
+import type { Cell } from "@/shine/core/zone.ts";
+import type { PitchType } from "@/shine/core/zone.ts";
+import { moundBeatSpec, PREPARE_MS_REDUCED, type Stage } from "@/shine/beats.ts";
 import { cheerLines, crowdStem, ouenSwell } from "@/shine/culture.ts";
-import { featuredParkId, parkCardLine, parkSkyClass } from "@/shine/stage.ts";
-import { parkSrc, portraitClass, portraitMood, portraitSrc, sheet } from "@/shine/bible.ts";
-import { turnMeta } from "@/shine/calendar.ts";
+import { featuredParkId, parkSkyClass } from "@/shine/stage.ts";
+import { parkSrc, portraitMood, portraitSrc, officialFor, sheet } from "@/shine/bible.ts";
+import { speakGoal } from "@/shine/goals.ts";
+import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { gutsActive, leverageIndex } from "@/shine/oracle.ts";
+import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
 import {
+  decideDelivery,
+  decidePitch,
   DELIVERY_DUR,
-  enterSeventh,
   maybePitchLastSpurt,
   moundBeatFor,
-  pitchingArsenal,
-  pitchingWindows,
+  moundFieldBeat,
   resolveDelivery,
-  resolveMiddle,
   startPitchingGame,
+  type DeliveryDecision,
   type MoundBeat,
   type PitchingGame,
 } from "@/shine/pitching.ts";
-import { careerStill } from "@/shine/ending.ts";
+import { RACE_PACE } from "@/shine/race.ts";
+import { pitcherRivalBat } from "@/shine/rivals.ts";
 import { useShine } from "@/shine/store.ts";
 import { uniqueName, uniqueShouldFire } from "@/shine/unique.ts";
 import type { GameKind } from "@/shine/featured-game.ts";
@@ -56,10 +65,6 @@ function kindFor(turn: number): GameKind {
   return "first-light";
 }
 
-function cellKey(c: Cell) {
-  return `${c.row}-${c.col}`;
-}
-
 export function ShineMound() {
   const run = useShine((s) => s.run);
   const finishGame = useShine((s) => s.finishGame);
@@ -69,30 +74,36 @@ export function ShineMound() {
   const liveGame = useShine((s) => s.liveGame);
   const settings = useShine((s) => s.settings);
   const reduced = settings.reducedMotion;
-  const assist = settings.timingAssist;
+  const overlay = useShine((s) => s.overlay);
 
   const [game, setGame] = useState<PitchingGame | null>(null);
   const [aim, setAim] = useState<Cell>({ row: 1, col: 1 });
   const [type, setType] = useState<PitchType>("fastball");
-  const [stage, setStage] = useState<Stage>("situation");
+  const [stage, setStage] = useState<Stage>("idle");
   const [u, setU] = useState(0);
-  const [kickT, setKickT] = useState<number | null>(null);
-  const [releaseT, setReleaseT] = useState<number | null>(null);
   const [beat, setBeat] = useState<MoundBeat | null>(null);
-  const [lines, setLines] = useState(0);
   const [crowdHold, setCrowdHold] = useState(false);
   const [sting, setSting] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
   const [savedChip, setSavedChip] = useState(false);
+  const [manifest, setManifest] = useState<ActionManifest | null>(null);
+  const [nowMs, setNowMs] = useState(0);
+  const [ghost, setGhost] = useState<Cell | null>(null);
 
-  const clock = useRef<PlateClock | null>(null);
   const raf = useRef(0);
   const timers = useRef<number[]>([]);
-  const middleRef = useRef(false);
-  const stageRef = useRef<Stage>("situation");
+  const stageRef = useRef<Stage>("idle");
   stageRef.current = stage;
-  const kickRef = useRef<number | null>(null);
-  const releaseRef = useRef<number | null>(null);
+  const flightStart = useRef(0);
+  const pending = useRef<DeliveryDecision | null>(null);
+  const gameRef = useRef<PitchingGame | null>(null);
+  const pitchRef = useRef<PitchType>("fastball");
+  const resolvedAtRef = useRef<number | null>(null);
+  const watching = useRef(false);
+  const nextArm = useRef(false);
+  const pausedRef = useRef(false);
+  const throwRef = useRef<() => void>(() => {});
+  gameRef.current = game;
 
   const later = useCallback((fn: () => void, ms: number) => {
     const id = window.setTimeout(fn, ms);
@@ -106,30 +117,46 @@ export function ShineMound() {
   }
 
   useEffect(() => {
+    let live = true;
+    loadActionManifest().then((m) => {
+      if (live) setManifest(m);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!run || !manifest) return;
+    const girls = [run.characterId, pitcherRivalBat(run.characterId)];
+    void warmActionArt(manifest, girls);
+    void preloadActionClips(manifest, girls);
+  }, [run, manifest]);
+
+  useEffect(() => {
     if (!run) return;
     const kind = kindFor(run.turn);
     const saved = liveGame && liveGame.side === "mound" && liveGame.runId === run.id && liveGame.turn === run.turn ? liveGame : null;
     const g = saved ? structuredClone(saved.game) : startPitchingGame(run, kind);
     setGame(g);
-    middleRef.current = g.act >= 2;
-    setLines(0);
+    if (saved?.aim) setAim(saved.aim);
     setRestored(Boolean(saved));
-    setStage("situation");
+    watching.current = false;
+    nextArm.current = false;
+    setStage("idle");
     setCrowdHold(false);
     setSting(null);
     setBeat(null);
-    clock.current = null;
-    const mix = pitchingArsenal(run);
-    setType(mix[0] ?? "fastball");
+    setU(0);
+    pending.current = null;
+    setType("fastball");
     unlockAudio();
     const parkId = featuredParkId({ kind, homePark: sheet(run.characterId).parkId });
     sfxCrowd(0.05, crowdStem(parkId));
     if (kind !== "practice" && kind !== "finale") {
       startWalkUp(run.characterId, useShine.getState().ownedCosmetics.includes("walk-up-alt"));
     }
-    const t = kind === "finale" ? undefined : window.setTimeout(() => setStage((s) => (s === "situation" ? "idle" : s)), reduced ? 600 : 1400);
     return () => {
-      if (t) window.clearTimeout(t);
       clearTimers();
       cancelAnimationFrame(raf.current);
       stopCrowd();
@@ -138,31 +165,49 @@ export function ShineMound() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run?.id, run?.turn]);
 
-  // Save at every batter boundary when the ball is not live.
   useEffect(() => {
     if (!run || !game || game.kind === "practice" || game.done) return;
     if (stage === "flight" || stage === "prepare" || stage === "paused") return;
-    saveLive({ side: "mound", runId: run.id, turn: run.turn, game });
+    saveLive({ side: "mound", runId: run.id, turn: run.turn, game, aim });
     setSavedChip(true);
     const t = window.setTimeout(() => setSavedChip(false), 900);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game?.battersFaced, game?.count.balls, game?.count.strikes, game?.act, stage === "idle"]);
 
-  // Delivery loop on the authoritative clock.
+  const { paused, pauseReason, pause, resume } = usePlatePause({
+    onFreeze: () => {
+      duckCrowd(false);
+    },
+    onResume: () => {
+      if (stageRef.current === "flight") flightStart.current = performance.now() - u * flightMs();
+      return true;
+    },
+  });
+  pausedRef.current = paused;
+
   useEffect(() => {
-    if (stage !== "flight" || !run || !game) return;
+    if (paused || !nextArm.current) return;
+    nextArm.current = false;
+    stageRef.current = "idle";
+    throwRef.current();
+  }, [paused]);
+
+  function flightMs() {
+    return DELIVERY_DUR * 1000 * (reduced ? 1 : RACE_PACE.flightScale);
+  }
+
+  useEffect(() => {
+    if (stage !== "flight" || !run || !game || paused) return;
     const loop = () => {
-      const c = clock.current;
-      if (!c || isFrozen(c)) return;
-      const now = performance.now();
-      const uu = secondsAt(c, now) / DELIVERY_DUR;
+      const uu = (performance.now() - flightStart.current) / flightMs();
       setU(uu);
+      setNowMs(performance.now());
       if (uu >= 1.08) {
-        const k = kickRef.current ?? 0;
-        const rel = releaseRef.current ?? DELIVERY_DUR;
         const next = { ...game };
-        resolveDelivery(run, next, type, aim, k, rel);
+        const pitch = pitchRef.current;
+        const d = pending.current ?? decideDelivery(run, next, pitch, aim);
+        resolveDelivery(run, next, pitch, aim, d.kickT, d.releaseT);
         land(next);
         return;
       }
@@ -171,24 +216,19 @@ export function ShineMound() {
     raf.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, paused]);
+
+  useEffect(() => {
+    if (stage === "field" || stage === "reaction" || (stage === "idle" && resolvedAtRef.current !== null)) {
+      let id = 0;
+      const tick = () => {
+        setNowMs(performance.now());
+        id = requestAnimationFrame(tick);
+      };
+      id = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(id);
+    }
   }, [stage]);
-
-  useEffect(() => {
-    if (!run || !game || game.act !== 2 || middleRef.current) return;
-    middleRef.current = true;
-    const next = { ...game };
-    resolveMiddle(run, next);
-    setLines(0);
-    setGame(next);
-  }, [run, game]);
-
-  useEffect(() => {
-    if (!game || game.act !== 2 || game.simLog.length === 0) return;
-    if (lines >= game.simLog.length) return;
-    const step = reduced ? 500 : Math.max(1200, Math.min(2800, 12000 / Math.max(1, game.simLog.length)));
-    const t = window.setTimeout(() => setLines((n) => n + 1), step);
-    return () => window.clearTimeout(t);
-  }, [game?.act, game?.simLog.length, lines, reduced]);
 
   useEffect(() => {
     if (!game?.done || game.kind !== "finale" || !game.pgMet) return;
@@ -198,51 +238,23 @@ export function ShineMound() {
     return () => window.clearTimeout(t);
   }, [game?.done, game?.kind, game?.pgMet, reduced]);
 
-  const overlay = useShine((s) => s.overlay);
-  const { paused, pauseReason, pause, resume } = usePlatePause({
-    onFreeze: () => {
-      if (clock.current && stageRef.current === "flight") {
-        clock.current = freezeClock(clock.current, performance.now());
-        duckCrowd(false);
-      }
-    },
-    onResume: () => {
-      const c = clock.current;
-      if (!c || stageRef.current !== "flight") return false;
-      const now = performance.now();
-      if (deadBall(c, now)) {
-        clock.current = null;
-        kickRef.current = null;
-        releaseRef.current = null;
-        setKickT(null);
-        setReleaseT(null);
-        setU(0);
-        setStage("dead");
-        setGame((g) => (g ? { ...g, banner: "Time. She steps off, then back on." } : g));
-        return true;
-      }
-      clock.current = resumeClock(c, now);
-      return true;
-    },
-  });
+  useEffect(() => {
+    if (overlay) pause("user");
+  }, [overlay, pause]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
-      const k = settings.keys;
-      if (e.code === k.pause) {
+      if (e.code === settings.keys.pause || e.code === "Escape") {
         e.preventDefault();
         if (paused) resume();
         else pause("user");
         return;
       }
       if (paused) return;
-      const s = stageRef.current;
-      if (e.code === k.kick || e.code === k.release || e.code === "KeyJ" || e.code === "KeyZ") {
+      if (e.code === "Enter" || e.code === "Space") {
         e.preventDefault();
-        if (s === "flight") tap(inputNow(e));
-        else if (s === "idle" || s === "dead") throwIt();
-        else if (s === "situation") stepIn();
+        throwIt();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -250,18 +262,35 @@ export function ShineMound() {
   });
 
   useEffect(() => {
-    if (overlay) pause("user");
-  }, [overlay, pause]);
+    if (typeof window === "undefined" || new URLSearchParams(window.location.search).get("debug") !== "1") return;
+    const w = window as unknown as { __dsMound?: unknown };
+    w.__dsMound = {
+      go: () => {
+        throwIt();
+      },
+      setSit: (c: Cell) => setAim(c),
+      setType: (t: PitchType) => setType(t),
+      snapshot: () => ({ stage: stageRef.current, game: gameRef.current, aim, type, beat }),
+      forceBeat: (b: MoundBeat) => {
+        setBeat(b);
+        const now = performance.now();
+        resolvedAtRef.current = now;
+        setNowMs(now);
+        setStage("reaction");
+      },
+    };
+    return () => {
+      delete w.__dsMound;
+    };
+  });
 
   if (!run || !game) return null;
   const who = sheet(run.characterId);
-  const mix = pitchingArsenal(run);
-  const windows = pitchingWindows(run, game);
+  const ask = game.kind === "practice" ? null : officialFor(run.characterId, run.turn);
   const parkId = featuredParkId({ kind: game.kind, homePark: who.parkId });
   const park = parkSrc(parkId);
   const li = leverageIndex(game.scoreDiff, game.inning, game.outs, game.runners >= 2, game.count);
   const gutsOn = gutsActive({ li, closer: game.role === "closer", lastSpurt: game.lastSpurt });
-  const still = game.kind === "finale" ? careerStill(run) : null;
   const spec = beat ? moundBeatSpec(beat, reduced) : null;
   const reacting = (stage === "field" || stage === "reaction") && spec && spec.big;
   const mood = reacting
@@ -271,10 +300,24 @@ export function ShineMound() {
         ? "crushed"
         : "focused"
     : portraitMood({ leverage: gutsOn, twoStrike: game.count.strikes >= 2, done: game.done, pgMet: game.pgMet });
-  const art = portraitSrc(who.id, mood);
-  const durS = DELIVERY_DUR * (assist ? TIMING_ASSIST_FLIGHT : 1);
   const verses = cheerLines(run.characterId, run.fans);
   const swell = ouenSwell(parkId, game.count.strikes) && (stage === "prepare" || stage === "flight" || stage === "idle");
+  const picking = stage === "idle" || stage === "dead" || stage === "situation";
+  const holdFilm = !picking;
+  const fieldBeat = holdFilm ? moundFieldBeat(beat ?? "none") : null;
+  const flags: StingFlags = { spurt: game.lastSpurt };
+  const actionView: ActionView = {
+    stage,
+    beat: fieldBeat,
+    swung: holdFilm && (beat === "miss" || beat === "hit" || beat === "hr" || beat === "out"),
+    swingKind: holdFilm ? "contact" : null,
+    call: null,
+    u,
+    tappedAtU: null,
+    resolvedAtMs: resolvedAtRef.current,
+    nowMs: stage === "field" || stage === "reaction" || resolvedAtRef.current !== null ? nowMs : performance.now(),
+    reduced,
+  };
 
   if (crowdHold) {
     return (
@@ -288,13 +331,12 @@ export function ShineMound() {
   function land(next: PitchingGame) {
     const b = moundBeatFor(next);
     const s = moundBeatSpec(b, reduced);
-    clock.current = null;
-    kickRef.current = null;
-    releaseRef.current = null;
-    setKickT(null);
-    setReleaseT(null);
+    pending.current = null;
+    resolvedAtRef.current = performance.now();
+    setNowMs(resolvedAtRef.current);
     setU(0);
     setBeat(b);
+    setGhost(aim);
     setGame({ ...next });
     duckCrowd(false);
     if (next.kind !== "practice") sfxRelease(s.cue);
@@ -309,119 +351,114 @@ export function ShineMound() {
   }
 
   function finishBeat() {
+    const g = gameRef.current;
+    if (g?.done) {
+      watching.current = false;
+      setStage("reaction");
+      return;
+    }
+    if (watching.current) {
+      setBeat(null);
+      const wait = reduced ? RACE_PACE.betweenPitchMsReduced : RACE_PACE.betweenPitchMs;
+      later(() => {
+        if (!watching.current) return;
+        const live = gameRef.current;
+        if (!live || live.done) return;
+        if (pausedRef.current) {
+          nextArm.current = true;
+          return;
+        }
+        stageRef.current = "idle";
+        throwRef.current();
+      }, wait);
+      return;
+    }
     setBeat(null);
     setStage("idle");
-  }
-
-  function stepIn() {
-    if (stageRef.current !== "situation") return;
-    setStage("idle");
-    startWalkUp(who.id, useShine.getState().ownedCosmetics.includes("walk-up-alt"));
   }
 
   function throwIt() {
-    if (!run || !game || game.done || paused) return;
+    const live = gameRef.current;
+    if (!run || !live || live.done || pausedRef.current) return;
     const s = stageRef.current;
-    if (s !== "idle" && s !== "dead") return;
-    kickRef.current = null;
-    releaseRef.current = null;
-    setKickT(null);
-    setReleaseT(null);
+    if (s !== "idle" && s !== "dead" && s !== "situation") return;
+    watching.current = true;
+    const pitch = decidePitch(run, live);
+    pitchRef.current = pitch;
+    setType(pitch);
+    pending.current = decideDelivery(run, live, pitch, aim);
     setU(0);
     setBeat(null);
+    resolvedAtRef.current = null;
     setStage("prepare");
     sfxSelect();
     sfxAnticipation(gutsOn);
     duckCrowd(true);
     if (gutsOn) setCrowdLevel(0.2);
-    if (maybePitchLastSpurt(game)) sfxCrowdBurst();
+    if (maybePitchLastSpurt(live)) sfxCrowdBurst();
     if (
       uniqueShouldFire(run.characterId, {
-        already: game.uniqueFired,
-        kind: game.kind,
+        already: live.uniqueFired,
+        kind: live.kind,
         pitching: true,
-        firstPitchOfPa: game.count.balls === 0 && game.count.strikes === 0,
-        paIndex: Math.max(1, game.battersFaced || 1),
-        lastSpurt: game.lastSpurt,
+        firstPitchOfPa: live.count.balls === 0 && live.count.strikes === 0,
+        paIndex: Math.max(1, live.battersFaced || 1),
+        lastSpurt: live.lastSpurt,
         stealArmed: false,
-        parkId: who.parkId,
-        scoreDiff: game.scoreDiff,
-        inning: game.inning,
+        parkId: sheet(run.characterId).parkId,
+        scoreDiff: live.scoreDiff,
+        inning: live.inning,
       })
     ) {
-      game.uniqueFired = true;
+      live.uniqueFired = true;
       setSting(uniqueName(run.characterId));
       later(() => setSting(null), 700);
     }
     later(
       () => {
         if (stageRef.current !== "prepare") return;
-        clock.current = startClock(performance.now(), durS);
+        flightStart.current = performance.now();
         setStage("flight");
       },
-      reduced ? PREPARE_MS_REDUCED : PREPARE_MS,
+      reduced ? PREPARE_MS_REDUCED : RACE_PACE.prepareMs,
     );
-  }
-
-  /** Kick, then release, each read from the clock at the input's own timestamp. */
-  function tap(now: number) {
-    const c = clock.current;
-    if (!c || stageRef.current !== "flight" || isFrozen(c)) return;
-    // Seconds along the real delivery, independent of the assist stretch.
-    const t = (secondsAt(c, now) / durS) * DELIVERY_DUR;
-    if (kickRef.current === null) {
-      kickRef.current = t;
-      setKickT(t);
-    } else if (releaseRef.current === null) {
-      releaseRef.current = t;
-      setReleaseT(t);
-    }
   }
 
   function leave() {
     if (!game || !game.done) return;
-    finishGame(game.kind, game.pgMet, game.sgMet, game.outsRecorded >= 3, false, undefined, game.spurtFired, undefined, {
+    watching.current = false;
+    finishGame(game.kind, game.pgMet, game.sgMet, game.outsRecorded >= 3, false, moundRead(game), game.spurtFired, undefined, {
       tells: game.tells,
       record: { events: game.events, arm: "academy", pgId: game.pgId },
       outs: game.outs,
       inning: game.inning,
       scoreDiff: game.scoreDiff,
+      walks: game.walks,
     });
   }
 
-  function skipToPressure() {
-    if (!run || !game || game.act !== 2 || game.role !== "ace") return;
-    const next = { ...game };
-    if (!middleRef.current) {
-      resolveMiddle(run, next);
-      middleRef.current = true;
-    }
-    enterSeventh(run, next);
-    setLines(next.simLog.length);
-    setGame({ ...next });
-  }
+  throwRef.current = throwIt;
 
-  function watchMiddle() {
-    if (!run || !game || game.act !== 2) return;
-    if (game.done) {
-      leave();
-      return;
-    }
-    if (lines < game.simLog.length) return;
-    const next = { ...game };
-    enterSeventh(run, next);
-    setGame({ ...next });
-  }
-
-  const inFlight = stage === "flight";
-  const frameClass = stage === "field" || stage === "reaction" ? (spec?.css ?? "") : "";
   const showingBeat = stage === "field" || stage === "reaction";
-  const situation = stage === "situation";
+  const batterId = pitcherRivalBat(run.characterId);
+  const closeLine = game.done
+    ? dateHeadline({
+        exhibition: false,
+        practice: game.kind === "practice",
+        pgMet: game.pgMet,
+        verb: who.pgVerb,
+        banner: game.banner,
+        cardLine: game.pgId === "k-side" && !game.pgMet ? moundRead(game) : (spec?.label ?? null),
+        pgId: game.pgId,
+      })
+    : null;
+  const closeRead = game.done ? moundRead(game) : null;
+  const middle = game.done ? middleRead(game.simLog) : null;
 
   return (
-    <main className={`relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream ${swell ? "shine-ouen-swell" : ""}`} data-stage={stage}>
-      <img src={park} alt="" className={`absolute inset-0 size-full object-cover object-[center_70%] ${parkSkyClass(parkId)}`} />
-      <div className={`absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/20 ${swell ? "shine-ouen-wash" : ""}`} />
+    <main className={`relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream ${swell ? "shine-ouen-swell" : ""}`} data-stage={stage} data-mound-race="1">
+      <img src={park} alt="" className={`absolute inset-0 size-full object-cover object-[center_70%] opacity-60 ${parkSkyClass(parkId)}`} />
+      <div className={`absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-ink/40 ${swell ? "shine-ouen-wash" : ""}`} />
       {paused ? (
         <PauseOverlay
           reason={pauseReason}
@@ -432,228 +469,126 @@ export function ShineMound() {
             stopMusic();
             openTitle();
           }}
+          resumeLabel="Back on the rubber"
         />
       ) : null}
-      <div className="relative z-10 flex flex-1 flex-col gap-3 p-4 sm:p-6">
-        <header className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            {art ? (
-              <img
-                src={art}
-                alt=""
-                className={`character-cutout h-16 w-auto object-contain ${portraitClass(mood)} ${reacting && !reduced ? "shine-portrait-react" : ""}`}
-              />
-            ) : null}
-            <div>
-              <p className="episode-chip w-fit">
-                {turnMeta(run.turn).label} · {parkId === "koi" ? "Lantern Field" : parkId}
-              </p>
-              <p className="mt-2 font-display text-xs uppercase tracking-widest text-grass-2">
-                {game.kind === "practice" ? "Bullpen looks" : `Primary Goal · ${who.pgVerb}`}
-              </p>
-              <p className="mt-1 font-ui text-xs text-cream/70">
-                {who.walkUp}
-                {parkId === "koi" ? " · 応援歌" : ""}
-              </p>
-              {verses.length && (stage === "idle" || stage === "situation") ? (
-                <ul className="mt-1 space-y-0.5">
-                  {verses.map((v, i) => (
-                    <li key={i} className="font-ui text-xs text-gold/80">
-                      {v}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-2 text-right font-ui text-sm text-cream/85">
-            <div className="flex gap-2">
-              <ShineMute />
-              <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={() => pause("user")} ariaLabel="Pause">
-                Pause
-              </PixelBtn>
-            </div>
-            <p>
-              Inn {game.inning} · {game.outs} out · {game.count.balls}-{game.count.strikes}
-            </p>
-            <p className="text-xs text-muted">
-              K {game.strikeouts} · ER {game.earnedRuns} · P {game.pitchCount}
-              {game.role === "closer" ? ` · lead ${game.scoreDiff}` : ""}
-              {game.runners > 0 ? ` · ${game.runners} on` : ""}
-            </p>
-            {game.kind !== "practice" ? <p className="text-xs text-muted">Batting: {game.batterName}</p> : null}
-            {savedChip ? <p className="shine-saved-chip text-[10px] uppercase tracking-widest text-grass-2">Saved</p> : null}
-          </div>
-        </header>
 
-        {restored && situation ? (
-          <p className="rounded-xl border border-grass-2/50 bg-ink/80 px-4 py-2 font-ui text-sm text-cream/85">
+      <header className="relative z-10 flex items-center justify-between gap-2 px-3 pt-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="rounded-full border border-white/20 bg-ink/70 px-2.5 py-1 font-display text-[10px] uppercase tracking-widest text-grass-2">
+            {dateLabel(turnMeta(run.turn), who.style)}
+          </span>
+          {moundSituation(game) ? (
+            <span className="truncate font-ui text-[11px] text-cream/70">{moundSituation(game)}</span>
+          ) : null}
+          {ask ? <span className="truncate font-ui text-[11px] text-gold">{who.pgVerb} · {speakGoal(ask.verb)}</span> : null}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <ShineMute />
+          <button
+            type="button"
+            className="rounded-full border border-white/20 bg-ink/70 px-2.5 py-1 font-display text-[10px] uppercase tracking-widest text-cream/80 hover:border-gold"
+            onClick={() => pause("user")}
+            aria-label="Pause"
+          >
+            Pause
+          </button>
+        </div>
+      </header>
+
+      <section className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-3 py-2" aria-label="The mound">
+        <div className="relative h-full max-h-[62dvh] w-full max-w-sm">
+          <ActionStage
+            view={actionView}
+            batterId={batterId}
+            armId={run.characterId}
+            manifest={manifest}
+            pitch={null}
+            focus="pitcher"
+            recognized={null}
+            quietCard={game.kind === "practice" || game.done}
+            flags={flags}
+            prepareMs={reduced ? PREPARE_MS_REDUCED : RACE_PACE.prepareMs}
+            heroMood={mood}
+            className="!h-auto !w-full"
+            fallback={
+              <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-ink/35">
+                <img src={portraitSrc(run.characterId, "focused")} alt="" className="absolute inset-0 size-full object-cover shine-mound-close" aria-hidden />
+              </div>
+            }
+          >
+            {picking && !game.done ? <SitZone aim={aim} onSit={setAim} ghost={ghost} label="Glove" /> : null}
+          </ActionStage>
+        </div>
+      </section>
+
+      <section className="relative z-10 mx-auto w-full max-w-sm px-3 pb-[max(env(safe-area-inset-bottom),12px)]" aria-label="The Coach">
+        {restored && picking ? (
+          <p className="mb-2 rounded-xl border border-grass-2/50 bg-ink/80 px-4 py-2 font-ui text-sm text-cream/85">
             Picked up where she left it. Inning {game.inning}, {game.outs} out, {game.count.balls}-{game.count.strikes}.
           </p>
         ) : null}
         {sting && stage === "prepare" ? (
-          <p className="shine-unique-sting rounded-xl border border-gold/50 bg-ink/80 px-4 py-2 font-display text-sm font-bold text-gold">{sting}</p>
+          <p className="shine-unique-sting mb-2 rounded-xl border border-gold/50 bg-ink/80 px-4 py-2 font-display text-sm font-bold text-gold">{sting}</p>
         ) : null}
         {maybePitchLastSpurt(game) ? (
-          <p className="shine-spurt rounded-xl border border-coral/60 bg-ink/80 px-4 py-2 font-display text-sm font-bold text-coral">
+          <p className="shine-spurt mb-2 rounded-xl border border-coral/60 bg-ink/80 px-4 py-2 font-display text-sm font-bold text-coral">
             This is the one she trained for.
           </p>
         ) : null}
-        {situation && game.kind !== "practice" ? (
-          <section className="rounded-xl border border-white/20 bg-ink/85 p-4" aria-label="Scouting report">
-            <p className="font-display text-[10px] uppercase tracking-widest text-grass-2">The lineup</p>
-            <p className="font-display text-base font-bold text-cream">{game.rivalBat} bats third.</p>
-            <p className="mt-1 font-ui text-xs text-cream/70">{parkCardLine(parkId)}</p>
-            {game.rivalLine ? (
-              <p className="mt-3 rounded-lg border border-coral/40 bg-coral/10 px-3 py-2 font-ui text-sm text-cream">
-                <span className="font-display text-[10px] uppercase tracking-widest text-coral">What she read · </span>
-                {game.rivalLine}
-              </p>
-            ) : (
-              <p className="mt-3 font-ui text-sm text-cream/80">No book on you yet. Whatever you throw first, she'll remember.</p>
-            )}
-          </section>
-        ) : null}
-        {game.callback && stage !== "flight" && stage !== "prepare" ? (
-          <p className="rounded-xl border border-gold/50 bg-ink/85 px-4 py-2 font-ui text-sm text-gold">
+        {game.callback && picking ? (
+          <p className="mb-2 rounded-xl border border-gold/50 bg-ink/85 px-4 py-2 font-ui text-sm text-gold">
             <span className="font-display text-[10px] uppercase tracking-widest text-gold/80">We worked on that · </span>
             {game.callback}
           </p>
         ) : null}
+        {verses.length && picking ? (
+          <ul className="mb-2 space-y-0.5">
+            {verses.map((v, i) => (
+              <li key={i} className="font-ui text-xs text-gold/80">
+                {v}
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
-        {game.act === 2 ? (
-          <div className="rounded-xl border border-gold/40 bg-ink/80 p-4">
-            <p className="font-display text-xs uppercase tracking-widest text-gold">The Middle</p>
-            <ul className="mt-2 space-y-1 font-ui text-sm">
-              {game.simLog.slice(0, Math.max(1, lines)).map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-            <PixelBtn className="mt-4 h-12" onClick={() => (game.done ? leave() : watchMiddle())}>
-              {game.done ? "Leave the mound" : lines < game.simLog.length ? "The middle…" : "Seventh"}
-            </PixelBtn>
-            {game.role === "ace" && !game.done ? (
-              <PixelBtn variant="ghost" className="mt-2 h-12" onClick={skipToPressure}>
-                Skip to pressure
+        <div className="flex flex-col gap-2">
+            <p className="text-center font-display text-lg font-bold" aria-live="polite">
+              {stage === "prepare"
+                ? "Set."
+                : stage === "flight"
+                  ? ""
+                  : game.done
+                    ? closeLine
+                    : game.kind === "practice"
+                      ? game.banner
+                      : showingBeat && spec
+                        ? spec.label
+                        : game.banner}
+            </p>
+            {closeRead && closeRead !== closeLine ? (
+              <p className="text-center font-ui text-sm text-cream/80">{closeRead}</p>
+            ) : null}
+            {middle ? <p className="text-center font-ui text-sm text-cream/80">{middle}</p> : null}
+            {savedChip ? <p className="text-center shine-saved-chip text-[10px] uppercase tracking-widest text-grass-2">Saved</p> : null}
+
+            {picking && !game.done ? (
+              <PixelBtn className="h-14" onClick={throwIt}>
+                {stage === "dead" ? "Back on the rubber" : "Go"}
+              </PixelBtn>
+            ) : null}
+            {showingBeat && !game.done ? (
+              <PixelBtn className="h-14" disabled>
+                {stage === "field" ? "…" : game.banner}
+              </PixelBtn>
+            ) : null}
+            {game.done && (picking || showingBeat) && !crowdHold ? (
+              <PixelBtn className="h-14" onClick={leave}>
+                {leaveLabel({ practice: game.kind === "practice" })}
               </PixelBtn>
             ) : null}
           </div>
-        ) : (
-          <>
-            <div className={`relative mx-auto aspect-[3/4] w-full max-w-sm ${frameClass}`}>
-              <div className="absolute inset-0 rounded-2xl border border-white/20 bg-ink/35" />
-              <div className="absolute inset-[12%] grid grid-cols-3 grid-rows-3 gap-1" role="grid" aria-label="Glove">
-                {[0, 1, 2].map((row) =>
-                  [0, 1, 2].map((col) => {
-                    const cell = { row: row as 0 | 1 | 2, col: col as 0 | 1 | 2 };
-                    const on = cellKey(aim) === cellKey(cell);
-                    const hot = game.hotCell && cellKey(game.hotCell) === cellKey(cell);
-                    return (
-                      <button
-                        key={cellKey(cell)}
-                        type="button"
-                        aria-pressed={on}
-                        disabled={inFlight}
-                        className={`rounded-md border font-display text-[10px] uppercase ${
-                          on ? "border-gold text-cream" : "border-white/20 text-cream/80"
-                        } ${hot && !reduced ? "shine-hot-shimmer" : ""}`}
-                        style={{ background: hot ? "rgb(255 113 143 / 0.38)" : "rgb(8 17 39 / 0.55)" }}
-                        onClick={() => setAim(cell)}
-                      >
-                        {hot ? "+" : ""}
-                      </button>
-                    );
-                  }),
-                )}
-              </div>
-              {stage === "field" && spec ? (
-                <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
-                  <p className="rounded-full border border-white/25 bg-ink/85 px-3 py-1 font-display text-xs uppercase tracking-widest text-cream">{spec.label}</p>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="mx-auto w-full max-w-sm">
-              <div className={`relative h-3 overflow-hidden rounded-full bg-ink-2 ${gutsOn && !reduced ? "shine-leverage-bar" : ""}`} aria-hidden>
-                <div className="pointer-events-none absolute inset-y-0 bg-gold/30" style={{ left: `${(windows.kick.at / DELIVERY_DUR) * 100 - 4}%`, width: "8%" }} />
-                <div
-                  className="pointer-events-none absolute inset-y-0 bg-grass-2/40"
-                  style={{ left: `${(windows.release.at / DELIVERY_DUR) * 100 - 4}%`, width: "8%" }}
-                />
-                {kickT !== null ? <div className="pointer-events-none absolute inset-y-0 w-0.5 bg-gold" style={{ left: `${(kickT / DELIVERY_DUR) * 100}%` }} /> : null}
-                <div className="h-full bg-cream/80" style={{ width: `${Math.min(100, u * 100)}%` }} />
-              </div>
-              <p className="mt-2 text-center font-display text-lg font-bold" aria-live="polite">
-                {stage === "prepare"
-                  ? "Set."
-                  : inFlight
-                    ? kickT === null
-                      ? "Kick"
-                      : releaseT === null
-                        ? "Release"
-                        : "…"
-                    : stage === "field" && spec
-                      ? spec.label
-                      : game.banner}
-              </p>
-              {assist && stage === "idle" ? <p className="mt-1 text-center font-ui text-[10px] uppercase tracking-widest text-muted">Timing assist on</p> : null}
-            </div>
-
-            <div className="mx-auto flex w-full max-w-sm flex-col gap-2">
-              {game.kind === "practice" ? null : (
-                <div className="flex gap-2">
-                  {mix.map((k) => (
-                    <PixelBtn key={k} variant={type === k ? "primary" : "ghost"} pressed={type === k} className="h-11 flex-1" onClick={() => setType(k)} disabled={inFlight}>
-                      {k}
-                    </PixelBtn>
-                  ))}
-                </div>
-              )}
-              {situation && !game.done ? (
-                <>
-                  {still ? (
-                    <>
-                      <p className="text-center font-display text-lg font-bold">{still.trained}</p>
-                      <p className="text-center font-ui text-sm text-cream/80">{still.mentor}</p>
-                    </>
-                  ) : (
-                    <p className="text-center font-display text-lg font-bold">The park holds its breath.</p>
-                  )}
-                  <PixelBtn className="h-14" onClick={stepIn}>
-                    Step in
-                  </PixelBtn>
-                </>
-              ) : null}
-              {(stage === "idle" || stage === "dead") && !game.done ? (
-                <PixelBtn className="h-14" onClick={throwIt}>
-                  {stage === "dead" ? "Back on the rubber" : "Throw"}
-                </PixelBtn>
-              ) : null}
-              {stage === "prepare" || inFlight ? (
-                <PixelBtn
-                  className="h-14 touch-none select-none"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    tap(inputNow(e.nativeEvent));
-                  }}
-                >
-                  {kickT === null ? "Kick" : "Release"}
-                </PixelBtn>
-              ) : null}
-              {showingBeat ? (
-                <PixelBtn className="h-14" disabled>
-                  {stage === "field" ? "…" : game.banner}
-                </PixelBtn>
-              ) : null}
-              {game.done && (stage === "idle" || stage === "situation") && !crowdHold ? (
-                <PixelBtn className="h-14" onClick={leave}>
-                  Leave the mound
-                </PixelBtn>
-              ) : null}
-            </div>
-          </>
-        )}
-      </div>
+      </section>
     </main>
   );
 }

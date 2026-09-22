@@ -17,13 +17,14 @@
  *   and the stage goes to `dead` — the pitch is never resolved twice.
  */
 
-import type { Cell } from "../game/plate.ts";
+import type { Cell } from "./core/zone.ts";
 import {
   beatSpec,
   PREPARE_MS,
   PREPARE_MS_REDUCED,
   TIMING_ASSIST_FLIGHT,
   TIMING_ASSIST_WINDOW,
+  type BeatPace,
   type BeatSpec,
   type Stage,
 } from "./beats.ts";
@@ -52,8 +53,8 @@ import {
   type SwingKind,
 } from "./featured-game.ts";
 import { effectiveTimingMult, shineSwingWindow } from "./oracle.ts";
-import { hashId, makeRng } from "../game/data.ts";
-import { blendTiming, callAllowed, gaussianFrom, satRight, statSigma, type CoachCardId, type DuelCall, type PitchFamily } from "./duel.ts";
+import { hashId, makeRng } from "./core/rng.ts";
+import { blendTiming, callAllowed, gaussianFrom, satRight, statSigma, type CallMods, type CoachCardId, type DuelCall, type PitchFamily } from "./duel.ts";
 import { bookLines, rivalProfile } from "./rivals.ts";
 import { sheet } from "./bible.ts";
 import type { TraineeRun } from "./types.ts";
@@ -113,7 +114,7 @@ export interface PlateScheduler {
   clear(handle: unknown): void;
 }
 
-const realScheduler: PlateScheduler = {
+export const realScheduler: PlateScheduler = {
   now: () => (typeof performance !== "undefined" ? performance.now() : Date.now()),
   set: (fn, ms) => setTimeout(fn, ms),
   clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
@@ -140,6 +141,8 @@ export interface PlateControllerOptions {
   prepareMsReduced?: number;
   /** The Duel: calls, cards, the book, the 70/30 tap. Off keeps the plate byte-identical. */
   duel?: boolean;
+  /** Beat holds: "tap" hurries ordinary pitches back to the button; "race" lets a swing finish on screen. Default tap. */
+  beatPace?: BeatPace;
 }
 
 /** The half-width of the timing window, shared by 2D and 3D HUDs. */
@@ -179,6 +182,7 @@ export class PlateController {
   private readonly prepareMs: number;
   private readonly prepareMsReduced: number;
   private readonly duel: boolean;
+  private readonly beatPace: BeatPace;
   private readonly stings: boolean;
   private timers: Suspendable[] = [];
   private snap: PlateSnapshot | null = null;
@@ -195,6 +199,7 @@ export class PlateController {
     this.prepareMs = opts.prepareMs ?? PREPARE_MS;
     this.prepareMsReduced = opts.prepareMsReduced ?? PREPARE_MS_REDUCED;
     this.duel = opts.duel ?? false;
+    this.beatPace = opts.beatPace ?? "tap";
     this.stings = opts.uniqueStings ?? true;
     const g = opts.restore ? structuredClone(opts.restore.game) : startFeaturedGame(opts.run, opts.kind, opts.encounter);
     g.lastSpurt = maybeLastSpurt(g);
@@ -458,9 +463,31 @@ export class PlateController {
     this.tap(kind, c.t0 + c.frozenMs + u * c.durationS * 1000);
   }
 
+  /**
+   * The race: her own swing, scheduled on the flight clock. When progress
+   * reaches `u` the pitch resolves with exactly `timingErr` — no assist, no
+   * 70/30 blend, no tap. Pause suspends it like every other flight timer.
+   * Returns false when nothing is in the air.
+   */
+  swingAt(kind: SwingKind, u: number, timingErr: number, barrel?: Cell, mods?: Partial<CallMods>): boolean {
+    const c = this.clock;
+    const p = this.pitch;
+    if (!c || !p || this.stage !== "flight" || isFrozen(c) || this.pauseReason) return false;
+    const fromU = progressAt(c, this.sched.now());
+    const ms = Math.max(0, (u - fromU) * c.durationS * 1000);
+    this.later(() => {
+      if (this.stage !== "flight" || !this.clock || isFrozen(this.clock) || this.pitch !== p) return;
+      const practice = this.game.kind === "practice";
+      const next = { ...this.game };
+      resolveSwing(this.run, next, p, barrel ?? this.aim, timingErr, practice ? "contact" : kind, mods);
+      this.land(next, true, practice ? "contact" : kind);
+    }, ms);
+    return true;
+  }
+
   private land(next: FeaturedGame, swung: boolean, swingKind: SwingKind | null) {
     const beat = fieldBeatFor(next);
-    const spec = beatSpec(beat, this.reduced);
+    const spec = beatSpec(beat, this.reduced, this.beatPace);
     this.clearTimers();
     this.clock = null;
     this.pitch = null;

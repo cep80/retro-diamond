@@ -81,6 +81,20 @@ Rules: run `find src scripts -mmin -3 -type f` before editing shared files; re-r
 | Scratch files | Use the Write tool | The shell guard blocks `>` redirects into paths under the home directory. |
 | `.stage-probe/` | gitignored | Probe screenshots and scratch scripts live there. |
 
+## 5a. Game Designer lock (2026-09-18)
+
+Binding for this round. Confirm with the user before treating five-family as the art gate.
+
+| Lock | Value |
+|---|---|
+| Stranger test | Four-beat: Hit / Strikeout / Walk / Home run. Pass = 4 of 5 per beat. |
+| Five-family | Runtime only (`outcomeFamily`, `AOI_FAMILY_REEL`). Not this test. No foul/tip stills this folder. |
+| Stills this week | Aoi `contact` / `celebrate` / `crushed` / `trot` only. Pitcher stills after the batter set passes. |
+| Clips on import | Drop Aoi's `hr` and `k` webms so the 3D overlay does not cover the anime still. Walk clip is Reina's (`clipOwner`: take → pitcher); leave it. |
+| Farm | Do not pose celebrate/crushed/trot in 3D. Prompt pack is the source. |
+
+Prompt pack updated the same day: celebrate ball-speck is mandatory; reject-if-missing on contact (no barrel ball), celebrate (no sky speck), trot (bat still in hand).
+
 ## 6. Open decisions for the user
 
 1. Which generator made the portraits, and can it be reached (Chrome extension, API key, or manual)?

@@ -4,7 +4,6 @@
  */
 import type { CharacterId, TraineeRun } from "./types.ts";
 import type { FeaturedGame, GameKind } from "./featured-game.ts";
-import { sheet } from "./bible.ts";
 import { datePark } from "./culture.ts";
 
 export type ParkSky = "day" | "dusk" | "night";
@@ -70,14 +69,73 @@ export function sitLabel(style: string, cell: { row: number; col: number }, home
 }
 
 export function plateRead(run: TraineeRun, game: FeaturedGame) {
-  const who = sheet(run.characterId);
-  if (game.kind === "practice") return "Three looks. Energy spent.";
-  if (game.pgMet) return `${who.pgVerb}.`;
+  if (game.kind === "practice") return "Three looks. The bat is real.";
+  if (game.pgMet) {
+    if (game.pgId === "see-3-one-pa") {
+      if (game.kind === "gate") return "Three pitches in one look. The Gate opened.";
+      if (game.kind === "finale") return "Diamond Finale. Three pitches in one look.";
+      return "Three pitches in one look.";
+    }
+    if (game.pgId === "no-k") return "She didn't strike out.";
+    if (game.pgId === "foul-two-strike") return "She fouled one off with two strikes. The fight was still worth watching.";
+    if (game.pgId === "full-count") return "She took it to 3-2.";
+    if (game.pgId === "contact-breaking") return "She put the bat on a breaking ball.";
+    if (game.pgId === "runners-on-at-bat") return "She came up with runners on.";
+    if (game.pgId === "steal") return "She stole a base.";
+    if (game.pgId === "steal-late") return "She stole late.";
+    if (game.pgId === "steal-risp") return "She stole with a runner in scoring position.";
+    if (game.pgId === "score-from-first-single") return "She scored from first on a single.";
+    if (game.pgId === "score-no-hit") return "She scored without a hit.";
+    if (game.pgId === "reach-twice") return "She reached twice.";
+    if (game.kind === "gate") return "The Gate opened.";
+    if (game.hr) return "She watched it go.";
+    if (game.walks > 0 && game.hits === 0) return "Ball four was enough.";
+    return "She got what she came for.";
+  }
+  if (game.pgId === "see-3-one-pa") {
+    const n = game.maxPaPitches;
+    if (n >= 2) return "Two pitches in the look. The date asked for three.";
+    if (n === 1) return "One pitch in the look. The date asked for three.";
+    return "The look never got to three pitches.";
+  }
+  if (game.pgId === "no-k" && game.struckOut) return "She struck out.";
+  if (game.pgId === "foul-two-strike") return "The two-strike foul didn't come. The fight was still worth watching.";
+  if (game.pgId === "full-count") return "The count never got to 3-2.";
+  if (game.pgId === "contact-breaking") return "The breaking ball never met the bat.";
+  if (game.pgId === "runners-on-at-bat") return "She never came up with runners on.";
+  if (game.pgId === "steal") return "The steal didn't come.";
+  if (game.pgId === "steal-late") {
+    const early = game.events.some((e) => e.t === "stealResult" && e.safe && e.inning < 7);
+    return early ? "She stole. It was early." : "The late steal didn't come.";
+  }
+  if (game.pgId === "steal-risp") {
+    const plain = game.events.some((e) => e.t === "stealResult" && e.safe && !e.risp);
+    return plain ? "She stole. The date asked for a runner in scoring position." : "The steal with a runner in scoring position didn't come.";
+  }
+  if (game.pgId === "score-from-first-single") return "She didn't score from first.";
+  if (game.pgId === "score-no-hit") {
+    const onHit = game.events.some((e) => e.t === "score" && e.runner === "self" && e.selfReachedBy === "hit");
+    return onHit ? "She scored. It was on a hit." : "The run without a hit didn't come.";
+  }
   const last = game.lastPitches.at(-1);
-  if (game.struckOut) return "She struck out. The sit never found the pitch.";
+  if (game.hits > 0 || game.walks > 0) {
+    const on = game.hits + game.walks;
+    if (game.pgId === "reach-twice" && on < 2) return "She reached once. The date asked for two.";
+    if (game.pgId === "hit-late") return game.hits > 0 ? "She hit. It was early." : "She walked. The date wanted a hit, late.";
+    if (game.pgId === "hit-risp") {
+      const walk = game.sgMet ? " The walk held." : "";
+      return game.hits > 0 ? `She hit. The runners weren't on.${walk}` : `The hit with runners on didn't come.${walk}`;
+    }
+    return on === 1 ? "She reached once. It wasn't the date." : "She was on. It wasn't the date.";
+  }
+  if (game.struckOut) {
+    if (game.qualityAbs > 0) return "She put the ball in play. She never got on.";
+    return "She struck out. The sit never found the pitch.";
+  }
   if (game.lastContact === "miss") return "Swing through. The ghost sat where the ball crossed.";
+  if (game.lastContact === "hit" || game.lastContact === "barrel") return "In play. She didn't reach.";
   if (last && last.type !== "fastball" && run.stats.eye < 9) return "The breaking ball stayed a question.";
   if (game.lastContact === "foul-tip") return "Foul tip. Timing was there. The sit was a cell off.";
   if (game.lastContact === "foul") return "Pulled foul. She was on time. Wrong cell.";
-  return "The Primary Goal stayed open. The loss is legible.";
+  return "She didn't get what she came for.";
 }

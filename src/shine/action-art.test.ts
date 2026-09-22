@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
   ACTION_MANIFEST_URL,
@@ -11,6 +12,7 @@ import {
   clipFor,
   clipOwner,
   clipSeekS,
+  holdBeatPoster,
   CONTACT_HOLD_MS,
   CUT_IN_HITSTOP_MS,
   CUT_IN_STEP_MS,
@@ -19,6 +21,7 @@ import {
   defaultAngleFor,
   fallbackPose,
   familyCutIn,
+  filmReady,
   focusFor,
   GIRL_STILLS_BUDGET_BYTES,
   moneyBeatFor,
@@ -62,15 +65,33 @@ describe("action art: cue → picture", () => {
     }
   });
 
+  it("holds the running still on an idle walk, with no swing clip over it", () => {
+    const trot = pictureFor(view({ stage: "idle", beat: "walk", swung: false, resolvedAtMs: null, nowMs: 0 }));
+    assert.equal(trot.batter, "trot");
+    assert.equal(trot.clip, null);
+  });
+
+  it("holds the swing still on idle while the last beat is still on the view", () => {
+    const hit = pictureFor(view({ stage: "idle", beat: "single", swung: true, resolvedAtMs: 0, nowMs: CONTACT_HOLD_MS }));
+    assert.equal(hit.batter, "follow");
+    assert.equal(hit.angle, "three_quarter");
+    assert.equal(hit.card, "Through the hole.");
+    const take = pictureFor(view({ stage: "idle", beat: "take-strike", swung: false, resolvedAtMs: 0, nowMs: CONTACT_HOLD_MS }));
+    assert.equal(take.batter, "take");
+    assert.equal(take.cutIn, null);
+  });
+
   it("winds up with a push-in during prepare, none under reduced motion", () => {
-    assert.equal(pictureFor(view({ stage: "prepare" })).pitcher, "windup");
-    assert.equal(pictureFor(view({ stage: "prepare" })).pushIn, true);
+    const p = pictureFor(view({ stage: "prepare" }));
+    assert.equal(p.pitcher, "windup");
+    assert.equal(p.batter, "load", "Go coils her even when the frame stays on the arm");
+    assert.equal(p.pushIn, true);
     assert.equal(pictureFor(view({ stage: "prepare", reduced: true })).pushIn, false);
   });
 
-  it("holds the stance through the flight until the Go, then cuts", () => {
+  it("holds the load through the flight until she cuts", () => {
     const before = pictureFor(view({ stage: "flight", u: 0.5 }));
-    assert.deepEqual([before.pitcher, before.batter, before.cutIn], ["release", "stance", null]);
+    assert.deepEqual([before.pitcher, before.batter, before.cutIn], ["release", "load", null]);
     const after = pictureFor(view({ stage: "flight", u: 0.9, tappedAtU: 0.88 }));
     assert.equal(after.batter, "cut");
     assert.deepEqual(after.cutIn, ["load", "cut"]);
@@ -101,6 +122,13 @@ describe("action art: cue → picture", () => {
     assert.equal(take.card, "Strike. Looking.");
   });
 
+  it("holds the pitcher on follow when the ball is in play", () => {
+    const out = pictureFor(view({ stage: "reaction", beat: "grounder-out", swung: true, resolvedAtMs: 0, nowMs: 260 }));
+    const hit = pictureFor(view({ stage: "reaction", beat: "single", swung: true, resolvedAtMs: 0, nowMs: 260 }));
+    assert.equal(out.pitcher, "follow");
+    assert.equal(hit.pitcher, "follow");
+  });
+
   it("names a two-strike foul on the card", () => {
     const p = pictureFor(view({ stage: "reaction", beat: "foul", swung: true, resolvedAtMs: 0 }), {}, true);
     assert.equal(p.card, "Foul. Pulled. Still two.");
@@ -114,6 +142,7 @@ describe("action art: cue → picture", () => {
     assert.equal(fresh("hr", true).batter, "contact", "the contact hold comes first");
     assert.equal(settled("k", true).batter, "crushed");
     assert.equal(settled("k", false).batter, "crushed", "a called third strike crushes too");
+    assert.equal(settled("k", false).pitcher, "k", "a punchout is her K still");
     assert.equal(settled("walk", false).batter, "trot");
     assert.equal(fresh("walk", false).batter, "take");
     assert.equal(settled("single", true).batter, "follow", "a plain hit keeps the follow-through");
@@ -125,10 +154,10 @@ describe("action art: cue → picture", () => {
       const swung = !["take-strike", "ball", "walk", "k"].includes(beat);
       const p = pictureFor(view({ stage: "reaction", beat, swung, resolvedAtMs: 0 }));
       assert.ok(BATTER_POSES.includes(p.batter), beat);
-      assert.ok(PITCHER_POSES.includes(p.pitcher), beat);
+      assert.ok(p.pitcher === "k" || PITCHER_POSES.includes(p.pitcher as (typeof PITCHER_POSES)[number]), beat);
       assert.ok(p.card && p.card.length > 0, beat);
       assert.ok(p.family, beat);
-      assert.equal(p.angle, "three_quarter", beat);
+      assert.equal(p.angle, swung ? "three_quarter" : "mound_close", beat);
     }
   });
 });
@@ -156,10 +185,15 @@ describe("action art: Hybrid E five-family grammar", () => {
     }
   });
 
-  it("defaults Hybrid E angles to three_quarter on both roles", () => {
-    assert.equal(defaultAngleFor("batter"), "three_quarter");
+  it("sits the batter close from the mound, and cuts to action stills on Go", () => {
+    assert.equal(defaultAngleFor("batter"), "mound_close");
     assert.equal(defaultAngleFor("pitcher"), "three_quarter");
-    assert.equal(pictureFor(view({ stage: "prepare" })).angle, "three_quarter");
+    assert.equal(pictureFor(view({ stage: "idle" })).angle, "mound_close");
+    assert.equal(pictureFor(view({ stage: "prepare" })).angle, "three_quarter", "wind-up is still her");
+    assert.equal(pictureFor(view({ stage: "flight", u: 0.5 })).angle, "mound_close");
+    assert.equal(pictureFor(view({ stage: "flight", u: 0.9, tappedAtU: 0.88 })).angle, "three_quarter");
+    assert.equal(pictureFor(view({ stage: "reaction", beat: "take-strike", swung: false, resolvedAtMs: 0 })).angle, "mound_close");
+    assert.equal(pictureFor(view({ stage: "reaction", beat: "single", swung: true, resolvedAtMs: 0 })).angle, "three_quarter");
   });
 });
 
@@ -172,6 +206,12 @@ describe("action art: focus", () => {
     for (const stage of ["situation", "idle", "dead", "field", "reaction"] as const) {
       assert.equal(focusFor(view({ stage })), "batter", stage);
     }
+  });
+
+  it("never gives the frame to academy — no pitcher plate means we watch her", () => {
+    assert.equal(focusFor(view({ stage: "prepare" }), false), "batter");
+    assert.equal(focusFor(view({ stage: "flight", u: RELEASE_HOLD_U / 2 }), false), "batter");
+    assert.equal(focusFor(view({ stage: "flight", u: 0.9 }), false), "batter");
   });
 });
 
@@ -192,13 +232,65 @@ describe("action art: money beats", () => {
     const k = { url: "p", bytes: 1, w: 720, h: 960, durationS: 3, markerS: 0.9 };
     const batter = { role: "batter" as const, stills: {}, clips: { hr, k: { ...k, url: "bk" } } };
     const pitcher = { role: "pitcher" as const, stills: {}, clips: { k, walk: k } };
-    assert.equal(clipOwner({ swung: true }), "batter");
-    assert.equal(clipOwner({ swung: false }), "pitcher");
+    assert.equal(clipOwner({ swung: true, beat: null }), "batter");
+    assert.equal(clipOwner({ swung: false, beat: null }), "pitcher");
+    assert.equal(clipOwner({ swung: false, beat: "walk" }), "batter", "she reached");
+    assert.equal(clipOwner({ swung: false, beat: "k" }), "pitcher", "K looking is the arm");
     assert.equal(clipFor("k", "batter", { batter, pitcher })?.clip.url, "bk", "a whiff is hers");
     assert.equal(clipFor("k", "pitcher", { batter, pitcher })?.role, "pitcher", "a K looking is the arm's");
-    assert.equal(clipFor("walk", "batter", { batter, pitcher })?.role, "pitcher", "falls through to the other girl");
+    assert.equal(clipFor("walk", "batter", { batter, pitcher })?.role, "pitcher", "falls through when she has no walk clip");
+    const trot = { url: "trot", bytes: 1, w: 720, h: 960, durationS: 2, markerS: 0.4, authored: true as const };
+    assert.equal(
+      clipFor("walk", "batter", { batter: { role: "batter", stills: {}, clips: { walk: trot } }, pitcher })?.clip.url,
+      "trot",
+      "her walk clip outranks the arm's",
+    );
     assert.equal(clipFor("hr", "batter", { batter: undefined, pitcher }), null);
     assert.equal(clipFor(null, "batter", { batter, pitcher }), null);
+  });
+
+  it("never cuts a farm render over a drawn clip (AAA lock)", () => {
+    const farm = { url: "farm", bytes: 1, w: 720, h: 960, durationS: 3, markerS: 0.9 };
+    const drawn = { ...farm, url: "drawn", authored: true as const };
+    const batter = { role: "batter" as const, stills: {}, clips: { k: drawn, walk: drawn } };
+    const pitcher = { role: "pitcher" as const, stills: {}, clips: { k: farm, walk: farm } };
+    assert.equal(clipFor("k", "pitcher", { batter, pitcher })?.clip.url, "drawn", "K looking: her drawn clip beats the arm's farm clip");
+    assert.equal(clipFor("walk", "pitcher", { batter, pitcher })?.role, "batter");
+    const bothDrawn = { role: "pitcher" as const, stills: {}, clips: { k: { ...drawn, url: "arm" } } };
+    assert.equal(clipFor("k", "pitcher", { batter, pitcher: bothDrawn })?.clip.url, "arm", "owner order still holds between drawn clips");
+    assert.equal(clipFor("k", "batter", { batter: { role: "batter", stills: {}, clips: {} }, pitcher })?.clip.url, "farm", "farm is still the fallback when nothing is drawn");
+  });
+
+  it("filmReady is the cast-bar gate from the live pack", () => {
+    const raw = readFileSync(new URL("../../public/art/action/manifest.json", import.meta.url), "utf8");
+    const live = JSON.parse(raw) as ActionManifest;
+    const cast = ["aoi", "reina", "miki", "yuki", "kira", "sol"] as const;
+    for (const id of cast) {
+      assert.equal(filmReady(id, live), true, id);
+      const girl = live.girls[id];
+      assert.ok(girl, id);
+      for (const [pose, still] of Object.entries(girl.stills)) {
+        assert.ok(still.bytes >= 40_000, `${id} ${pose} is authored, not a farm still`);
+      }
+    }
+    assert.equal(filmReady("aoi", null), false);
+  });
+
+  it("authored money clips cut across stills, not a two-still dissolve", () => {
+    const raw = readFileSync(new URL("../../public/art/action/manifest.json", import.meta.url), "utf8");
+    const manifest = JSON.parse(raw) as ActionManifest;
+    for (const id of ["aoi", "miki", "yuki"] as const) {
+      const hr = manifest.girls[id]?.clips.hr;
+      const k = manifest.girls[id]?.clips.k;
+      assert.equal(hr?.authored, true, `${id} hr`);
+      assert.ok((hr?.source?.segments.length ?? 0) >= 3, `${id} HR is load → contact → celebrate`);
+      assert.ok((k?.source?.segments.length ?? 0) >= 3, `${id} K is load → cut → crushed`);
+    }
+    for (const id of ["reina", "kira", "sol"] as const) {
+      const k = manifest.girls[id]?.clips.k;
+      assert.equal(k?.authored, true, `${id} k`);
+      assert.ok((k?.source?.segments.length ?? 0) >= 3, `${id} K is set → release → follow`);
+    }
   });
 
   it("threads the clip through the picture", () => {
@@ -222,6 +314,12 @@ describe("action art: sync", () => {
 
   it("ends when the tail after the marker has played", () => {
     assert.equal(clipEndsAtMs(clip, 1000), 1000 + 1450);
+  });
+
+  it("holds the punchout poster on the done card and drops it when she sets again", () => {
+    assert.equal(holdBeatPoster({ clipActive: false, stage: "reaction", poster: "/art/action/reina/k.webp" }), "/art/action/reina/k.webp");
+    assert.equal(holdBeatPoster({ clipActive: true, stage: "reaction", poster: "/art/action/reina/k.webp" }), null);
+    assert.equal(holdBeatPoster({ clipActive: false, stage: "idle", poster: "/art/action/reina/k.webp" }), null);
   });
 });
 
@@ -259,7 +357,11 @@ describe("action art: manifest", () => {
           hr: { url: "/art/action/aoi/hr.webm", bytes: 1000, w: 720, h: 960, durationS: 2.2, markerS: 0.75, poster: "/art/action/aoi/hr.webp" },
         },
       },
-      reina: { role: "pitcher", stills: { set: { url: "/art/action/reina/set.webp", bytes: 100, w: 720, h: 960 } }, clips: {} },
+      reina: {
+        role: "pitcher",
+        stills: { set: { url: "/art/action/reina/set.webp", bytes: 100, w: 720, h: 960 } },
+        clips: { k: { url: "/art/action/reina/k.webm", bytes: 0, w: 720, h: 960, durationS: 2, markerS: 0.3, poster: "/art/action/reina/k.webp" } },
+      },
     },
   };
 
@@ -273,6 +375,7 @@ describe("action art: manifest", () => {
     assert.equal(fallbackPose("crushed", [], BATTER_POSES), null);
     assert.equal(stillFor(manifest.girls.aoi, "follow")?.url, "/art/action/aoi/cut.webp");
     assert.equal(stillFor(manifest.girls.reina, "release")?.url, "/art/action/reina/set.webp");
+    assert.equal(stillFor(manifest.girls.reina, "k")?.url, "/art/action/reina/k.webp");
     assert.equal(stillFor(undefined, "stance"), null);
   });
 

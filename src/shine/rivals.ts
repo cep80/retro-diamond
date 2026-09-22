@@ -4,10 +4,9 @@
  * actually done at the plate (`run.tells`), never hidden difficulty counters,
  * and every adaptation is written on the scouting card before it is used.
  */
-import { clamp } from "../game/data.ts";
-import type { Player } from "../game/types.ts";
-import type { PitchType } from "../game/types.ts";
-import type { Cell, Loc, PitchCall } from "../game/plate.ts";
+import { clamp } from "./core/rng.ts";
+import type { Ballplayer, PitchType } from "./core/zone.ts";
+import type { Cell, Loc, PitchCall } from "./core/zone.ts";
 import { academyBatter, academyPitcher, traineeBatter } from "./actors.ts";
 import { sheet } from "./bible.ts";
 import { weeklySit } from "./pilgrimage.ts";
@@ -189,8 +188,8 @@ function yearScale(year: number) {
   return year <= 1 ? -2 : year === 2 ? 0 : 1;
 }
 
-/** A rival as a `Player` the plate math understands. Year 1 forms are rawer. */
-export function rivalPlayer(id: RivalArmId, year: number): Player {
+/** A rival as a `Ballplayer` the plate math understands. Year 1 forms are rawer. */
+export function rivalPlayer(id: RivalArmId, year: number): Ballplayer {
   const base = academyPitcher();
   if (id === "academy") return base;
   const who = sheet(id);
@@ -199,8 +198,6 @@ export function rivalPlayer(id: RivalArmId, year: number): Player {
     ...base,
     id: `rival-${id}`,
     name: who.name,
-    age: 16 + Math.max(0, year - 1),
-    potential: who.potential,
     stuff: clamp(who.stats.stuff + 3 + scale, 1, 20),
     control: clamp(who.stats.control + 2 + scale, 1, 20),
     stamina: clamp(who.stats.stamina + scale, 1, 20),
@@ -212,7 +209,7 @@ export function rivalPlayer(id: RivalArmId, year: number): Player {
 }
 
 /** The lineup a pitcher works through: academy bats with a cast hitter in the three-hole. */
-export function rivalLineup(run: Pick<TraineeRun, "characterId" | "year">, index: number): Player {
+export function rivalLineup(run: Pick<TraineeRun, "characterId" | "year">, index: number): Ballplayer {
   const slot = index % 6;
   if (slot !== 2) return academyBatter(index);
   const cast = pitcherRivalBat(run.characterId);

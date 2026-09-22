@@ -1,5 +1,7 @@
 # Diamond Shine — action still prompt pack (2026-09-17)
 
+**GD lock 2026-09-18:** this round is the four-beat stranger gate (hit / strikeout / walk / home run), 4-of-5 per beat. Five-family grammar (hit / foul / tip / whiff / take) stays runtime-only until that retest passes. Do not generate foul/tip stills this folder.
+
 The plate draws one 720×960 still per cue from `public/art/action/<girl>/<pose>.webp`. The farm renders placeholders from the 3D rigs; this pack replaces them with generated art in the house style of `public/characters/*.png`, the same way the portraits were made. Drop the finished files in one folder as `<girl>-<pose>.png` and run:
 
 ```
@@ -27,17 +29,17 @@ Paste this after each pose line:
 
 > Same character as the reference image, same face, hair, cap and uniform, drawn in the same anime illustration style. Night game at a small Japanese ballpark with paper lanterns strung along the fence and a dark city skyline behind. Three-quarter view from the first-base side, camera at chest height, the character fills the frame from cap to knee. Portrait orientation 3:4. Warm lantern rim light from the left, cool blue fill from the sky. No text, no logos, no scoreboard, no watermark, no other people.
 
-Reference image: `public/characters/captain-aoi.png` for Aoi, `public/characters/ace-reina.png` for Reina. Generate at 3:4 (864×1152 matches the portraits); the importer handles the rest.
+Reference image: `public/characters/captain-aoi.png` for Aoi, `public/characters/ace-reina.png` for Reina. Face refs for this round: `captain-aoi-elated.png` with celebrate, `captain-aoi-crushed.png` with crushed. Generate at 3:4 (864×1152 matches the portraits); the importer handles the rest.
 
 ## Pose prompts, Aoi (batter, right-handed)
 
-**aoi-contact** — Mid-swing at the instant the bat meets the ball, arms extended, hips turned, eyes locked on the barrel, ponytail whipping. Small motion blur on the bat only.
+**aoi-contact** — Mid-swing at the instant the bat meets the ball, arms extended, hips turned, eyes locked on the barrel, ponytail whipping. Small motion blur on the bat only. The ball is on the barrel, not in the air. Reject if the ball is missing or already leaving the frame.
 
-**aoi-celebrate** — The swing is finished. She stands tall at the plate watching a home run sail away: bat sliding out of her left hand toward the dirt, right fist rising to shoulder height, mouth open in a shout, eyes up and to the right following the ball, which is a tiny bright speck near the top edge.
+**aoi-celebrate** — The swing is finished. She stands tall at the plate watching a home run sail away: bat sliding out of her left hand toward the dirt, right fist rising to shoulder height, mouth open in a shout (same energy as `captain-aoi-elated.png`), eyes up and to the right following the ball. The ball must be visible as a tiny bright white dot in the upper-right area of the frame, clearly distant, at least two-thirds of the way up the image. Reject if that speck is missing — without it testers name this as a hit.
 
-**aoi-crushed** — Just struck out swinging. She is bent forward at the waist, bat hanging loose from one hand and touching the dirt, cap brim hiding her eyes, ponytail fallen forward, back foot still pivoted from the swing. No ball anywhere.
+**aoi-crushed** — Just struck out swinging. She is bent forward at the waist, bat hanging loose from one hand and touching the dirt, cap brim hiding her eyes, ponytail fallen forward, back foot still pivoted from the swing. Face like `captain-aoi-crushed.png`. No ball anywhere. Reject if she is still mid-swing or looking up.
 
-**aoi-trot** — Ball four. She is already walking toward first base, seen from three-quarter behind-left so we see her face over her shoulder, calm half-smile; the bat lies on the dirt behind her near the plate. Batting gloves on. No ball, no pitcher.
+**aoi-trot** — Ball four. She is already walking toward first base, seen from three-quarter behind-left so we see her face over her shoulder, calm half-smile; the bat lies on the dirt behind her near the plate. Batting gloves on. No ball, no pitcher. Reject if the bat is still in her hands — testers will name that as a strikeout.
 
 ## Pose prompts, Reina (pitcher, right-handed) — optional this round
 

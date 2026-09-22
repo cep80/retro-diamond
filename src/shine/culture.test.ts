@@ -5,6 +5,9 @@ import {
   cheerLines,
   cowbellOn,
   crowdStem,
+  curtainCallLine,
+  curtainCaption,
+  curtainFilmSrc,
   curtainSkin,
   curtainStillSrc,
   endingRankLabel,
@@ -12,22 +15,24 @@ import {
   parkCulture,
   pastBlurb,
   datePark,
+  fanLetter,
   recapLine,
   recapPoolSize,
   shouldCurtainCall,
   workMorningLine,
+  morningSpeech,
   yearVoice,
   verseCount,
   verseTier,
 } from "./culture.ts";
 
 describe("culture presentation", () => {
-  it("ships 18 応援歌 verses and 10 lines per recap pool", () => {
+  it("ships 18 応援歌 verses and a recap line for every park", () => {
     assert.equal(verseCount(), 18);
     const pools = recapPoolSize();
     assert.equal(pools.jp, 10);
     assert.equal(pools.blend, 10);
-    assert.equal(pools.us, 10);
+    assert.equal(pools.us, 7);
   });
 
   it("unlocks verses by fans 30 / 60 / 80 and never widens the window", () => {
@@ -59,6 +64,16 @@ describe("culture presentation", () => {
     assert.doesNotMatch(pastBlurb("aoi"), /Contact/);
     assert.equal(curtainStillSrc("otachidai"), "/bg/park-koi.jpg");
     assert.equal(curtainStillSrc("dugout"), "/bg/stadium.jpg");
+    assert.equal(curtainFilmSrc("aoi"), "/art/curtain/aoi.png");
+    assert.doesNotMatch(curtainFilmSrc("aoi"), /celebrate/);
+    assert.equal(curtainFilmSrc("miki"), "/art/action/miki/trot.webp");
+    assert.equal(curtainFilmSrc("yuki"), "/art/action/yuki/trot.webp");
+    assert.equal(curtainFilmSrc("kira"), "/art/action/kira/follow.webp");
+    assert.doesNotMatch(curtainFilmSrc("miki"), /follow|celebrate/);
+    assert.equal(curtainCaption("aoi"), "Cap in hand. No bat.");
+    assert.equal(curtainCaption("yuki"), "She's going.");
+    assert.equal(curtainCaption("miki"), "The bat is down.");
+    assert.equal(curtainCaption("kira"), "The glove stays.");
     assert.equal(endingRankLabel("S"), "S — Legend");
     assert.equal(endingRankLabel("never-quit"), "Never Quit ◆");
     assert.equal(ouenSwell("koi", 2), true);
@@ -75,6 +90,22 @@ describe("culture presentation", () => {
     assert.equal(shouldCurtainCall("gate", true), false);
     assert.equal(curtainSkin(datePark("night-classic", "koi")), "dugout");
     assert.equal(curtainSkin(datePark("lantern-classic", "stars")), "otachidai");
+    const sol = "Dugout. She does not smile in the still.";
+    assert.equal(curtainCallLine(sol, curtainSkin(datePark("lantern-classic", "dusters"))), "お立ち台. She does not smile in the still.");
+    assert.equal(curtainCallLine(sol, curtainSkin(datePark("night-classic", "dusters"))), sol);
+    const aoi = "お立ち台. She's already looking.";
+    assert.equal(curtainCallLine(aoi, curtainSkin(datePark("lantern-classic", "koi"))), aoi);
+    assert.equal(curtainCallLine(aoi, curtainSkin(datePark("night-classic", "koi"))), "Dugout. She's already looking.");
+  });
+
+  it("quotes the date she sat in the fan letter", () => {
+    const letter = fanLetter({
+      characterId: "aoi",
+      highlights: [{ kind: "game", label: "Night Classic", line: "REACH vs Sol. PA 1: reached on a base hit." }],
+    });
+    assert.match(letter, /Night Classic/);
+    assert.match(letter, /base hit/);
+    assert.doesNotMatch(letter, /walked twice|bunt|3-1/);
   });
 
   it("maps 14 US parks onto four crowd stems", () => {
@@ -111,7 +142,22 @@ describe("culture presentation", () => {
   });
 
   it("rotates the year-start voice without a gacha tile", () => {
-    assert.match(yearVoice(2), /Palms/);
-    assert.match(yearVoice(3), /Energy is back to 80/);
+    assert.match(yearVoice(2), /new voice/);
+    assert.doesNotMatch(yearVoice(2), /Palms/);
+    assert.equal(
+      morningSpeech("She's moving to the Palms organization. A new voice arrives.", 2, "palms"),
+      yearVoice(2),
+    );
+    assert.equal(
+      morningSpeech("She was on. The goal she came for stayed open.", 2, "palms"),
+      "She reached once. The date asked for two.",
+    );
+    assert.equal(
+      morningSpeech("She struck out. The sit never found the pitch.", 3, "palms"),
+      "She put the ball in play. She never got on.",
+    );
+    assert.match(yearVoice(3), /The Stretch is next/);
+    assert.doesNotMatch(yearVoice(3), /legs are fresh/);
+    assert.doesNotMatch(yearVoice(3), /Energy|BP/);
   });
 });

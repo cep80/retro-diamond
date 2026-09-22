@@ -1,7 +1,8 @@
-import { hashId, makeRng, uid } from "../game/data.ts";
+import { hashId, makeRng, uid } from "./core/rng.ts";
 import { PLATE_TURNS, turnMeta, yearOf } from "./calendar.ts";
+import { memoryLine } from "./relationship.ts";
 import { isPitcherStyle, sheet } from "./bible.ts";
-import { awardGameSparks, awardStatSparks, awardTrainingSpark, careerClosesEarly, finaleUnlocked, inheritSparks, mintClubhouseCard } from "./ending.ts";
+import { awardGameSparks, awardStatSparks, awardTrainingSpark, careerClosesEarly, finaleUnlocked, inheritSparks, isMikiPath, mintClubhouseCard } from "./ending.ts";
 import { addHighlight, definingPaFrom, gameHighlight, keepsakeHighlight, rivalHighlight, type GameRecord } from "./scrapbook.ts";
 import {
   EMPTY_TELLS,
@@ -56,6 +57,7 @@ export function newRun(characterId: CharacterId, sparks: Spark[] = [], parentId:
     mood: 2,
     fans: 0,
     pgMisses: 0,
+    walks: 0,
     pgResults: ["pending", "pending", "pending", "pending", "pending", "pending", "pending"],
     sgResults: ["pending", "pending", "pending", "pending", "pending", "pending", "pending"],
     failStreak: { stat: null, count: 0 },
@@ -89,6 +91,7 @@ export function newRun(characterId: CharacterId, sparks: Spark[] = [], parentId:
     faced: {},
     highlights: [],
     definingPa: null,
+    lightCard: null,
   };
   if (sparks.length) inheritSparks(run, sparks);
   return run;
@@ -130,13 +133,19 @@ function maybeBreakthrough(run: TraineeRun) {
   }
 }
 
-function logTurn(run: TraineeRun, statTrained: TraineeStatKey | null, outcome: TraineeRun["calendar"][0]["outcome"]) {
+function logTurn(
+  run: TraineeRun,
+  statTrained: TraineeStatKey | null,
+  outcome: TraineeRun["calendar"][0]["outcome"],
+  station?: StationId,
+) {
   const meta = turnMeta(run.turn);
   run.calendar.push({
     turn: run.turn,
     type: meta.type,
     statTrained,
     outcome,
+    station,
     energyAfter: run.energy,
     moodAfter: run.mood,
   });
@@ -209,7 +218,7 @@ export function resolveOffDay(run: TraineeRun) {
   applyEnergy(run, REST_ENERGY);
   applyMood(run, 0.5);
   run.failStreak = { stat: null, count: 0 };
-  logTurn(run, null, "success");
+  logTurn(run, null, "success", "off-day");
   advance(run);
 }
 
@@ -217,7 +226,7 @@ export function resolveTreatment(run: TraineeRun) {
   if (!treatmentAvailable(run.energy)) return;
   applyEnergy(run, TREATMENT_ENERGY);
   applyMood(run, -0.25);
-  logTurn(run, null, "success");
+  logTurn(run, null, "success", "treatment");
   advance(run);
 }
 
@@ -254,7 +263,12 @@ export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensi
 
   const worn = injuryRisk(run.energy);
   if (run.energy < 40 && dateNext(run.turn)) {
-    remember(run, { kind: "pushed-tired", turn: run.turn, note: `You worked her at ${Math.round(run.energy)} energy the day before ${turnMeta(run.turn + 1).label}.`, warm: false });
+    remember(run, {
+      kind: "pushed-tired",
+      turn: run.turn,
+      note: memoryLine({ kind: "pushed-tired", turn: run.turn, note: "", warm: false }),
+      warm: false,
+    });
   }
   const before = run.stats[stat];
   const r = makeRng(hashId(`${run.rngSeed}|t${run.turn}|${station}`));
@@ -296,7 +310,12 @@ export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensi
     if (run.failStreak.stat === stat) run.failStreak.count = Math.min(run.failStreak.count + 1, 2);
     else run.failStreak = { stat, count: 1 };
     if (!run.memories.some((m) => m.kind === "first-fail")) {
-      remember(run, { kind: "first-fail", turn: run.turn, note: `The first day the work did not land: ${stat}, turn ${run.turn}.`, warm: true });
+      remember(run, {
+        kind: "first-fail",
+        turn: run.turn,
+        note: memoryLine({ kind: "first-fail", turn: run.turn, note: "", warm: true }),
+        warm: true,
+      });
     }
   } else {
     run.failStreak = { stat: null, count: 0 };
@@ -317,7 +336,12 @@ export function resolveCatchWithCoach(run: TraineeRun) {
   applyEnergy(run, RECREATION_ENERGY);
   applyMood(run, 1);
   run.catchWithCoachYear = run.year;
-  remember(run, { kind: "catch", turn: run.turn, note: `Catch in the parking lot, year ${run.year}.`, warm: true });
+  remember(run, {
+    kind: "catch",
+    turn: run.turn,
+    note: memoryLine({ kind: "catch", turn: run.turn, note: "", warm: true }),
+    warm: true,
+  });
   logTurn(run, null, "event");
   advance(run);
 }
@@ -378,6 +402,8 @@ export interface GameCarry {
   outs?: number;
   inning?: number;
   scoreDiff?: number;
+  /** Walks she issued. The plate box is the hitter's. */
+  walks?: number;
 }
 
 export function applyGameResult(
@@ -413,31 +439,70 @@ export function applyGameResult(
     carry?.definingPa ??
     (carry?.record ? definingPaFrom(run, kind, carry.record, pgMet, carry.inning ?? 1, carry.outs ?? 0, carry.scoreDiff ?? 0) : null);
   if (minted && (kind === "finale" || kind === "series" || !run.definingPa || pgMet)) run.definingPa = minted;
-  if (kind === "gate") remember(run, { kind: "gate", turn: run.turn, note: pgMet ? "The Gate: she reached." : "The Gate: she did not reach, and you kept her.", warm: true });
+  const pitcher = isPitcherStyle(sheet(run.characterId).style);
+  if (kind === "gate") {
+    remember(run, {
+      kind: "gate",
+      turn: run.turn,
+      note: pgMet
+        ? pitcher
+          ? "The Gate: three outs."
+          : "The Gate: she reached."
+        : pitcher
+          ? "The Gate: the outs weren't there."
+          : reached
+            ? "The Gate: she reached. The date didn't."
+            : "The Gate: she did not reach, and you kept her.",
+      warm: true,
+    });
+  }
   if (kind === "first-light") remember(run, { kind: "first-light", turn: run.turn, note: pgMet ? "First Light: the goal held." : "First Light: the goal slipped.", warm: pgMet });
 
   const official = kind !== "gate" && kind !== "finale";
   if (reached) {
     const had = run.keepsake;
-    if (kind === "first-light" && !run.keepsake) run.keepsake = "dirt";
-    else if (!run.keepsake) run.keepsake = "ball";
+    const hit = hr || (box?.hits ?? 0) > 0;
+    if (!run.keepsake) {
+      if (pitcher) run.keepsake = "ball";
+      else if (kind === "first-light") run.keepsake = "dirt";
+      else if (hit) run.keepsake = "ball";
+    }
     if (!had && run.keepsake) {
       addHighlight(run, keepsakeHighlight(run));
-      remember(run, { kind: "keepsake", turn: run.turn, note: run.keepsake === "dirt" ? "She kept a pinch of baseline dirt." : "She kept the first-hit ball.", warm: true });
+      remember(run, {
+        kind: "keepsake",
+        turn: run.turn,
+        note:
+          run.keepsake === "dirt"
+            ? "She kept a pinch of baseline dirt."
+            : pitcher
+              ? "She kept the ball from the last out."
+              : "She kept the first-hit ball.",
+        warm: true,
+      });
     }
   }
   if (pgMet) {
     run.fans = Math.min(100, run.fans + 5);
     applyMood(run, 2);
+    run.coachWarning = null;
   } else if (official) {
     if (sgMet) {
-      run.coachWarning = "The Primary Goal slipped. The Support Goal held. The path stays open.";
+      run.coachWarning = "The goal she came for slipped. The smaller one held. The path stays open.";
     } else {
       run.pgMisses += 1;
       applyMood(run, pgMissMoodDrop(run.stats.guts));
       run.fans = Math.max(0, run.fans - 3);
-      run.coachWarning =
-        run.pgMisses >= 2 ? "The Academy path closes." : "One more slip and the Academy path closes.";
+      run.coachWarning = isMikiPath(run)
+        ? "The date slipped. Her path stays open."
+        : run.pgMisses >= 2
+          ? `${turnMeta(run.turn).label} closed the Academy path.`
+          : "One more slip and the Academy path closes.";
+      if (run.pgMisses >= 2 && !isMikiPath(run)) {
+        const page = [...run.highlights].reverse().find((h) => h.kind === "game" && h.turn === run.turn);
+        const date = turnMeta(run.turn).label;
+        if (page && !page.line.includes("closed the Academy path")) page.line = `${page.line} ${date} closed the Academy path.`;
+      }
     }
   } else {
     applyMood(run, 0);
@@ -446,6 +511,7 @@ export function applyGameResult(
     run.fans = Math.min(100, run.fans + 2);
     applyMood(run, 1);
   }
+  if (official) run.walks += carry?.walks ?? box?.walks ?? 0;
   if (box) {
     if ((box.hits ?? 0) > 0) run.fans = Math.min(100, run.fans + 2);
     if ((box.walks ?? 0) > 0) run.fans = Math.min(100, run.fans + 1);

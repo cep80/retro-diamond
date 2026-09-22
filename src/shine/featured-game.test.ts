@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { cellLoc } from "../game/plate.ts";
+import { cellLoc } from "./core/zone.ts";
 import { LEAD_DEFAULT_SIT } from "./oracle.ts";
 import { recapLine } from "./culture.ts";
 import { risp, type Bases } from "./events.ts";
-import { aoiHeat, dealPitch, maybeLastSpurt, resolveSwing, resolveTake, startFeaturedGame, type FeaturedGame } from "./featured-game.ts";
+import { aoiHeat, dealPitch, inningForPa, maybeLastSpurt, resolveSwing, resolveTake, startFeaturedGame, type FeaturedGame } from "./featured-game.ts";
 import { newAoiRun, newRun } from "./run.ts";
 
 /** Re-seat the runners for the current PA, including the paStart record the goals read. */
@@ -45,6 +45,47 @@ describe("featured game", () => {
     const heat = aoiHeat(run);
     assert.equal(heat.length, 9);
     assert.ok(heat.every((h) => h >= -1 && h <= 1));
+  });
+
+  it("holds Yuki on first at Lantern Classic instead of stealing", () => {
+    const run = newRun("yuki");
+    run.turn = 28;
+    const game = startFeaturedGame(run, "lantern-classic");
+    assert.equal(game.pgId, "score-from-first-single");
+    setBases(game, { first: false, second: false, third: false });
+    game.count = { balls: 3, strikes: 0 };
+    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
+    const reach = game.events.find((e) => e.t === "reach");
+    assert.ok(reach && reach.t === "reach" && reach.base === 1);
+    assert.equal(game.events.some((e) => e.t === "stealAttempt"), false);
+    assert.ok(game.runnerLine);
+  });
+
+  it("sits a runner on third when Yuki reaches at the Finale", () => {
+    const run = newRun("yuki");
+    run.turn = 60;
+    const game = startFeaturedGame(run, "finale");
+    assert.equal(game.pgId, "steal-risp");
+    setBases(game, { first: false, second: false, third: false });
+    game.count = { balls: 3, strikes: 0 };
+    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
+    const steal = game.events.find((e) => e.t === "stealAttempt");
+    assert.ok(steal && steal.t === "stealAttempt");
+    assert.equal(steal.from, 1);
+    assert.equal(steal.risp, true);
+  });
+
+  it("opens The Stretch in the seventh so a steal can be late", () => {
+    const run = newRun("yuki");
+    run.turn = 50;
+    const game = startFeaturedGame(run, "stretch");
+    assert.equal(game.pgId, "steal-late");
+    assert.equal(game.inning, 7);
+    assert.equal(inningForPa("stretch", 1), 7);
+    assert.equal(inningForPa("stretch", 2), 8);
+    assert.equal(inningForPa("stretch", 3), 9);
+    assert.equal(inningForPa("lantern-classic", 1), 1);
+    assert.equal(inningForPa("lantern-classic", 2), 4);
   });
 
   it("starts Lantern Classic as a 3–5 PA featured game", () => {
@@ -116,6 +157,38 @@ describe("featured game", () => {
     assert.ok(game.inning >= 6);
   });
 
+  it("plays the rest of Miki First Light after the 7th while she has not struck out", () => {
+    const run = newRun("miki");
+    run.turn = 18;
+    const game = startFeaturedGame(run, "first-light");
+    assert.equal(game.pgId, "no-k");
+    assert.equal(game.pgMet, true);
+    game.inning = 7;
+    game.paIndex = 3;
+    game.paTarget = 5;
+    game.count = { balls: 3, strikes: 0 };
+    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
+    assert.equal(game.skipped, false);
+    assert.equal(game.done, false);
+    assert.equal(game.paIndex, 4);
+    assert.equal(game.pgMet, true);
+  });
+
+  it("still walks off First Light in the 7th when a latched goal is already in", () => {
+    const run = newAoiRun();
+    run.turn = 18;
+    const game = startFeaturedGame(run, "first-light");
+    assert.notEqual(game.pgId, "no-k");
+    game.inning = 7;
+    game.pgMet = true;
+    game.paIndex = 3;
+    game.paTarget = 5;
+    game.count = { balls: 3, strikes: 0 };
+    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
+    assert.equal(game.skipped, true);
+    assert.equal(game.done, true);
+  });
+
   it("keeps a 2-strike foul alive and banks Trick telegraph", () => {
     const run = newRun("miki");
     run.turn = 18;
@@ -139,6 +212,19 @@ describe("featured game", () => {
     assert.ok(game.lastContact === "foul-tip" || game.lastContact === "foul");
     assert.equal(game.twoStrikeFoul, true);
     assert.equal(game.pgMet, true);
+  });
+
+  it("opens Night Classic with the bases empty", () => {
+    const run = newRun("miki");
+    run.turn = 33;
+    for (let i = 0; i < 24; i++) {
+      run.rngSeed = `night-sit-${i}`;
+      const game = startFeaturedGame(run, "night-classic");
+      assert.deepEqual(game.bases, { first: false, second: false, third: false });
+      assert.equal(game.inning, 1);
+      assert.equal(game.scoreDiff, 0);
+      assert.equal(game.outs, 0);
+    }
   });
 
   it("meets Work a 3-2 count when the count fills", () => {

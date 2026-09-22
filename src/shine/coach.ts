@@ -242,13 +242,13 @@ function statMeaning(stat: TraineeStatKey) {
 export function outingLabel(grade: OutingGrade): { name: string; meaning: string } {
   switch (grade) {
     case "A":
-      return { name: "Full outing", meaning: "She goes the distance. Featured games run 10–14 minutes." };
+      return { name: "Full outing", meaning: "She goes the distance. The date stays until the inning is hers." };
     case "D":
-      return { name: "Closer sprint", meaning: "The ninth only. Games run under 4 minutes." };
+      return { name: "Closer sprint", meaning: "The ninth only." };
     case "G":
-      return { name: "Long fight", meaning: "Guts turns on when she trails by 5. Standard 4–7 minute games." };
+      return { name: "Long fight", meaning: "Guts turns on when she trails by 5." };
     default:
-      return { name: "Standard", meaning: "Featured games run 4–7 minutes. Guts turns on in high leverage." };
+      return { name: "Standard", meaning: "Guts turns on in high leverage." };
   }
 }
 

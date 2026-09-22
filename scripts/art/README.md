@@ -41,5 +41,3 @@ npm run art:qa
   Run `python scripts/art/align-parks.py` to composite Heat's master field onto
   other park skies when stills drift.
 - **Human** — 5-second phone look on a mid-range device.
-
-Runtime tinting lives in `src/game/look.ts` (`heuristic` for v1 sheets, `lut` when manifest says so).

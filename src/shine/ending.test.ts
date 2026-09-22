@@ -8,7 +8,11 @@ import {
   cardBanner,
   cardGold,
   endingRank,
+  finaleFloorMet,
   finaleGap,
+  postgameLeaveLabel,
+  seriesFinaleLine,
+  yearFoldLine,
   finaleUnlocked,
   inheritSparks,
   mintClubhouseCard,
@@ -16,10 +20,12 @@ import {
   peakStatKey,
   pickInheritSparks,
   sparkEffectLine,
+  nextGirlId,
   sparkGapLine,
   applyParentPeak,
   awardTrainingSpark,
 } from "./ending.ts";
+import { keepsakeWallLine } from "./scrapbook.ts";
 import { contactTimingMult, shineSwingWindow } from "./oracle.ts";
 import { applyGameResult, leavePostgame, newAoiRun, newRun, resolveOffDay } from "./run.ts";
 
@@ -30,39 +36,77 @@ function floorsForAoi(run: ReturnType<typeof newAoiRun>) {
 }
 
 describe("Diamond Finale and endings", () => {
-  it("unlocks Aoi when Contact 13 and Speed 11 with ≤1 miss", () => {
-    const run = newAoiRun();
-    floorsForAoi(run);
-    assert.equal(finaleUnlocked(run), true);
-    assert.equal(finaleGap(run), "Finale floor is in.");
-  });
-
-  it("locks Aoi when Contact is short and names the gap", () => {
+  it("opens the last date when the path is still open, even if the floors are short", () => {
     const run = newAoiRun();
     run.stats.contact = 11;
-    run.stats.speed = 11;
-    assert.equal(finaleUnlocked(run), false);
-    assert.match(finaleGap(run), /contact 11, needs 13/i);
+    run.stats.speed = 6;
+    run.pgMisses = 1;
+    assert.equal(finaleUnlocked(run), true);
+    assert.equal(finaleFloorMet(run), false);
+    assert.equal(finaleGap(run), "Diamond Finale is still the last date. She hasn't grown all the way into it.");
+    assert.doesNotMatch(finaleGap(run), /needs \d|contact \d|speed \d/i);
   });
 
-  it("skips the Finale plate when the floor is locked after Series", () => {
+  it("does not name Finale on a Series card after the year has folded", () => {
+    const run = newRun("yuki");
+    run.pgMisses = 2;
+    run.turn = 55;
+    assert.equal(seriesFinaleLine(run), null);
+    const open = newAoiRun();
+    open.pgMisses = 1;
+    assert.equal(seriesFinaleLine(open), finaleGap(open));
+    const miki = newRun("miki");
+    miki.pgMisses = 2;
+    assert.equal(seriesFinaleLine(miki), finaleGap(miki));
+  });
+
+  it("does not fold Miki's card when a second miss is on the book", () => {
+    const miki = newRun("miki");
+    miki.pgMisses = 2;
+    miki.turn = 33;
+    assert.equal(yearFoldLine(miki, "Night Classic", "The Stretch is in 17 days."), "The Stretch is in 17 days.");
+    assert.equal(postgameLeaveLabel(miki, false), "Back to the complex");
+    assert.equal(postgameLeaveLabel(miki, true), "The year");
+    const aoi = newAoiRun();
+    aoi.pgMisses = 2;
+    aoi.turn = 33;
+    assert.equal(yearFoldLine(aoi, "Night Classic", "The Stretch is in 17 days."), "The year folds at Night Classic.");
+    assert.equal(postgameLeaveLabel(aoi, false), "The year");
+  });
+
+  it("names a pitcher ball as the last out on the Clubhouse wall", () => {
+    assert.equal(keepsakeWallLine("reina", "ball"), "The last-out ball.");
+    assert.equal(keepsakeWallLine("sol", "ball"), "The last-out ball.");
+    assert.equal(keepsakeWallLine("aoi", "ball"), "The first-hit ball.");
+    assert.equal(keepsakeWallLine("miki", "dirt"), "A pinch of dirt from the baseline.");
+  });
+
+  it("names a grown-into Finale without a floor formula", () => {
+    const run = newAoiRun();
+    floorsForAoi(run);
+    assert.equal(finaleFloorMet(run), true);
+    assert.equal(finaleGap(run), "Diamond Finale is still the last date.");
+    assert.doesNotMatch(finaleGap(run), /hers/);
+  });
+
+  it("sits Diamond Finale after Series when the floors are short", () => {
     const run = newAoiRun();
     run.turn = 55;
     run.stats.contact = 11;
     run.stats.speed = 8;
     run.fans = 40;
+    run.pgMisses = 1;
     applyGameResult(run, "series", true, false, true, false);
     leavePostgame(run);
-    assert.equal(run.finaleUnlocked, false);
+    assert.equal(run.finaleUnlocked, true);
     assert.equal(run.turn, 56);
     run.turn = 59;
     run.energy = 80;
     resolveOffDay(run);
-    const card = run.clubhouseCard;
-    assert.ok(card);
+    assert.equal(run.turn, 60);
+    assert.equal(run.phase, "plate");
+    assert.equal(run.clubhouseCard, null);
     assert.equal(run.pgResults[6], "pending");
-    assert.equal(run.phase, "year-end");
-    assert.match(card.quote, /dugout/i);
   });
 
   it("opens the Finale plate when floors are met after Series", () => {
@@ -80,7 +124,7 @@ describe("Diamond Finale and endings", () => {
     assert.equal(run.clubhouseCard, null);
   });
 
-  it("rechecks Finale floors on the turn-60 gate, not only at Series postgame", () => {
+  it("still sits Finale at turn 60 if she grew after Series", () => {
     const run = newAoiRun();
     run.turn = 55;
     run.stats.contact = 12;
@@ -88,7 +132,6 @@ describe("Diamond Finale and endings", () => {
     run.pgMisses = 0;
     applyGameResult(run, "series", true, false, true, false);
     leavePostgame(run);
-    assert.equal(run.finaleUnlocked, false);
     run.stats.contact = 13;
     run.turn = 59;
     run.energy = 80;
@@ -111,10 +154,10 @@ describe("Diamond Finale and endings", () => {
     assert.ok(run.clubhouseCard);
     assert.equal(run.clubhouseCard?.ending, "D");
     assert.equal(run.phase, "year-end");
-    assert.match(run.clubhouseCard?.quote ?? "", /path closed/i);
+    assert.match(run.clubhouseCard?.quote ?? "", /Lantern Classic closed the Academy path/);
   });
 
-  it("does not early-close Miki, and Never Quit fires when Finale is locked with fans", () => {
+  it("does not early-close Miki, and Never Quit fires when she sits short of the floor with fans", () => {
     const run = newRun("miki");
     run.turn = 18;
     applyGameResult(run, "first-light", false, false, false, false);
@@ -125,8 +168,8 @@ describe("Diamond Finale and endings", () => {
     assert.equal(careerClosesEarly(run), false);
     assert.equal(run.phase, "complex");
     run.fans = 60;
-    run.finaleUnlocked = false;
-    run.pgResults[6] = "pending";
+    run.finaleUnlocked = true;
+    run.pgResults[6] = "missed";
     const card = mintClubhouseCard(run);
     assert.equal(card.ending, "never-quit");
     assert.equal(card.sparks.filter((s) => s.kind === "guts").length, 2);
@@ -198,10 +241,77 @@ describe("Diamond Finale and endings", () => {
     );
     run.mentorARelationship = 20;
     const still = careerStill(run);
-    assert.match(still.trained, /turn 3/i);
-    assert.match(still.trained, /Contact over Speed/i);
-    assert.match(still.mentor, /turn 14/i);
+    assert.match(still.trained, /same work/i);
+    assert.doesNotMatch(still.trained, /Contact over Speed/i);
+    const split = newAoiRun();
+    split.calendar.push(
+      { turn: 6, type: "work", statTrained: "contact", outcome: "success", energyAfter: 60, moodAfter: 2 },
+      { turn: 7, type: "work", statTrained: "speed", outcome: "success", energyAfter: 50, moodAfter: 2 },
+    );
+    assert.match(careerStill(split).trained, /Cage and the poles/);
+    assert.doesNotMatch(careerStill(split).trained, /same work/i);
+    assert.match(still.mentor, /Cage Coach stayed late/);
+    assert.doesNotMatch(still.mentor, /turn 14/);
     assert.ok(still.quote.length > 0);
+  });
+
+  it("lets a hitter walk off a Rough year", () => {
+    const run = newAoiRun();
+    run.pgResults[6] = "missed";
+    run.fans = 40;
+    assert.equal(careerStill(run).frame, "She walked off anyway.");
+  });
+
+  it("names a held strikeout Finale on the Rough still", () => {
+    const run = newRun("sol");
+    run.pgResults[6] = "met";
+    run.pgMisses = 1;
+    run.fans = 33;
+    assert.equal(careerStill(run).quote, "Diamond Finale. She struck out the side.");
+    assert.equal(careerStill(run).frame, "She stood the rubber anyway.");
+  });
+
+  it("does not put a sat Finale back in the pen", () => {
+    const run = newRun("kira");
+    run.pgResults[6] = "missed";
+    run.fans = 40;
+    const still = careerStill(run);
+    assert.equal(still.rank, "B");
+    assert.equal(still.frame, "She stood the rubber anyway.");
+    assert.match(still.quote, /sat the last date/);
+    assert.doesNotMatch(still.quote, /from the pen/);
+  });
+
+  it("names a pitcher year on the rubber, not in the box", () => {
+    const run = newRun("reina");
+    run.pgMisses = 2;
+    run.calendar.push({ turn: 3, type: "work", statTrained: "stuff", outcome: "success", energyAfter: 60, moodAfter: 1 });
+    const still = careerStill(run);
+    assert.match(still.trained, /on the rubber/);
+    assert.doesNotMatch(still.trained, /at the plate/);
+    assert.match(still.mentor, /rubber/);
+    assert.doesNotMatch(still.mentor, /tunnel/);
+    assert.match(still.frame, /took the ball/);
+    assert.doesNotMatch(still.frame, /ran it/);
+  });
+
+  it("names a hitter Quiet Graduate over the bat", () => {
+    const run = newRun("yuki");
+    run.pgMisses = 2;
+    const still = careerStill(run);
+    assert.equal(still.rank, "D");
+    assert.match(still.frame, /bat stays up/);
+    assert.doesNotMatch(still.frame, /ran it/);
+  });
+
+  it("does not borrow a steal when Yuki's year folds at Skyline Series", () => {
+    const run = newRun("yuki");
+    run.pgMisses = 2;
+    run.turn = 55;
+    run.pgResults = ["met", "met", "missed", "missed", "missed", "missed", "pending"];
+    const still = careerStill(run);
+    assert.match(still.quote, /The Stretch and Skyline Series\. Neither date held\./);
+    assert.doesNotMatch(still.quote, /took second|Stolen third|ninth/);
   });
 
   it("stamps First Light dirt on the Clubhouse card and gold at 80 fans", () => {
@@ -230,7 +340,8 @@ describe("Diamond Finale and endings", () => {
     const run = newAoiRun();
     const empty = mintClubhouseCard(run);
     const gap = sparkGapLine([{ ...empty, sparks: [] }]);
-    assert.match(gap ?? "", /Aoi's Contact Spark is 1 turn of inheritance away/i);
+    assert.match(gap ?? "", /Next: Coach Reina/i);
+    assert.doesNotMatch(gap ?? "", /PA style|Spark is 1 turn/i);
     const carried = sparkGapLine([{ ...empty, sparks: [{ kind: "contact", power: 1 }] }]);
     assert.match(carried ?? "", /Next: Coach Reina/i);
   });
@@ -309,5 +420,10 @@ describe("Diamond Finale and endings", () => {
     assert.equal(card.peakStats.contact, 14);
     assert.equal(peakStatKey(card.peakStats), "contact");
     assert.equal(card.runNumber, 1);
+  });
+
+  it("opens the next rookie year on the girl the hook just named", () => {
+    assert.equal(nextGirlId("sol"), "kira");
+    assert.equal(nextGirlId("yuki"), "aoi");
   });
 });

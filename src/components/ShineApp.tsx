@@ -3,27 +3,24 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
 import { ShineMute } from "@/components/ShineMute";
-import { careerMuteAppliesToScreen, setMasterMuted, setMix, sfxCowbell, sfxSelect, startEnding, startMusic, stopMusic, unlockAudio } from "@/game/audio";
+import { careerMuteAppliesToScreen, setMasterMuted, setMix, sfxCowbell, sfxSelect, startEnding, startMusic, stopMusic, unlockAudio } from "@/shine/audio.ts";
 import { ShineHelp, ShineSettings } from "@/components/ShineSettings";
-import { nextOfficial, turnMeta, ROOKIE_CALENDAR, calendarPeekLine } from "@/shine/calendar.ts";
-import { BIBLE, endingMood, isPitcherStyle, parkSrc, portraitSrc, practiceSrc, sheet, workMood } from "@/shine/bible.ts";
-import { coachBrief, workComparison } from "@/shine/coach.ts";
+import { nextNamedBeat, nextDateLine, turnMeta, dateLabel, daysAwayLabel, yearOf, PLATE_TURNS } from "@/shine/calendar.ts";
+import { BIBLE, careerFilmSrc, endingClipSrc, endingFilmSrc, isPitcherStyle, parkSrc, sceneFilmSrc, sheet, yearStillLine } from "@/shine/bible.ts";
 import { NEVER_SOLD, SKUS, cosmeticClasses, previewClaimable } from "@/shine/commerce.ts";
 import { kitAccent } from "@/shine/stage.ts";
-import { cheerLines, curtainSkin, curtainStillSrc, datePark, endingRankLabel, recapLine, shouldCurtainCall, yearVoice } from "@/shine/culture.ts";
+import { cheerLines, curtainCallLine, curtainCaption, curtainFilmSrc, curtainSkin, datePark, dateSpeech, endingRankLabel, fanLetter, recapLine, shouldCurtainCall, yearVoice } from "@/shine/culture.ts";
 import { ShineComplexWork } from "./ShineComplexWork";
-import { encodeCard } from "@/shine/carry.ts";
-import { careerStill, cardAltLook, cardBanner, cardGold, finaleGap, nextGirlName, parentEligible, pickInheritSparks, sparkEffectLine, sparkGapLine } from "@/shine/ending.ts";
-import { PILGRIMAGE_LINE, shineIsoWeek, weatherLine, weeklySit } from "@/shine/pilgrimage.ts";
+import { careerStill, cardAltLook, cardBanner, cardGold, nextGirlId, nextGirlName, parentEligible, pickInheritSparks, postgameLeaveLabel, seriesFinaleLine, sparkEffectLine, sparkGapLine, yearFoldLine } from "@/shine/ending.ts";
 import { PG_INDEX } from "@/shine/run.ts";
-import { ShinePlate } from "./ShinePlate";
-import { ShineExhibition } from "./exhibition/ShineExhibition";
-import { warmActionExhibition } from "./action/action-manifest";
+import { ShineExhibition, ShinePlate } from "./ShineRace";
+import { loadActionManifest, warmActionExhibition } from "./action/action-manifest";
+import { filmReady, type ActionManifest } from "@/shine/action-art.ts";
 import { MOOD_LABELS, moodLevel } from "@/shine/training.ts";
 import { useShine } from "@/shine/store.ts";
-import { catchWithCoachScene, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
-import { replayLines } from "@/shine/scrapbook.ts";
-import type { CharacterId, DefiningPa, Highlight, Spark, StationId } from "@/shine/types.ts";
+import { catchWithCoachScene, memoryLine, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
+import { keepsakeWallLine, replayLines, scrapbookLine } from "@/shine/scrapbook.ts";
+import type { CharacterId, DefiningPa, Highlight, Spark } from "@/shine/types.ts";
 
 function Title() {
   const run = useShine((s) => s.run);
@@ -31,15 +28,12 @@ function Title() {
   const openSelect = useShine((s) => s.openSelect);
   const openShop = useShine((s) => s.openShop);
   const openWall = useShine((s) => s.openWall);
-  const openWeekly = useShine((s) => s.openWeekly);
   const openExhibition = useShine((s) => s.openExhibition);
   const continueRun = useShine((s) => s.continueRun);
   const openSettings = useShine((s) => s.openSettings);
   const openHelp = useShine((s) => s.openHelp);
-  const skipOnboarding = useShine((s) => s.skipOnboarding);
-  const setSkipOnboarding = useShine((s) => s.setSkipOnboarding);
-  const sit = weeklySit();
   const nextHook = sparkGapLine(clubhouse);
+  const [endYear, setEndYear] = useState(false);
 
   useEffect(() => {
     unlockAudio();
@@ -66,34 +60,54 @@ function Title() {
           <strong>Shine</strong>
         </h1>
         <p className="mt-6 max-w-md font-ui text-base font-medium leading-relaxed text-cream/90 sm:text-lg">
-          You are her Coach. The complex is home. The dates are on the plate.
+          Sit the zone under her. Press Go. Watch her.
         </p>
         {nextHook ? <p className="mt-3 max-w-md font-ui text-sm text-gold">{nextHook}</p> : null}
         <div className="mt-8 flex w-full max-w-sm flex-col gap-3">
-          <PixelBtn
-            className="h-14 justify-between px-5 text-sm"
-            onClick={() => {
-              unlockAudio();
-              sfxSelect();
-              stopMusic();
-              openSelect();
-            }}
-          >
-            New Rookie year
-            <span aria-hidden>→</span>
-          </PixelBtn>
           {run ? (
             <PixelBtn
-              variant="ghost"
-              className="h-14"
+              className="h-14 justify-between px-5 text-sm"
               onClick={() => {
+                unlockAudio();
+                sfxSelect();
                 stopMusic();
                 continueRun();
               }}
             >
-              Continue {sheet(run.characterId).jp} · Turn {run.turn}
+              {run.clubhouseCard
+                ? `${sheet(run.characterId).jp} · The year is over`
+                : `Continue ${sheet(run.characterId).jp} · Day ${run.turn}`}
+              <span aria-hidden>→</span>
             </PixelBtn>
-          ) : null}
+          ) : (
+            <PixelBtn
+              className="h-14 justify-between px-5 text-sm"
+              onClick={() => {
+                unlockAudio();
+                sfxSelect();
+                stopMusic();
+                openSelect();
+              }}
+            >
+              <span className="flex flex-col items-start gap-1 text-left">
+                New Rookie year
+                <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Sit. Go. Watch her. The year is dates.</span>
+              </span>
+              <span aria-hidden>→</span>
+            </PixelBtn>
+          )}
+          <PixelBtn
+            variant="ghost"
+            className="h-14"
+            onClick={() => {
+              unlockAudio();
+              sfxSelect();
+              stopMusic();
+              openExhibition();
+            }}
+          >
+            Exhibition · Aoi vs Reina
+          </PixelBtn>
           <div className="shine-title-menu">
             <PixelBtn
               variant="ghost"
@@ -104,28 +118,6 @@ function Title() {
               }}
             >
               Clubhouse{clubhouse.length > 0 ? ` · ${clubhouse.length}` : ""}
-            </PixelBtn>
-            <PixelBtn
-              variant="ghost"
-              className="h-11"
-              onClick={() => {
-                sfxSelect();
-                stopMusic();
-                openWeekly();
-              }}
-            >
-              This week
-            </PixelBtn>
-            <PixelBtn
-              variant="ghost"
-              className="h-11"
-              onClick={() => {
-                sfxSelect();
-                stopMusic();
-                openExhibition();
-              }}
-            >
-              Exhibition
             </PixelBtn>
             <PixelBtn
               variant="ghost"
@@ -157,19 +149,40 @@ function Title() {
             >
               How it works
             </PixelBtn>
+            {run && !run.clubhouseCard ? (
+              endYear ? (
+                <PixelBtn
+                  variant="ghost"
+                  className="h-11 border-coral/50"
+                  onClick={() => {
+                    unlockAudio();
+                    sfxSelect();
+                    stopMusic();
+                    openSelect();
+                  }}
+                >
+                  This year ends here
+                </PixelBtn>
+              ) : (
+                <PixelBtn variant="ghost" className="h-11" onClick={() => setEndYear(true)}>
+                  New Rookie year
+                </PixelBtn>
+              )
+            ) : run?.clubhouseCard ? (
+              <PixelBtn
+                variant="ghost"
+                className="h-11"
+                onClick={() => {
+                  unlockAudio();
+                  sfxSelect();
+                  stopMusic();
+                  openSelect();
+                }}
+              >
+                New Rookie year
+              </PixelBtn>
+            ) : null}
           </div>
-        </div>
-        <label className="mt-4 flex items-center gap-2 font-ui text-xs text-muted">
-          <input type="checkbox" checked={skipOnboarding} onChange={(e) => setSkipOnboarding(e.target.checked)} />
-          Skip teach cards
-        </label>
-        <div className="mt-4 max-w-md rounded-xl border border-gold/30 bg-ink/55 px-4 py-3">
-          <p className="font-display text-[10px] uppercase tracking-widest text-gold">Weekly pilgrimage</p>
-          <p className="mt-1 font-ui text-xs text-cream/80">{PILGRIMAGE_LINE}</p>
-          <p className="mt-2 font-ui text-xs text-muted">
-            {shineIsoWeek()} · {sit.label} · vs {sit.arm === "academy" ? "Academy" : sheet(sit.arm).name} · {weatherLine(sit.weather)}
-          </p>
-          <p className="mt-1 font-ui text-xs text-cream/70">{sit.context}</p>
         </div>
       </div>
     </div>
@@ -178,9 +191,11 @@ function Title() {
 
 function Wall() {
   const clubhouse = useShine((s) => s.clubhouse);
+  const run = useShine((s) => s.run);
   const openTitle = useShine((s) => s.openTitle);
   const openSelect = useShine((s) => s.openSelect);
   const nextHook = sparkGapLine(clubhouse);
+  const liveQuote = run?.clubhouseCard ? careerStill(run).quote : null;
   return (
     <main className="shine-stage text-cream">
       <img src="/bg/park-koi.jpg" alt="" className="absolute inset-0 size-full object-cover" />
@@ -200,8 +215,9 @@ function Wall() {
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {clubhouse.map((c) => {
               const who = sheet(c.characterId);
-              const art = portraitSrc(c.characterId, endingMood(c.ending));
+              const art = endingFilmSrc(c.characterId, c.ending);
               const rank = endingRankLabel(c.ending);
+              const keepsake = keepsakeWallLine(c.characterId, c.keepsake);
               return (
                 <article
                   key={c.id}
@@ -216,7 +232,8 @@ function Wall() {
                       <img
                         src={art}
                         alt=""
-                        className={`character-cutout mx-auto mt-2 h-44 w-auto object-contain ${cardAltLook(c) ? "shine-alt-look" : ""}`}
+                        className={`mx-auto mt-2 aspect-[3/4] h-44 w-auto object-cover ${cardAltLook(c) ? "shine-alt-look" : ""}`}
+                        data-clubhouse-film={c.characterId}
                       />
                     ) : null}
                     <p className="mt-3 font-display text-sm font-bold uppercase tracking-wide">
@@ -231,12 +248,10 @@ function Wall() {
                     {cardAltLook(c) ? (
                       <p className="mt-1 font-ui text-xs text-gold">Alt look. The next career that inherits her wears it.</p>
                     ) : null}
-                    {c.keepsake === "dirt" ? (
-                      <p className="mt-1 font-ui text-xs text-cream/70">A pinch of dirt from the baseline.</p>
-                    ) : c.keepsake === "ball" ? (
-                      <p className="mt-1 font-ui text-xs text-cream/70">The first-hit ball.</p>
-                    ) : null}
-                    <p className="mt-2 font-ui text-sm leading-relaxed text-cream/85">{c.quote}</p>
+                    {keepsake ? <p className="mt-1 font-ui text-xs text-cream/70">{keepsake}</p> : null}
+                    <p className="mt-2 font-ui text-sm leading-relaxed text-cream/85">
+                      {run?.clubhouseCard?.id === c.id && liveQuote ? liveQuote : c.quote}
+                    </p>
                   </div>
                   <div className="border-t border-white/10 bg-panel/80 px-4 py-3">
                     <p className="font-display text-[10px] uppercase tracking-widest text-muted">Sparks · back of the card</p>
@@ -275,18 +290,18 @@ function Shop() {
   const openTitle = useShine((s) => s.openTitle);
   const claimSku = useShine((s) => s.claimSku);
   const owned = useShine((s) => s.ownedCosmetics);
-  const lastLine = useShine((s) => s.lastLine);
+  const [note, setNote] = useState<string | null>(null);
   return (
     <main className="relative min-h-dvh overflow-hidden bg-ink text-cream">
       <div className="title-wash absolute inset-0" />
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
         <p className="episode-chip w-fit">ダイヤシャイン</p>
-        <h1 className="mt-4 font-display text-2xl font-bold">Shop · USD</h1>
+        <h1 className="mt-4 font-display text-2xl font-bold">Shop</h1>
         <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">
-          One-time prices. No banners. No pull rates. Cosmetics claim in this preview. Base and expansions wait on checkout.
+          Looks only. The prices are the list. This preview does not charge. No banners. No pull rates. The year, the plate, and Clubhouse are never sold.
         </p>
         <ul className="mt-6 space-y-3">
-          {SKUS.map((s) => (
+          {SKUS.filter((s) => previewClaimable(s)).map((s) => (
             <li key={s.id} className="club-nav-tile px-4 py-3">
               <p className="font-display text-xs font-bold uppercase tracking-wide">
                 {s.name} · ${s.usd.toFixed(2)}
@@ -298,14 +313,15 @@ function Shop() {
                 onClick={() => {
                   sfxSelect();
                   claimSku(s.id);
+                  setNote(useShine.getState().lastLine);
                 }}
               >
-                {previewClaimable(s) ? (owned.includes(s.id) ? "On" : "Claim preview") : "Checkout not in this preview"}
+                {owned.includes(s.id) ? "On" : "Preview"}
               </PixelBtn>
             </li>
           ))}
         </ul>
-        {lastLine ? <p className="mt-4 font-ui text-sm text-grass-2">{lastLine}</p> : null}
+        {note ? <p className="mt-4 font-ui text-sm text-grass-2">{note}</p> : null}
         <p className="mt-6 font-display text-[10px] uppercase tracking-widest text-gold">Never sold</p>
         <p className="mt-2 font-ui text-sm text-cream/80">{NEVER_SOLD.join(" · ")}</p>
         <PixelBtn className="mt-6 h-12" onClick={openTitle}>
@@ -321,16 +337,32 @@ function Select() {
   const openTitle = useShine((s) => s.openTitle);
   const importCarry = useShine((s) => s.importCarry);
   const clubhouse = useShine((s) => s.clubhouse);
-  const lastLine = useShine((s) => s.lastLine);
-  const [pick, setPick] = useState<CharacterId>("aoi");
+  const [pick, setPick] = useState<CharacterId>(() => {
+    const last = clubhouse.at(-1)?.characterId;
+    return last ? nextGirlId(last) : "aoi";
+  });
+  const [carryNote, setCarryNote] = useState<string | null>(null);
   const [parentId, setParentId] = useState<string | null>(null);
   const [sparks, setSparks] = useState<Spark[]>([]);
   const [carry, setCarry] = useState("");
+  const [manifest, setManifest] = useState<ActionManifest | null>(null);
   const who = sheet(pick);
-  const art = portraitSrc(pick, "focused");
+  const art = careerFilmSrc(pick);
   const eligible = clubhouse.filter((c) => parentEligible(c, pick, clubhouse.length));
   const parent = eligible.find((c) => c.id === parentId);
   const accent = kitAccent(pick);
+  const pending = manifest === null;
+  const ready = filmReady(pick, manifest);
+
+  useEffect(() => {
+    let live = true;
+    loadActionManifest().then((m) => {
+      if (live) setManifest(m);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   return (
     <main className="shine-stage text-cream" style={{ ["--shine-accent" as string]: accent }}>
@@ -347,11 +379,12 @@ function Select() {
         <h1 className="mt-1 font-display text-3xl font-bold uppercase tracking-tight sm:text-4xl">
           #{who.number} {who.name}
         </h1>
-        <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">Past first. The board comes later.</p>
+        <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">Past first. Sit. Go. Watch her year.</p>
         <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {BIBLE.map((c) => {
-            const face = portraitSrc(c.id, "neutral");
+            const face = careerFilmSrc(c.id);
             const on = pick === c.id;
+            const inFilm = pending || filmReady(c.id, manifest);
             return (
               <button
                 key={c.id}
@@ -372,7 +405,7 @@ function Select() {
                     #{c.number} {c.name}
                   </span>
                   <span className="mt-0.5 block font-display text-[10px] uppercase tracking-widest text-cream/70">
-                    {c.pgVerb}
+                    {inFilm ? c.pgVerb : "Her film is not in."}
                   </span>
                 </span>
               </button>
@@ -382,7 +415,7 @@ function Select() {
         {eligible.length ? (
           <div className="mt-6">
             <p className="font-display text-[10px] uppercase tracking-widest text-gold">Parent card</p>
-            <p className="mt-1 font-ui text-xs text-muted">Sparks tilt the plate. Stats start fresh. Never sold.</p>
+            <p className="mt-1 font-ui text-xs text-muted">Sparks carry. Stats start fresh. Never sold.</p>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <button
                 type="button"
@@ -394,7 +427,7 @@ function Select() {
                 className={`club-nav-tile px-4 py-3 text-left ${parentId === null ? "border-gold" : ""}`}
               >
                 <p className="font-display text-xs font-bold uppercase">No parent</p>
-                <p className="mt-1 font-ui text-sm text-muted">Run 1 window. Fresh.</p>
+                <p className="mt-1 font-ui text-sm text-muted">First year. Fresh.</p>
               </button>
               {eligible.map((c) => (
                 <button
@@ -451,29 +484,33 @@ function Select() {
             ) : null}
           </div>
         ) : null}
-        <div className="mt-6">
-          <p className="font-display text-[10px] uppercase tracking-widest text-gold">Carry a card</p>
-          <p className="mt-1 font-ui text-xs text-muted">Pull, never push. A Coach can carry sparks across complexes.</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <input
-              value={carry}
-              onChange={(e) => setCarry(e.target.value)}
-              placeholder="SHINE-…"
-              className="min-h-11 min-w-[12rem] flex-1 rounded-xl border border-white/20 bg-ink/70 px-3 font-ui text-sm text-cream"
-              aria-label="Friend carry code"
-            />
-            <PixelBtn
-              variant="ghost"
-              className="h-11"
-              onClick={() => {
-                if (importCarry(carry)) setCarry("");
-              }}
-            >
-              Carry
-            </PixelBtn>
+        {clubhouse.length > 0 ? (
+          <div className="mt-6">
+            <p className="font-display text-[10px] uppercase tracking-widest text-gold">Carry a card</p>
+            <p className="mt-1 font-ui text-xs text-muted">A finished year can walk into the next. Stats start fresh.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <input
+                value={carry}
+                onChange={(e) => setCarry(e.target.value)}
+                placeholder="A friend's card"
+                className="min-h-11 min-w-[12rem] flex-1 rounded-xl border border-white/20 bg-ink/70 px-3 font-ui text-sm text-cream"
+                aria-label="Friend carry code"
+              />
+              <PixelBtn
+                variant="ghost"
+                className="h-11"
+                onClick={() => {
+                  const ok = importCarry(carry);
+                  setCarryNote(useShine.getState().lastLine);
+                  if (ok) setCarry("");
+                }}
+              >
+                Carry
+              </PixelBtn>
+            </div>
+            {carryNote ? <p className="mt-2 font-ui text-xs text-grass-2">{carryNote}</p> : null}
           </div>
-          {lastLine ? <p className="mt-2 font-ui text-xs text-grass-2">{lastLine}</p> : null}
-        </div>
+        ) : null}
         <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end">
           {art ? (
             <img
@@ -492,9 +529,13 @@ function Select() {
             </div>
             <PixelBtn
               className="mt-4 h-12 w-full"
-              onClick={() => startRun(pick, parentId, pickInheritSparks(parent?.sparks ?? [], sparks))}
+              disabled={pending || !ready}
+              onClick={() => {
+                if (pending || !ready) return;
+                startRun(pick, parentId, pickInheritSparks(parent?.sparks ?? [], sparks));
+              }}
             >
-              Coach {who.name}
+              {pending || ready ? `Coach ${who.name}` : "Her film is not in."}
             </PixelBtn>
           </div>
         </div>
@@ -510,100 +551,27 @@ function Complex() {
   const finishMentor = useShine((s) => s.finishMentor);
   const finishYearStart = useShine((s) => s.finishYearStart);
   const lastLine = useShine((s) => s.lastLine);
-  const eyeCard = useShine((s) => s.eyeCard);
-  const looksLock = useShine((s) => s.looksLock);
-  const calendarPeek = useShine((s) => s.calendarPeek);
   const storyCard = useShine((s) => s.storyCard);
-  const dismissEyeCard = useShine((s) => s.dismissEyeCard);
-  const dismissLooksLock = useShine((s) => s.dismissLooksLock);
-  const dismissCalendarPeek = useShine((s) => s.dismissCalendarPeek);
   const dismissStoryCard = useShine((s) => s.dismissStoryCard);
   const openTitle = useShine((s) => s.openTitle);
   const openSettings = useShine((s) => s.openSettings);
-  const [preview, setPreview] = useState<StationId | null>(null);
-  const [intensive, setIntensive] = useState(false);
-  const [sideFocus, setSideFocus] = useState<"stuff" | "control">("stuff");
   const [catchBeat, setCatchBeat] = useState(false);
   const meta = turnMeta(run.turn);
   const mood = MOOD_LABELS[moodLevel(run.mood)];
   const who = sheet(run.characterId);
-  const pitcher = isPitcherStyle(who.style);
-  const art = practiceSrc(run.characterId, workMood(run.mood));
-  const brief = coachBrief(run);
-  const comparison = run.lastWork && run.lastWork.turn === run.turn - 1 ? workComparison(run) : null;
-  const next = nextOfficial(run.turn);
+  const art = careerFilmSrc(run.characterId);
+  const next = nextNamedBeat(run.turn);
   const turnsAway = Math.max(0, next.turn - run.turn);
   const moodIdx = moodLevel(run.mood);
-
-  useEffect(() => {
-    if (!preview) return;
-    const t = window.setTimeout(() => setPreview(null), 1000);
-    return () => window.clearTimeout(t);
-  }, [preview]);
 
   if (storyCard) {
     return (
       <Shell runTurn={run.turn} label="Letters · Fan 30">
         <p className="font-display text-[10px] uppercase tracking-widest text-gold">Character Story</p>
-        <p className="mt-3 font-ui text-base leading-relaxed text-cream/90">{who.letters}</p>
-        <p className="mt-3 font-ui text-sm text-gold">Letters at the complex. She&apos;s a draw. Presentation — not a plate buff.</p>
+        <p className="mt-3 font-ui text-base leading-relaxed text-cream/90">{fanLetter(run)}</p>
+        <p className="mt-3 font-ui text-sm text-gold">Letters at the complex. She&apos;s a draw.</p>
         <PixelBtn className="mt-6 h-12" onClick={dismissStoryCard}>
-          Work
-        </PixelBtn>
-      </Shell>
-    );
-  }
-
-  if (calendarPeek) {
-    return (
-      <Shell runTurn={run.turn} label="Calendar Preview">
-        <p className="font-ui text-base leading-relaxed text-cream/90">{calendarPeekLine(run.turn)}</p>
-        <p className="mt-3 font-ui text-sm text-cream/80">Your first real game. What's the last thing to sharpen?</p>
-        <ol className="mt-5 flex flex-wrap gap-1">
-          {ROOKIE_CALENDAR.map((b) => {
-            const gate = b.type === "gate";
-            const here = b.turn === run.turn;
-            return (
-              <li
-                key={b.turn}
-                className={`rounded-md border px-2 py-1 font-display text-[10px] uppercase tracking-wide ${
-                  gate ? "border-gold text-gold" : here ? "border-grass-2 text-grass-2" : "border-white/15 text-muted"
-                }`}
-              >
-                {gate ? "Academy Gate" : b.turn}
-              </li>
-            );
-          })}
-        </ol>
-        <PixelBtn className="mt-6 h-12" onClick={dismissCalendarPeek}>
-          Work
-        </PixelBtn>
-      </Shell>
-    );
-  }
-
-  if (looksLock) {
-    return (
-      <Shell runTurn={run.turn} label="Live looks">
-        <p className="shine-q-lock mx-auto w-fit font-display text-7xl font-bold text-gold" aria-hidden>
-          ?
-        </p>
-        <p className="mt-6 font-ui text-base leading-relaxed text-cream/90">{lastLine ?? "The ? locked. She never read it out of the hand."}</p>
-        <PixelBtn className="mt-6 h-12" onClick={dismissLooksLock}>
-          Back to the board
-        </PixelBtn>
-      </Shell>
-    );
-  }
-
-  if (eyeCard) {
-    return (
-      <Shell runTurn={run.turn} label="The ?">
-        <p className="font-ui text-base leading-relaxed text-cream/90">
-          Live looks are open. The pitch starts as a ?.
-        </p>
-        <PixelBtn className="mt-6 h-12" onClick={dismissEyeCard}>
-          Work
+          Morning
         </PixelBtn>
       </Shell>
     );
@@ -614,7 +582,7 @@ function Complex() {
     return (
       <Shell runTurn={run.turn} label="Catch with Coach">
         <SceneBlock scene={catchScene} />
-        <p className="mt-3 font-ui text-xs text-muted">Once a year. Mood +1. Presentation — not a relationship resource.</p>
+        <p className="mt-3 font-ui text-xs text-muted">Once a year. She looks lighter.</p>
         <PixelBtn
           className="mt-6 h-12"
           onClick={() => {
@@ -632,21 +600,28 @@ function Complex() {
     return (
       <Shell runTurn={run.turn} label={meta.label}>
         <p className="font-ui text-base leading-relaxed text-cream/90">
-          {run.year === 2 ? "Classic year. Lantern Classic is the Derby — always at Lantern Field." : "Senior year. The Stretch is coming."}
+          {run.year === 2
+            ? "Classic is open. Lantern Classic is always at Lantern Field."
+            : run.year === 3
+              ? "Senior year. The Stretch is coming."
+              : "The year is open."}
         </p>
         <p className="mt-3 font-ui text-sm text-gold">{yearVoice(run.year)}</p>
         <PixelBtn className="mt-6 h-12" onClick={finishYearStart}>
-          Work
+          Morning
         </PixelBtn>
       </Shell>
     );
   }
 
   if (meta.type === "mentor-event") {
+    const pitcher = isPitcherStyle(who.style);
     return (
-      <Shell runTurn={run.turn} label={meta.label}>
+      <Shell runTurn={run.turn} label={dateLabel(meta, who.style)}>
         <p className="font-ui text-base leading-relaxed text-cream/90">
-          Cage Coach stays after the last bucket. No work choice tonight — just the two of you in the tunnel.
+          {pitcher
+            ? "Bullpen Coach stays after the last look. Just the two of you on the rubber."
+            : "Cage Coach stays after the last bucket. Just the two of you in the tunnel."}
         </p>
         <PixelBtn className="mt-6 h-12" onClick={finishMentor}>
           Listen
@@ -662,16 +637,7 @@ function Complex() {
       meta={meta}
       mood={mood}
       moodIdx={moodIdx}
-      pitcher={pitcher}
-      brief={brief}
-      comparison={comparison}
       lastLine={lastLine}
-      preview={preview}
-      setPreview={setPreview}
-      intensive={intensive}
-      setIntensive={setIntensive}
-      sideFocus={sideFocus}
-      setSideFocus={setSideFocus}
       train={train}
       finishForcedCage={finishForcedCage}
       setCatchBeat={setCatchBeat}
@@ -687,6 +653,8 @@ function Postgame() {
   const run = useShine((s) => s.run)!;
   const dismissPostgame = useShine((s) => s.dismissPostgame);
   const lastLine = useShine((s) => s.lastLine);
+  const openTitle = useShine((s) => s.openTitle);
+  const openSettings = useShine((s) => s.openSettings);
   const last = run.calendar.at(-1);
   const who = sheet(run.characterId);
   const idx = last?.type && last.type in PG_INDEX ? PG_INDEX[last.type as keyof typeof PG_INDEX] : 0;
@@ -702,85 +670,107 @@ function Postgame() {
     return () => window.clearTimeout(t);
   }, [last?.type]);
 
+  const met = run.pgResults[idx] === "met";
+  const seriesFinale = last?.type === "series" ? seriesFinaleLine(run) : null;
+  const film = endingFilmSrc(run.characterId, met ? "A" : "C");
+  const clip = endingClipSrc(run.characterId, met ? "A" : "C");
+
   if (curtain) {
-    const still = curtainStillSrc(skin);
-    const face = portraitSrc(run.characterId, "elated");
+    const call = curtainFilmSrc(run.characterId);
     return (
-      <Shell runTurn={run.turn} label="Curtain Call">
-        <div className="relative overflow-hidden rounded-2xl border border-gold/40">
-          <img src={still} alt="" className="absolute inset-0 size-full object-cover opacity-55" />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/50 to-ink/20" />
-          <div className="relative flex flex-col items-center px-4 py-8 text-center">
+      <main className="relative min-h-dvh overflow-hidden bg-ink text-cream" data-curtain={last?.type ?? "date"}>
+        <img src={call} alt="" className="absolute inset-0 size-full object-cover object-[center_18%]" data-curtain-film={run.characterId} />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/15" />
+        <div className="relative z-10 flex min-h-dvh flex-col">
+          <div className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-8">
             <p className="episode-chip w-fit">{skin === "otachidai" ? "お立ち台" : "Dugout"}</p>
-            {face ? (
-              <img
-                src={face}
-                alt=""
-                className={`character-cutout mt-4 h-40 w-auto object-contain sm:h-48 ${skin === "otachidai" ? "" : ""}`}
-              />
-            ) : null}
-            <p className="mt-4 font-display text-lg font-bold">{who.walkUp}</p>
-            <p className="mt-2 max-w-md font-ui text-base leading-relaxed text-cream/90">{who.curtainCall}</p>
-            <p className="mt-3 font-ui text-xs text-muted">
-              Cap in hand. No bat.{" "}
-              {skin === "otachidai" ? "応援歌. Presentation — not a Guts buff." : "Walk-up. Presentation — not a Guts buff."}
+            <p className="font-display text-[10px] uppercase tracking-widest text-gold">Curtain Call</p>
+            <div className="flex items-center gap-2">
+              <ShineMute />
+              <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openSettings} ariaLabel="Settings">
+                Settings
+              </PixelBtn>
+              <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
+                Title
+              </PixelBtn>
+            </div>
+          </div>
+          <div className="mt-auto px-4 pb-8 sm:px-8">
+            <p className="font-display text-lg font-bold">{last ? dateLabel(turnMeta(last.turn), who.style) : "The date"}</p>
+            <p className="mt-2 max-w-md font-ui text-base leading-relaxed text-cream/90 sm:text-lg">{curtainCallLine(who.curtainCall, skin)}</p>
+            <p className="mt-3 font-ui text-xs text-cream/70">
+              {curtainCaption(run.characterId)} {skin === "otachidai" ? "応援歌." : "Walk-up."}
             </p>
             {verses.map((v, i) => (
               <p key={i} className="mt-2 font-ui text-xs text-gold/85">
                 {v}
               </p>
             ))}
+            {canSkipCurtain ? (
+              <PixelBtn className="mt-6 h-12" onClick={() => setCurtain(false)}>
+                Hold the still
+              </PixelBtn>
+            ) : (
+              <p className="mt-6 font-ui text-sm text-cream/70">The first Lantern Classic Call is hers.</p>
+            )}
           </div>
         </div>
-        {canSkipCurtain ? (
-          <PixelBtn className="mt-6 h-12" onClick={() => setCurtain(false)}>
-            Hold the still
-          </PixelBtn>
-        ) : (
-          <p className="mt-6 font-ui text-sm text-cream/70">The first Lantern Classic Call is hers.</p>
-        )}
-      </Shell>
+      </main>
     );
   }
 
   return (
-    <Shell runTurn={run.turn} label="After the PA">
-      <p className="font-display text-lg font-bold">
-        {run.pgResults[idx] === "met" ? who.pgVerb : `No ${who.pgVerb}`}
-      </p>
-      {lastLine ? <p className="mt-2 font-ui text-base leading-relaxed text-cream/90">{lastLine}</p> : null}
-      <p className="mt-2 font-ui text-sm text-cream/80">
-        Support {run.sgResults[idx] === "met" ? "met" : "missed"}. Fans {run.fans}. Mood {MOOD_LABELS[moodLevel(run.mood)]}.
-      </p>
-      {run.fanBeat ? <p className="mt-3 font-ui text-sm text-gold">{run.fanBeat}</p> : null}
-      {last?.type === "gate" ? <SceneBlock scene={relationshipScene(run, "post-gate")} /> : null}
-      {last?.type === "first-light" && run.keepsake === "dirt" ? (
-        <p className="mt-3 font-ui text-sm text-gold">She kept a pinch of dirt from the baseline. It means nothing. It means everything.</p>
-      ) : last?.type === "first-light" ? (
-        <p className="mt-3 font-ui text-sm text-cream/70">The baseline stayed. No keepsake this time.</p>
-      ) : null}
-      <p className="mt-2 font-ui text-sm text-cream/70">{recapLine(parkId, run.turn)}</p>
-      {verses.length ? (
-        <ul className="mt-3 space-y-1 rounded-xl border border-gold/30 bg-ink/60 px-4 py-3">
-          <li className="font-display text-[10px] uppercase tracking-widest text-gold">応援歌 · fan tiers</li>
-          {verses.map((v, i) => (
-            <li key={i} className="font-ui text-xs text-gold/85">
-              {v}
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {last?.type === "series" ? (
-        <p className="mt-3 font-ui text-sm text-gold">{finaleGap(run)}</p>
-      ) : null}
-      {run.coachWarning ? <p className="mt-4 font-ui text-sm text-coral">{run.coachWarning}</p> : null}
-      <p className="mt-4 font-ui text-sm text-cream/80">
-        Next game in {Math.max(1, nextOfficial(run.turn).turn - run.turn)} turns. Natural break.
-      </p>
-      <PixelBtn className="mt-6 h-12" onClick={dismissPostgame}>
-        Back to the complex
-      </PixelBtn>
-    </Shell>
+    <main className="relative min-h-dvh overflow-hidden bg-ink text-cream" data-after-pa={last?.type ?? "date"}>
+      <img src={film} alt="" className="absolute inset-0 size-full object-cover object-[center_18%] opacity-80" />
+      <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-ink/30" />
+      <div className="relative z-10 mx-auto flex min-h-dvh max-w-5xl flex-col px-4 py-8 sm:px-8">
+        <div className="flex items-center justify-between gap-3">
+          <p className="episode-chip w-fit">{last ? dateLabel(turnMeta(last.turn), who.style) : "The date"}</p>
+          <div className="flex items-center gap-2">
+            <ShineMute />
+            <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openSettings} ariaLabel="Settings">
+              Settings
+            </PixelBtn>
+            <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
+              Title
+            </PixelBtn>
+          </div>
+        </div>
+        <div className="mt-auto max-w-md pb-2">
+          <p className="font-display text-lg font-bold">
+            {last?.type === "finale" ? "Diamond Finale." : met ? who.pgVerb : "The goal slipped."}
+          </p>
+          {lastLine ? (
+            <p className="mt-2 font-ui text-base leading-relaxed text-cream/90">
+              {dateSpeech(lastLine)}
+            </p>
+          ) : null}
+          {run.fanBeat ? <p className="mt-3 font-ui text-sm text-gold">{run.fanBeat}</p> : null}
+          {last?.type === "gate" ? <SceneBlock scene={relationshipScene(run, "post-gate")} /> : null}
+          {last?.type === "first-light" && run.keepsake === "dirt" ? (
+            <p className="mt-3 font-ui text-sm text-gold">She kept a pinch of dirt from the baseline. It means nothing. It means everything.</p>
+          ) : last?.type === "first-light" && run.keepsake === "ball" && isPitcherStyle(who.style) ? (
+            <p className="mt-3 font-ui text-sm text-cream/70">She kept the last-out ball.</p>
+          ) : last?.type === "first-light" && run.keepsake !== "dirt" ? (
+            <p className="mt-3 font-ui text-sm text-cream/70">
+              {isPitcherStyle(who.style) ? "No ball in her pocket this time." : "The baseline stayed. No keepsake this time."}
+            </p>
+          ) : null}
+          <p className="mt-2 font-ui text-sm text-cream/70">{recapLine(parkId, run.turn)}</p>
+          {seriesFinale ? <p className="mt-3 font-ui text-sm text-gold">{seriesFinale}</p> : null}
+          {last?.type === "finale" && !met ? (
+            <p className="mt-3 font-ui text-sm text-cream/70">This date doesn't close the path.</p>
+          ) : null}
+          {run.coachWarning && last?.type !== "finale" ? <p className="mt-4 font-ui text-sm text-coral">{run.coachWarning}</p> : null}
+          <p className="mt-4 font-ui text-sm text-cream/80">
+            {yearFoldLine(run, dateLabel(turnMeta(run.turn), who.style), nextDateLine(run.turn, last?.type))}
+          </p>
+          <PixelBtn className="mt-6 h-12" onClick={dismissPostgame}>
+            {postgameLeaveLabel(run, last?.type === "finale")}
+          </PixelBtn>
+        </div>
+      </div>
+    </main>
   );
 }
 
@@ -789,10 +779,13 @@ function YearEnd() {
   const who = sheet(run.characterId);
   const finishCareer = useShine((s) => s.finishCareer);
   const dismissYearEnd = useShine((s) => s.dismissYearEnd);
+  const openTitle = useShine((s) => s.openTitle);
+  const openSettings = useShine((s) => s.openSettings);
   const card = run.clubhouseCard;
-  const [frame, setFrame] = useState(true);
+  const [pages, setPages] = useState(false);
   const still = card ? careerStill(run) : null;
-  const art = portraitSrc(run.characterId, card ? endingMood(card.ending) : "neutral");
+  const film = card ? endingFilmSrc(run.characterId, card.ending) : careerFilmSrc(run.characterId);
+  const clip = card ? endingClipSrc(run.characterId, card.ending) : null;
 
   useEffect(() => {
     if (!card) return;
@@ -801,93 +794,118 @@ function YearEnd() {
     return () => stopMusic();
   }, [card?.id, card?.ending]);
 
-  useEffect(() => {
-    if (!card || !still || !frame) return;
-    const t = window.setTimeout(() => setFrame(false), 12000);
-    return () => window.clearTimeout(t);
-  }, [card?.id, Boolean(still), frame]);
-
   if (card && still) {
     const rankLabel = endingRankLabel(card.ending);
-    if (frame) {
-      return (
-        <Shell runTurn={run.turn} label={rankLabel}>
-          {art ? (
-            <img
-              src={art}
-              alt=""
-              className={`character-cutout mb-4 h-52 w-auto object-contain sm:h-64 ${
-                still.rank === "S" || still.rank === "A" ? "shine-dohage" : still.rank === "never-quit" ? "shine-never-quit" : ""
-              }`}
-            />
-          ) : null}
-          <p className="font-display text-[10px] uppercase tracking-widest text-gold">Frame first. Box score second.</p>
-          <p className="mt-3 font-ui text-base leading-relaxed text-cream/90">{still.quote}</p>
-          <p className="mt-3 font-ui text-sm text-gold">{still.trained}</p>
-          <p className="mt-2 font-ui text-sm text-gold">{still.mentor}</p>
-          <p
-            className={`mt-4 font-display text-lg font-bold text-gold ${still.rank === "never-quit" ? "shine-cowbell-line" : ""}`}
-          >
-            {still.frame}
-          </p>
-          <PixelBtn
-            className="mt-6 h-12"
-            onClick={() => {
-              if (card.ending === "never-quit") sfxCowbell();
-              setFrame(false);
-            }}
-          >
-            Skip
-          </PixelBtn>
-        </Shell>
-      );
-    }
     return (
-      <Shell runTurn={run.turn} label={rankLabel}>
-        <p className="font-ui text-xs text-muted">A pinch of dirt on the card. Flavor. She keeps it.</p>
-        <p className="mt-3 font-ui text-sm text-muted">
-          Sparks {card.sparks.map((s) => s.kind).join(" · ") || "none"} · fans {card.fans}
-        </p>
-        <p className="mt-3 rounded-xl border border-gold/40 bg-ink/70 px-4 py-3 font-ui text-sm text-gold">
-          {sparkGapLine([card]) ?? `Next: Coach ${nextGirlName(run.characterId)}.`}
-        </p>
-        <Scrapbook highlights={card.highlights ?? run.highlights} pa={card.definingPa ?? run.definingPa} who={run.characterId} />
-        <p className="mt-4 break-all font-ui text-xs text-cream/70">{encodeCard(card)}</p>
-        <p className="mt-1 font-ui text-xs text-muted">A Coach can carry this. The game never asks you to share.</p>
-        <PixelBtn className="mt-6 h-12" onClick={finishCareer}>
-          Clubhouse
-        </PixelBtn>
-      </Shell>
+      <main className="relative min-h-dvh overflow-hidden bg-ink text-cream" data-winning-live={card.ending}>
+        <img src={film} alt="" className="absolute inset-0 size-full object-cover object-[center_18%]" />
+        {clip ? (
+          <video
+            key={clip}
+            src={clip}
+            poster={film}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 size-full object-cover"
+            data-winning-clip={clip}
+            aria-hidden
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/15" />
+        <div className="relative z-10 flex min-h-dvh flex-col">
+          <div className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-8">
+            <p className="episode-chip w-fit">{rankLabel}</p>
+            <p className="font-display text-[10px] uppercase tracking-widest text-gold">Winning Live</p>
+            <div className="flex items-center gap-2">
+              <ShineMute />
+              <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openSettings} ariaLabel="Settings">
+                Settings
+              </PixelBtn>
+              <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
+                Title
+              </PixelBtn>
+            </div>
+          </div>
+          <div className="mt-auto px-4 pb-8 sm:px-8">
+            <p className="max-w-md font-ui text-base leading-relaxed text-cream/90 sm:text-lg">{still.quote}</p>
+            <p className="mt-3 font-ui text-sm text-gold">{still.trained}</p>
+            <p className="mt-2 font-ui text-sm text-gold">{still.mentor}</p>
+            <p
+              className={`mt-4 font-display text-lg font-bold text-gold ${still.rank === "never-quit" ? "shine-cowbell-line" : ""}`}
+            >
+              {still.frame}
+            </p>
+            {pages ? (
+              <>
+                <p className="mt-4 max-w-md font-ui text-sm text-gold">
+                  {sparkGapLine([card]) ?? `Next: Coach ${nextGirlName(run.characterId)}.`}
+                </p>
+                <Scrapbook highlights={card.highlights ?? run.highlights} pa={card.definingPa ?? run.definingPa} who={run.characterId} />
+                <PixelBtn className="mt-6 h-12" onClick={finishCareer}>
+                  Clubhouse
+                </PixelBtn>
+              </>
+            ) : (
+              <PixelBtn
+                className="mt-6 h-12"
+                onClick={() => {
+                  if (card.ending === "never-quit") sfxCowbell();
+                  setPages(true);
+                }}
+              >
+                The scrapbook
+              </PixelBtn>
+            )}
+          </div>
+        </div>
+      </main>
     );
   }
+  const nextYear = run.turn <= 20 ? "Classic year" : "Senior year";
   return (
-    <Shell runTurn={run.turn} label="Year-End">
-      <p className="font-ui text-base leading-relaxed text-cream/90">
-        {run.turn <= 20 ? who.yearStills.rookie : run.turn <= 40 ? who.yearStills.classic : who.yearStills.senior}
-      </p>
-      <p className="mt-3 font-ui text-sm text-muted">
-        {run.turn <= 20
-          ? "Classic is open. Lantern Classic is always at Lantern Field."
-          : "Senior is open. The Stretch is coming."}
-      </p>
-      <p className="mt-3 font-ui text-sm text-muted">
-        PG {run.pgResults.filter((m) => m !== "pending").join(" / ") || "—"} · misses {run.pgMisses}
-      </p>
-      <SceneBlock scene={relationshipScene(run, "year-end")} />
-      <Scrapbook highlights={run.highlights} pa={run.definingPa} who={run.characterId} />
-      <PixelBtn className="mt-6 h-12" onClick={dismissYearEnd}>
-        {run.turn <= 20 ? "Classic year" : "Senior year"}
-      </PixelBtn>
-    </Shell>
+    <main className="relative min-h-dvh overflow-hidden bg-ink text-cream" data-year-end={run.year}>
+      <img src={film} alt="" className="absolute inset-0 size-full object-cover object-[center_18%]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/15" />
+      <div className="relative z-10 flex min-h-dvh flex-col">
+        <div className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-8">
+          <p className="episode-chip w-fit">Year-End</p>
+          <div className="flex items-center gap-2">
+            <ShineMute />
+            <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openSettings} ariaLabel="Settings">
+              Settings
+            </PixelBtn>
+            <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
+              Title
+            </PixelBtn>
+          </div>
+        </div>
+        <div className="mt-auto px-4 pb-8 sm:px-8">
+          <p className="max-w-md font-ui text-base leading-relaxed text-cream/90 sm:text-lg">
+            {yearStillLine(run.characterId, run.turn, run.pgResults, run.definingPa, run.lightCard)}
+          </p>
+          <p className="mt-3 font-ui text-sm text-cream/80">
+            {run.turn <= 20
+              ? "Classic is open. Lantern Classic is always at Lantern Field."
+              : "Senior is open. The Stretch is coming."}
+          </p>
+          <SceneBlock scene={relationshipScene(run, "year-end")} />
+          <PixelBtn className="mt-6 h-12" onClick={dismissYearEnd}>
+            {nextYear}
+          </PixelBtn>
+        </div>
+      </div>
+    </main>
   );
 }
 
 function SceneBlock({ scene }: { scene: RelationshipScene }) {
-  const art = portraitSrc(scene.speaker, scene.mood);
+  const art = sceneFilmSrc(scene.speaker, scene.mood);
   const who = sheet(scene.speaker);
   return (
     <div className="shine-dialogue mt-4" data-testid="relationship-scene">
-      {art ? <img src={art} alt="" className="character-cutout h-28 w-auto shrink-0 object-contain" /> : null}
+      {art ? <img src={art} alt="" className="h-28 w-auto shrink-0 object-cover" data-scene-film={scene.speaker} /> : null}
       <div className="shine-speech">
         <p className="shine-kana text-[11px] text-ink/50">
           #{who.number} {who.jp}
@@ -897,7 +915,7 @@ function SceneBlock({ scene }: { scene: RelationshipScene }) {
             {l}
           </p>
         ))}
-        {scene.quoted ? <p className="mt-2 font-ui text-[11px] text-ink/55">She remembers: {scene.quoted.note}</p> : null}
+        {scene.quoted ? <p className="mt-2 font-ui text-[11px] text-ink/55">{memoryLine(scene.quoted)}</p> : null}
       </div>
     </div>
   );
@@ -913,7 +931,7 @@ function Scrapbook({ highlights, pa, who }: { highlights: Highlight[]; pa: Defin
         {highlights.slice(-8).map((h, i) => (
           <li key={`${h.turn}-${i}`} className="flex gap-2">
             <span className="shrink-0 font-display text-[10px] uppercase text-muted">{h.label}</span>
-            <span className="text-cream/90">{h.line}</span>
+            <span className="text-cream/90">{scrapbookLine(who, h.line)}</span>
           </li>
         ))}
       </ul>
@@ -925,7 +943,7 @@ function Scrapbook({ highlights, pa, who }: { highlights: Highlight[]; pa: Defin
             onClick={() => setReplay((v) => !v)}
             className="font-display text-[10px] uppercase tracking-widest text-grass-2 underline-offset-2 hover:underline"
           >
-            {replay ? "Close the replay" : "Replay the at-bat"}
+            {replay ? "Close the replay" : isPitcherStyle(sheet(who).style) ? "Replay the inning" : "Replay the at-bat"}
           </button>
           {replay ? (
             <ol className="mt-2 space-y-1 font-ui text-xs text-cream/80">
@@ -945,6 +963,9 @@ function Shell({ runTurn, label, children }: { runTurn: number; label: string; c
   const openTitle = useShine((s) => s.openTitle);
   const openSettings = useShine((s) => s.openSettings);
   const park = run ? parkSrc(sheet(run.characterId).parkId) : "/bg/park-koi.jpg";
+  const next = nextNamedBeat(runTurn);
+  const turnsAway = Math.max(0, next.turn - runTurn);
+  const style = run ? sheet(run.characterId).style : "lead";
   return (
     <main className="relative min-h-dvh overflow-hidden bg-ink text-cream">
       <img src={park} alt="" className="absolute inset-0 size-full object-cover" />
@@ -952,7 +973,10 @@ function Shell({ runTurn, label, children }: { runTurn: number; label: string; c
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
         <div className="flex items-center justify-between gap-3">
           <p className="episode-chip w-fit">
-            Turn {runTurn} · {label}
+            Day {runTurn} · {label}
+          </p>
+          <p className="font-display text-[10px] uppercase tracking-widest text-gold">
+            {dateLabel(next, style)} · {daysAwayLabel(turnsAway)}
           </p>
           <div className="flex items-center gap-2">
             <ShineMute />
@@ -1007,9 +1031,11 @@ function Establishing() {
         Clubhouse
       </p>
       <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col justify-end px-6 pb-12 pt-16 sm:px-10">
-        <p className="episode-chip w-fit">Skyline complex</p>
+        <p className="episode-chip w-fit">First Day</p>
         <p className="mt-6 max-w-lg font-ui text-lg font-medium leading-relaxed text-cream/95">
-          First morning at the Cage station on the complex.
+          {isPitcherStyle(who.style)
+            ? "First morning. The bullpen is lit. Sit. Go. Watch her throw."
+            : "First morning. The cage is lit. Sit. Go. Watch her."}
         </p>
         <div className="max-w-2xl">
           <SceneBlock scene={relationshipScene(run, "opening")} />
@@ -1021,7 +1047,7 @@ function Establishing() {
             dismissEstablishing();
           }}
         >
-          Work
+          Morning
         </PixelBtn>
       </div>
     </main>
@@ -1062,6 +1088,44 @@ export function ShineApp() {
       openExhibition();
     }
   }, [hydrated, openExhibition]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || new URLSearchParams(window.location.search).get("debug") !== "1") return;
+    const api = {
+      get: () => useShine.getState(),
+      train: (station: "cage" | "off-day" | "poles" | "looks" | "bp" | "situational" | "charting" | "treatment" | "hitch" | "side") =>
+        useShine.getState().train(station),
+      finishForcedCage: () => useShine.getState().finishForcedCage(),
+      finishMentor: () => useShine.getState().finishMentor(),
+      finishYearStart: () => useShine.getState().finishYearStart(),
+      startRun: (id: "aoi" | "reina" | "miki" | "sol" | "kira" | "yuki", parentId?: string | null) =>
+        useShine.getState().startRun(id, parentId),
+      jump: (turn: number) => {
+        const { run } = useShine.getState();
+        if (!run) return;
+        const next = structuredClone(run);
+        next.turn = turn;
+        next.year = yearOf(turn);
+        const type = turnMeta(turn).type;
+        next.phase = type === "forced-scene" ? "year-end" : PLATE_TURNS.includes(type) ? "plate" : "complex";
+        useShine.setState({
+          run: next,
+          screen: type === "forced-scene" ? "year-end" : PLATE_TURNS.includes(type) ? "plate" : "complex",
+          liveGame: null,
+          establishing: false,
+          calendarPeek: false,
+        });
+      },
+      dismissPostgame: () => useShine.getState().dismissPostgame(),
+      dismissYearEnd: () => useShine.getState().dismissYearEnd(),
+      dismissCalendarPeek: () => useShine.getState().dismissCalendarPeek(),
+      continueRun: () => useShine.getState().continueRun(),
+    };
+    (window as unknown as { __dsShine?: typeof api }).__dsShine = api;
+    return () => {
+      delete (window as unknown as { __dsShine?: typeof api }).__dsShine;
+    };
+  }, []);
 
   useEffect(() => {
     if (!hydrated) return;

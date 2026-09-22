@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { clubhouseOpen, looksUnlocked, powerStationsUnlocked, turnMeta } from "./calendar.ts";
+import { clubhouseOpen, dateLabel, looksUnlocked, powerStationsUnlocked, turnMeta } from "./calendar.ts";
 import {
   applyGameResult,
   leavePostgame,
@@ -14,12 +14,12 @@ import {
   type GameCarry,
   type PlateBox,
 } from "./run.ts";
-import { canTrain, looksFailCopy, treatmentAvailable, treatmentForced } from "./training.ts";
+import { canTrain, treatmentAvailable, treatmentForced } from "./training.ts";
 import { applyParentPeak, pickInheritSparks } from "./ending.ts";
 import { decodeCard } from "./carry.ts";
 import { yearVoice } from "./culture.ts";
 import { previewClaimable, SKUS } from "./commerce.ts";
-import { isPitcherStyle, sheet } from "./bible.ts";
+import { isPitcherStyle, lightCardFrom, sheet } from "./bible.ts";
 import {
   SHINE_PERSIST_VERSION,
   migratePersisted,
@@ -31,7 +31,7 @@ import {
   type LiveGame,
   type RunBackup,
 } from "./persist.ts";
-import { DEFAULT_SETTINGS, type CharacterId, type ClubhouseCard, type ShineScreen, type ShineSettings, type Spark, type StationId, type TraineeRun } from "./types.ts";
+import { DEFAULT_SETTINGS, type CharacterId, type ClubhouseCard, type ShineScreen, type ShineSettings, type Spark, type StationId, type TraineeRun, type TraineeStatKey } from "./types.ts";
 
 export type { LiveGame, RunBackup } from "./persist.ts";
 
@@ -204,7 +204,7 @@ export const useShine = create<ShineState>()(
           lastLine: memory,
           calendarPeek: false,
           eyeCard: false,
-          establishing: !get().skipOnboarding,
+          establishing: true,
           storyCard: false,
           liveGame: null,
           backups: pushBackup(get().backups, get().run, "Before this run started"),
@@ -280,24 +280,22 @@ export const useShine = create<ShineState>()(
         });
       },
       train: (station, intensive, sideFocus) => {
-        const { run } = get();
+        const { run, lastLine } = get();
         if (!run) return;
         if (run.turn === 1) return;
         const next = structuredClone(run);
         resolveTrainingTurn(next, station, intensive, sideFocus);
-        const peek = next.turn === 4;
-        const last = next.calendar.at(-1);
-        const looksLock = station === "looks" && (last?.outcome === "fail" || last?.outcome === "bad-fail");
-        const saved = last?.turn === 4;
+        const card = lightCardFrom(lastLine);
+        if (next.phase === "year-end" && !next.lightCard && card) next.lightCard = card;
         set({
           run: next,
           screen: screenFor(next),
-          lastLine: looksLock ? looksFailCopy() : saved ? `${lastTrainLine(next)} Progress saved.` : lastTrainLine(next),
-          calendarPeek: peek && !get().skipOnboarding,
+          lastLine: lastTrainLine(next),
+          calendarPeek: false,
           clubhouse: rememberCard(get().clubhouse, next.clubhouseCard),
-          looksLock,
+          looksLock: false,
           liveGame: null,
-          backups: run.turn % 5 === 0 ? pushBackup(get().backups, run, `${turnMeta(run.turn).label}`) : get().backups,
+          backups: run.turn % 5 === 0 ? pushBackup(get().backups, run, dateLabel(turnMeta(run.turn), sheet(run.characterId).style)) : get().backups,
         });
       },
       finishForcedCage: () => {
@@ -310,8 +308,8 @@ export const useShine = create<ShineState>()(
           run: next,
           screen: screenFor(next),
           lastLine: pitcher
-            ? "Stuff ticked. The glove is hers now — you'll feel it tomorrow."
-            : "Work lands. She's in the box tomorrow.",
+            ? "Bullpen. The glove is hers tomorrow."
+            : "Cage. She's in the box tomorrow.",
         });
       },
       finishMentor: () => {
@@ -324,7 +322,9 @@ export const useShine = create<ShineState>()(
           screen: screenFor(next),
           lastLine: next.lastBreakthrough
             ? lastTrainLine(next)
-            : "Cage Coach stays late. Relationship +20.",
+            : isPitcherStyle(sheet(next.characterId).style)
+              ? "Bullpen Coach stays late."
+              : "Cage Coach stays late.",
         });
       },
       finishGame: (kind, pg, sg, reached, hr, read, lastSpurt, box, carry) => {
@@ -342,13 +342,17 @@ export const useShine = create<ShineState>()(
         if (!run) return;
         const next = structuredClone(run);
         applyGameResult(next, kind, pg, sg, reached, hr, lastSpurt, box, carry);
+        if (kind === "first-light") {
+          const card = lightCardFrom(read);
+          if (card) next.lightCard = card;
+        }
         const backups = kind === "practice" ? get().backups : pushBackup(get().backups, run, `Before ${turnMeta(run.turn).label}`);
         if (kind === "practice") {
           set({
             run: next,
             screen: screenFor(next),
             liveGame: null,
-            lastLine: read ?? "Three looks. Energy spent.",
+            lastLine: read ?? "Three looks. The glove is real.",
           });
           return;
         }
@@ -377,7 +381,7 @@ export const useShine = create<ShineState>()(
           screen: screenFor(next),
           calendarPeek: false,
           clubhouse: rememberCard(clubhouse, next.clubhouseCard),
-          eyeCard: run.turn === 5 && !skipOnboarding,
+          eyeCard: false,
           storyCard: story,
           skipOnboarding: skipOnboarding || run.turn === 5,
         });
@@ -449,15 +453,36 @@ function encodeSame(a: ClubhouseCard, b: ClubhouseCard) {
   );
 }
 
-function lastTrainLine(run: TraineeRun) {
+function workLanded(stat: TraineeStatKey | null) {
+  if (stat === "contact") return "Cage. She found one.";
+  if (stat === "speed") return "Poles. First step was hers.";
+  if (stat === "stuff") return "Bullpen. She found one.";
+  if (stat === "control") return "Bullpen. The glove sat.";
+  if (stat === "stamina") return "The arm held.";
+  if (stat === "eye") return "Live looks. She read one.";
+  if (stat === "power") return "She let one travel.";
+  if (stat === "guts") return "She stayed in it.";
+  if (stat === "wit") return "She knew what was coming.";
+  return "Cage. She found one.";
+}
+
+export function lastTrainLine(run: TraineeRun) {
   if (run.lastInjury) return "She's hurting. Trainer's room.";
-  if (run.lastBreakthrough === "contact") return "Breakthrough. Cage Coach. Contact +2.";
-  if (run.lastBreakthrough === "speed") return "Breakthrough. Poles Coach. Speed +2.";
-  if (run.lastTrainingSpark) return `Bonus. Two ticks. A ${run.lastTrainingSpark} Spark from the work.`;
+  if (run.lastBreakthrough === "contact") return "Cage Coach saw it. The swing is hers.";
+  if (run.lastBreakthrough === "speed") return "Poles Coach saw it. The first step is hers.";
+  if (run.lastTrainingSpark) return `She found two. A ${run.lastTrainingSpark} Spark, from the work.`;
   const last = run.calendar.at(-1);
   if (!last) return null;
-  if (last.outcome === "bonus") return "Bonus. Two ticks.";
-  if (last.outcome === "success") return "Work lands.";
+  if (last.outcome === "bonus") return "She found two. The morning gave more than it owed.";
+  if (last.outcome === "success") {
+    if (last.statTrained == null) {
+      if (last.station === "treatment") return "Trainer's room. The work waits.";
+      return isPitcherStyle(sheet(run.characterId).style)
+        ? "She took the day. The arm stays quiet."
+        : "She took the day.";
+    }
+    return workLanded(last.statTrained);
+  }
   if (last.outcome === "fail") return "Not today. She'll take another.";
   if (last.outcome === "bad-fail") return "Worn. Back off.";
   if (last.outcome === "event") return "Catch with Coach. Parking lot lights. No work — just the toss.";
@@ -481,7 +506,7 @@ export function stationOpen(run: TraineeRun, station: StationId): { open: boolea
   }
   if (station === "hitch") {
     if (!run.parentId) return { open: false };
-    if (turn < 3) return { open: false, reason: "Her hitch waits." };
+    if (turn <= 5) return { open: false, reason: "Her hitch waits." };
     return { open: true };
   }
   if (station === "treatment") return { open: treatmentAvailable(run.energy) || treatmentForced(run.energy) };
@@ -501,4 +526,17 @@ export function stationOpen(run: TraineeRun, station: StationId): { open: boolea
 
 export function workLocked(run: TraineeRun) {
   return !canTrain(run.energy);
+}
+
+/**
+ * The few tiles on the complex today. Hitch is inheritance after the Gate,
+ * never a day-one station. Pitchers work Side, not a second Cage campus.
+ */
+export function liveStationIds(run: TraineeRun): StationId[] {
+  const pitcher = isPitcherStyle(sheet(run.characterId).style);
+  const consider: StationId[] = pitcher
+    ? ["side", "poles", "off-day", "treatment", "clubhouse"]
+    : ["cage", "poles", "off-day", "treatment", "clubhouse"];
+  if (run.parentId) consider.push("hitch");
+  return consider.filter((id) => stationOpen(run, id).open);
 }

@@ -3,6 +3,8 @@
  * after the Gate, year-end — and every scene is allowed to quote only what the
  * bounded CoachMemory actually recorded. Nothing here invents a past.
  */
+import { firstLightStill, yearStillLine } from "./bible.ts";
+import { nextNamedBeat } from "./calendar.ts";
 import type { CharacterId, CoachMemory, TraineeRun } from "./types.ts";
 
 export type SceneSlot = "opening" | "post-gate" | "year-end";
@@ -17,6 +19,17 @@ export interface RelationshipScene {
   quoted: CoachMemory | null;
   /** Portrait mood for the beat. */
   mood: "neutral" | "focused" | "elated" | "crushed";
+}
+
+/** What she kept. A date, a morning, never a turn index, a stat key, or an energy number. */
+export function memoryLine(m: CoachMemory): string {
+  const next = nextNamedBeat(m.turn);
+  const when = next.turn === m.turn + 1 ? `the morning before ${next.label}` : `with ${next.label} still ahead`;
+  if (m.kind === "first-fail") return `The work didn't land, ${when}. She kept the plan.`;
+  if (m.kind === "pushed-tired") return `She was worn, ${when}.`;
+  if (m.kind === "catch") return "Parking lot. The toss, and nothing that needed saying.";
+  if (m.kind === "first-light") return /slipped/.test(m.note) ? "First Light slipped. She still has the night." : "First Light. She kept it.";
+  return m.note;
 }
 
 /** The most recent memory of a kind, newest first. */
@@ -73,7 +86,7 @@ function postGate(id: CharacterId, met: boolean, m: CoachMemory | null, wm: Retu
     case "aoi":
       return [
         met ? "She reached. She's not smiling about it; she's replaying the pitch she took." : "She didn't reach. She's replaying the pitch she swung at.",
-        quote ?? "\"You didn't say anything in the dugout.\" A pause. \"That was right.\"",
+        quote ?? "\"You didn't say anything in the dugout. That was right.\"",
         wm === "strained" ? "\"I know you were pushing. I'll tell you when it's too much.\"" : "\"Same thing tomorrow. The work, I mean. Not the game.\"",
       ];
     case "reina":
@@ -90,13 +103,13 @@ function postGate(id: CharacterId, met: boolean, m: CoachMemory | null, wm: Retu
       ];
     case "sol":
       return [
-        met ? "The out was a slider. She threw it because you called it. She won't say that part." : "The fastball got hit. She threw it because it's hers. She'll say that part.",
+        met ? "The outs are in. She threw them. She won't say which pitch." : "The outs weren't there. She'll tell you it was still her pitch.",
         quote ?? "\"The changeup felt wrong.\" \"It was a strike.\" \"It felt wrong.\"",
         wm === "strained" ? "\"You're riding the arm. I can take it. Kira can't. Don't confuse us.\"" : "\"Fine. Four pitches. Give me a reason each time.\"",
       ];
     case "kira":
       return [
-        met ? "One out, fast. She's already back at the door before the catcher stood up." : "The out didn't come. She's at the door anyway. That's where she goes.",
+        met ? "Three outs. She's already back at the door before the catcher stood up." : "The outs weren't there. She's at the door anyway. That's where she goes.",
         quote ?? "\"Was I early?\" You tell her the truth. \"Okay. Then I'll be early tomorrow, too.\"",
         wm === "strained" ? "\"Don't burn me in the pen on a day I'm not going in.\"" : "\"You got me there. That was the deal.\"",
       ];
@@ -109,58 +122,169 @@ function postGate(id: CharacterId, met: boolean, m: CoachMemory | null, wm: Retu
   }
 }
 
+function reinaWalksLine(walks: number): string {
+  if (walks <= 0) return "No walks in the official games. She checked twice.";
+  if (walks === 1) return "One walk in the official games. She checked twice.";
+  return `${walks} walks in the official games. She checked twice.`;
+}
+
 function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: ReturnType<typeof warmth>): string[] {
   const quote = m ? quoteMemory(m) : null;
   const misses = run.pgMisses;
   const clean = misses === 0;
   switch (id) {
-    case "aoi":
+    case "aoi": {
+      const rookie = run.turn <= 20;
+      const gateHeld = run.pgResults[0] === "met";
+      const lightHeld = run.pgResults[1] === "met";
+      const lanternHeld = run.pgResults[2] === "met";
+      const nightHeld = run.pgResults[3] === "met";
+      const open =
+        misses > 0
+          ? "She's counting the dates that didn't hold the way her mother did."
+          : rookie && !gateHeld && lightHeld
+            ? "The Gate didn't hold. First Light did."
+            : rookie && !lightHeld
+              ? "First Light slipped. She didn't reach."
+              : run.turn <= 40 && !gateHeld && lanternHeld && nightHeld
+                ? "The Gate didn't hold. Lantern Classic and Night Classic did."
+                : run.turn <= 40 && (!lanternHeld || !nightHeld)
+                  ? "Lantern Classic and Night Classic. One of them slipped."
+                  : "Every date held. She hands you the lineup card from the last one; she kept it.";
       return [
-        clean ? "Every date held. She hands you the lineup card from the last one; she kept it." : `${misses} official miss${misses > 1 ? "es" : ""}. She's counting them the way her mother did.`,
+        open,
         quote ?? "\"You saw things. You said them.\" That's the whole review.",
         wm === "strained" ? "\"Next year, rest me when I ask.\"" : "\"Next year, same cage.\"",
       ];
+    }
     case "reina":
       return [
-        clean ? "No walks in the official games. She checked twice." : `${misses} miss${misses > 1 ? "es" : ""}. She wants the arm-slot notes from each one before she leaves.`,
+        clean
+          ? reinaWalksLine(run.walks)
+          : misses === 1
+            ? "She wants the arm-slot notes from each one before she leaves."
+            : `${misses} misses. She wants the arm-slot notes from each one before she leaves.`,
         quote ?? "\"You called the slot drop in the fifth. I felt it after you said it. Not before.\"",
         wm === "strained" ? "\"The Classic is a full outing. Don't spend me in the spring.\"" : "\"Keep calling it. Earlier.\"",
       ];
-    case "miki":
+    case "miki": {
+      const rookie = run.turn <= 20;
+      const classic = run.turn <= 40;
+      const gateHeld = run.pgResults[0] === "met";
+      const lanternHeld = run.pgResults[2] === "met";
+      const nightHeld = run.pgResults[3] === "met";
+      const open =
+        clean && rookie && !gateHeld
+          ? "The Gate didn't hold. First Light did. The fight was still worth watching."
+          : classic && !rookie && !lanternHeld && !nightHeld
+            ? "Lantern Classic and Night Classic. Neither ask held. The fight was still worth watching."
+            : classic && !rookie && !lanternHeld
+              ? "Lantern Classic didn't hold. Night Classic did. The fight was still worth watching."
+              : classic && !rookie && !nightHeld
+                ? "Night Classic didn't hold. Lantern Classic did. The fight was still worth watching."
+                : clean
+                  ? "Everything held. North doesn't know what to do with that. Neither does she."
+                  : "The fight was still worth watching, and someone in section 4 said so.";
       return [
-        clean ? "Everything held. North doesn't know what to do with that. Neither does she." : `${misses} miss${misses > 1 ? "es" : ""}. The fight was still worth watching, and someone in section 4 said so.`,
+        open,
         quote ?? "\"Past week eleven.\" She says it like a score.",
         wm === "strained" ? "\"You pushed. I stayed. Don't make me choose next year.\"" : "\"You stayed. I noticed.\"",
       ];
-    case "sol":
+    }
+    case "sol": {
+      const rookie = run.turn <= 20;
+      const classic = run.turn <= 40;
+      const gateHeld = run.pgResults[0] === "met";
+      const lightHeld = run.pgResults[1] === "met";
+      const lanternHeld = run.pgResults[2] === "met";
+      const nightHeld = run.pgResults[3] === "met";
+      const open =
+        rookie && gateHeld && !lightHeld
+          ? `The Gate held. First Light didn't. ${firstLightStill(run.lightCard)}`
+          : rookie && !gateHeld && lightHeld
+            ? "The Gate didn't hold. First Light. Three punchouts."
+            : rookie && !gateHeld
+              ? "She threw the Gate and First Light, and the punchouts weren't there for either."
+              : classic && !rookie && lanternHeld && !nightHeld
+                ? "Lantern Classic held. Night Classic didn't. The punchouts didn't come back to back."
+                : classic && !rookie && !lanternHeld && nightHeld
+                  ? "Night Classic held. Lantern Classic didn't."
+                  : classic && !rookie && !lanternHeld && !nightHeld
+                    ? "Lantern Classic and Night Classic. Neither date held."
+                    : clean
+                      ? "Every date held. She threw them. She won't say which pitch."
+                      : "She'll tell you the inning, not the excuse.";
       return [
-        clean ? "Every out recorded. Three of them on pitches that weren't the fastball." : `${misses} miss${misses > 1 ? "es" : ""}. She'll tell you which pitch each one was on.`,
+        open,
         quote ?? "\"The changeup's mine now. I'm not giving you credit for it out loud.\"",
         wm === "strained" ? "\"The heat's not a metaphor. Neither is the arm.\"" : "\"Four pitches next year. All of them mine.\"",
       ];
-    case "kira":
+    }
+    case "kira": {
+      const classic = run.turn > 20 && run.turn <= 40;
+      const lanternHeld = run.pgResults[2] === "met";
+      const nightHeld = run.pgResults[3] === "met";
+      const open =
+        classic && !lanternHeld && nightHeld
+          ? "Night Classic held. Lantern Classic didn't. The side wasn't struck out."
+          : classic && lanternHeld && !nightHeld
+            ? "Lantern Classic held. Night Classic didn't."
+            : classic && !lanternHeld && !nightHeld
+              ? "Lantern Classic and Night Classic. Neither date held."
+              : clean
+                ? "Every ninth held. She points at the bullpen door on her way out."
+                : misses === 1
+                  ? "One ninth didn't hold. She's already warming for next year."
+                  : misses === 2
+                    ? "Two ninths didn't hold. She's already warming for next year."
+                    : `${misses} misses. She's already warming for next year.`;
       return [
-        clean ? "Every ninth held. She points at the bullpen door on her way out." : `${misses} miss${misses > 1 ? "es" : ""}. She's already warming for next year.`,
+        open,
         quote ?? "\"You got me there with a lead most nights. That's the job. I said I wouldn't ask for more.\"",
         wm === "strained" ? "\"Don't warm me twice in one game. I go once.\"" : "\"Same door. Same deal.\"",
       ];
-    case "yuki":
+    }
+    case "yuki": {
+      const rookie = run.turn <= 20;
+      const classic = run.turn > 20 && run.turn <= 40;
+      const seniorSat = [run.pgResults[4], run.pgResults[5], run.pgResults[6]].some((m) => m === "met" || m === "missed");
+      const lanternHeld = run.pgResults[2] === "met";
+      const nightHeld = run.pgResults[3] === "met";
+      const gateHeld = run.pgResults[0] === "met";
+      const lightHeld = run.pgResults[1] === "met";
+      const open =
+        run.turn > 40 && seniorSat
+          ? yearStillLine("yuki", run.turn, run.pgResults)
+          : classic && !lanternHeld && nightHeld
+          ? "Night Classic held. Lantern Classic didn't."
+          : classic && lanternHeld && !nightHeld
+            ? "Lantern Classic held. Night Classic didn't."
+            : classic && !lanternHeld && !nightHeld
+              ? "Lantern Classic and Night Classic. Neither date held."
+              : misses > 0
+                ? "She'll talk about the one that got away."
+                : rookie && !gateHeld && lightHeld
+                  ? "The Gate didn't hold. First Light did."
+                  : rookie && !lightHeld
+                    ? "First Light slipped. The legs are still there."
+                    : "Every date, she reached. Most of them, she kept going.";
       return [
-        clean ? "Every date, she reached. Most of them, she kept going." : `${misses} miss${misses > 1 ? "es" : ""}. She was thrown out once she'll never stop talking about.`,
+        open,
         quote ?? "\"You stopped holding me in May. That's when it started working.\"",
         wm === "strained" ? "\"Legs need days. I told you that in the spring.\"" : "\"Next year, watch the catcher's knees.\"",
       ];
+    }
   }
 }
 
 function quoteMemory(m: CoachMemory): string {
   switch (m.kind) {
     case "rest-before-date":
-      return `"You rested me before that one." She remembers. "That mattered."`;
+      return `"You rested me before that one. That mattered."`;
     case "pushed-tired":
-      return `"You worked me tired before that one." Not angry. Filed.`;
+      return `"You worked me tired before that one." She isn't angry. She doesn't forget.`;
     case "first-fail":
-      return `"The first day it didn't land, you didn't change the plan." A beat. "Good."`;
+      return `"The first day it didn't land. You didn't change the plan." She nods. "Good."`;
     case "breakthrough":
       return `"Cage Coach's thing. That was your idea to keep going." She won't say thanks. This is it.`;
     case "catch":

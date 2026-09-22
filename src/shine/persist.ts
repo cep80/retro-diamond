@@ -21,7 +21,7 @@ export const BACKUP_CAP = 3;
 
 export type LiveGame =
   | { side: "plate"; runId: string; turn: number; game: FeaturedGame; aim: { row: 0 | 1 | 2; col: 0 | 1 | 2 }; swing: "contact" | "power" | "bunt" }
-  | { side: "mound"; runId: string; turn: number; game: PitchingGame };
+  | { side: "mound"; runId: string; turn: number; game: PitchingGame; aim?: { row: 0 | 1 | 2; col: 0 | 1 | 2 } };
 
 export interface RunBackup {
   run: TraineeRun;
@@ -54,7 +54,7 @@ export function patchSettings(s: Partial<ShineSettings> | undefined | null): Shi
     sfx: clamp01(s?.sfx, DEFAULT_SETTINGS.sfx),
     crowd: clamp01(s?.crowd, DEFAULT_SETTINGS.crowd),
     timingAssist: s?.timingAssist ?? false,
-    duel: s?.duel ?? false,
+    duel: s?.duel ?? true,
     reducedMotion: s?.reducedMotion ?? false,
     textScale: scale,
     keys,
@@ -93,6 +93,8 @@ export function patchRun(run: TraineeRun | null): TraineeRun | null {
     faced: run.faced ?? {},
     highlights: Array.isArray(run.highlights) ? run.highlights : [],
     definingPa: run.definingPa ?? null,
+    lightCard: run.lightCard ?? null,
+    walks: run.walks ?? 0,
   };
 }
 

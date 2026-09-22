@@ -6,8 +6,8 @@
  * the pitch, and her sheet, so the harness and the resolvers share one truth.
  */
 
-import { cellLoc, locCell, type Cell, type Loc } from "../game/plate.ts";
-import type { PitchType } from "../game/types.ts";
+import { cellLoc, locCell, type Cell, type Loc } from "./core/zone.ts";
+import type { PitchType } from "./core/zone.ts";
 import type { StyleId } from "./types.ts";
 
 export type DuelCall = "sit-cell" | "sit-hard" | "sit-soft" | "protect" | "take";
@@ -69,6 +69,11 @@ export interface CallMods {
   barrelMult: number;
   qualityCap: number | null;
   protect: boolean;
+  /**
+   * The race: a swing timed inside the window but below this timing quality
+   * is clipped foul instead of put weakly in play. Unset on the tapped plate.
+   */
+  foulBand?: number;
 }
 
 export interface CallContext {
@@ -173,7 +178,7 @@ export function showsFamilyHint(eye: number): boolean {
 }
 
 // ── verdict ─────────────────────────────────────────────────────────────────
-export type VerdictOutcome = "reach" | "foul" | "miss" | "take-strike" | "take-ball" | "walk" | "k";
+export type VerdictOutcome = "reach" | "out" | "foul" | "miss" | "take-strike" | "take-ball" | "walk" | "k";
 
 const SOFT_NAME: Record<PitchType, string> = { fastball: "fastball", slider: "slider", curve: "curve", changeup: "change" };
 
@@ -204,18 +209,21 @@ export function verdictLine(opts: {
   }
   if (opts.card === "green-light") {
     if (opts.outcome === "reach") return "Green light. She didn't miss.";
+    if (opts.outcome === "out") return "Green light. In play. Out.";
     if (opts.outcome === "miss" || opts.outcome === "k") return "Green light. It was the wrong pitch.";
   }
   if (opts.card === "spurt" && opts.outcome === "reach") return "Spurt. She wanted that one.";
   if (opts.call === "take") {
     if (opts.outcome === "walk") return "Took it. Ball four. She walked her.";
     if (opts.outcome === "take-ball") return `Took it. Ball. She showed the ${pitch}.`;
+    if (opts.outcome === "out") return "In play. Out.";
     if (opts.outcome === "k") return "Took it. Strike three. Looking.";
     return two ? "Took it for a read. Strike two." : "Took it for a read. Strike.";
   }
   if (opts.call === "protect") {
     if (opts.outcome === "foul") return "Protected. Still two.";
     if (opts.outcome === "reach") return "Protected. Found grass.";
+    if (opts.outcome === "out") return "Protected. In play. Out.";
     if (opts.outcome === "k" || opts.outcome === "miss") return "Protected. It got through.";
   }
   if (opts.call === "sit-hard" || opts.call === "sit-soft") {
@@ -223,16 +231,19 @@ export function verdictLine(opts: {
     const sat = opts.call === "sit-hard" ? "Sat hard." : "Sat soft.";
     if (right) {
       if (opts.outcome === "reach") return `${sat} Got the ${pitch}.`;
+      if (opts.outcome === "out") return `${sat} In play. Out.`;
       if (opts.outcome === "foul") return `${sat} Fought the ${pitch} off.`;
       return `${sat} Right pitch. Missed it.`;
     }
     if (opts.outcome === "reach") return `${sat} It was the ${pitch}. Got it anyway.`;
+    if (opts.outcome === "out") return `${sat} It was the ${pitch}. Out.`;
     if (opts.outcome === "foul") return `${sat} It was the ${pitch}. Fought it off.`;
     return `${sat} It was the ${pitch}. ${family === "soft" ? "Early." : "Late."}`;
   }
   // sit-cell
   const d = opts.satCell ?? 1;
   if (opts.outcome === "reach") return d === 0 ? "Sat on it. Right where she put it." : "Sat away. It came in. Got it anyway.";
+  if (opts.outcome === "out") return d === 0 ? "Sat on it. In play. Out." : "Sat away. It came in. Out.";
   if (opts.outcome === "foul") return d === 0 ? "Sat on it. Fought it off." : "Sat away. It came in. Fought it off.";
   if (opts.outcome === "k") return d === 0 ? "Sat on it. Strike three." : "Sat away. It came in. Strike three.";
   return d === 0 ? "Sat on it. Missed." : "Sat away. It came in.";

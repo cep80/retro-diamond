@@ -1,5 +1,6 @@
-import { uid } from "../game/data.ts";
-import { sheet } from "./bible.ts";
+import { uid } from "./core/rng.ts";
+import { turnMeta } from "./calendar.ts";
+import { isPitcherStyle, officialFor, sheet, yearStillLine } from "./bible.ts";
 import type {
   ClubhouseCard,
   EndingRank,
@@ -46,27 +47,22 @@ export function trickFloorMet(run: TraineeRun) {
   return run.stats.wit >= 14 && extras.length >= 2;
 }
 
-export function finaleUnlocked(run: TraineeRun) {
-  if (run.pgMisses > 1) return false;
+/** Style floors she grew into. Never a reason to skip the last date. */
+export function finaleFloorMet(run: TraineeRun) {
   const who = sheet(run.characterId);
   if (who.style === "trick") return trickFloorMet(run);
   return styleFloors(who.style).every((f) => run.stats[f.key] >= f.need);
 }
 
+/** The last date is on if the path is still open. Miki always sits it. */
+export function finaleUnlocked(run: TraineeRun) {
+  if (isMikiPath(run)) return true;
+  return run.pgMisses <= 1;
+}
+
 export function finaleGap(run: TraineeRun) {
-  if (finaleUnlocked(run)) return "Finale floor is in.";
-  const who = sheet(run.characterId);
-  if (who.style === "trick") {
-    const bits = ["wit", "contact", "speed", "eye"] as const;
-    return bits
-      .filter((k) => (k === "wit" ? run.stats.wit < 14 : run.stats[k] < 11))
-      .map((k) => `${k} ${run.stats[k]}, needs ${k === "wit" ? 14 : 11}`)
-      .join(". ");
-  }
-  return styleFloors(who.style)
-    .filter((f) => run.stats[f.key] < f.need)
-    .map((f) => `${f.key} ${run.stats[f.key]}, needs ${f.need}`)
-    .join(". ");
+  if (finaleFloorMet(run)) return "Diamond Finale is still the last date.";
+  return "Diamond Finale is still the last date. She hasn't grown all the way into it.";
 }
 
 export function careerClosesEarly(run: TraineeRun) {
@@ -74,8 +70,23 @@ export function careerClosesEarly(run: TraineeRun) {
   return run.pgMisses >= 2;
 }
 
+/** Series names the last date only while the path is still open. A folded year does not. */
+export function seriesFinaleLine(run: TraineeRun): string | null {
+  if (careerClosesEarly(run)) return null;
+  return finaleGap(run);
+}
+
+/** The fold sentence is the two-miss close. Miki's path stays a countdown. */
+export function yearFoldLine(run: TraineeRun, dateName: string, countdown: string) {
+  return careerClosesEarly(run) ? `The year folds at ${dateName}.` : countdown;
+}
+
+export function postgameLeaveLabel(run: TraineeRun, finale: boolean) {
+  return finale || careerClosesEarly(run) ? "The year" : "Back to the complex";
+}
+
 export function endingRank(run: TraineeRun, finalePlayed: boolean, finalePg: boolean): EndingRank {
-  if (isMikiPath(run) && !finalePlayed && run.fans >= 60) return "never-quit";
+  if (isMikiPath(run) && run.fans >= 60 && !finaleFloorMet(run)) return "never-quit";
   if (careerClosesEarly(run)) return "D";
   if (finalePlayed && finalePg && run.pgMisses === 0 && run.fans >= 80) return "S";
   if (finalePlayed && finalePg && run.pgMisses <= 1 && run.fans >= 60) return "A";
@@ -85,13 +96,29 @@ export function endingRank(run: TraineeRun, finalePlayed: boolean, finalePg: boo
   return "D";
 }
 
+function closingDateLabel(run: TraineeRun): string | null {
+  const type = turnMeta(run.turn).type;
+  if (type !== "first-light" && type !== "lantern-classic" && type !== "night-classic" && type !== "stretch" && type !== "series") return null;
+  return turnMeta(run.turn).label;
+}
+
 export function endingQuote(run: TraineeRun, rank: EndingRank) {
   const who = sheet(run.characterId);
   if (rank === "never-quit") return "The cowbell does not wait for a win. They cheer for her anyway.";
   if (rank === "S") return `${who.endings.show} 胴上げ. Legend.`;
   if (rank === "A") return who.endings.show;
-  if (rank === "B") return who.endings.dugout;
-  if (rank === "D") return who.endings.miss2;
+  if (rank === "B") {
+    const finale = officialFor(run.characterId, 60);
+    if (run.pgResults[6] === "met" && finale?.pgId === "k-side") return "Diamond Finale. She struck out the side.";
+    if (run.pgResults[6] !== "pending") return "She sat the last date. The show stayed one date short.";
+    return who.endings.dugout;
+  }
+  if (rank === "D") {
+    if (run.characterId === "yuki") return yearStillLine("yuki", run.turn, run.pgResults, run.definingPa);
+    const date = closingDateLabel(run);
+    const rest = who.endings.miss2.replace(/^The Academy path closed\. ?/, "");
+    return date ? `${date} closed the Academy path. ${rest}` : who.endings.miss2;
+  }
   return who.endings.lantern;
 }
 
@@ -195,7 +222,7 @@ export function cardAltLook(card: ClubhouseCard) {
 }
 
 export function mintClubhouseCard(run: TraineeRun): ClubhouseCard {
-  const finalePlayed = run.finaleUnlocked && run.pgResults[6] !== "pending";
+  const finalePlayed = run.pgResults[6] !== "pending";
   const finalePg = run.pgResults[6] === "met";
   const rank = endingRank(run, finalePlayed, finalePg);
   let sparks = run.carry.filter((s) => s.kind !== "polish");
@@ -219,11 +246,16 @@ export function mintClubhouseCard(run: TraineeRun): ClubhouseCard {
   };
 }
 
+const GIRL_ORDER = ["aoi", "reina", "miki", "sol", "kira", "yuki"] as const;
+
+/** The girl the title hook just named. Aoi follows Yuki. */
+export function nextGirlId(id: TraineeRun["characterId"]) {
+  const i = GIRL_ORDER.indexOf(id);
+  return GIRL_ORDER[(i + 1) % GIRL_ORDER.length]!;
+}
+
 export function nextGirlName(id: TraineeRun["characterId"]) {
-  const order = ["aoi", "reina", "miki", "sol", "kira", "yuki"] as const;
-  const i = order.indexOf(id);
-  const next = order[(i + 1) % order.length]!;
-  return sheet(next).name;
+  return sheet(nextGirlId(id)).name;
 }
 
 /** Clubhouse hook. Never a plate constant. */
@@ -235,10 +267,7 @@ export function sparkGapLine(cards: ClubhouseCard[]) {
   const floor = styleFloors(who.style)[0];
   if (!floor) return `Next: Coach ${next}.`;
   const spark = last.sparks.find((s) => s.kind === floor.key);
-  if (!spark) {
-    const word = floor.key.charAt(0).toUpperCase() + floor.key.slice(1);
-    return `${who.name}'s ${word} Spark is 1 turn of inheritance away from unlocking a new PA style.`;
-  }
+  if (!spark) return `Next: Coach ${next}. The year she carries is still unwritten.`;
   return `${who.name} carries ${spark.kind}. Next: Coach ${next}.`;
 }
 
@@ -328,17 +357,19 @@ export function secondTrainedStat(run: TraineeRun, skip: TraineeStatKey | null):
   return best;
 }
 
-function statWord(stat: TraineeStatKey) {
-  return stat.charAt(0).toUpperCase() + stat.slice(1);
-}
-
 export function rememberedChoice(run: TraineeRun) {
-  const chosen = mostTrainedStat(run);
-  if (!chosen) return "The board stayed even. No station owned the year.";
-  const passed = secondTrainedStat(run, chosen) ?? (chosen === "power" ? "speed" : "power");
-  const turn = run.calendar.find((e) => e.statTrained === chosen && (e.outcome === "success" || e.outcome === "bonus"))?.turn;
-  if (turn == null) return `Remember the ${chosen} days. That was the work you chose.`;
-  return `Remember turn ${turn}, when you chose ${statWord(chosen)} over ${statWord(passed)}? She felt that at the plate.`;
+  const lead = mostTrainedStat(run);
+  const next = secondTrainedStat(run, lead);
+  const leadN = run.calendar.filter((e) => e.statTrained === lead).length;
+  const nextN = run.calendar.filter((e) => e.statTrained === next).length;
+  const pitcher = isPitcherStyle(sheet(run.characterId).style);
+  if (!lead || leadN === 0) return "The year stayed even. No date owned the work.";
+  if (next && nextN > 0 && leadN < nextN * 2) {
+    return pitcher ? "The pen and the poles. She felt both." : "Cage and the poles. She felt both.";
+  }
+  return pitcher
+    ? "You kept sending her to the same work. She felt that on the rubber."
+    : "You kept sending her to the same work. She felt that at the plate.";
 }
 
 export function mentorTurn(run: TraineeRun) {
@@ -357,20 +388,27 @@ export interface CareerStill {
 }
 
 export function careerStill(run: TraineeRun): CareerStill {
-  const finalePlayed = run.finaleUnlocked && run.pgResults[6] !== "pending";
+  const finalePlayed = run.pgResults[6] !== "pending";
   const finalePg = run.pgResults[6] === "met";
   const rank = endingRank(run, finalePlayed, finalePg);
   const trained = rememberedChoice(run);
   const mentor = mentorTurn(run);
+  const pitcher = isPitcherStyle(sheet(run.characterId).style);
+  const coach = pitcher ? "Bullpen Coach" : "Cage Coach";
+  const place = pitcher ? "rubber" : "tunnel";
   const mentorLine =
     mentor != null
-      ? `Cage Coach stayed after turn ${mentor}. The tunnel remembered.`
-      : "The tunnel stayed empty. Cage Coach never got the late night.";
+      ? `${coach} stayed late. The ${place} remembered.`
+      : `The ${place} stayed empty. ${coach} never got the late night.`;
   let frame = "Lanterns stay lit.";
   if (rank === "S" || rank === "A") frame = "胴上げ.";
   else if (rank === "never-quit") frame = "Cowbell. They do not wait for a win.";
-  else if (rank === "B") frame = "She walked off anyway.";
-  else if (rank === "D") frame = "The Academy path closed. She still ran it.";
+  else if (rank === "B") frame = pitcher ? "She stood the rubber anyway." : "She walked off anyway.";
+  else if (rank === "D") {
+    const date = closingDateLabel(run);
+    const rest = pitcher ? "She still took the ball." : "The bat stays up.";
+    frame = date ? `${date} closed the Academy path. ${rest}` : `The Academy path closed. ${rest}`;
+  }
   return {
     rank,
     quote: endingQuote(run, rank),

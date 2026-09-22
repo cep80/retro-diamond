@@ -27,7 +27,7 @@ export const SKUS: Sku[] = [
     kind: "base",
     name: "Diamond Shine",
     usd: 19.99,
-    blurb: "Six girls, 16 parks, the 60-turn career, Clubhouse, weekly challenge.",
+    blurb: "Six girls, 16 parks, the 60-turn career, Clubhouse.",
   },
   {
     id: "deluxe",
@@ -55,7 +55,7 @@ export const SKUS: Sku[] = [
     kind: "cosmetic",
     name: "Season of the Lantern",
     usd: 4.99,
-    blurb: "Card frames, park palettes, alt kits. Zero plate. Zero sparks.",
+    blurb: "Card frames and a warm park. Zero plate. Zero sparks.",
   },
   {
     id: "opening-pack",

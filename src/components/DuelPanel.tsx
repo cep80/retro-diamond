@@ -6,7 +6,7 @@
  */
 import { PixelBtn } from "@/components/pixel-btn";
 import { callAllowed, type CoachCardId, type DuelCall, type PitchFamily } from "@/shine/duel.ts";
-import { CALL_LABEL, CARD_LABEL, CARD_ROW, HAND, bookRows, duelPrompt, likelyTag } from "./duel-ui";
+import { CALL_LABEL, CARD_LABEL, bookRows, bookRowsFor, cardsFor, duelPrompt, handFor, likelyTag } from "./duel-ui";
 
 export interface DuelPanelProps {
   book: string[];
@@ -24,6 +24,8 @@ export interface DuelPanelProps {
   /** A book line that just opened; flashes for a beat. */
   bookToast: 1 | 2 | 3 | null;
   firstPa: boolean;
+  /** Progressive hand: PA 1 shows no calls, PA 2 the first look, PA 3+ the table. */
+  paIndex: number;
   onCall: (call: DuelCall) => void;
   onCard: (card: CoachCardId) => void;
   onDisarm: () => void;
@@ -31,26 +33,32 @@ export interface DuelPanelProps {
 }
 
 export function DuelPanel(p: DuelPanelProps) {
-  const lines = bookRows(p.book, p.wit, p.takes);
-  const prompt = duelPrompt({ firstPa: p.firstPa, strikes: p.strikes, canCall: p.canCall });
+  const lines = bookRowsFor(bookRows(p.book, p.wit, p.takes), p.paIndex);
+  const hand = handFor(p.paIndex);
+  const cards = cardsFor(p.paIndex);
+  const prompt = duelPrompt({ firstPa: p.paIndex <= 2 && p.firstPa, strikes: p.strikes, canCall: p.canCall, handSize: hand.length });
   const btn = p.compact ? "h-9 text-[10px]" : "h-10 text-xs";
+  if (!lines.length && !hand.length && !cards.length && !p.verdict) return null;
   return (
-    <section className="flex w-full flex-col gap-2" aria-label="The Duel">
-      <div className="rounded-xl border border-line/70 bg-panel/80 px-3 py-2">
-        <p className="font-display text-[10px] uppercase tracking-widest text-gold">Her book</p>
-        <ul className="mt-1 space-y-0.5 font-ui text-xs">
-          {lines.map((l) => (
-            <li
-              key={l.line}
-              className={`${l.open ? "text-cream" : "text-muted/70"} ${p.bookToast === l.line ? "shine-book-open" : ""}`}
-            >
-              {l.text}
-            </li>
-          ))}
-        </ul>
-      </div>
+    <section className="flex w-full flex-col gap-2" aria-label="The Duel" data-duel-hand={hand.length}>
+      {lines.length ? (
+        <div className="rounded-xl border border-line/70 bg-panel/80 px-3 py-2">
+          <p className="font-display text-[10px] uppercase tracking-widest text-gold">Her book</p>
+          <ul className="mt-1 space-y-0.5 font-ui text-xs">
+            {lines.map((l) => (
+              <li
+                key={l.line}
+                className={`${l.open ? "text-cream" : "text-muted/70"} ${p.bookToast === l.line ? "shine-book-open" : ""}`}
+              >
+                {l.text}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {hand.length ? (
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="The call">
-        {HAND.map((c) => {
+        {hand.map((c) => {
           const legal = callAllowed(c, { strikes: p.strikes });
           const hint = likelyTag(c, p.eyeHint);
           return (
@@ -68,8 +76,10 @@ export function DuelPanel(p: DuelPanelProps) {
           );
         })}
       </div>
+      ) : null}
+      {cards.length ? (
       <div className="flex items-center gap-1.5" role="group" aria-label="Coach cards">
-        {CARD_ROW.map((card) => {
+        {cards.map((card) => {
           const spent = !p.cards.includes(card) && p.cardArmed !== card;
           const armed = p.cardArmed === card;
           return (
@@ -92,6 +102,7 @@ export function DuelPanel(p: DuelPanelProps) {
           );
         })}
       </div>
+      ) : null}
       {p.verdict ? (
         <p className="font-ui text-sm text-cream/90" aria-live="polite">
           {p.verdict}

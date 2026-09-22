@@ -48,6 +48,8 @@ export interface CalendarEntry {
   type: TurnType;
   statTrained: TraineeStatKey | null;
   outcome: TrainOutcome | null;
+  /** Set when the morning was a rest or the trainer, not a stat. */
+  station?: StationId;
   energyAfter: number;
   moodAfter: number;
 }
@@ -177,6 +179,8 @@ export interface TraineeRun {
   mood: number;
   fans: number;
   pgMisses: number;
+  /** Walks in official games. Gate and Finale stay off this count. */
+  walks: number;
   /** Gate, First Light, Lantern Classic, Night Classic, Stretch, Series, Finale */
   pgResults: [GoalMark, GoalMark, GoalMark, GoalMark, GoalMark, GoalMark, GoalMark];
   sgResults: [GoalMark, GoalMark, GoalMark, GoalMark, GoalMark, GoalMark, GoalMark];
@@ -217,6 +221,8 @@ export interface TraineeRun {
   highlights: Highlight[];
   /** The plate appearance the career is remembered by, if recorded. */
   definingPa: DefiningPa | null;
+  /** First Light's card, so year-end can name the punchouts she actually got. */
+  lightCard?: string | null;
 }
 
 export type ShineScreen = "title" | "select" | "shop" | "complex" | "plate" | "postgame" | "year-end" | "weekly" | "wall" | "settings" | "help" | "exhibition";
@@ -261,7 +267,7 @@ export const DEFAULT_SETTINGS: ShineSettings = {
   sfx: 1,
   crowd: 0.8,
   timingAssist: false,
-  duel: false,
+  duel: true,
   reducedMotion: false,
   textScale: 1,
   keys: DEFAULT_KEYS,

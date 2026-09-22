@@ -1,148 +1,178 @@
 {
   "version": 1,
   "film": "hybrid-e",
-  "renderedAt": "2026-09-17T14:54:12.168Z",
+  "renderedAt": "2026-09-21T14:32:36.161Z",
   "girls": {
     "aoi": {
       "role": "batter",
       "stills": {
         "stance": {
           "url": "/art/action/aoi/stance.webp",
-          "bytes": 20588,
+          "bytes": 62242,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "idle_bat",
-            "t": 0.5
+            "imported": "aoi-stance.png"
           }
         },
         "load": {
           "url": "/art/action/aoi/load.webp",
-          "bytes": 26230,
+          "bytes": 59954,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "swing_contact",
-            "t": 0.25
+            "imported": "aoi-load.png"
           }
         },
         "cut": {
           "url": "/art/action/aoi/cut.webp",
-          "bytes": 20422,
+          "bytes": 51800,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "swing_contact",
-            "t": 0.55
+            "imported": "aoi-cut.png"
           }
         },
         "contact": {
           "url": "/art/action/aoi/contact.webp",
-          "bytes": 23100,
+          "bytes": 61282,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "swing_contact",
-            "t": 0.6667
+            "imported": "aoi-contact.png"
           }
         },
         "follow": {
           "url": "/art/action/aoi/follow.webp",
-          "bytes": 18426,
+          "bytes": 50022,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "swing_contact",
-            "t": 0.88
+            "imported": "aoi-follow.png"
           }
         },
         "take": {
           "url": "/art/action/aoi/take.webp",
-          "bytes": 19592,
+          "bytes": 58344,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "take",
-            "t": 0.55
+            "imported": "aoi-take.png"
           }
         },
         "celebrate": {
           "url": "/art/action/aoi/celebrate.webp",
-          "bytes": 24998,
+          "bytes": 52100,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "react_success",
-            "t": 0.8
+            "imported": "aoi-celebrate.png"
           }
         },
         "crushed": {
           "url": "/art/action/aoi/crushed.webp",
-          "bytes": 20136,
+          "bytes": 58920,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "react_disappoint",
-            "t": 0.8
+            "imported": "aoi-crushed.png"
           }
         },
         "trot": {
           "url": "/art/action/aoi/trot.webp",
-          "bytes": 20764,
+          "bytes": 64084,
           "w": 720,
           "h": 960,
-          "angle": "three_quarter",
           "source": {
-            "clip": "run",
-            "t": 0.4
+            "imported": "aoi-trot.png"
           }
         }
       },
       "clips": {
         "hr": {
           "url": "/art/action/aoi/hr.webm",
-          "bytes": 252053,
+          "bytes": 226252,
           "w": 720,
           "h": 960,
-          "durationS": 2.2083,
-          "markerS": 0.75,
+          "durationS": 2.542,
+          "markerS": 0.38,
           "poster": "/art/action/aoi/hr.webp",
+          "angle": "three_quarter",
+          "authored": true,
           "source": {
             "fps": 24,
             "segments": [
               [
-                "swing_power",
+                "load",
                 0,
-                1
+                0.28
               ],
               [
-                "react_success",
+                "contact",
                 0,
-                1.2083
+                0.42
+              ],
+              [
+                "celebrate",
+                0,
+                2.2
               ]
             ]
           }
         },
         "k": {
           "url": "/art/action/aoi/k.webm",
-          "bytes": 194468,
+          "bytes": 189934,
           "w": 720,
           "h": 960,
-          "durationS": 2.125,
-          "markerS": 0.6667,
+          "durationS": 2.292,
+          "markerS": 0.36,
           "poster": "/art/action/aoi/k.webp",
+          "angle": "three_quarter",
+          "authored": true,
           "source": {
             "fps": 24,
             "segments": [
               [
-                "swing_contact",
+                "load",
                 0,
-                0.9167
+                0.26
               ],
               [
-                "react_disappoint",
+                "cut",
                 0,
-                1.2083
+                0.4
+              ],
+              [
+                "crushed",
+                0,
+                2
+              ]
+            ]
+          }
+        },
+        "walk": {
+          "url": "/art/action/aoi/walk.webm",
+          "bytes": 127831,
+          "w": 720,
+          "h": 960,
+          "durationS": 2.209,
+          "markerS": 0.32,
+          "poster": "/art/action/aoi/walk.webp",
+          "angle": "three_quarter",
+          "authored": true,
+          "source": {
+            "fps": 24,
+            "segments": [
+              [
+                "take",
+                0,
+                0.36
+              ],
+              [
+                "trot",
+                0,
+                2
               ]
             ]
           }
@@ -154,95 +184,95 @@
       "stills": {
         "set": {
           "url": "/art/action/reina/set.webp",
-          "bytes": 20714,
+          "bytes": 65456,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "idle_set",
-            "t": 0.5
+            "imported": "reina-set.png"
           }
         },
         "windup": {
           "url": "/art/action/reina/windup.webp",
-          "bytes": 25100,
+          "bytes": 69998,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "pitch_delivery",
-            "t": 0.45
+            "imported": "reina-windup.png"
           }
         },
         "release": {
           "url": "/art/action/reina/release.webp",
-          "bytes": 24614,
+          "bytes": 80534,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "pitch_delivery",
-            "t": 0.9167
+            "imported": "reina-release.png"
           }
         },
         "follow": {
           "url": "/art/action/reina/follow.webp",
-          "bytes": 23830,
+          "bytes": 78748,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "follow_through",
-            "t": 0.4
+            "imported": "reina-follow.png"
           }
         }
       },
       "clips": {
         "k": {
           "url": "/art/action/reina/k.webm",
-          "bytes": 231892,
+          "bytes": 268871,
           "w": 720,
           "h": 960,
-          "durationS": 3.4167,
-          "markerS": 0.9167,
+          "durationS": 2.084,
+          "markerS": 0.34,
           "poster": "/art/action/reina/k.webp",
+          "angle": "three_quarter",
+          "authored": true,
           "source": {
             "fps": 24,
             "segments": [
               [
-                "pitch_delivery",
+                "set",
                 0,
-                1.4167
+                0.26
               ],
               [
-                "follow_through",
+                "release",
                 0,
-                0.7917
+                0.4
               ],
               [
-                "react_restrained",
+                "follow",
                 0,
-                1.2083
+                1.8
               ]
             ]
           }
         },
         "walk": {
           "url": "/art/action/reina/walk.webm",
-          "bytes": 196815,
+          "bytes": 183671,
           "w": 720,
           "h": 960,
-          "durationS": 2.2083,
-          "markerS": 0.9167,
+          "durationS": 1.792,
+          "markerS": 0.28,
           "poster": "/art/action/reina/walk.webp",
+          "angle": "three_quarter",
+          "authored": true,
           "source": {
             "fps": 24,
             "segments": [
               [
-                "pitch_delivery",
+                "release",
                 0,
-                1.4167
+                0.36
               ],
               [
-                "follow_through",
+                "follow",
                 0,
-                0.7917
+                1.6
               ]
             ]
           }
@@ -254,241 +284,171 @@
       "stills": {
         "stance": {
           "url": "/art/action/miki/stance.webp",
-          "bytes": 17640,
+          "bytes": 58860,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "idle_bat",
-            "t": 0.5
+            "imported": "miki-stance.png"
           }
         },
         "load": {
           "url": "/art/action/miki/load.webp",
-          "bytes": 22076,
+          "bytes": 54024,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "swing_contact",
-            "t": 0.25
+            "imported": "miki-load.png"
           }
         },
         "cut": {
           "url": "/art/action/miki/cut.webp",
-          "bytes": 19356,
+          "bytes": 85594,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "swing_contact",
-            "t": 0.55
+            "imported": "miki-cut.png"
           }
         },
         "contact": {
           "url": "/art/action/miki/contact.webp",
-          "bytes": 21634,
+          "bytes": 59746,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "swing_contact",
-            "t": 0.6667
+            "imported": "miki-contact.png"
           }
         },
         "follow": {
           "url": "/art/action/miki/follow.webp",
-          "bytes": 19152,
+          "bytes": 51966,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "swing_contact",
-            "t": 0.88
+            "imported": "miki-follow.png"
           }
         },
         "take": {
           "url": "/art/action/miki/take.webp",
-          "bytes": 16438,
+          "bytes": 61164,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "take",
-            "t": 0.55
+            "imported": "miki-take.png"
           }
         },
         "celebrate": {
           "url": "/art/action/miki/celebrate.webp",
-          "bytes": 22616,
+          "bytes": 55352,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "react_success",
-            "t": 0.8
+            "imported": "miki-celebrate.png"
           }
         },
         "crushed": {
           "url": "/art/action/miki/crushed.webp",
-          "bytes": 17124,
+          "bytes": 51930,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "react_disappoint",
-            "t": 0.8
+            "imported": "miki-crushed.png"
           }
         },
         "trot": {
           "url": "/art/action/miki/trot.webp",
-          "bytes": 17734,
+          "bytes": 60482,
           "w": 720,
           "h": 960,
-          "angle": "three_quarter",
           "source": {
-            "clip": "run",
-            "t": 0.4
+            "imported": "miki-trot.png"
           }
         }
       },
       "clips": {
         "hr": {
           "url": "/art/action/miki/hr.webm",
-          "bytes": 219124,
+          "bytes": 207802,
           "w": 720,
           "h": 960,
-          "durationS": 2.2083,
-          "markerS": 0.75,
+          "durationS": 2.542,
+          "markerS": 0.38,
           "poster": "/art/action/miki/hr.webp",
+          "angle": "three_quarter",
+          "authored": true,
           "source": {
             "fps": 24,
             "segments": [
               [
-                "swing_power",
+                "load",
                 0,
-                1
+                0.28
               ],
               [
-                "react_success",
+                "contact",
                 0,
-                1.2083
+                0.42
+              ],
+              [
+                "celebrate",
+                0,
+                2.2
               ]
             ]
           }
         },
         "k": {
           "url": "/art/action/miki/k.webm",
-          "bytes": 170956,
+          "bytes": 195833,
           "w": 720,
           "h": 960,
-          "durationS": 2.125,
-          "markerS": 0.6667,
+          "durationS": 2.292,
+          "markerS": 0.36,
           "poster": "/art/action/miki/k.webp",
+          "angle": "three_quarter",
+          "authored": true,
           "source": {
             "fps": 24,
             "segments": [
               [
-                "swing_contact",
+                "load",
                 0,
-                0.9167
+                0.26
               ],
               [
-                "react_disappoint",
+                "cut",
                 0,
-                1.2083
-              ]
-            ]
-          }
-        }
-      }
-    },
-    "kira": {
-      "role": "pitcher",
-      "stills": {
-        "set": {
-          "url": "/art/action/kira/set.webp",
-          "bytes": 24232,
-          "w": 720,
-          "h": 960,
-          "source": {
-            "clip": "idle_set",
-            "t": 0.5
-          }
-        },
-        "windup": {
-          "url": "/art/action/kira/windup.webp",
-          "bytes": 29714,
-          "w": 720,
-          "h": 960,
-          "source": {
-            "clip": "pitch_delivery",
-            "t": 0.45
-          }
-        },
-        "release": {
-          "url": "/art/action/kira/release.webp",
-          "bytes": 28498,
-          "w": 720,
-          "h": 960,
-          "source": {
-            "clip": "pitch_delivery",
-            "t": 0.9167
-          }
-        },
-        "follow": {
-          "url": "/art/action/kira/follow.webp",
-          "bytes": 28298,
-          "w": 720,
-          "h": 960,
-          "source": {
-            "clip": "follow_through",
-            "t": 0.4
-          }
-        }
-      },
-      "clips": {
-        "k": {
-          "url": "/art/action/kira/k.webm",
-          "bytes": 239442,
-          "w": 720,
-          "h": 960,
-          "durationS": 3.4167,
-          "markerS": 0.9167,
-          "poster": "/art/action/kira/k.webp",
-          "source": {
-            "fps": 24,
-            "segments": [
-              [
-                "pitch_delivery",
-                0,
-                1.4167
+                0.4
               ],
               [
-                "follow_through",
+                "crushed",
                 0,
-                0.7917
-              ],
-              [
-                "react_restrained",
-                0,
-                1.2083
+                2
               ]
             ]
           }
         },
         "walk": {
-          "url": "/art/action/kira/walk.webm",
-          "bytes": 200398,
+          "url": "/art/action/miki/walk.webm",
+          "bytes": 127837,
           "w": 720,
           "h": 960,
-          "durationS": 2.2083,
-          "markerS": 0.9167,
-          "poster": "/art/action/kira/walk.webp",
+          "durationS": 2.209,
+          "markerS": 0.32,
+          "poster": "/art/action/miki/walk.webp",
+          "angle": "three_quarter",
+          "authored": true,
           "source": {
             "fps": 24,
             "segments": [
               [
-                "pitch_delivery",
+                "take",
                 0,
-                1.4167
+                0.36
               ],
               [
-                "follow_through",
+                "trot",
                 0,
-                0.7917
+                2
               ]
             ]
           }
@@ -500,141 +460,271 @@
       "stills": {
         "stance": {
           "url": "/art/action/yuki/stance.webp",
-          "bytes": 19396,
+          "bytes": 61272,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "idle_bat",
-            "t": 0.5
+            "imported": "yuki-stance.png"
           }
         },
         "load": {
           "url": "/art/action/yuki/load.webp",
-          "bytes": 26136,
+          "bytes": 55204,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "swing_contact",
-            "t": 0.25
+            "imported": "yuki-load.png"
           }
         },
         "cut": {
           "url": "/art/action/yuki/cut.webp",
-          "bytes": 21056,
+          "bytes": 57946,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "swing_contact",
-            "t": 0.55
+            "imported": "yuki-cut.png"
           }
         },
         "contact": {
           "url": "/art/action/yuki/contact.webp",
-          "bytes": 21386,
+          "bytes": 63442,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "swing_contact",
-            "t": 0.6667
+            "imported": "yuki-contact.png"
           }
         },
         "follow": {
           "url": "/art/action/yuki/follow.webp",
-          "bytes": 17418,
+          "bytes": 54172,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "swing_contact",
-            "t": 0.88
+            "imported": "yuki-follow.png"
           }
         },
         "take": {
           "url": "/art/action/yuki/take.webp",
-          "bytes": 18662,
+          "bytes": 58446,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "take",
-            "t": 0.55
+            "imported": "yuki-take.png"
           }
         },
         "celebrate": {
           "url": "/art/action/yuki/celebrate.webp",
-          "bytes": 24064,
+          "bytes": 59376,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "react_success",
-            "t": 0.8
+            "imported": "yuki-celebrate.png"
           }
         },
         "crushed": {
           "url": "/art/action/yuki/crushed.webp",
-          "bytes": 19352,
+          "bytes": 55614,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "react_disappoint",
-            "t": 0.8
+            "imported": "yuki-crushed.png"
           }
         },
         "trot": {
           "url": "/art/action/yuki/trot.webp",
-          "bytes": 19442,
+          "bytes": 59462,
           "w": 720,
           "h": 960,
-          "angle": "three_quarter",
           "source": {
-            "clip": "run",
-            "t": 0.4
+            "imported": "yuki-trot.png"
           }
         }
       },
       "clips": {
         "hr": {
           "url": "/art/action/yuki/hr.webm",
-          "bytes": 257046,
+          "bytes": 226937,
           "w": 720,
           "h": 960,
-          "durationS": 2.2083,
-          "markerS": 0.75,
+          "durationS": 2.542,
+          "markerS": 0.38,
           "poster": "/art/action/yuki/hr.webp",
+          "angle": "three_quarter",
+          "authored": true,
           "source": {
             "fps": 24,
             "segments": [
               [
-                "swing_power",
+                "load",
                 0,
-                1
+                0.28
               ],
               [
-                "react_success",
+                "contact",
                 0,
-                1.2083
+                0.42
+              ],
+              [
+                "celebrate",
+                0,
+                2.2
               ]
             ]
           }
         },
         "k": {
           "url": "/art/action/yuki/k.webm",
-          "bytes": 200077,
+          "bytes": 184626,
           "w": 720,
           "h": 960,
-          "durationS": 2.125,
-          "markerS": 0.6667,
+          "durationS": 2.292,
+          "markerS": 0.36,
           "poster": "/art/action/yuki/k.webp",
+          "angle": "three_quarter",
+          "authored": true,
           "source": {
             "fps": 24,
             "segments": [
               [
-                "swing_contact",
+                "load",
                 0,
-                0.9167
+                0.26
               ],
               [
-                "react_disappoint",
+                "cut",
                 0,
-                1.2083
+                0.4
+              ],
+              [
+                "crushed",
+                0,
+                2
+              ]
+            ]
+          }
+        },
+        "walk": {
+          "url": "/art/action/yuki/walk.webm",
+          "bytes": 123556,
+          "w": 720,
+          "h": 960,
+          "durationS": 2.209,
+          "markerS": 0.32,
+          "poster": "/art/action/yuki/walk.webp",
+          "angle": "three_quarter",
+          "authored": true,
+          "source": {
+            "fps": 24,
+            "segments": [
+              [
+                "take",
+                0,
+                0.36
+              ],
+              [
+                "trot",
+                0,
+                2
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "kira": {
+      "role": "pitcher",
+      "stills": {
+        "set": {
+          "url": "/art/action/kira/set.webp",
+          "bytes": 66724,
+          "w": 720,
+          "h": 960,
+          "source": {
+            "imported": "kira-set.png"
+          }
+        },
+        "windup": {
+          "url": "/art/action/kira/windup.webp",
+          "bytes": 59304,
+          "w": 720,
+          "h": 960,
+          "source": {
+            "imported": "kira-windup.png"
+          }
+        },
+        "release": {
+          "url": "/art/action/kira/release.webp",
+          "bytes": 85846,
+          "w": 720,
+          "h": 960,
+          "source": {
+            "imported": "kira-release.png"
+          }
+        },
+        "follow": {
+          "url": "/art/action/kira/follow.webp",
+          "bytes": 62694,
+          "w": 720,
+          "h": 960,
+          "source": {
+            "imported": "kira-follow.png"
+          }
+        }
+      },
+      "clips": {
+        "k": {
+          "url": "/art/action/kira/k.webm",
+          "bytes": 231671,
+          "w": 720,
+          "h": 960,
+          "durationS": 2.084,
+          "markerS": 0.34,
+          "poster": "/art/action/kira/k.webp",
+          "angle": "three_quarter",
+          "authored": true,
+          "source": {
+            "fps": 24,
+            "segments": [
+              [
+                "set",
+                0,
+                0.26
+              ],
+              [
+                "release",
+                0,
+                0.4
+              ],
+              [
+                "follow",
+                0,
+                1.8
+              ]
+            ]
+          }
+        },
+        "walk": {
+          "url": "/art/action/kira/walk.webm",
+          "bytes": 168849,
+          "w": 720,
+          "h": 960,
+          "durationS": 1.792,
+          "markerS": 0.28,
+          "poster": "/art/action/kira/walk.webp",
+          "angle": "three_quarter",
+          "authored": true,
+          "source": {
+            "fps": 24,
+            "segments": [
+              [
+                "release",
+                0,
+                0.36
+              ],
+              [
+                "follow",
+                0,
+                1.6
               ]
             ]
           }
@@ -646,95 +736,95 @@
       "stills": {
         "set": {
           "url": "/art/action/sol/set.webp",
-          "bytes": 30690,
+          "bytes": 71206,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "idle_set",
-            "t": 0.5
+            "imported": "sol-set.png"
           }
         },
         "windup": {
           "url": "/art/action/sol/windup.webp",
-          "bytes": 32742,
+          "bytes": 69024,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "pitch_delivery",
-            "t": 0.45
+            "imported": "sol-windup.png"
           }
         },
         "release": {
           "url": "/art/action/sol/release.webp",
-          "bytes": 33218,
+          "bytes": 80796,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "pitch_delivery",
-            "t": 0.9167
+            "imported": "sol-release.png"
           }
         },
         "follow": {
           "url": "/art/action/sol/follow.webp",
-          "bytes": 32872,
+          "bytes": 68092,
           "w": 720,
           "h": 960,
           "source": {
-            "clip": "follow_through",
-            "t": 0.4
+            "imported": "sol-follow.png"
           }
         }
       },
       "clips": {
         "k": {
           "url": "/art/action/sol/k.webm",
-          "bytes": 234828,
+          "bytes": 239513,
           "w": 720,
           "h": 960,
-          "durationS": 3.4167,
-          "markerS": 0.9167,
+          "durationS": 2.084,
+          "markerS": 0.34,
           "poster": "/art/action/sol/k.webp",
+          "angle": "three_quarter",
+          "authored": true,
           "source": {
             "fps": 24,
             "segments": [
               [
-                "pitch_delivery",
+                "set",
                 0,
-                1.4167
+                0.26
               ],
               [
-                "follow_through",
+                "release",
                 0,
-                0.7917
+                0.4
               ],
               [
-                "react_restrained",
+                "follow",
                 0,
-                1.2083
+                1.8
               ]
             ]
           }
         },
         "walk": {
           "url": "/art/action/sol/walk.webm",
-          "bytes": 196771,
+          "bytes": 158666,
           "w": 720,
           "h": 960,
-          "durationS": 2.2083,
-          "markerS": 0.9167,
+          "durationS": 1.792,
+          "markerS": 0.28,
           "poster": "/art/action/sol/walk.webp",
+          "angle": "three_quarter",
+          "authored": true,
           "source": {
             "fps": 24,
             "segments": [
               [
-                "pitch_delivery",
+                "release",
                 0,
-                1.4167
+                0.36
               ],
               [
-                "follow_through",
+                "follow",
                 0,
-                0.7917
+                1.6
               ]
             ]
           }

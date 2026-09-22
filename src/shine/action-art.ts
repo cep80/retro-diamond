@@ -3,33 +3,87 @@
  *
  * Phase 2 of the hook plan replaces the live 3D scene with stills at every
  * cue and a short clip on money beats. Hybrid E (PA film bible 2026-09-17):
- * multi-angle cards (3/4 + profile), not a locked catcher plane. This module
+ * sit is mound_close (pitcher looking in); Go cuts to action stills. This module
  * is the pure half: pose keys, the cue → picture rule, five-family grammar,
  * clip alignment math, budgets, and the manifest shape the farm writes.
  * No DOM, no timers, no controller.
  * Build spec: design/diamond-shine-action-art-build-spec-2026-09-16.md.
  * Film language: design/diamond-shine-pa-film-2026-09-17.md.
  */
-import { ballLeavesBat, exhibitionResultReadout } from "../components/exhibition/scene/presentation.ts";
 import type { Stage } from "./beats.ts";
 import type { DuelCall } from "./duel.ts";
 import type { FieldBeat, SwingKind } from "./featured-game.ts";
 import type { CharacterId } from "./types.ts";
 
+/** The beats where the bat touched the ball. */
+const BAT_TOUCHED: ReadonlySet<FieldBeat> = new Set<FieldBeat>(["foul", "foul-tip", "grounder-out", "fly-out", "sac-fly", "bunt-out", "bunt-down", "single", "double", "hr"]);
+
+/** True when the bat touched the ball: the beats that flash and leave the bat. */
+export function ballLeavesBat(beat: FieldBeat): boolean {
+  return BAT_TOUCHED.has(beat);
+}
+
+/** The outcome card, one line per beat (PA film bible §1.4). */
+export const RESULT_LINE: Record<FieldBeat, string> = {
+  miss: "Swing and miss.",
+  "foul-tip": "Foul tip. Almost.",
+  foul: "Foul. Pulled.",
+  "take-strike": "Strike. Looking.",
+  ball: "Ball.",
+  k: "Strike three.",
+  walk: "Ball four.",
+  "grounder-out": "Ground ball. Thrown out.",
+  "fly-out": "In the air. Caught.",
+  "sac-fly": "Deep enough. Run scores.",
+  "bunt-out": "Bunt. Thrown out.",
+  "bunt-down": "Bunt. Beats it out.",
+  single: "Through the hole.",
+  double: "Into the gap.",
+  hr: "Gone.",
+};
+
+export const TWO_STRIKE_FOUL_SUFFIX = " Still two.";
+
+/** One readable callout per resolved pitch; two-strike fouls add the count sentence. */
+export function resultReadout(opts: { beat: FieldBeat; twoStrikeHold: boolean }): string {
+  const line = RESULT_LINE[opts.beat];
+  if (opts.twoStrikeHold && (opts.beat === "foul" || opts.beat === "foul-tip")) return `${line}${TWO_STRIKE_FOUL_SUFFIX}`;
+  return line;
+}
+
 export const BATTER_POSES = ["stance", "load", "cut", "contact", "follow", "take", "celebrate", "crushed", "trot"] as const;
 export type BatterPose = (typeof BATTER_POSES)[number];
 export const PITCHER_POSES = ["set", "windup", "release", "follow"] as const;
-export type PitcherPose = (typeof PITCHER_POSES)[number];
+export type PitcherPose = (typeof PITCHER_POSES)[number] | "k";
 export const MONEY_BEATS = ["hr", "k", "walk", "spurt", "unique", "curtain"] as const;
 export type MoneyBeat = (typeof MONEY_BEATS)[number];
 
+const HITTER_CLIPS = ["k", "hr"] as const;
+const PITCHER_CLIPS = ["k", "walk"] as const;
+
+/** Binding cast bar: a girl is startable only with this pack. Portrait is not a career. */
+export function filmReady(id: CharacterId, manifest: ActionManifest | null): boolean {
+  const girl = manifest?.girls[id];
+  if (!girl) return false;
+  const stills = girl.role === "pitcher" ? PITCHER_POSES : BATTER_POSES;
+  const clips = girl.role === "pitcher" ? PITCHER_CLIPS : HITTER_CLIPS;
+  return stills.every((p) => Boolean(girl.stills[p])) && clips.every((c) => Boolean(girl.clips[c]));
+}
+
 /** Hybrid E farm / LOOK angles. Side-scroll is mini-games only — not listed. */
-export const ACTION_ANGLES = ["three_quarter", "profile", "catcher_crop"] as const;
+export const ACTION_ANGLES = ["mound_close", "three_quarter", "profile", "catcher_crop"] as const;
 export type ActionAngle = (typeof ACTION_ANGLES)[number];
+
+/**
+ * Sit / flight hero: mound looking in, close on her face (Pretty Derby watch-her).
+ * Catcher-crop is farm-only. Go / swing cut-ins use the action still angle.
+ */
+export const SIT_ANGLE: ActionAngle = "mound_close";
+export const CUT_ANGLE: ActionAngle = "three_quarter";
 
 /** Default angle for a role on the featured plate (PA film bible §1). */
 export function defaultAngleFor(role: "batter" | "pitcher"): ActionAngle {
-  return "three_quarter";
+  return role === "batter" ? SIT_ANGLE : "three_quarter";
 }
 
 /** Five-family stranger gate (PA film bible §2). */
@@ -78,7 +132,13 @@ export interface ActionClip {
   markerS: number;
   poster?: string;
   angle?: ActionAngle;
-  /** Farm provenance: the authored segments stitched at `fps`. */
+  /**
+   * Composed from imported anime stills (`scripts/art/money-clips.mjs`), not
+   * farmed from the 3D scene. Wins over farm renders in `clipFor`; the farm
+   * never overwrites it.
+   */
+  authored?: true;
+  /** Provenance: the segments stitched at `fps` (farm clips, or stills for authored ones). */
   source?: { fps: number; segments: [clip: string, from: number, to: number][] };
 }
 
@@ -109,9 +169,9 @@ export const CLIPS_BUDGET_BYTES = 25_000_000;
 export const GIRL_STILLS_BUDGET_BYTES = 1_200_000;
 export const GIRL_CLIPS_BUDGET_BYTES = 4_500_000;
 
-/** Cut-in strip on Go: one still per step, a hitstop on contact. */
-export const CUT_IN_STEP_MS = 70;
-export const CUT_IN_HITSTOP_MS = 120;
+/** Cut-in strip on Go: one still per step, a hitstop on contact. Race-view: a sentence, not a strobe. */
+export const CUT_IN_STEP_MS = 120;
+export const CUT_IN_HITSTOP_MS = 160;
 /** The contact still holds this long before the follow-through still. */
 export const CONTACT_HOLD_MS = 280;
 
@@ -164,7 +224,8 @@ export function moneyBeatFor(beat: FieldBeat | null, flags: StingFlags = {}): Mo
   return null;
 }
 
-const AFTER_STAGES: ReadonlySet<Stage> = new Set(["field", "reaction"]);
+/** Field, reaction, and the between-pitch idle while the last beat is still on the view. */
+const AFTER_STAGES: ReadonlySet<Stage> = new Set(["field", "reaction", "idle"]);
 
 /**
  * The still that names the beat once the swing has settled (stranger test
@@ -181,13 +242,33 @@ export function settledBatterPose(beat: FieldBeat | null): BatterPose | null {
   return null;
 }
 
+/**
+ * The ball's flight on the 3:4 frame, mound → plate. u=0 is the release
+ * point high in the frame; u=1 is the plate at the bottom. `loc` fans the
+ * last stretch so where it crossed still reads. Percent of the frame.
+ */
+export function plate2dFlight(opts: { u: number; loc: { x: number; y: number } }): {
+  left: number;
+  top: number;
+  scale: number;
+} {
+  const t = Math.max(0, Math.min(1, Number.isFinite(opts.u) ? opts.u : 0));
+  const aimX = (opts.loc.x / 3 - 0.5) * 16;
+  const aimY = (opts.loc.y / 3 - 0.5) * 8;
+  return {
+    left: 50 + aimX * t,
+    top: 48 + 38 * t + aimY * t,
+    scale: 0.75 + t * 0.75,
+  };
+}
+
 export function pictureFor(view: ActionView, flags: StingFlags = {}, twoStrikeHold = false): ActionPicture {
   const { stage, beat } = view;
   const tapped = view.tappedAtU !== null;
   if (stage === "prepare") {
     return {
       pitcher: "windup",
-      batter: "stance",
+      batter: "load",
       cutIn: null,
       clip: null,
       card: null,
@@ -206,13 +287,13 @@ export function pictureFor(view: ActionView, flags: StingFlags = {}, twoStrikeHo
         card: null,
         pushIn: false,
         family: null,
-        angle: defaultAngleFor("batter"),
+        angle: CUT_ANGLE,
       };
     }
     const early = view.u < RELEASE_HOLD_U;
     return {
       pitcher: "release",
-      batter: view.call === "take" ? "take" : "stance",
+      batter: view.call === "take" ? "take" : "load",
       cutIn: null,
       clip: null,
       card: null,
@@ -221,22 +302,34 @@ export function pictureFor(view: ActionView, flags: StingFlags = {}, twoStrikeHo
       angle: defaultAngleFor(early ? "pitcher" : "batter"),
     };
   }
+  if (stage === "idle" && beat === "walk" && !view.swung) {
+    return {
+      pitcher: "set",
+      batter: "trot",
+      cutIn: null,
+      clip: null,
+      card: null,
+      pushIn: false,
+      family: null,
+      angle: defaultAngleFor("batter"),
+    };
+  }
   if (AFTER_STAGES.has(stage) && beat) {
-    const card = exhibitionResultReadout({ beat, twoStrikeHold });
+    const card = resultReadout({ beat, twoStrikeHold });
     const clip = moneyBeatFor(beat, flags);
     const family = outcomeFamily(beat, view.swung);
     const since = view.resolvedAtMs === null ? 0 : view.nowMs - view.resolvedAtMs;
     const settled = since >= CONTACT_HOLD_MS ? settledBatterPose(beat) : null;
     if (!view.swung) {
       return {
-        pitcher: "follow",
+        pitcher: beat === "k" ? "k" : "follow",
         batter: settled ?? "take",
         cutIn: null,
         clip,
         card,
         pushIn: false,
         family,
-        angle: defaultAngleFor("batter"),
+        angle: SIT_ANGLE,
       };
     }
     if (ballLeavesBat(beat)) {
@@ -249,7 +342,7 @@ export function pictureFor(view: ActionView, flags: StingFlags = {}, twoStrikeHo
         card,
         pushIn: false,
         family,
-        angle: defaultAngleFor("batter"),
+        angle: CUT_ANGLE,
       };
     }
     return {
@@ -260,7 +353,7 @@ export function pictureFor(view: ActionView, flags: StingFlags = {}, twoStrikeHo
       card,
       pushIn: false,
       family,
-      angle: defaultAngleFor("batter"),
+      angle: CUT_ANGLE,
     };
   }
   return {
@@ -280,22 +373,31 @@ export const RELEASE_HOLD_U = 0.2;
 export type ActionFocus = "pitcher" | "batter";
 
 /**
- * Which plate fills the frame. The wind-up is the pitcher's; the first part
- * of the flight is her release; the Go, the contact and the reaction are the
+ * Which plate fills the frame. The wind-up is the pitcher's when she is in
+ * the cast; academy (no plate) never takes the frame. The first part of the
+ * flight is her release; the Go, the contact and the reaction are the
  * batter's. At rest the batter waits under the sit grid.
  */
-export function focusFor(view: Pick<ActionView, "stage" | "u" | "tappedAtU">): ActionFocus {
+export function focusFor(view: Pick<ActionView, "stage" | "u" | "tappedAtU">, hasPitcher = true): ActionFocus {
+  if (!hasPitcher) return "batter";
   if (view.stage === "prepare") return "pitcher";
   if (view.stage === "flight" && view.tappedAtU === null && view.u < RELEASE_HOLD_U) return "pitcher";
   return "batter";
 }
 
-/** Whose money-beat clip plays: the swing is hers, the take (K looking / walk) is the arm's. */
-export function clipOwner(view: Pick<ActionView, "swung">): ActionFocus {
+/** Whose money-beat clip plays. A walk is the girl who reached, even on a take. */
+export function clipOwner(view: Pick<ActionView, "swung" | "beat">): ActionFocus {
+  if (view.beat === "walk" || view.beat === "hr") return "batter";
+  if (view.beat === "k" && !view.swung) return "pitcher";
   return view.swung ? "batter" : "pitcher";
 }
 
-/** The clip to play for a picture, preferring the owner's, else the other girl's. */
+/**
+ * The clip to play for a picture, preferring the owner's, else the other
+ * girl's. Authored anime clips win over farm renders regardless of owner
+ * (AAA lock 2026-09-18): a 3D farm Reina must never cut into the anime plate
+ * when either girl has a drawn clip for the beat.
+ */
 export function clipFor(
   beat: MoneyBeat | null,
   owner: ActionFocus,
@@ -303,9 +405,11 @@ export function clipFor(
 ): { role: ActionFocus; clip: ActionClip } | null {
   if (!beat) return null;
   const order: ActionFocus[] = owner === "batter" ? ["batter", "pitcher"] : ["pitcher", "batter"];
-  for (const role of order) {
-    const clip = girls[role]?.clips[beat];
-    if (clip) return { role, clip };
+  for (const authoredOnly of [true, false]) {
+    for (const role of order) {
+      const clip = girls[role]?.clips[beat];
+      if (clip && (!authoredOnly || clip.authored)) return { role, clip };
+    }
   }
   return null;
 }
@@ -321,6 +425,13 @@ export function clipSeekS(clip: Pick<ActionClip, "markerS" | "durationS">, resol
 
 export function clipEndsAtMs(clip: Pick<ActionClip, "markerS" | "durationS">, resolvedAtMs: number): number {
   return resolvedAtMs + (clip.durationS - clip.markerS) * 1000;
+}
+
+/** After the money clip, the done card keeps that beat's poster. The next sit goes back to her set. */
+export function holdBeatPoster(opts: { clipActive: boolean; stage: string; poster: string | null | undefined }): string | null {
+  if (opts.clipActive || !opts.poster) return null;
+  if (opts.stage !== "reaction" && opts.stage !== "field") return null;
+  return opts.poster;
 }
 
 /**
@@ -361,6 +472,11 @@ export function fallbackPose<P extends BatterPose | PitcherPose>(
 
 export function stillFor(girl: GirlArt | undefined, pose: BatterPose | PitcherPose): ActionStill | null {
   if (!girl) return null;
+  const kClip = girl.clips.k;
+  if (pose === "k" && girl.role === "pitcher" && kClip?.poster) {
+    const clip = kClip;
+    return { url: kClip.poster, bytes: clip.bytes, w: clip.w, h: clip.h, angle: clip.angle };
+  }
   const row: readonly (BatterPose | PitcherPose)[] = girl.role === "batter" ? BATTER_POSES : PITCHER_POSES;
   const key = fallbackPose(pose, Object.keys(girl.stills), row);
   return key ? (girl.stills[key] ?? null) : null;

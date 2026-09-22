@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { CAREER_CALENDAR, ROOKIE_CALENDAR, calendarPeekLine, clubhouseOpen, turnMeta } from "./calendar.ts";
+import { CAREER_CALENDAR, ROOKIE_CALENDAR, calendarPeekLine, clubhouseOpen, dateLabel, nextDateLine, nextNamedBeat, nextOfficial, turnMeta } from "./calendar.ts";
 import {
   applyGameResult,
   leavePostgame,
@@ -11,9 +11,11 @@ import {
   resolveMentorEvent,
   resolveOffDay,
   resolveTrainingTurn,
+  resolveTreatment,
   resolveYearScene,
   resolveYearStart,
 } from "./run.ts";
+import { lastTrainLine, liveStationIds } from "./store.ts";
 
 describe("Aoi Rookie calendar", () => {
   it("is twenty turns with First Light on 18 and Gate on 5", () => {
@@ -28,9 +30,31 @@ describe("Aoi Rookie calendar", () => {
     assert.equal(turnMeta(20).type, "forced-scene");
   });
 
+  it("names pitcher dates without a cage night", () => {
+    assert.equal(dateLabel(turnMeta(2), "ace"), "Practice in the Bullpen");
+    assert.equal(dateLabel(turnMeta(14), "closer"), "Bullpen Coach");
+    assert.equal(dateLabel(turnMeta(2), "lead"), "Practice at the Plate");
+    assert.equal(dateLabel(turnMeta(14), "lead"), "Cage Coach");
+    assert.equal(dateLabel(turnMeta(5), "ace"), "Academy Gate");
+    assert.equal(dateLabel(turnMeta(3), "lead"), "Morning");
+    assert.equal(dateLabel(turnMeta(4), "move"), "Morning");
+    assert.equal(dateLabel(turnMeta(6), "ace"), "Morning");
+  });
+
   it("names Academy Gate on the Turn 4 peek without a formula tooltip", () => {
-    assert.match(calendarPeekLine(4), /Academy Gate is in 1 turn/);
+    assert.match(calendarPeekLine(4), /Academy Gate is in 1 day/);
     assert.doesNotMatch(calendarPeekLine(4), /Eye|Guts|window|leverage/i);
+  });
+
+  it("counts down to year-end after First Light, not past it to Lantern", () => {
+    assert.equal(nextOfficial(18).label, "Lantern Classic");
+    assert.equal(nextNamedBeat(18).label, "Rookie Year-End");
+    assert.equal(nextNamedBeat(19).label, "Rookie Year-End");
+    assert.equal(nextNamedBeat(20).label, "Classic Spring");
+    assert.equal(nextDateLine(18, "first-light"), "Rookie Year-End is in 2 days.");
+    assert.equal(nextDateLine(19), "Rookie Year-End is tomorrow.");
+    assert.doesNotMatch(nextDateLine(18, "first-light"), /folds/);
+    assert.equal(nextDateLine(28, "lantern-classic"), "Night Classic is in 5 days.");
   });
 
   it("scripts the first Cage: Contact 7→8, energy 80→70", () => {
@@ -50,6 +74,27 @@ describe("Aoi Rookie calendar", () => {
     resolveOffDay(run);
     assert.equal(run.energy, 75);
     assert.ok(run.mood > 2);
+    assert.equal(lastTrainLine(run), "She took the day.");
+  });
+
+  it("names the cage when the swing lands", () => {
+    const run = newAoiRun();
+    run.calendar.push({ turn: 3, type: "work", statTrained: "contact", station: "cage", outcome: "success", energyAfter: 50, moodAfter: 2 });
+    assert.equal(lastTrainLine(run), "Cage. She found one.");
+    run.calendar.push({ turn: 4, type: "work", statTrained: "speed", station: "poles", outcome: "success", energyAfter: 40, moodAfter: 2 });
+    assert.equal(lastTrainLine(run), "Poles. First step was hers.");
+    const sol = newRun("sol");
+    sol.calendar.push({ turn: 3, type: "work", statTrained: "stuff", station: "side", outcome: "success", energyAfter: 50, moodAfter: 2 });
+    assert.equal(lastTrainLine(sol), "Bullpen. She found one.");
+  });
+
+  it("names a trainer morning as the trainer, not a rest day", () => {
+    const run = newAoiRun();
+    run.turn = 6;
+    run.energy = 10;
+    resolveTreatment(run);
+    assert.equal(run.calendar.at(-1)?.station, "treatment");
+    assert.equal(lastTrainLine(run), "Trainer's room. The work waits.");
   });
 
   it("does not count an Academy Gate miss against the fail clock", () => {
@@ -74,13 +119,33 @@ describe("Aoi Rookie calendar", () => {
     assert.match(run.coachWarning ?? "", /Academy path/);
   });
 
+  it("tells Miki a counted miss leaves her path open", () => {
+    const run = newRun("miki");
+    run.turn = 50;
+    applyGameResult(run, "stretch", false, false, false, false);
+    assert.equal(run.pgMisses, 1);
+    assert.match(run.coachWarning ?? "", /path stays open/);
+    assert.doesNotMatch(run.coachWarning ?? "", /Academy path closes|One more slip/);
+  });
+
+  it("does not carry a miss warning onto a date she held", () => {
+    const run = newAoiRun();
+    run.turn = 18;
+    applyGameResult(run, "first-light", false, false, false, false);
+    assert.match(run.coachWarning ?? "", /One more slip/);
+    run.turn = 28;
+    applyGameResult(run, "lantern-classic", true, false, true, false);
+    assert.equal(run.coachWarning, null);
+    assert.equal(run.pgMisses, 1);
+  });
+
   it("does not count an official miss against the fail clock when the Support Goal held", () => {
     const run = newAoiRun();
     run.turn = 18;
     applyGameResult(run, "first-light", false, true, false, false);
     assert.equal(run.pgMisses, 0);
     assert.equal(run.pgResults[1], "missed");
-    assert.match(run.coachWarning ?? "", /Support Goal held/);
+    assert.match(run.coachWarning ?? "", /smaller one held/);
   });
 
   it("awards fans on REACH / PG / SG / HR", () => {
@@ -104,6 +169,27 @@ describe("Aoi Rookie calendar", () => {
     run.stats.guts = 15;
     applyGameResult(run, "first-light", false, false, false, false);
     assert.equal(run.mood, 0.5);
+  });
+
+  it("does not keep a first-hit ball off a walk", () => {
+    const run = newAoiRun();
+    run.turn = 5;
+    applyGameResult(run, "gate", true, false, true, false, false, { walks: 1 });
+    assert.equal(run.keepsake, null);
+    applyGameResult(run, "first-light", true, false, true, false, false, { walks: 1 });
+    assert.equal(run.keepsake, "dirt");
+  });
+
+  it("counts walks in official games and leaves the Gate off the book", () => {
+    const gate = newRun("reina");
+    gate.turn = 5;
+    applyGameResult(gate, "gate", true, true, true, false, false, undefined, { walks: 1 });
+    assert.equal(gate.walks, 0);
+    const lantern = newRun("reina");
+    lantern.turn = 28;
+    applyGameResult(lantern, "lantern-classic", true, false, true, false, false, undefined, { walks: 1 });
+    assert.equal(lantern.walks, 1);
+    assert.equal(lantern.fans, 7);
   });
 
   it("pays a walk +1 and a K −1, never treating a walk as a hit", () => {
@@ -219,6 +305,89 @@ describe("Aoi Rookie calendar", () => {
     assert.equal(run.energy, 75);
   });
 
+  it("plays Rookie year turn 1–20 without a dead station or empty energy trap", () => {
+    const run = newAoiRun();
+    resolveForcedCage(run);
+    assert.equal(run.phase, "plate");
+    applyGameResult(run, "practice", true, true, true, false);
+    assert.equal(run.turn, 3);
+    let guard = 0;
+    while (run.turn <= 20 && !run.clubhouseCard && guard++ < 40) {
+      const t = turnMeta(run.turn);
+      if (t.type === "gate" || t.type === "first-light") {
+        applyGameResult(run, t.type, true, true, true, false);
+        leavePostgame(run);
+        continue;
+      }
+      if (t.type === "mentor-event") {
+        resolveMentorEvent(run);
+        continue;
+      }
+      if (t.type === "forced-scene") {
+        resolveYearScene(run);
+        continue;
+      }
+      resolveTrainingTurn(run, run.energy < 70 ? "off-day" : "cage");
+    }
+    assert.ok(run.turn >= 21, `ended on turn ${run.turn}`);
+    assert.equal(run.year, 2);
+    assert.equal(run.pgMisses, 0);
+    assert.ok(run.energy >= 0);
+    assert.ok(run.calendar.length >= 20);
+  });
+
+  it("plays the 60-turn career as dates, not a GM board", () => {
+    const run = newAoiRun();
+    resolveForcedCage(run);
+    applyGameResult(run, "practice", true, true, true, false);
+    let guard = 0;
+    const dates: string[] = [];
+    while (!run.clubhouseCard && run.turn <= 60 && guard++ < 90) {
+      const t = turnMeta(run.turn);
+      if (t.type === "year-start") {
+        resolveYearStart(run);
+        continue;
+      }
+      if (t.type === "mentor-event") {
+        resolveMentorEvent(run);
+        continue;
+      }
+      if (t.type === "forced-scene") {
+        resolveYearScene(run);
+        continue;
+      }
+      if (t.type === "series") {
+        run.stats.contact = Math.max(run.stats.contact, 13);
+        run.stats.speed = Math.max(run.stats.speed, 11);
+      }
+      if (
+        t.type === "gate" ||
+        t.type === "first-light" ||
+        t.type === "lantern-classic" ||
+        t.type === "night-classic" ||
+        t.type === "stretch" ||
+        t.type === "series" ||
+        t.type === "finale"
+      ) {
+        dates.push(t.label);
+        applyGameResult(run, t.type, true, true, true, t.type === "finale");
+        leavePostgame(run);
+        continue;
+      }
+      resolveTrainingTurn(run, run.energy < 70 ? "off-day" : "cage");
+    }
+    assert.deepEqual(dates, [
+      "Academy Gate",
+      "First Light",
+      "Lantern Classic",
+      "Night Classic",
+      "The Stretch",
+      "Skyline Series",
+      "Diamond Finale",
+    ]);
+    assert.ok(run.clubhouseCard, "Finale mints a Clubhouse card");
+  });
+
   it("continues Rookie year-end into Classic", () => {
     const run = newAoiRun();
     run.turn = 20;
@@ -259,5 +428,53 @@ describe("Aoi Rookie calendar", () => {
     resolveTrainingTurn(run, "charting");
     assert.ok(run.stats.wit === before || run.stats.wit === before + 1 || run.stats.wit === before + 2);
     assert.equal(run.calendar.at(-1)?.statTrained, "wit");
+  });
+});
+
+describe("complex live tiles", () => {
+  it("First Day is one station, not the whole board", () => {
+    const aoi = newAoiRun();
+    assert.deepEqual(liveStationIds(aoi), ["cage"]);
+    const reina = newRun("reina");
+    assert.deepEqual(liveStationIds(reina), ["side"]);
+  });
+
+  it("before the Gate the hitch is not a daily tile", () => {
+    const run = newAoiRun();
+    run.turn = 3;
+    run.parentId = "reina";
+    const ids = liveStationIds(run);
+    assert.equal(ids.includes("hitch"), false);
+    assert.ok(ids.includes("cage"));
+    assert.ok(ids.includes("off-day"));
+  });
+
+  it("after the Gate a second year can work the hitch she inherited", () => {
+    const run = newAoiRun();
+    run.turn = 6;
+    run.parentId = "reina";
+    const ids = liveStationIds(run);
+    assert.ok(ids.includes("hitch"));
+    run.parentId = null;
+    assert.equal(liveStationIds(run).includes("hitch"), false);
+  });
+
+  it("pitchers work Side, not a second Cage", () => {
+    const run = newRun("kira");
+    run.turn = 3;
+    const ids = liveStationIds(run);
+    assert.ok(ids.includes("side"));
+    assert.equal(ids.includes("cage"), false);
+  });
+
+  it("after the Gate the campus stays a few tiles, not the board", () => {
+    const run = newAoiRun();
+    run.turn = 6;
+    run.energy = 80;
+    assert.deepEqual(liveStationIds(run), ["cage", "poles", "off-day", "clubhouse"]);
+    assert.equal(liveStationIds(run).includes("looks"), false);
+    assert.equal(liveStationIds(run).includes("charting"), false);
+    assert.equal(liveStationIds(run).includes("bp"), false);
+    assert.equal(liveStationIds(run).includes("situational"), false);
   });
 });

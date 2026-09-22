@@ -1,4 +1,4 @@
-import type { ReleaseBeat } from "../game/audio.ts";
+import type { ReleaseBeat } from "./audio.ts";
 import type { FieldBeat } from "./featured-game.ts";
 import type { MoundBeat } from "./pitching.ts";
 
@@ -48,10 +48,27 @@ const SPECS: Record<FieldBeat, BeatSpec> = {
   walk: { css: "shine-beat-walk", cue: "walk", fieldMs: 380, reactionMs: 520, big: true, label: "Ball four.", portrait: "focused" },
 };
 
-export function beatSpec(beat: FieldBeat, reducedMotion = false): BeatSpec {
-  const s = SPECS[beat];
+/**
+ * `tap`: the tapped plate, where ordinary pitches hurry back to the button.
+ * `race`: the watch-only PA. Nothing is timed, so a swing gets to finish on
+ * screen: load → cut → contact → follow-through reads as a swing, and the
+ * count line lands before the next wind-up.
+ */
+export type BeatPace = "tap" | "race";
+
+const RACE_REACTION_MS: Partial<Record<FieldBeat, number>> = {
+  miss: 1000,
+  "foul-tip": 1000,
+  foul: 1000,
+  "take-strike": 620,
+  ball: 560,
+};
+
+export function beatSpec(beat: FieldBeat, reducedMotion = false, pace: BeatPace = "tap"): BeatSpec {
+  const base = SPECS[beat];
+  const s = pace === "race" && RACE_REACTION_MS[beat] != null ? { ...base, reactionMs: RACE_REACTION_MS[beat]! } : base;
   if (!reducedMotion) return s;
-  return { ...s, css: "", fieldMs: Math.min(s.fieldMs, 320), reactionMs: Math.min(s.reactionMs, 400) };
+  return { ...s, css: "", fieldMs: Math.min(s.fieldMs, 320), reactionMs: Math.min(s.reactionMs, pace === "race" ? 600 : 400) };
 }
 
 const MOUND_SPECS: Record<MoundBeat, BeatSpec> = {
@@ -60,8 +77,8 @@ const MOUND_SPECS: Record<MoundBeat, BeatSpec> = {
   hit: { css: "shine-beat-single", cue: "hit", fieldMs: 760, reactionMs: 640, big: true, label: "In play. Hit.", portrait: "crushed" },
   hr: { css: "shine-beat-hr", cue: "hr", fieldMs: 1200, reactionMs: 900, big: true, label: "Gone.", portrait: "crushed" },
   walk: { css: "shine-beat-walk", cue: "walk", fieldMs: 360, reactionMs: 520, big: true, label: "Ball four.", portrait: "crushed" },
-  ball: { css: "", cue: "ball", fieldMs: 0, reactionMs: 240, big: false, label: "Ball.", portrait: "neutral" },
-  "take-strike": { css: "", cue: "take-strike", fieldMs: 0, reactionMs: 280, big: false, label: "Strike.", portrait: "focused" },
+  ball: { css: "", cue: "ball", fieldMs: 0, reactionMs: 720, big: false, label: "Ball.", portrait: "neutral" },
+  "take-strike": { css: "", cue: "take-strike", fieldMs: 0, reactionMs: 800, big: false, label: "Strike.", portrait: "focused" },
   miss: { css: "shine-beat-miss", cue: "miss", fieldMs: 0, reactionMs: 320, big: false, label: "Swing and miss.", portrait: "focused" },
   none: { css: "", cue: "ball", fieldMs: 0, reactionMs: 200, big: false, label: "", portrait: "neutral" },
 };

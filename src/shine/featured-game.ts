@@ -1,4 +1,4 @@
-import { hashId, makeRng } from "../game/data.ts";
+import { hashId, makeRng } from "./core/rng.ts";
 import {
   COACH_CARDS,
   FIGHT_METER_MAX,
@@ -10,12 +10,13 @@ import {
   satRight,
   sitFamily,
   verdictLine,
+  type CallMods,
   type CoachCardId,
   type DuelCall,
   type PitchFamily,
   type VerdictOutcome,
 } from "./duel.ts";
-import { locCell as duelLocCell } from "../game/plate.ts";
+import { locCell as duelLocCell } from "./core/zone.ts";
 import {
   arsenal,
   cellLoc,
@@ -26,9 +27,10 @@ import {
   scatterLoc,
   type Cell,
   type Loc,
-} from "../game/plate.ts";
-import { parkById } from "../game/parks.ts";
-import type { ParkId, PitchType } from "../game/types.ts";
+} from "./core/zone.ts";
+import { parkById } from "./core/parks.ts";
+import type { ParkId } from "./core/parks.ts";
+import type { PitchType } from "./core/zone.ts";
 import { traineeBatter } from "./actors.ts";
 import { officialFor, sheet } from "./bible.ts";
 import { datePark, recapLine } from "./culture.ts";
@@ -202,9 +204,14 @@ function paCount(kind: GameKind, r: () => number): number {
   return 5;
 }
 
-function inningForPa(kind: GameKind, paIndex: number): number {
+export function inningForPa(kind: GameKind, paIndex: number): number {
   if (kind === "practice" || kind === "gate") return 1;
   if (kind === "weekly") return 7;
+  if (kind === "stretch") {
+    if (paIndex <= 1) return 7;
+    if (paIndex === 2) return 8;
+    return 9;
+  }
   if (paIndex <= 1) return 1;
   if (paIndex === 2) return 4;
   if (paIndex === 3) return 7;
@@ -227,10 +234,10 @@ export function startFeaturedGame(run: TraineeRun, kind: GameKind, encounter?: E
     ? emptyBases()
     : sit
       ? { first: false, second: sit.risp, third: false }
-      : kind === "practice" || kind === "gate"
+      : kind === "practice" || kind === "gate" || kind === "night-classic"
         ? emptyBases()
         : drawBases(r, true);
-  const inning = sit?.inning ?? 1;
+  const inning = sit?.inning ?? inningForPa(kind, 1);
   const arm = encounter?.arm ?? armForInning(run, kind, inning);
   const profile = rivalProfile(arm);
   const tells = run.tells ?? EMPTY_TELLS;
@@ -258,7 +265,7 @@ export function startFeaturedGame(run: TraineeRun, kind: GameKind, encounter?: E
     spurtFired: false,
     stealArmed: false,
     betweenLine: null,
-    banner: sit?.label ?? (kind === "practice" ? "See the ball. Trust the window." : `Primary Goal · ${who.pgVerb}.`),
+    banner: sit?.label ?? (kind === "practice" ? "See the ball. Trust the window." : who.pgVerb),
     done: false,
     skipped: false,
     live: null,
@@ -420,19 +427,18 @@ function evaluateGoals(game: FeaturedGame) {
 function noteCallback(run: TraineeRun, game: FeaturedGame, what: "contact" | "eye" | "power" | "guts" | "speed" | "wit") {
   if (game.callback || !run.lastWork || game.kind === "practice") return;
   if (run.lastWork.stat !== what) return;
-  const to = run.lastWork.to;
   const line =
     what === "contact"
-      ? `That's the cage work. Contact ${to} found the barrel.`
+      ? "That's the cage work. She found the barrel."
       : what === "eye"
-        ? `Live looks. She read that one out of the hand. Eye ${to}.`
+        ? "Live looks. She read that one out of the hand."
         : what === "power"
-          ? `On-field BP. She let it travel. Power ${to}.`
+          ? "On-field BP. She let it travel."
           : what === "guts"
-            ? `Situational work. Two-strike baseball, and she stayed in it. Guts ${to}.`
+            ? "Situational work. Two-strike baseball, and she stayed in it."
             : what === "speed"
-              ? `The poles. First step was hers. Speed ${to}.`
-              : `Charting. She knew what was coming. Wit ${to}.`;
+              ? "The poles. First step was hers."
+              : "Charting. She knew what was coming.";
   game.callback = line;
 }
 
@@ -457,7 +463,8 @@ function runSelfBetweenPas(run: TraineeRun, game: FeaturedGame, r: () => number)
   };
 
   // Steal attempt: armed by style and outs; the roll is speed.
-  if (game.stealArmed && base <= 2 && outs < 3) {
+  const holdFirst = game.pgId === "score-from-first-single" && base === 1;
+  if (game.stealArmed && base <= 2 && outs < 3 && !holdFirst) {
     const from = base as 1 | 2;
     const rispNow = from === 1 ? mates.second || mates.third : mates.third;
     const blocked = from === 1 ? mates.second : mates.third;
@@ -576,6 +583,10 @@ function reachBase(run: TraineeRun, game: FeaturedGame, r: () => number, via: Re
   if (via === "hit" || via === "bunt") game.hits += 1;
   else if (via === "walk") game.walks += 1;
   game.stealArmed = hitKind !== "hr" && stealAutoArm(sheet(run.characterId).style, game.outs);
+  if (game.pgId === "steal-risp" && game.selfOnBase === 1) {
+    game.bases = { first: false, second: false, third: true };
+    syncBases(game);
+  }
   return scored;
 }
 
@@ -606,10 +617,12 @@ function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedT
     evaluateGoals(game);
   }
 
-  if (game.pgMet && game.kind === "first-light" && game.inning >= 7) {
+  // no-k starts met ("she hasn't struck out yet") and can still fail.
+  // The date is "finish the game," so the 7th does not walk her off.
+  if (game.pgMet && game.pgId !== "no-k" && game.kind === "first-light" && game.inning >= 7) {
     game.skipped = true;
     game.done = true;
-    game.banner = "Skip. The goal is already in.";
+    game.banner = `${verb}.`;
     return;
   }
 
@@ -626,7 +639,7 @@ function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedT
     else if (game.pgMet) game.banner = `${verb}.`;
     else if (game.kind === "gate") game.banner = "The Gate still opens.";
     else if (game.kind === "practice") game.banner = "That's the look. Back to the complex.";
-    else game.banner = "Primary Goal slips.";
+    else game.banner = "The goal slipped.";
     return;
   }
 
@@ -734,6 +747,8 @@ export function resolveSwing(
   aim: Cell,
   timingErr: number,
   swing: SwingKind,
+  /** The race's extra contact rules (foul band). The tapped plate passes nothing. */
+  extraMods: Partial<CallMods> = {},
 ) {
   const r = makeRng(hashId(`${run.rngSeed}|${game.kind}|swing|${game.paIndex}|${game.pitchesSeen}`));
   const first = isFirstPitch(game);
@@ -749,9 +764,12 @@ export function resolveSwing(
   const park = stagePark(run, game.kind);
   const style = sheet(run.characterId).style;
   // Duel: the call and the armed card bend the window / barrel.
-  const mods = game.duel
-    ? callMods({ call: game.call, cardArmed: game.cardArmed, fightMeter: game.fightMeter, style, aim, pitchLoc: pitch.loc, family: pitch.family })
-    : {};
+  const mods: Partial<CallMods> = {
+    ...(game.duel
+      ? callMods({ call: game.call, cardArmed: game.cardArmed, fightMeter: game.fightMeter, style, aim, pitchLoc: pitch.loc, family: pitch.family })
+      : {}),
+    ...extraMods,
+  };
 
   if (swing === "bunt") {
     const contact = resolveContact(timingErr, aim, pitch.loc, run.stats.contact, run.stats.power, run.stats.guts, li, false, park.hr, r, run.carry, style, mods);
@@ -850,10 +868,10 @@ export function resolveSwing(
     return;
   }
 
-  setVerdict(game, pitch, "reach", aim);
   if (contact.quality > 0.6) noteCallback(run, game, "contact");
 
   if (contact.hr) {
+    setVerdict(game, pitch, "reach", aim);
     game.lastQuality = contact.quality;
     game.lastContact = "barrel";
     push(game.events, { t: "contact", pa: game.paIndex, tier: "barrel", quality: contact.quality });
@@ -873,6 +891,7 @@ export function resolveSwing(
   const inAir = contact.quality > 0.25;
   if (inAir) game.outfield = true;
   if (hit || game.kind === "practice") {
+    setVerdict(game, pitch, "reach", aim);
     const double = contact.quality > 0.78 && r() < 0.35 + (swing === "power" ? 0.2 : 0);
     if (swing === "power" && double) noteCallback(run, game, "power");
     const scored = reachBase(run, game, r, "hit", double ? "double" : "single");
@@ -883,6 +902,7 @@ export function resolveSwing(
   }
 
   game.banner = "In play — out.";
+  setVerdict(game, pitch, "out", aim);
   outWithRunners(game, r, "in-play", inAir);
   if (game.events.at(-1)?.t === "rbi") game.banner = "Fly out. The run scores.";
   finishPa(run, game, r, false, false);

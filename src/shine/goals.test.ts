@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { BIBLE } from "./bible.ts";
 import { emptyBases, type PlateEvent } from "./events.ts";
-import { evalHitterPg, evalPitcherPg, goalDefinition, goalIdForVerb, proofLine, type HitterGoalView, type PitcherGoalView } from "./goals.ts";
+import { evalHitterPg, evalPitcherPg, goalDefinition, goalIdForVerb, proofLine, speakGoal, type HitterGoalView, type PitcherGoalView } from "./goals.ts";
 
 function hitterView(events: PlateEvent[], patch: Partial<HitterGoalView> = {}): HitterGoalView {
   return {
@@ -56,6 +56,8 @@ describe("goals", () => {
         assert.ok(g.sgId, `${c.id} T${g.turn} SG "${g.sgVerb}" has an id`);
         assert.ok(goalDefinition(g.pgId).length > 10);
         assert.ok(goalDefinition(g.sgId).length > 10);
+        assert.equal(speakGoal("Pitch 5+ innings, ≤3 ER"), "Five innings, three runs or fewer");
+        assert.equal(speakGoal("Steal a base"), "Steal a base");
       }
     }
   });

@@ -7,7 +7,7 @@
  * and `scripts/harness-hit.ts`. Never imported by app code.
  */
 
-import { locCell, type Cell } from "../game/plate.ts";
+import { locCell, type Cell } from "./core/zone.ts";
 import { PREPARE_MS } from "./beats.ts";
 import type { FeaturedGame, FieldBeat, SwingKind } from "./featured-game.ts";
 import { FLIGHT_RESOLVE_U, PlateController, type PlateCue, type PlateScheduler } from "./plate-controller.ts";

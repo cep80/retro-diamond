@@ -9,7 +9,7 @@
  * Imports are type-only (relative) so the node test runner can strip them.
  */
 
-import type { ReleaseBeat } from "../../game/audio.ts";
+import type { ReleaseBeat } from "../../shine/audio.ts";
 import type { FeaturedGame } from "../../shine/featured-game.ts";
 import type { PlateCue } from "../../shine/plate-controller.ts";
 
