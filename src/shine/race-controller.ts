@@ -89,6 +89,10 @@ export class RaceController {
   private nextPa = false;
   private pending: "pitch" | "card" | null = null;
   private pendingHandle: unknown = null;
+  private pendingFn: (() => void) | null = null;
+  private pendingFireAt = 0;
+  /** Ms left on the pending wait while the plate is paused; null when it is running. */
+  private pendingRemaining: number | null = null;
   private readonly sched: PlateScheduler;
   private readonly reduced: boolean;
   private readonly pace: typeof RACE_PACE;
@@ -245,9 +249,19 @@ export class RaceController {
   private later(kind: "pitch" | "card", fn: () => void, ms: number) {
     this.clearPending();
     this.pending = kind;
+    this.pendingFn = fn;
+    this.arm(ms);
+  }
+
+  private arm(ms: number) {
+    const fn = this.pendingFn;
+    if (!fn) return;
+    this.pendingRemaining = null;
+    this.pendingFireAt = this.sched.now() + ms;
     this.pendingHandle = this.sched.set(() => {
       this.pending = null;
       this.pendingHandle = null;
+      this.pendingFn = null;
       fn();
     }, ms);
   }
@@ -256,6 +270,16 @@ export class RaceController {
     if (this.pendingHandle !== null) this.sched.clear(this.pendingHandle);
     this.pending = null;
     this.pendingHandle = null;
+    this.pendingFn = null;
+    this.pendingRemaining = null;
+  }
+
+  /** Pause freezes the between-pitch wait, the money hold and the PA card with the plate. */
+  private suspendPending() {
+    if (this.pendingHandle === null) return;
+    this.sched.clear(this.pendingHandle);
+    this.pendingHandle = null;
+    this.pendingRemaining = Math.max(0, this.pendingFireAt - this.sched.now());
   }
 
   private onPlateCue(cue: PlateCue) {
@@ -283,8 +307,16 @@ export class RaceController {
       this.later("pitch", () => this.plate.startPitch(), this.between());
       return;
     }
+    if (cue.t === "paused") {
+      this.suspendPending();
+      return;
+    }
     if (cue.t === "resumed") {
-      // A between-pitch wait that fired while paused did nothing; re-arm it.
+      if (this.pendingRemaining !== null) {
+        this.arm(this.pendingRemaining);
+        return;
+      }
+      // Nothing was waiting: a stage that went idle while paused needs its next pitch.
       const snap = this.plate.getSnapshot();
       if (this.phase === "racing" && this.pending === null && (snap.stage === "idle" || snap.stage === "dead")) {
         this.later("pitch", () => this.plate.startPitch(), this.between());

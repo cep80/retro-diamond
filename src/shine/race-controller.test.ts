@@ -77,6 +77,35 @@ describe("race controller", () => {
     assert.equal(s.plate.call, "sit-cell", "the call resets per PA");
   });
 
+  it("pause holds the PA card: it does not slip by while the Coach is away", () => {
+    const { c, sched } = race("pause-card");
+    c.go();
+    untilPhase(c, sched, "pa-card");
+    c.pause("user");
+    sched.advance(30_000);
+    assert.equal(c.getSnapshot().phase, "pa-card", "the card waits out the pause");
+    c.resume();
+    const s = untilPhase(c, sched, "pick", 10_000);
+    assert.equal(s.phase, "pick", "and then yields on its own");
+  });
+
+  it("pause between pitches holds the next pitch, then deals it on resume", () => {
+    const { c, sched } = race("pause-between");
+    c.go();
+    const start = sched.t;
+    while (c.getSnapshot().plate.stage !== "idle" && sched.t - start < 60_000) sched.advance(20);
+    // Either between pitches of the PA or holding for the card: both are race waits.
+    const before = c.getSnapshot();
+    c.pause("user");
+    sched.advance(30_000);
+    const held = c.getSnapshot();
+    assert.equal(held.phase, before.phase, "nothing advanced while paused");
+    assert.equal(held.plate.game.lastPitches.length, before.plate.game.lastPitches.length);
+    c.resume();
+    const s = untilPhase(c, sched, "pick", 120_000);
+    assert.equal(s.phase, "pick");
+  });
+
   it("next() skips the card", () => {
     const { c, sched } = race("go-3");
     c.go();
