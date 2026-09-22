@@ -72,13 +72,13 @@ export function situationLine(game: Pick<FeaturedGame, "kind" | "inning" | "scor
   const card = phase === "pa-card";
   const pa = card ? Math.max(1, game.paIndex - 1) : game.paIndex;
   const inning = card ? inningForPa(game.kind, pa) : game.inning;
-  if (game.kind === "practice") return `Look ${pa} of ${game.paTarget}`;
+  if (game.kind === "practice") return `Cage · ${pa} of ${game.paTarget}`;
   if (game.kind === "weekly") return "Under the lanterns";
   const inn = inning >= 9 ? "9th" : inning === 1 ? "1st" : inning === 2 ? "2nd" : inning === 3 ? "3rd" : `${inning}th`;
-  return `${inn} · ${scorePhrase(game.scoreDiff)} · PA ${pa} of ${game.paTarget}`;
+  return `${inn} · ${scorePhrase(game.scoreDiff)} · At-bat ${pa} of ${game.paTarget}`;
 }
 
-/** The date closes on what she came for, not the last out. */
+/** The game closes on what she came for, not the last out. */
 export function dateHeadline(opts: {
   exhibition: boolean;
   practice: boolean;
@@ -93,7 +93,7 @@ export function dateHeadline(opts: {
   if (opts.pgMet) return `${opts.verb}.`;
   if (opts.banner === "HOLD slipped." && opts.pgId === "k-side") return opts.cardLine ?? "The punchouts weren't there.";
   if (opts.banner === "HOLD slipped.") return "The goal slipped.";
-  return opts.banner || opts.cardLine || "The date slipped.";
+  return opts.banner || opts.cardLine || "It got away from her.";
 }
 
 /** A steal, a trip home, or getting thrown out is the running still. */
@@ -170,20 +170,20 @@ export function moundRead(game: {
   }
   if (game.pgId === "k-3") {
     const k = game.strikeouts ?? 0;
-    if (k === 1) return "One punchout. The date asked for three.";
-    if (k === 2) return "Two punchouts. The date asked for three.";
+    if (k === 1) return "One punchout. She needed three.";
+    if (k === 2) return "Two punchouts. She needed three.";
   }
   if (game.pgId === "k-consecutive") {
     return (game.maxKStreak ?? 0) >= 1
-      ? "One punchout. The date asked for two in a row."
+      ? "One punchout. She needed two in a row."
       : "The punchouts didn't come back to back.";
   }
   if (game.pgId === "hold-one-run") return "The lead is gone.";
   if (game.pgId === "k-side") {
     const k = game.bestInningKs ?? 0;
     if (k >= 3) return "The lead is gone.";
-    if (k === 1) return "One punchout. The date asked for the side.";
-    if (k === 2) return "Two punchouts. The date asked for the side.";
+    if (k === 1) return "One punchout. She needed the side.";
+    if (k === 2) return "Two punchouts. She needed the side.";
     return "The side wasn't struck out.";
   }
   if (game.pgId === "strand-inherited") {
@@ -195,7 +195,7 @@ export function moundRead(game: {
     if (game.blown || (game.outsRecorded ?? 0) >= 4) return "The lead is gone.";
     const n = game.outsRecorded ?? 0;
     const word = n === 1 ? "out" : "outs";
-    return `She got ${n} ${word}. The date asked for four.`;
+    return `She got ${n} ${word}. She needed four.`;
   }
   if (game.pgId === "clean-ninth") {
     if ((game.earnedRuns ?? 0) > 0) return "A run scored.";
@@ -210,9 +210,9 @@ export function moundRead(game: {
     if (outs < need) {
       const innings = Math.floor(outs / 3);
       const word = innings === 1 ? "inning" : "innings";
-      return `She got ${innings} ${word}. The date asked for ${asked}.`;
+      return `She got ${innings} ${word}. She needed ${asked}.`;
     }
-    return `She got the innings. ${er} runs. The date asked for three or fewer.`;
+    return `She got the innings. ${er} runs. She needed three or fewer.`;
   }
   if (game.kind === "gate") return "The Gate still opens.";
   if ((game.outsRecorded ?? 0) > 0 && (game.strikeouts ?? 0) === 0) return "The outs are in. The punchouts weren't.";

@@ -25,25 +25,25 @@ describe("race sitelines", () => {
     assert.equal(moundRead({ kind: "first-light", pgMet: false, outsRecorded: 5, strikeouts: 0 }), "The outs are in. The punchouts weren't.");
     assert.equal(moundRead({ kind: "first-light", pgMet: true, pgId: "k-3", strikeouts: 3 }), "Three punchouts.");
     assert.equal(moundRead({ kind: "night-classic", pgMet: true, pgId: "k-consecutive", maxKStreak: 2 }), "Two punchouts, back to back.");
-    assert.equal(moundRead({ kind: "night-classic", pgMet: false, pgId: "k-consecutive", maxKStreak: 1 }), "One punchout. The date asked for two in a row.");
+    assert.equal(moundRead({ kind: "night-classic", pgMet: false, pgId: "k-consecutive", maxKStreak: 1 }), "One punchout. She needed two in a row.");
     assert.equal(moundRead({ kind: "night-classic", pgMet: false, pgId: "k-consecutive", maxKStreak: 0 }), "The punchouts didn't come back to back.");
     assert.equal(moundRead({ kind: "first-light", pgMet: true, pgId: "hold-one-run" }), "The lead held.");
     assert.equal(moundRead({ kind: "first-light", pgMet: false, pgId: "hold-one-run" }), "The lead is gone.");
     assert.equal(moundRead({ kind: "lantern-classic", pgMet: true, pgId: "k-side", bestInningKs: 3 }), "She struck out the side.");
-    assert.equal(moundRead({ kind: "lantern-classic", pgMet: false, pgId: "k-side", bestInningKs: 2 }), "Two punchouts. The date asked for the side.");
+    assert.equal(moundRead({ kind: "lantern-classic", pgMet: false, pgId: "k-side", bestInningKs: 2 }), "Two punchouts. She needed the side.");
     assert.equal(moundRead({ kind: "lantern-classic", pgMet: false, pgId: "k-side", bestInningKs: 0 }), "The side wasn't struck out.");
     assert.equal(moundRead({ kind: "night-classic", pgMet: true, pgId: "strand-inherited", inherited: 1, inheritedStranded: true }), "She came in with runners and stranded them.");
     assert.equal(moundRead({ kind: "night-classic", pgMet: false, pgId: "strand-inherited", inherited: 0 }), "She never came in with runners.");
     assert.equal(moundRead({ kind: "night-classic", pgMet: false, pgId: "strand-inherited", inherited: 2, inheritedStranded: false }), "The runners scored.");
     assert.equal(moundRead({ kind: "stretch", pgMet: true, pgId: "four-out", outsRecorded: 4 }), "Four outs. The lead held.");
-    assert.equal(moundRead({ kind: "stretch", pgMet: false, pgId: "four-out", outsRecorded: 2 }), "She got 2 outs. The date asked for four.");
+    assert.equal(moundRead({ kind: "stretch", pgMet: false, pgId: "four-out", outsRecorded: 2 }), "She got 2 outs. She needed four.");
     assert.equal(moundRead({ kind: "stretch", pgMet: false, pgId: "four-out", outsRecorded: 0, blown: true }), "The lead is gone.");
     assert.equal(moundRead({ kind: "series", pgMet: true, pgId: "clean-ninth", earnedRuns: 0 }), "Three outs. No runs.");
     assert.equal(moundRead({ kind: "series", pgMet: false, pgId: "clean-ninth", earnedRuns: 1 }), "A run scored.");
-    assert.equal(moundRead({ kind: "first-light", pgMet: false, pgId: "k-3", strikeouts: 2, outsRecorded: 6 }), "Two punchouts. The date asked for three.");
+    assert.equal(moundRead({ kind: "first-light", pgMet: false, pgId: "k-3", strikeouts: 2, outsRecorded: 6 }), "Two punchouts. She needed three.");
     assert.equal(moundRead({ kind: "lantern-classic", pgMet: true, pgId: "innings-5", inningsOuts: 15, earnedRuns: 2 }), "Five innings. Three runs or fewer.");
-    assert.equal(moundRead({ kind: "lantern-classic", pgMet: false, pgId: "innings-5", inningsOuts: 9, earnedRuns: 1 }), "She got 3 innings. The date asked for five.");
-    assert.equal(moundRead({ kind: "lantern-classic", pgMet: false, pgId: "innings-5", inningsOuts: 15, earnedRuns: 4 }), "She got the innings. 4 runs. The date asked for three or fewer.");
+    assert.equal(moundRead({ kind: "lantern-classic", pgMet: false, pgId: "innings-5", inningsOuts: 9, earnedRuns: 1 }), "She got 3 innings. She needed five.");
+    assert.equal(moundRead({ kind: "lantern-classic", pgMet: false, pgId: "innings-5", inningsOuts: 15, earnedRuns: 4 }), "She got the innings. 4 runs. She needed three or fewer.");
     assert.equal(middleRead(["Inn 2: 1 K, 0 ER.", "Inn 3: 0 K, 0 ER."]), "The middle held. No runs.");
     assert.equal(middleRead(["Inn 2: 0 K, 1 ER.", "Inn 3: 0 K, 1 ER."]), "The middle held. 2 runs.");
     assert.equal(middleRead(["Inn 3: lifted. The arm is gone."]), "The arm is gone.");
@@ -80,7 +80,7 @@ describe("race sitelines", () => {
     assert.equal(situationLine({ kind: "gate", inning: 1, scoreDiff: 0, paIndex: 2, paTarget: 2 }, "done"), null);
     assert.equal(
       situationLine({ kind: "night-classic", inning: 4, scoreDiff: 2, paIndex: 2, paTarget: 4 }, "pa-card"),
-      "1st · Up 2 · PA 1 of 4",
+      "1st · Up 2 · At-bat 1 of 4",
     );
   });
 
@@ -107,11 +107,11 @@ describe("race sitelines", () => {
         practice: false,
         pgMet: false,
         banner: "HOLD slipped.",
-        cardLine: "Two punchouts. The date asked for the side.",
+        cardLine: "Two punchouts. She needed the side.",
         verb: "HOLD",
         pgId: "k-side",
       }),
-      "Two punchouts. The date asked for the side.",
+      "Two punchouts. She needed the side.",
     );
     assert.equal(
       dateCloseBeat({ done: true, kind: "gate", pgMet: true, hr: false, hits: 0, walks: 1 }, "grounder-out"),
