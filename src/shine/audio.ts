@@ -682,6 +682,27 @@ export function sfxOrgan() {
  * The result stamp lands with a body blow: a low boom under the slam, then
  * a chime that names the mood (gold climbs, coral falls, teal lifts once).
  */
+/** Tap to start: a warm open chord that blooms, the first sound of the game. */
+export const TITLE_STING = [262, 392, 523, 659, 784] as const;
+
+export function sfxTitleSting() {
+  if (!enabled.sfx || !ctx || !sfx) return;
+  TITLE_STING.forEach((f, i) => {
+    const o = ctx!.createOscillator();
+    const g = ctx!.createGain();
+    o.type = i === 0 ? "sine" : "triangle";
+    o.frequency.value = f;
+    const at = now() + i * 0.06;
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(i === 0 ? 0.09 : 0.05, at + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 1.4);
+    o.connect(g);
+    g.connect(sfx!);
+    o.start(at);
+    o.stop(at + 1.45);
+  });
+}
+
 export type StampTone = "gold" | "coral" | "teal";
 export const STAMP_SFX: Record<StampTone, readonly number[]> = {
   gold: [523, 659, 784, 1047],

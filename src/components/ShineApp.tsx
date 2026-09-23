@@ -3,7 +3,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
 import { ShineMute } from "@/components/ShineMute";
-import { careerMuteAppliesToScreen, setMasterMuted, setMix, sfxCowbell, sfxSelect, startEnding, startMusic, stopMusic, unlockAudio } from "@/shine/audio.ts";
+import { careerMuteAppliesToScreen, setMasterMuted, setMix, sfxCowbell, sfxSelect, sfxTitleSting, startEnding, startMusic, stopMusic, unlockAudio } from "@/shine/audio.ts";
 import { ShineHelp, ShineSettings } from "@/components/ShineSettings";
 import { nextNamedBeat, nextDateLine, turnMeta, dateLabel, daysAwayLabel, yearOf, PLATE_TURNS } from "@/shine/calendar.ts";
 import { BIBLE, careerFilmSrc, endingClipSrc, endingFilmSrc, isPitcherStyle, parkSrc, sceneFilmSrc, sheet, yearStillLine } from "@/shine/bible.ts";
@@ -18,7 +18,7 @@ import { loadActionManifest, warmActionExhibition } from "./action/action-manife
 import { filmReady, type ActionManifest } from "@/shine/action-art.ts";
 import { MOOD_LABELS, moodLevel } from "@/shine/training.ts";
 import { useShine } from "@/shine/store.ts";
-import { finaleEveScene, promiseScene } from "@/shine/story.ts";
+import { finaleEveScene, promiseScene, TITLE_LINES } from "@/shine/story.ts";
 import { ScenePlayer } from "./ScenePlayer";
 import { catchWithCoachScene, memoryLine, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
 import { keepsakeWallLine, replayLines, scrapbookLine } from "@/shine/scrapbook.ts";
@@ -36,156 +36,125 @@ function Title() {
   const openHelp = useShine((s) => s.openHelp);
   const nextHook = sparkGapLine(clubhouse);
   const [endYear, setEndYear] = useState(false);
+  // Tap to start: the tap is the gesture that lets the sound play at all.
+  const [started, setStarted] = useState(false);
+  const girl: CharacterId = run?.characterId ?? "aoi";
+  const who = sheet(girl);
 
   useEffect(() => {
-    unlockAudio();
-    startMusic("title");
     warmActionExhibition();
     return () => stopMusic();
   }, []);
 
+  const start = () => {
+    if (started) return;
+    unlockAudio();
+    sfxTitleSting();
+    startMusic("title");
+    setStarted(true);
+  };
+
+  useEffect(() => {
+    if (started) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Enter" || e.code === "Space") {
+        e.preventDefault();
+        start();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  const go = (fn: () => void) => () => {
+    sfxSelect();
+    stopMusic();
+    fn();
+  };
+
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream">
-      <img
-        src="/bg/diamond-shine-hero.png"
-        alt=""
-        className="absolute inset-0 size-full object-cover object-[78%_28%]"
-      />
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(girl) }}>
+      <img src="/bg/diamond-shine-hero.png" alt="" className={`absolute inset-0 size-full object-cover object-[78%_28%] ${started ? "" : "shine-title-breathe"}`} />
       <div className="shine-title-wash absolute inset-0" />
-      <div className="absolute right-6 top-8 z-20 sm:right-10">
-        <ShineMute />
-      </div>
+      {started ? (
+        <div className="absolute right-6 top-8 z-20 sm:right-10">
+          <ShineMute />
+        </div>
+      ) : null}
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-end px-6 pb-10 pt-14 sm:px-10 lg:justify-center">
         <p className="episode-chip w-fit">ダイヤシャイン</p>
-        <h1 className="anime-logo mt-6 max-w-2xl">
+        <h1 className="anime-logo shine-title-logo mt-6 max-w-2xl">
           <span>Diamond</span>
           <strong>Shine</strong>
         </h1>
-        <p className="mt-6 max-w-md font-ui text-base font-medium leading-relaxed text-cream/90 sm:text-lg">
-          Show her where to look. Press Go. Watch her.
-        </p>
-        {nextHook ? <p className="mt-3 max-w-md font-ui text-sm text-gold">{nextHook}</p> : null}
-        <div className="mt-8 flex w-full max-w-sm flex-col gap-3">
-          {run ? (
-            <PixelBtn
-              className="h-14 justify-between px-5 text-sm"
-              onClick={() => {
-                unlockAudio();
-                sfxSelect();
-                stopMusic();
-                continueRun();
-              }}
-            >
-              {run.clubhouseCard
-                ? `${sheet(run.characterId).jp} · The year is over`
-                : `Continue ${sheet(run.characterId).jp} · Day ${run.turn}`}
-              <span aria-hidden>→</span>
-            </PixelBtn>
-          ) : (
-            <PixelBtn
-              className="h-14 justify-between px-5 text-sm"
-              onClick={() => {
-                unlockAudio();
-                sfxSelect();
-                stopMusic();
-                openSelect();
-              }}
-            >
-              <span className="flex flex-col items-start gap-1 text-left">
-                New Rookie year
-                <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Three years. One girl. Believe in her.</span>
-              </span>
-              <span aria-hidden>→</span>
-            </PixelBtn>
-          )}
-          <PixelBtn
-            variant="ghost"
-            className="h-14"
-            onClick={() => {
-              unlockAudio();
-              sfxSelect();
-              stopMusic();
-              openExhibition();
-            }}
-          >
-            Exhibition · Pick a pair
-          </PixelBtn>
-          <div className="shine-title-menu">
-            <PixelBtn
-              variant="ghost"
-              className={`h-11 ${clubhouse.length > 0 ? "border-gold/40" : ""}`}
-              onClick={() => {
-                sfxSelect();
-                openWall();
-              }}
-            >
-              Clubhouse{clubhouse.length > 0 ? ` · ${clubhouse.length}` : ""}
-            </PixelBtn>
-            <PixelBtn
-              variant="ghost"
-              className="h-11"
-              onClick={() => {
-                sfxSelect();
-                openShop();
-              }}
-            >
-              Shop
-            </PixelBtn>
-            <PixelBtn
-              variant="ghost"
-              className="h-11"
-              onClick={() => {
-                sfxSelect();
-                openSettings();
-              }}
-            >
-              Settings
-            </PixelBtn>
-            <PixelBtn
-              variant="ghost"
-              className="h-11"
-              onClick={() => {
-                sfxSelect();
-                openHelp();
-              }}
-            >
-              How it works
-            </PixelBtn>
+        {!started ? (
+          <button type="button" className="shine-title-tap mt-10" onClick={start} data-title-tap>
+            Tap to start
+          </button>
+        ) : (
+          <div className="shine-title-menu-in mt-6 flex w-full max-w-sm flex-col gap-3">
+            <div className="shine-title-voice">
+              <img src={careerFilmSrc(girl) ?? ""} alt="" />
+              <p>
+                <span className="shine-kana">{who.jp}</span>
+                {TITLE_LINES[girl]}
+              </p>
+            </div>
+            {nextHook ? <p className="font-ui text-sm text-gold">{nextHook}</p> : null}
+            {run ? (
+              <PixelBtn className="h-14 justify-between px-5 text-sm" onClick={go(continueRun)}>
+                {run.clubhouseCard ? `${who.name} · The year is over` : `Continue ${who.name} · Day ${run.turn}`}
+                <span aria-hidden>→</span>
+              </PixelBtn>
+            ) : (
+              <PixelBtn className="h-14 justify-between px-5 text-sm" onClick={go(openExhibition)}>
+                <span className="flex flex-col items-start gap-1 text-left">
+                  Play ball
+                  <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Three at-bats. Pick her, press Go, watch.</span>
+                </span>
+                <span aria-hidden>→</span>
+              </PixelBtn>
+            )}
+            {run ? (
+              <PixelBtn variant="ghost" className="h-12" onClick={go(openExhibition)}>
+                Exhibition
+              </PixelBtn>
+            ) : (
+              <PixelBtn variant="ghost" className="h-12" onClick={go(openSelect)}>
+                Begin her year
+              </PixelBtn>
+            )}
+            <nav className="shine-title-row" aria-label="More">
+              <button type="button" onClick={go(openWall)}>
+                Clubhouse{clubhouse.length > 0 ? ` · ${clubhouse.length}` : ""}
+              </button>
+              <button type="button" onClick={go(openShop)}>
+                Shop
+              </button>
+              <button type="button" onClick={() => { sfxSelect(); openSettings(); }}>
+                Settings
+              </button>
+              <button type="button" onClick={() => { sfxSelect(); openHelp(); }}>
+                How it works
+              </button>
+            </nav>
             {run && !run.clubhouseCard ? (
               endYear ? (
-                <PixelBtn
-                  variant="ghost"
-                  className="h-11 border-coral/50"
-                  onClick={() => {
-                    unlockAudio();
-                    sfxSelect();
-                    stopMusic();
-                    openSelect();
-                  }}
-                >
-                  This year ends here
-                </PixelBtn>
+                <button type="button" className="shine-title-end is-armed" onClick={go(openSelect)}>
+                  This year ends here. Start a new one?
+                </button>
               ) : (
-                <PixelBtn variant="ghost" className="h-11" onClick={() => setEndYear(true)}>
+                <button type="button" className="shine-title-end" onClick={() => setEndYear(true)}>
                   New Rookie year
-                </PixelBtn>
+                </button>
               )
             ) : run?.clubhouseCard ? (
-              <PixelBtn
-                variant="ghost"
-                className="h-11"
-                onClick={() => {
-                  unlockAudio();
-                  sfxSelect();
-                  stopMusic();
-                  openSelect();
-                }}
-              >
+              <button type="button" className="shine-title-end" onClick={go(openSelect)}>
                 New Rookie year
-              </PixelBtn>
+              </button>
             ) : null}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
