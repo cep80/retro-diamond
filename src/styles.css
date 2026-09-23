@@ -882,6 +882,140 @@
   }
 }
 
+/* JRPG scene: her still fills the frame, a text box sits along the bottom. */
+.shine-scene {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 100%;
+  min-height: min(78dvh, 44rem);
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: var(--color-ink);
+}
+.shine-scene-still {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+  animation: shine-scene-still 320ms ease-out both;
+}
+@keyframes shine-scene-still {
+  0% {
+    opacity: 0.4;
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.shine-scene-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, rgb(8 17 39 / 0.92) 0%, rgb(8 17 39 / 0.45) 32%, transparent 58%);
+}
+.shine-scene-place {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: rgb(8 17 39 / 0.78);
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+}
+.shine-scene-skip {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.25);
+  border-radius: 999px;
+  background: rgb(8 17 39 / 0.6);
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-cream);
+}
+.shine-scene-box {
+  position: relative;
+  display: block;
+  margin: 0 0.75rem 0.75rem;
+  min-height: 7.5rem;
+  padding: 1.35rem 1.1rem 1rem;
+  border: 1px solid rgb(255 209 102 / 0.4);
+  border-radius: 1rem;
+  background: rgb(245 248 255 / 0.95);
+  color: var(--color-ink);
+  text-align: left;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.4);
+}
+.shine-scene-box.is-narration {
+  background: rgb(8 17 39 / 0.86);
+  border-color: rgb(255 255 255 / 0.18);
+  color: var(--color-cream);
+}
+.shine-scene-box.is-coach {
+  border-color: rgb(120 234 220 / 0.6);
+}
+.shine-scene-name {
+  position: absolute;
+  top: -0.8rem;
+  left: 1rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.25rem 0.85rem;
+  border-radius: 999px;
+  background: var(--shine-accent, var(--color-coral));
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--color-ink);
+}
+.shine-scene-box.is-coach .shine-scene-name {
+  right: 1rem;
+  left: auto;
+  background: var(--color-grass-2);
+}
+.shine-scene-name .shine-kana {
+  font-size: 0.66rem;
+  opacity: 0.75;
+}
+.shine-scene-text {
+  display: block;
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.shine-scene-box.is-narration .shine-scene-text {
+  font-style: italic;
+  color: rgb(245 248 255 / 0.92);
+}
+.shine-scene-next {
+  position: absolute;
+  right: 0.9rem;
+  bottom: 0.45rem;
+  font-size: 0.7rem;
+  color: var(--color-coral);
+  animation: shine-scene-next 900ms ease-in-out infinite;
+}
+@keyframes shine-scene-next {
+  50% {
+    transform: translateY(3px);
+    opacity: 0.55;
+  }
+}
+
 /* Broadcast scorebug: one plate, cells split by thin gold rules. */
 .shine-scorebug {
   display: inline-flex;

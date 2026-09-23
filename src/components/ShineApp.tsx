@@ -18,6 +18,8 @@ import { loadActionManifest, warmActionExhibition } from "./action/action-manife
 import { filmReady, type ActionManifest } from "@/shine/action-art.ts";
 import { MOOD_LABELS, moodLevel } from "@/shine/training.ts";
 import { useShine } from "@/shine/store.ts";
+import { promiseScene } from "@/shine/story.ts";
+import { ScenePlayer } from "./ScenePlayer";
 import { catchWithCoachScene, memoryLine, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
 import { keepsakeWallLine, replayLines, scrapbookLine } from "@/shine/scrapbook.ts";
 import type { CharacterId, DefiningPa, Highlight, Spark } from "@/shine/types.ts";
@@ -997,58 +999,34 @@ function Shell({ runTurn, label, children }: { runTurn: number; label: string; c
 function Establishing() {
   const run = useShine((s) => s.run)!;
   const dismissEstablishing = useShine((s) => s.dismissEstablishing);
-  const who = sheet(run.characterId);
-  const [cageLit, setCageLit] = useState(false);
+  const reduced = useShine((s) => s.settings.reducedMotion);
+  const [heard, setHeard] = useState(false);
 
   useEffect(() => {
     unlockAudio();
     startMusic("title");
-    const light = window.setTimeout(() => setCageLit(true), 1400);
-    const t = window.setTimeout(() => {
-      stopMusic();
-      dismissEstablishing();
-    }, 8000);
-    return () => {
-      window.clearTimeout(light);
-      window.clearTimeout(t);
-    };
-  }, [dismissEstablishing]);
+    return () => stopMusic();
+  }, []);
 
+  // Her promise, one line at a time. The year starts when she's said it.
   return (
-    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream">
-      <img
-        src="/bg/skyline-complex.png"
-        alt=""
-        className={`absolute inset-0 size-full object-cover ${cageLit ? "shine-cage-lit" : "opacity-80"}`}
-      />
+    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
+      <img src="/bg/skyline-complex.png" alt="" className="absolute inset-0 size-full object-cover opacity-40" />
       <div className="title-wash absolute inset-0" />
-      <div className="pointer-events-none absolute inset-x-0 top-8 z-10 grid grid-cols-3 px-4 text-center font-display text-[10px] uppercase tracking-[0.28em] text-gold/80 sm:px-8">
-        <p className={cageLit ? "text-gold" : "text-cream/50"}>Cage</p>
-        <p>Diamond</p>
-        <p>Bullpen</p>
-      </div>
-      <p className="pointer-events-none absolute bottom-36 left-1/2 z-10 -translate-x-1/2 font-display text-[10px] uppercase tracking-[0.28em] text-cream/60">
-        Clubhouse
-      </p>
-      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col justify-end px-6 pb-12 pt-16 sm:px-10">
+      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-4 px-3 py-6 sm:px-6">
         <p className="episode-chip w-fit">First Day</p>
-        <p className="mt-6 max-w-lg font-ui text-lg font-medium leading-relaxed text-cream/95">
-          {isPitcherStyle(who.style)
-            ? "First morning. The bullpen lights are on, and she's already out there."
-            : "First morning. The cage lights are on, and she's already inside."}
-        </p>
-        <div className="max-w-2xl">
-          <SceneBlock scene={relationshipScene(run, "opening")} />
-        </div>
-        <PixelBtn
-          className="mt-8 h-12 max-w-sm"
-          onClick={() => {
-            stopMusic();
-            dismissEstablishing();
-          }}
-        >
-          Morning
-        </PixelBtn>
+        <ScenePlayer scene={promiseScene(run.characterId)} reduced={reduced} onDone={() => setHeard(true)} />
+        {heard ? (
+          <PixelBtn
+            className="h-12"
+            onClick={() => {
+              stopMusic();
+              dismissEstablishing();
+            }}
+          >
+            Morning
+          </PixelBtn>
+        ) : null}
       </div>
     </main>
   );
