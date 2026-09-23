@@ -1,7 +1,7 @@
 {
   "version": 1,
   "film": "hybrid-e",
-  "renderedAt": "2026-09-21T14:32:36.161Z",
+  "renderedAt": "2026-09-23T12:23:51.749Z",
   "girls": {
     "aoi": {
       "role": "batter",
@@ -91,10 +91,10 @@
       "clips": {
         "hr": {
           "url": "/art/action/aoi/hr.webm",
-          "bytes": 226252,
+          "bytes": 177507,
           "w": 720,
           "h": 960,
-          "durationS": 2.542,
+          "durationS": 2.917,
           "markerS": 0.38,
           "poster": "/art/action/aoi/hr.webp",
           "angle": "three_quarter",
@@ -122,10 +122,10 @@
         },
         "k": {
           "url": "/art/action/aoi/k.webm",
-          "bytes": 189934,
+          "bytes": 158983,
           "w": 720,
           "h": 960,
-          "durationS": 2.292,
+          "durationS": 2.667,
           "markerS": 0.36,
           "poster": "/art/action/aoi/k.webp",
           "angle": "three_quarter",
@@ -153,10 +153,10 @@
         },
         "walk": {
           "url": "/art/action/aoi/walk.webm",
-          "bytes": 127831,
+          "bytes": 120420,
           "w": 720,
           "h": 960,
-          "durationS": 2.209,
+          "durationS": 2.375,
           "markerS": 0.32,
           "poster": "/art/action/aoi/walk.webp",
           "angle": "three_quarter",
@@ -222,10 +222,10 @@
       "clips": {
         "k": {
           "url": "/art/action/reina/k.webm",
-          "bytes": 268871,
+          "bytes": 224872,
           "w": 720,
           "h": 960,
-          "durationS": 2.084,
+          "durationS": 2.459,
           "markerS": 0.34,
           "poster": "/art/action/reina/k.webp",
           "angle": "three_quarter",
@@ -253,10 +253,10 @@
         },
         "walk": {
           "url": "/art/action/reina/walk.webm",
-          "bytes": 183671,
+          "bytes": 168490,
           "w": 720,
           "h": 960,
-          "durationS": 1.792,
+          "durationS": 1.959,
           "markerS": 0.28,
           "poster": "/art/action/reina/walk.webp",
           "angle": "three_quarter",
@@ -367,10 +367,10 @@
       "clips": {
         "hr": {
           "url": "/art/action/miki/hr.webm",
-          "bytes": 207802,
+          "bytes": 157065,
           "w": 720,
           "h": 960,
-          "durationS": 2.542,
+          "durationS": 2.917,
           "markerS": 0.38,
           "poster": "/art/action/miki/hr.webp",
           "angle": "three_quarter",
@@ -398,10 +398,10 @@
         },
         "k": {
           "url": "/art/action/miki/k.webm",
-          "bytes": 195833,
+          "bytes": 166548,
           "w": 720,
           "h": 960,
-          "durationS": 2.292,
+          "durationS": 2.667,
           "markerS": 0.36,
           "poster": "/art/action/miki/k.webp",
           "angle": "three_quarter",
@@ -429,10 +429,10 @@
         },
         "walk": {
           "url": "/art/action/miki/walk.webm",
-          "bytes": 127837,
+          "bytes": 118770,
           "w": 720,
           "h": 960,
-          "durationS": 2.209,
+          "durationS": 2.375,
           "markerS": 0.32,
           "poster": "/art/action/miki/walk.webp",
           "angle": "three_quarter",
@@ -543,10 +543,10 @@
       "clips": {
         "hr": {
           "url": "/art/action/yuki/hr.webm",
-          "bytes": 226937,
+          "bytes": 175229,
           "w": 720,
           "h": 960,
-          "durationS": 2.542,
+          "durationS": 2.917,
           "markerS": 0.38,
           "poster": "/art/action/yuki/hr.webp",
           "angle": "three_quarter",
@@ -574,10 +574,10 @@
         },
         "k": {
           "url": "/art/action/yuki/k.webm",
-          "bytes": 184626,
+          "bytes": 148454,
           "w": 720,
           "h": 960,
-          "durationS": 2.292,
+          "durationS": 2.667,
           "markerS": 0.36,
           "poster": "/art/action/yuki/k.webp",
           "angle": "three_quarter",
@@ -605,10 +605,10 @@
         },
         "walk": {
           "url": "/art/action/yuki/walk.webm",
-          "bytes": 123556,
+          "bytes": 114282,
           "w": 720,
           "h": 960,
-          "durationS": 2.209,
+          "durationS": 2.375,
           "markerS": 0.32,
           "poster": "/art/action/yuki/walk.webp",
           "angle": "three_quarter",
@@ -674,10 +674,10 @@
       "clips": {
         "k": {
           "url": "/art/action/kira/k.webm",
-          "bytes": 231671,
+          "bytes": 191625,
           "w": 720,
           "h": 960,
-          "durationS": 2.084,
+          "durationS": 2.459,
           "markerS": 0.34,
           "poster": "/art/action/kira/k.webp",
           "angle": "three_quarter",
@@ -705,10 +705,10 @@
         },
         "walk": {
           "url": "/art/action/kira/walk.webm",
-          "bytes": 168849,
+          "bytes": 158534,
           "w": 720,
           "h": 960,
-          "durationS": 1.792,
+          "durationS": 1.959,
           "markerS": 0.28,
           "poster": "/art/action/kira/walk.webp",
           "angle": "three_quarter",
@@ -774,10 +774,10 @@
       "clips": {
         "k": {
           "url": "/art/action/sol/k.webm",
-          "bytes": 239513,
+          "bytes": 208190,
           "w": 720,
           "h": 960,
-          "durationS": 2.084,
+          "durationS": 2.459,
           "markerS": 0.34,
           "poster": "/art/action/sol/k.webp",
           "angle": "three_quarter",
@@ -805,10 +805,10 @@
         },
         "walk": {
           "url": "/art/action/sol/walk.webm",
-          "bytes": 158666,
+          "bytes": 150343,
           "w": 720,
           "h": 960,
-          "durationS": 1.792,
+          "durationS": 1.959,
           "markerS": 0.28,
           "poster": "/art/action/sol/walk.webp",
           "angle": "three_quarter",
