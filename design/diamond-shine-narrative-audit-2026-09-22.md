@@ -8,6 +8,8 @@ Player-facing text lives in `bible.ts` (sheets, year stills, endings), `relation
 
 ## Rules for every writing pass
 
+- **All-girls league** (user, 2026-09-22). Anyone on the field is she/her.
+
 - **No system speak.** Never show the player "date" (for a big game), "sit", "cell", "PA", "spark", "family", "unlock", stat arrows in prose, or grade codes without a line. Name the game ("The Night Classic wanted three"). Numbers go in chips, not sentences.
 - **No slop.** No "It means nothing. It means everything.", no "knew her name", no "still unwritten", no "Heat is not a metaphor", no abstract noun triads. Concrete objects, weather, food, sound.
 - **Say it once.** "The fight was still worth watching" appears in about 8 places. Each good line gets one home.
@@ -26,7 +28,7 @@ Player-facing text lives in `bible.ts` (sheets, year stills, endings), `relation
 | "Swing through. The ghost sat where the ball crossed." (stage.ts:135) | system, purple | "Swing and a miss. Right where she was looking, too." |
 | "Energy ${n} with ${label} in ${k}. Rest is the coaching call…" (coach.ts:120) | system | Aoi: "Coach, my arms feel like noodles. I'll rest. Just today." |
 | "${Stat} ${from} → ${to}. Swing window …" (coach.ts:215) | system | Numbers go in a chip. Line: "Something clicked in the cage. She won't say what." |
-| "Eye reads the ? out of the hand…" (coach.ts:58) | system | "Teach her to see it out of his hand." |
+| "Eye reads the ? out of the hand…" (coach.ts:58) | system | "Teach her to see it out of the pitcher's hand." |
 | "Ready. Pick the thing the next test asks for." (coach.ts:140) | flat | Aoi: "I'm good. What are we doing today?" |
 | "Alt look. The next career that inherits her wears it." (run.ts:384) | system | "The kids at the gate are wearing her number now." |
 | "Sparks carry. Stats start fresh. Never sold." (ShineApp.tsx:418) | system | "What she learned stays with her. Everything else starts over." |
@@ -46,7 +48,7 @@ Player-facing text lives in `bible.ts` (sheets, year stills, endings), `relation
 The narration is one voice for all six girls: clipped, cool fragments. The stat sheets make them different, not their voices. The only first-person dialogue is `relationship.ts`, with four slots (opening, after the Gate, year-end, catch). It's the best writing in the repo.
 
 - **Aoi.** Quiet, respectful. Want: to get on base the way her mother couldn't. Wound: her mother hit into the double play that ended the '81 Series. The arc never lands, her mother never appears, and she has no joy.
-- **Reina.** Exacting, dry. Want: perfection. Wound: "never walked a man, and it is starting to break her". That's the strongest line in the bible. Her Finale is walking someone and surviving it.
+- **Reina.** Exacting, dry. Want: perfection. Wound: "never walked a batter, and it is starting to break her". That's the strongest line in the bible. Her Finale is walking someone and surviving it.
 - **Miki.** Guarded, deadpan funny. Wound: "Everyone who's coached me quit… about week eleven." The best arc in the game ("I'm not counting anymore, Coach"). Missing: the week-eleven scene itself.
 - **Sol.** Flat, proud. Want: a reason to throw her other three pitches. No wound; she's a threat, not a person. The weakest on the page.
 - **Kira.** Makes deals. The bullpen door "where you go back to" is hinted and never followed up. No wound.

@@ -117,7 +117,7 @@ function noteCallback(run: TraineeRun, game: PitchingGame, what: "stuff" | "cont
           ? "The poles. She still has the arm."
           : what === "guts"
             ? "Situational. Runners on, and the window held."
-            : "Charting. She knew what he was sitting on.";
+            : "Charting. She knew what she was sitting on.";
 }
 
 function stagePark(run: TraineeRun, kind: string) {

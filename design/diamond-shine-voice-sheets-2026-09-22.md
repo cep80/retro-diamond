@@ -13,6 +13,8 @@ The rules still apply: no system speak, no slop, concrete objects, and every gir
 | Kira | Everything is a deal. Laughs before the punchline. Calls you Partner. |
 | Yuki | "Already." Talks fast, cuts herself off, calls you Stopwatch. |
 
+**The league is all girls** (user decision, 2026-09-22). Every hitter, pitcher, catcher and umpire in play is a girl, so use she/her for anyone on the field. Coaches, family, fans and Gary the heater can be anyone.
+
 New people and places this pass adds (flag them in the lore check):
 - **Haruko**, Aoi's mother. The '81 double play is hers. She runs an okonomiyaki shop by Koi Park called **6-4-3**, named after the play.
 - **Luz**, Sol's older sister. She threw four pitches, had no fastball, and was cut at her Academy tryout. She runs a taco truck outside the Dusters' gate.
@@ -43,7 +45,7 @@ New people and places this pass adds (flag them in the lore check):
 - *Practice:* "Can we do bunts after? Not because I need them. The ball goes *tok*. It's a nice sound."
 - *After a win:* "I got on! I… sorry. I reached base, Coach." She's laughing anyway.
 - *After a win:* "Mom's going to put a sticker on the sign. She does that. The sign is mostly stickers now."
-- *After a loss:* "I swung at the second pitch. I knew it was a ball as soon as it left his hand. Write it down so I remember."
+- *After a loss:* "I swung at the second pitch. I knew it was a ball as soon as it left her hand. Write it down so I remember."
 - *After a loss:* "Can we skip the shop tonight? She'll be nice about it, and I can't do nice right now."
 - *About her rival:* "Nobody's ever walked off Reina. I'd like to be the first. I'd like it a lot, actually."
 - *Teasing the Coach:* "You wrote 'good job' in the margin of my scorebook. In pen. Coach, that's a permanent record."
@@ -63,7 +65,7 @@ New people and places this pass adds (flag them in the lore check):
 ## Reina #18 · starting pitcher · Koi Park
 
 - **Want:** Perfection she can prove. Every pitch where she said it would go, written down.
-- **Wound:** She has never walked a man, and it is starting to break her. The scouting card that got her into the Academy had one line on it: *Doesn't walk anyone.* She thinks that line is the only reason she's here, and that the first ball four will show everyone what's under it.
+- **Wound:** She has never walked a batter, and it is starting to break her. The scouting card that got her into the Academy had one line on it: *Doesn't walk anyone.* She thinks that line is the only reason she's here, and that the first ball four will show everyone what's under it.
 - **What she hides:** She walks people in the bullpen all the time. Dozens. "Practice doesn't count. I don't let it count." She also doesn't sleep the night before a start, and she hasn't told anyone.
 - **Verbal tic:** Corrects numbers. "Seventeen. Not eighteen." Short sentences, all true. Says "Again." instead of "let's go."
 - **What makes her laugh:** People who are confidently, precisely wrong, like Kira explaining a deal. One sharp "Ha." and then she looks away as if it didn't happen.
@@ -158,7 +160,7 @@ New people and places this pass adds (flag them in the lore check):
 - *Practice:* "The curve? Give me the reason." You give it to her. "Bad reason. Heat." A pause. "…Okay, better reason. One curve."
 - *After a win:* "Eight strikeouts. Luz says I shook Fuentes off six times. Luz can mind her truck."
 - *After a win:* "Ninety-seven. That's happy, Jefe. Don't make me say it louder."
-- *After a loss:* "He hit the fastball. Good. That's my pitch. I'd rather lose on my own pitch."
+- *After a loss:* "She hit the fastball. Good. That's my pitch. I'd rather lose on my own pitch."
 - *After a loss:* "I can ice my own arm." She doesn't look up. "Stay, though. The ice machine's loud, and I don't like the quiet after."
 - *About her rival:* "Reina's never walked anybody. Reina's never thrown a pitch she wasn't sure of, either. Somebody should tell her that's not the same as brave."
 - *Teasing the Coach:* "My pepper plant died at your place, Jefe. It's a *pepper*. It lives in a desert. You had one job."
@@ -198,7 +200,7 @@ New people and places this pass adds (flag them in the lore check):
 - *After a win:* "Three up, three down, home before the last bus. Partner, that's the whole dream."
 - *After a win:* "You saw me point? That one was for the door. The next one's yours, if you're good."
 - *After a loss:* "Lead's gone. I'll be at the door." A beat. "You can come to the door. That's allowed."
-- *After a loss:* "Threw a slider to a guy who was waiting on the slider. That's not bad luck. That's me being dumb in an exciting new way."
+- *After a loss:* "Threw a slider to a girl who was waiting on the slider. That's not bad luck. That's me being dumb in an exciting new way."
 - *About her rival:* "Sol went all nine again. Never lets me in. I'd be mad, but I've never been let into anything I wanted to stay in, so. Normal Tuesday."
 - *Teasing the Coach:* "You've been standing there the whole eighth like you're waiting for a bus. Partner, I know buses. That's not how you wait for one."
 
@@ -234,8 +236,8 @@ New people and places this pass adds (flag them in the lore check):
 
 **Sample lines**
 - *Practice:* "Already stretched. Already ran the bags. Already timed you walking over. You're slow."
-- *Practice:* "Watch the catcher's knees, not mine. His knees tell you. Mine lie."
-- *After a win:* "Did you see? I was gone on the first move. The first move! He hadn't even thought about throwing yet."
+- *Practice:* "Watch the catcher's knees, not mine. Her knees tell you. Mine lie."
+- *After a win:* "Did you see? I was gone on the first move. The first move! She hadn't even thought about throwing yet."
 - *After a win:* "Shaved ice. Strawberry, milk on top. I'm going to eat it too fast and it's going to hurt and I don't care."
 - *After a loss:* "Out by a step. One step. I'd go again. Don't make the face."
 - *After a loss:* "Leg's fine. …The leg grabbed. A little. Don't write it down."
