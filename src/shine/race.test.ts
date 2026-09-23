@@ -96,7 +96,7 @@ describe("race: her swing decision", () => {
   it("the foul band clips a mistimed swing foul only when the race asks for it", () => {
     const r = makeRng(3);
     const half = 0.2 * 0.955; // contact window × rookie timing mult
-    const late = half * 0.7; // timingQ ≈ 0.3: inside the window, below the band
+    const late = half * 0.8; // timingQ ≈ 0.2: inside the window, below the band (0.3)
     const plain = resolveContact(late, { row: 1, col: 1 }, cellLoc({ row: 1, col: 1 }), 7, 4, 7, 1, false, 1, r);
     assert.equal(plain.foul, false, "the tapped plate is untouched");
     assert.equal(plain.reach, true);

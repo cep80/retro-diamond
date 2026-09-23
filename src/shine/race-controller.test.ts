@@ -217,6 +217,31 @@ describe("race controller", () => {
     assert.fail("no PA with a whiff or foul in 60 seeds");
   });
 
+  it("the shipped race (no Duel) shows every beat a stranger names: hits, home runs, strikeouts, walks", () => {
+    const t = { pa: 0, hit: 0, hr: 0, k: 0, bb: 0 };
+    for (const hitter of ["aoi", "miki", "yuki"] as const) {
+      for (let i = 0; i < 100; i++) {
+        const { c, sched } = race(`ship-${hitter}-${i}`, { duel: false, run: Object.assign(newRun(hitter), { rngSeed: `ship-${hitter}-${i}` }) });
+        for (let pa = 1; pa <= 3; pa++) {
+          c.go();
+          untilPhase(c, sched, pa === 3 ? "done" : "pa-card");
+          const b = c.getSnapshot().card!.beat;
+          t.pa += 1;
+          if (b === "single" || b === "double") t.hit += 1;
+          if (b === "hr") t.hr += 1;
+          if (b === "k") t.k += 1;
+          if (b === "walk") t.bb += 1;
+          if (pa < 3) untilPhase(c, sched, "pick");
+        }
+      }
+    }
+    const rate = (n: number) => n / t.pa;
+    assert.ok(t.hr > 0, "a home run is possible for a fresh hitter");
+    assert.ok(rate(t.hit) > 0.12 && rate(t.hit) < 0.32, `hit rate ${rate(t.hit).toFixed(3)}`);
+    assert.ok(rate(t.k) > 0.05 && rate(t.k) < 0.3, `K rate ${rate(t.k).toFixed(3)}`);
+    assert.ok(rate(t.bb) > 0.03, `walk rate ${rate(t.bb).toFixed(3)}`);
+  });
+
   it("outcomes are reasonable over many races: she strikes out, reaches, and walks", () => {
     let k = 0;
     let reached = 0;

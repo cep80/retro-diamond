@@ -266,7 +266,8 @@ describe("featured game", () => {
     const loc = { x: 1.5, y: 1.5 };
     resolveSwing(run, game, { type: "fastball", loc, inZone: true, speed: 2, recognizeAt: 0, family: "hard" as const }, { row: 1, col: 1 }, 0, "contact");
     assert.equal(game.reached, true);
-    assert.equal(game.rbi, 1);
+    // A squared-up swing can leave the park now; either way the run is in.
+    assert.ok(game.rbi >= 1, `rbi ${game.rbi}`);
     assert.ok(game.events.some((e) => e.t === "rbi"));
     assert.equal(game.pgMet, true);
   });

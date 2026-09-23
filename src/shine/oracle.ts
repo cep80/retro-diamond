@@ -20,6 +20,11 @@ export function defaultSit(style: StyleId, paIndex = 1): Cell {
 }
 export const LEAD_DEFAULT_SIT: Cell = { row: 2, col: 1 };
 export const LEAD_BARREL_BONUS = 0.05;
+/** Home-run doors by swing: how square (timing x location) and the base chance before power / park / style. */
+export const HR_SQUARE_POWER = 0.68;
+export const HR_BASE_POWER = 0.45;
+export const HR_SQUARE_CONTACT = 0.72;
+export const HR_BASE_CONTACT = 0.3;
 export const LEAD_HR_MOD_PENALTY = 0.80;
 export const LEAD_SB_BONUS = 0.08;
 export const MOVE_SB_BONUS = 0.15;
@@ -225,8 +230,13 @@ export function resolveContact(
     return { quality, locationQ: lq, timingQ, reach: true, hr: false, foul: true, foulKind };
   }
 
-  const hrProb =
-    quality > 0.85 && powerSwing ? 0.12 * hrMod(power, sparks) * parkHrFactor * styleHrMod(style) : 0;
+  // A home run is how square she got it (timing × location), not her Contact
+  // stat: `quality` carries contactQuality (0.415 at contact 7), so gating on
+  // quality > 0.85 made the long ball impossible for every fresh girl.
+  // Power swings get the main door; a squared-up contact swing can still go.
+  const square = timingQ * lq;
+  const hrBase = powerSwing ? (square > HR_SQUARE_POWER ? HR_BASE_POWER : 0) : square > HR_SQUARE_CONTACT ? HR_BASE_CONTACT : 0;
+  const hrProb = hrBase * hrMod(power, sparks) * parkHrFactor * styleHrMod(style);
   const hr = r() < hrProb;
 
   return { quality, locationQ: lq, timingQ, reach: true, hr, foul: false, foulKind: null };
@@ -238,6 +248,14 @@ export function sbSuccessP(speed: number, sparks: Spark[] = [], style?: StyleId,
   return 0.45 + (clamp(speed, 1, 20) / 20) * 0.4 + 0.04 * sparkCount(sparks, "speed") + bonus;
 }
 
+/**
+ * A ball in play finds grass on a floor plus how well she hit it: a
+ * squibber still sneaks through sometimes (baseball's .300 on balls in
+ * play), a barreled liner almost always does.
+ */
+export const HIT_FLOOR = 0.16;
+export const HIT_SLOPE = 0.6;
+
 export function isHit(quality: number, parkHitsFactor: number, r: () => number): boolean {
-  return r() < quality * parkHitsFactor;
+  return r() < (HIT_FLOOR + HIT_SLOPE * quality) * parkHitsFactor;
 }

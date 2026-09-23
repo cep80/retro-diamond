@@ -54,7 +54,7 @@ export const POWER_SIGMA = 1.15;
  * off (late clips it back, early pulls it). This is what makes a race PA run
  * deep like a real one instead of ending on the first mistimed swing.
  */
-export const RACE_FOUL_BAND = 0.45;
+export const RACE_FOUL_BAND = 0.3;
 export const RACE_MODS = { foulBand: RACE_FOUL_BAND } as const;
 /** Bat meets the plane no earlier / later than this on the flight clock. */
 export const SWING_U_MIN = 0.62;
