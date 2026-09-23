@@ -101,6 +101,7 @@ export interface ShineState {
   dismissCalendarPeek: () => void;
   dismissStoryCard: () => void;
   hearFinaleEve: () => void;
+  hearArc: (key: string) => void;
   setSkipOnboarding: (on: boolean) => void;
   setMuted: (on: boolean) => void;
   setSettings: (patch: Partial<ShineSettings>) => void;
@@ -413,6 +414,11 @@ export const useShine = create<ShineState>()(
       dismissEstablishing: () => set({ establishing: false }),
       dismissCalendarPeek: () => set({ calendarPeek: false }),
       dismissStoryCard: () => set({ storyCard: false }),
+      hearArc: (key) => {
+        const { run } = get();
+        if (!run || run.arcsHeard?.includes(key)) return;
+        set({ run: { ...run, arcsHeard: [...(run.arcsHeard ?? []), key] } });
+      },
       hearFinaleEve: () => {
         const { run } = get();
         if (!run) return;

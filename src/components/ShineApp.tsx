@@ -18,7 +18,12 @@ import { loadActionManifest, warmActionExhibition } from "./action/action-manife
 import { filmReady, type ActionManifest } from "@/shine/action-art.ts";
 import { MOOD_LABELS, moodLevel } from "@/shine/training.ts";
 import { useShine } from "@/shine/store.ts";
-import { finaleEveScene, promiseScene, TITLE_LINES } from "@/shine/story.ts";
+import { finaleEveScene, promiseScene, TITLE_LINES, type SceneLike } from "@/shine/story.ts";
+import { lowPointScene, rivalIntro, RIVAL_KINDS, type RivalKind } from "@/shine/story-arcs.ts";
+
+function isRivalKind(t: string | null): t is RivalKind {
+  return t !== null && (RIVAL_KINDS as readonly string[]).includes(t);
+}
 import { ScenePlayer } from "./ScenePlayer";
 import { catchWithCoachScene, memoryLine, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
 import { keepsakeWallLine, replayLines, scrapbookLine } from "@/shine/scrapbook.ts";
@@ -1001,27 +1006,38 @@ function Establishing() {
   );
 }
 
-/** The night before the Diamond Finale: the promise comes back, then the park. */
-function FinaleEve() {
+/**
+ * A story beat between the calendar and the plate: the promise's payoff on
+ * Finale eve, a rival meeting before a big game, the low point after her
+ * first missed goal. The scene plays one line at a time; the button appears
+ * when she's said it.
+ */
+function StoryScreen({ scene, chip, cta, onDone }: { scene: SceneLike; chip: string; cta: string; onDone: () => void }) {
   const run = useShine((s) => s.run)!;
-  const hearFinaleEve = useShine((s) => s.hearFinaleEve);
   const reduced = useShine((s) => s.settings.reducedMotion);
   const [heard, setHeard] = useState(false);
   return (
     <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
       <div className="title-wash absolute inset-0" />
       <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-4 px-3 py-6 sm:px-6">
-        <p className="episode-chip w-fit">Diamond Finale · the night before</p>
-        <ScenePlayer scene={finaleEveScene(run.characterId)} reduced={reduced} onDone={() => setHeard(true)} />
+        <p className="episode-chip w-fit">{chip}</p>
+        <ScenePlayer key={`${scene.id}-${scene.girl}-${scene.place}`} scene={scene} reduced={reduced} onDone={() => setHeard(true)} />
         {heard ? (
-          <PixelBtn className="h-12" onClick={hearFinaleEve}>
-            To the park
+          <PixelBtn className="h-12" onClick={onDone}>
+            {cta}
           </PixelBtn>
         ) : null}
       </div>
     </main>
   );
 }
+
+const RIVAL_CHIP: Record<RivalKind, string> = {
+  "lantern-classic": "Lantern Classic · before the game",
+  "night-classic": "Night Classic · before the game",
+  stretch: "The Stretch · before the game",
+  series: "Skyline Series · before the game",
+};
 
 export function ShineApp() {
   const screen = useShine((s) => s.screen);
@@ -1031,6 +1047,9 @@ export function ShineApp() {
   const openExhibition = useShine((s) => s.openExhibition);
   const run = useShine((s) => s.run);
   const weeklyGuest = useShine((s) => s.weeklyGuest);
+  const liveGame = useShine((s) => s.liveGame);
+  const hearFinaleEve = useShine((s) => s.hearFinaleEve);
+  const hearArc = useShine((s) => s.hearArc);
   const establishing = useShine((s) => s.establishing);
   const owned = useShine((s) => s.ownedCosmetics);
   const skin = cosmeticClasses(owned);
@@ -1108,6 +1127,8 @@ export function ShineApp() {
   }, [hydrated, settings.music, settings.sfx, settings.crowd]);
 
   let view: ReactNode;
+  const turnType = run ? turnMeta(run.turn).type : null;
+  const resuming = Boolean(run && liveGame && liveGame.runId === run.id && liveGame.turn === run.turn);
   if (!hydrated) {
     view = (
       <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream">
@@ -1132,7 +1153,13 @@ export function ShineApp() {
   else if (screen === "weekly") view = <Title />;
   else if (!run) view = <Title />;
   else if (establishing && run.turn === 1 && run.calendar.length === 0) view = <Establishing />;
-  else if (screen === "plate" && run && turnMeta(run.turn).type === "finale" && !run.finaleEveHeard) view = <FinaleEve />;
+  // Story beats never interrupt a saved game being resumed.
+  else if (screen === "plate" && !resuming && turnType === "finale" && !run.finaleEveHeard)
+    view = <StoryScreen scene={finaleEveScene(run.characterId)} chip="Diamond Finale · the night before" cta="To the park" onDone={hearFinaleEve} />;
+  else if (screen === "plate" && !resuming && isRivalKind(turnType) && !run.arcsHeard?.includes(`rival:${turnType}`))
+    view = <StoryScreen scene={rivalIntro(run.characterId, turnType)} chip={RIVAL_CHIP[turnType]} cta="To the park" onDone={() => hearArc(`rival:${turnType}`)} />;
+  else if (screen === "complex" && run.phase === "complex" && run.pgMisses >= 1 && !run.arcsHeard?.includes("low-point"))
+    view = <StoryScreen scene={lowPointScene(run.characterId)} chip="That night" cta="Tomorrow" onDone={() => hearArc("low-point")} />;
   else if (screen === "plate") view = <ShinePlate />;
   else if (screen === "postgame") view = <Postgame />;
   else if (screen === "year-end") view = <YearEnd />;

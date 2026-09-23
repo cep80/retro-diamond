@@ -15,6 +15,14 @@ export type Beat =
 
 export type SceneId = "promise" | "finale-eve";
 
+/** What the ScenePlayer needs: any authored scene, story or arc. */
+export interface SceneLike {
+  id: string;
+  girl: CharacterId;
+  place: string;
+  beats: readonly Beat[];
+}
+
 export interface StoryScene {
   id: SceneId;
   girl: CharacterId;

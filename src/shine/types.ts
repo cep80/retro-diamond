@@ -225,6 +225,8 @@ export interface TraineeRun {
   lightCard?: string | null;
   /** She has had her Finale-eve scene; the game follows it. */
   finaleEveHeard?: boolean;
+  /** Story arcs already played this run: "rival:<kind>", "low-point". */
+  arcsHeard?: string[];
 }
 
 export type ShineScreen = "title" | "select" | "shop" | "complex" | "plate" | "postgame" | "year-end" | "weekly" | "wall" | "settings" | "help" | "exhibition";

@@ -8,29 +8,33 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sceneFilmSrc, sheet } from "@/shine/bible.ts";
+import { kitAccent } from "@/shine/stage.ts";
 import { sfxBlip } from "@/shine/audio.ts";
-import type { Beat, Mood, StoryScene } from "@/shine/story.ts";
+import type { Beat, Mood, SceneLike } from "@/shine/story.ts";
+import type { CharacterId } from "@/shine/types.ts";
 
 const CHARS_PER_SEC = 42;
 
-export function ScenePlayer({ scene, reduced, onDone }: { scene: StoryScene; reduced: boolean; onDone: () => void }) {
+export function ScenePlayer({ scene, reduced, onDone }: { scene: SceneLike; reduced: boolean; onDone: () => void }) {
   const [index, setIndex] = useState(0);
   const [shown, setShown] = useState(0);
   const [done, setDone] = useState(false);
   const beat: Beat = scene.beats[index]!;
   const full = beat.text.length;
   const typing = shown < full;
-  const girl = sheet(scene.girl);
-
-  // Her still follows the mood of her most recent line.
+  // The still follows whoever spoke last (her rival can have the frame), in that line's mood.
+  let still: CharacterId = scene.girl;
   let mood: Mood = "neutral";
   for (let i = index; i >= 0; i--) {
     const b = scene.beats[i]!;
-    if (b.who === scene.girl) {
+    if (b.who !== "narration" && b.who !== "coach") {
+      still = b.who;
       mood = b.mood ?? "neutral";
       break;
     }
   }
+  const speakerId = beat.who !== "narration" && beat.who !== "coach" ? beat.who : null;
+  const girl = speakerId ? sheet(speakerId) : null;
 
   useEffect(() => {
     if (reduced) {
@@ -85,10 +89,11 @@ export function ScenePlayer({ scene, reduced, onDone }: { scene: StoryScene; red
     onDone();
   };
 
-  const speaker = beat.who === "narration" ? null : beat.who === "coach" ? "Coach" : girl.name;
+  const speaker = beat.who === "narration" ? null : beat.who === "coach" ? "Coach" : girl!.name;
+  const quoted = beat.who !== "narration";
   return (
     <div className="shine-scene" data-scene={scene.id} data-scene-beat={index} data-scene-done={done ? "1" : "0"}>
-      <img key={mood} src={sceneFilmSrc(scene.girl, mood)} alt="" className="shine-scene-still" data-scene-mood={mood} />
+      <img key={`${still}-${mood}`} src={sceneFilmSrc(still, mood)} alt="" className="shine-scene-still" data-scene-mood={mood} data-scene-still={still} />
       <div className="shine-scene-shade" aria-hidden />
       {index === 0 ? <p className="shine-scene-place">{scene.place}</p> : null}
       {!done ? (
@@ -99,19 +104,20 @@ export function ScenePlayer({ scene, reduced, onDone }: { scene: StoryScene; red
       <button
         type="button"
         className={`shine-scene-box ${beat.who === "narration" ? "is-narration" : beat.who === "coach" ? "is-coach" : "is-girl"}`}
+        style={speakerId ? ({ ["--shine-accent" as string]: kitAccent(speakerId) } as React.CSSProperties) : undefined}
         onClick={advance}
         aria-label={done ? "Scene finished" : typing ? "Show the whole line" : "Next line"}
       >
         {speaker ? (
           <span className="shine-scene-name">
-            {beat.who === scene.girl ? <span className="shine-kana">{girl.jp}</span> : null}
+            {girl ? <span className="shine-kana">{girl.jp}</span> : null}
             {speaker}
           </span>
         ) : null}
         <span className="shine-scene-text" aria-live="polite">
-          {beat.who === scene.girl || beat.who === "coach" ? "“" : ""}
+          {quoted ? "“" : ""}
           {beat.text.slice(0, shown)}
-          {!typing && (beat.who === scene.girl || beat.who === "coach") ? "”" : ""}
+          {!typing && quoted ? "”" : ""}
         </span>
         {!typing && !done ? <span className="shine-scene-next" aria-hidden>▼</span> : null}
       </button>
