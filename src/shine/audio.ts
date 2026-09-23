@@ -678,6 +678,38 @@ export function sfxOrgan() {
   });
 }
 
+/**
+ * The result stamp lands with a body blow: a low boom under the slam, then
+ * a chime that names the mood (gold climbs, coral falls, teal lifts once).
+ */
+export type StampTone = "gold" | "coral" | "teal";
+export const STAMP_SFX: Record<StampTone, readonly number[]> = {
+  gold: [523, 659, 784, 1047],
+  coral: [392, 311],
+  teal: [587, 880],
+};
+
+export function sfxStamp(stampTone: StampTone) {
+  if (!enabled.sfx || !ctx || !sfx) return;
+  noise(0.16, 0.3, 140);
+  tone(55, 0.42, "sine", 0.22);
+  tone(82, 0.24, "triangle", 0.1);
+  STAMP_SFX[stampTone].forEach((f, i) => {
+    const o = ctx!.createOscillator();
+    const g = ctx!.createGain();
+    o.type = "triangle";
+    o.frequency.value = f;
+    const at = now() + 0.05 + i * 0.07;
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(stampTone === "gold" ? 0.07 : 0.05, at + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.34);
+    o.connect(g);
+    g.connect(sfx!);
+    o.start(at);
+    o.stop(at + 0.36);
+  });
+}
+
 export function sfxHr() {
   sfxCrack();
   sfxCrowdBurst();

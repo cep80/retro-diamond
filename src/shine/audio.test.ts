@@ -110,3 +110,11 @@ describe("audio exports", () => {
     );
   });
 });
+
+it("the stamp chime names the mood: gold climbs, coral falls, teal lifts once", async () => {
+  const { STAMP_SFX } = await import("./audio.ts");
+  const rising = (xs: readonly number[]) => xs.every((f, i) => i === 0 || f > xs[i - 1]!);
+  assert.ok(rising(STAMP_SFX.gold) && STAMP_SFX.gold.length >= 3);
+  assert.ok(!rising(STAMP_SFX.coral));
+  assert.ok(rising(STAMP_SFX.teal) && STAMP_SFX.teal.length === 2);
+});

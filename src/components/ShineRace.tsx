@@ -17,12 +17,12 @@ import { BasesDiamond, PauseOverlay, SitZone } from "@/components/ShinePlateBits
 import { ShineMute } from "@/components/ShineMute";
 import { exhibitionAudioCue, type ExhibitionAudioIo } from "@/components/exhibition/audio-cues";
 import { basepathRead, boxLine, countBulbs, dateCloseBeat, dateHeadline, goLabel, leaveLabel, pickPrompt, RACE_COPY, raceCaption, runningClose, showSitGrid, situationLine } from "@/components/race-ui";
-import { duckCrowd, setCrowdLevel, sfxAnticipation, sfxCrowd, sfxRelease, sfxSelect, startWalkUp, stopCrowd, stopMusic, unlockAudio } from "@/shine/audio.ts";
+import { duckCrowd, setCrowdLevel, sfxAnticipation, sfxCrowd, sfxRelease, sfxSelect, sfxStamp, startWalkUp, stopCrowd, stopMusic, unlockAudio } from "@/shine/audio.ts";
 import type { Cell } from "@/shine/core/zone.ts";
 import { locCell } from "@/shine/core/zone.ts";
 import { track as trackEvent } from "@/lib/telemetry.ts";
 import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
-import { CONTACT_HOLD_MS } from "@/shine/action-art.ts";
+import { CONTACT_HOLD_MS, resultStamp, STAMP_DELAY_MS } from "@/shine/action-art.ts";
 import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
@@ -313,6 +313,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       sfxRelease,
       schedule: (fn, ms) => window.setTimeout(fn, ms),
     };
+    const stampTimers: number[] = [];
     const offPlate = race.onPlateCueRaw((cue: PlateCue) => {
       exhibitionAudioCue(cue, race.plate.getSnapshot().game, io);
       if (cue.t === "prepare") {
@@ -338,6 +339,9 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         const last = g.game.lastPitches.at(-1);
         if (last) setGhost(locCell(last.loc));
         trackEvent("pa_pitch", { beat: cue.beat, swung: cue.swung, call: g.call, arm: g.game.arm, kind: g.game.kind });
+        // The stamp's slam gets its own hit, on the frame it lands.
+        const stamp = resultStamp(cue.beat, cue.swung);
+        if (stamp) stampTimers.push(window.setTimeout(() => sfxStamp(stamp.tone), STAMP_DELAY_MS));
       }
     });
     const offRace = race.onCue((cue: RaceCue) => {
@@ -353,6 +357,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     });
     return () => {
       offPlate();
+      for (const t of stampTimers) window.clearTimeout(t);
       offRace();
       stopCrowd();
       if (game.kind !== "practice" && game.kind !== "finale") stopMusic();
