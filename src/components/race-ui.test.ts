@@ -165,3 +165,14 @@ describe("race sitelines", () => {
     assert.equal(runningClose("The late steal didn't come."), false);
   });
 });
+
+describe("race ui: scorebug parts", () => {
+  it("splits the situation into inning, score and trip, and joins back to the old line", async () => {
+    const { situationParts } = await import("./race-ui.ts");
+    const g = { kind: "night-classic" as const, inning: 4, scoreDiff: 2, paIndex: 2, paTarget: 4 };
+    assert.deepEqual(situationParts(g), { inning: "4th", score: "Up 2", atBat: "At-bat 2 of 4" });
+    assert.equal(situationLine(g), "4th · Up 2 · At-bat 2 of 4");
+    assert.deepEqual(situationParts({ ...g, kind: "weekly" }), { inning: null, score: null, atBat: "Under the lanterns" });
+    assert.equal(situationParts(g, "done"), null);
+  });
+});

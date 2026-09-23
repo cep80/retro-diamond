@@ -13,10 +13,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { PixelBtn } from "@/components/pixel-btn";
 import { ActionStage } from "@/components/action/ActionStage";
 import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
-import { BasesDiamond, PauseOverlay, SitZone } from "@/components/ShinePlateBits";
+import { PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
 import { ShineMute } from "@/components/ShineMute";
 import { exhibitionAudioCue, type ExhibitionAudioIo } from "@/components/exhibition/audio-cues";
-import { basepathRead, boxLine, countBulbs, dateCloseBeat, dateHeadline, goLabel, leaveLabel, pickPrompt, RACE_COPY, raceCaption, runningClose, showSitGrid, situationLine } from "@/components/race-ui";
+import { basepathRead, boxLine, dateCloseBeat, dateHeadline, goLabel, leaveLabel, pickPrompt, RACE_COPY, raceCaption, runningClose, showSitGrid, situationParts } from "@/components/race-ui";
 import { duckCrowd, setCrowdLevel, sfxAnticipation, sfxCrowd, sfxRelease, sfxSelect, sfxStamp, startWalkUp, stopCrowd, stopMusic, unlockAudio } from "@/shine/audio.ts";
 import type { Cell } from "@/shine/core/zone.ts";
 import { locCell } from "@/shine/core/zone.ts";
@@ -477,8 +477,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   }
 
   const paused = plate.paused;
-  const bulbs = countBulbs(game);
-  const situation = situationLine(game, snap.watching && snap.phase === "pick" ? "pa-card" : snap.phase);
+  const parts = situationParts(game, snap.watching && snap.phase === "pick" ? "pa-card" : snap.phase);
   const prompt = pickPrompt({ phase: snap.phase, pitchesSeen: game.pitchesSeen });
   const sitGrid = showSitGrid({ phase: snap.phase, stage }) && !snap.watching;
   const caption = raceCaption({ phase: snap.phase, stage, verdict: game.lastVerdict, banner: game.banner });
@@ -558,7 +557,6 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           <span className="rounded-full border border-white/20 bg-ink/70 px-2.5 py-1 font-display text-[10px] uppercase tracking-widest text-grass-2">
             {exhibition ? "Exhibition" : dateLabel(turnMeta(run.turn), who.style)}
           </span>
-          {situation ? <span className="truncate font-ui text-[11px] text-cream/70">{situation}</span> : null}
           {ask ? <span className="truncate font-ui text-[11px] text-gold">{who.pgVerb} · {speakGoal(ask.verb)}</span> : null}
         </div>
         <div className="flex items-center gap-1.5">
@@ -573,6 +571,21 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           </button>
         </div>
       </header>
+
+      {/* The scorebug: its own plate above the film, never on her face. */}
+      {parts && snap.phase !== "done" ? (
+        <div className="relative z-10 flex justify-center px-3 pt-2">
+          <Scorebug
+            inning={parts.inning}
+            score={parts.score}
+            atBat={parts.atBat}
+            count={game.count}
+            outs={game.outs}
+            bases={game.bases}
+            self={game.selfOnBase}
+          />
+        </div>
+      ) : null}
 
       {/* The frame. */}
       <section className="relative z-10 flex min-h-0 flex-1 items-center justify-center py-2 sm:px-3" aria-label="The plate">
@@ -594,27 +607,6 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
             {sitGrid ? <SitZone aim={plate.aim} onSit={(c) => race.setSit(c)} ghost={ghost} label="Sit" /> : null}
           </ActionStage>
 
-          {/* Count bulbs, over the frame. */}
-          {snap.phase !== "done" && !practice ? (
-            <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2 rounded-full border border-white/15 bg-ink/70 px-2.5 py-1" aria-label={`${game.count.balls} and ${game.count.strikes}, ${game.outs} out`}>
-              <span className="flex gap-1" aria-hidden>
-                {bulbs.balls.map((lit, i) => (
-                  <i key={`b${i}`} className={`block size-2 rounded-full ${lit ? "bg-grass-2 shadow-[0_0_6px_#78ead0]" : "bg-white/15"}`} />
-                ))}
-              </span>
-              <span className="flex gap-1" aria-hidden>
-                {bulbs.strikes.map((lit, i) => (
-                  <i key={`s${i}`} className={`block size-2 rounded-full ${lit ? "bg-gold shadow-[0_0_6px_#ffd166]" : "bg-white/15"}`} />
-                ))}
-              </span>
-              <span className="flex gap-1" aria-hidden>
-                {bulbs.outs.map((lit, i) => (
-                  <i key={`o${i}`} className={`block size-2 rounded-full ${lit ? "bg-coral shadow-[0_0_6px_#ff718f]" : "bg-white/15"}`} />
-                ))}
-              </span>
-              <BasesDiamond bases={game.bases} self={game.selfOnBase} />
-            </div>
-          ) : null}
         </div>
       </section>
 

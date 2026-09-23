@@ -66,16 +66,29 @@ export function scorePhrase(scoreDiff: number): string {
   return scoreDiff === 0 ? "Tied" : scoreDiff > 0 ? `Up ${scoreDiff}` : `Down ${-scoreDiff}`;
 }
 
-/** The tiny situation line over the frame; null when there is nothing to say. */
-export function situationLine(game: Pick<FeaturedGame, "kind" | "inning" | "scoreDiff" | "paIndex" | "paTarget">, phase?: RacePhase): string | null {
+/** The scorebug's words: inning, score, which trip to the plate. Null when there is nothing to say. */
+export interface SituationParts {
+  inning: string | null;
+  score: string | null;
+  atBat: string;
+}
+
+export function situationParts(game: Pick<FeaturedGame, "kind" | "inning" | "scoreDiff" | "paIndex" | "paTarget">, phase?: RacePhase): SituationParts | null {
   if (phase === "done") return null;
   const card = phase === "pa-card";
   const pa = card ? Math.max(1, game.paIndex - 1) : game.paIndex;
   const inning = card ? inningForPa(game.kind, pa) : game.inning;
-  if (game.kind === "practice") return `Cage · ${pa} of ${game.paTarget}`;
-  if (game.kind === "weekly") return "Under the lanterns";
+  if (game.kind === "practice") return { inning: null, score: null, atBat: `Cage · ${pa} of ${game.paTarget}` };
+  if (game.kind === "weekly") return { inning: null, score: null, atBat: "Under the lanterns" };
   const inn = inning >= 9 ? "9th" : inning === 1 ? "1st" : inning === 2 ? "2nd" : inning === 3 ? "3rd" : `${inning}th`;
-  return `${inn} · ${scorePhrase(game.scoreDiff)} · At-bat ${pa} of ${game.paTarget}`;
+  return { inning: inn, score: scorePhrase(game.scoreDiff), atBat: `At-bat ${pa} of ${game.paTarget}` };
+}
+
+/** The tiny situation line over the frame; null when there is nothing to say. */
+export function situationLine(game: Pick<FeaturedGame, "kind" | "inning" | "scoreDiff" | "paIndex" | "paTarget">, phase?: RacePhase): string | null {
+  const p = situationParts(game, phase);
+  if (!p) return null;
+  return [p.inning, p.score, p.atBat].filter(Boolean).join(" · ");
 }
 
 /** The game closes on what she came for, not the last out. */

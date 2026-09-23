@@ -882,6 +882,89 @@
   }
 }
 
+/* Broadcast scorebug: one plate, cells split by thin gold rules. */
+.shine-scorebug {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid rgb(255 209 102 / 0.35);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgb(20 35 68 / 0.96), rgb(8 17 39 / 0.96));
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  font-family: var(--font-display);
+  color: var(--color-cream);
+}
+.shine-bug-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+}
+.shine-bug-cell + .shine-bug-cell {
+  border-left: 1px solid rgb(255 209 102 / 0.22);
+}
+.shine-bug-inning {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  background: rgb(255 209 102 / 0.12);
+  line-height: 1.05;
+}
+.shine-bug-inning b {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-gold);
+}
+.shine-bug-inning span {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-cream);
+}
+.shine-bug-count {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+.shine-bug-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.shine-bug-row em {
+  width: 0.8rem;
+  font-style: normal;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+.shine-bug-lamp {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.14);
+}
+.shine-bug-lamp.is-ball {
+  background: var(--color-grass-2);
+  box-shadow: 0 0 6px var(--color-grass-2);
+}
+.shine-bug-lamp.is-strike {
+  background: var(--color-gold);
+  box-shadow: 0 0 6px var(--color-gold);
+}
+.shine-bug-lamp.is-out {
+  background: var(--color-coral);
+  box-shadow: 0 0 6px var(--color-coral);
+}
+.shine-bug-atbat {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--color-cream);
+  white-space: nowrap;
+}
+
 /* Letterbox on the swing cut-in: the frame goes cinema for her swing. */
 .shine-letterbox {
   height: 9%;

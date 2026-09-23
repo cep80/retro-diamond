@@ -145,6 +145,59 @@ export function BasesDiamond({ bases, self }: { bases: Bases; self: 1 | 2 | 3 | 
   );
 }
 
+/**
+ * The broadcast scorebug: inning and score, the count with its letters, the
+ * outs, the bases. It sits on its own plate above the film, never on her face.
+ */
+export function Scorebug({
+  inning,
+  score,
+  atBat,
+  count,
+  outs,
+  bases,
+  self,
+}: {
+  inning: string | null;
+  score: string | null;
+  atBat: string;
+  count: { balls: number; strikes: number };
+  outs: number;
+  bases: Bases;
+  self: 1 | 2 | 3 | null;
+}) {
+  const lamps = (n: number, of: number, on: string) =>
+    Array.from({ length: of }, (_, i) => <i key={i} className={`shine-bug-lamp ${i < n ? on : ""}`} />);
+  return (
+    <div className="shine-scorebug" aria-label={`${inning ? `${inning} inning, ` : ""}${score ? `${score}. ` : ""}${count.balls} and ${count.strikes}, ${outs} out. ${atBat}.`}>
+      {inning ? (
+        <span className="shine-bug-cell shine-bug-inning">
+          <b>{inning}</b>
+          {score ? <span>{score}</span> : null}
+        </span>
+      ) : null}
+      <span className="shine-bug-cell shine-bug-count" aria-hidden>
+        <span className="shine-bug-row">
+          <em>B</em>
+          {lamps(count.balls, 3, "is-ball")}
+        </span>
+        <span className="shine-bug-row">
+          <em>S</em>
+          {lamps(count.strikes, 2, "is-strike")}
+        </span>
+        <span className="shine-bug-row">
+          <em>O</em>
+          {lamps(outs, 2, "is-out")}
+        </span>
+      </span>
+      <span className="shine-bug-cell" aria-hidden>
+        <BasesDiamond bases={bases} self={self} />
+      </span>
+      <span className="shine-bug-cell shine-bug-atbat">{atBat}</span>
+    </div>
+  );
+}
+
 export function ScoutingCard({ report, park }: { report: ScoutingReport; park: string }) {
   const id = rivalPortraitId(report.arm);
   const art = id ? portraitSrc(id, "focused") : null;
