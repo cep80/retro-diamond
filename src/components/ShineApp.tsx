@@ -18,7 +18,7 @@ import { loadActionManifest, warmActionExhibition } from "./action/action-manife
 import { filmReady, type ActionManifest } from "@/shine/action-art.ts";
 import { MOOD_LABELS, moodLevel } from "@/shine/training.ts";
 import { useShine } from "@/shine/store.ts";
-import { promiseScene } from "@/shine/story.ts";
+import { finaleEveScene, promiseScene } from "@/shine/story.ts";
 import { ScenePlayer } from "./ScenePlayer";
 import { catchWithCoachScene, memoryLine, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
 import { keepsakeWallLine, replayLines, scrapbookLine } from "@/shine/scrapbook.ts";
@@ -1032,6 +1032,28 @@ function Establishing() {
   );
 }
 
+/** The night before the Diamond Finale: the promise comes back, then the park. */
+function FinaleEve() {
+  const run = useShine((s) => s.run)!;
+  const hearFinaleEve = useShine((s) => s.hearFinaleEve);
+  const reduced = useShine((s) => s.settings.reducedMotion);
+  const [heard, setHeard] = useState(false);
+  return (
+    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
+      <div className="title-wash absolute inset-0" />
+      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-4 px-3 py-6 sm:px-6">
+        <p className="episode-chip w-fit">Diamond Finale · the night before</p>
+        <ScenePlayer scene={finaleEveScene(run.characterId)} reduced={reduced} onDone={() => setHeard(true)} />
+        {heard ? (
+          <PixelBtn className="h-12" onClick={hearFinaleEve}>
+            To the park
+          </PixelBtn>
+        ) : null}
+      </div>
+    </main>
+  );
+}
+
 export function ShineApp() {
   const screen = useShine((s) => s.screen);
   const overlay = useShine((s) => s.overlay);
@@ -1141,6 +1163,7 @@ export function ShineApp() {
   else if (screen === "weekly") view = <Title />;
   else if (!run) view = <Title />;
   else if (establishing && run.turn === 1 && run.calendar.length === 0) view = <Establishing />;
+  else if (screen === "plate" && run && turnMeta(run.turn).type === "finale" && !run.finaleEveHeard) view = <FinaleEve />;
   else if (screen === "plate") view = <ShinePlate />;
   else if (screen === "postgame") view = <Postgame />;
   else if (screen === "year-end") view = <YearEnd />;

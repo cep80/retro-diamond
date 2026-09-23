@@ -100,6 +100,7 @@ export interface ShineState {
   dismissEstablishing: () => void;
   dismissCalendarPeek: () => void;
   dismissStoryCard: () => void;
+  hearFinaleEve: () => void;
   setSkipOnboarding: (on: boolean) => void;
   setMuted: (on: boolean) => void;
   setSettings: (patch: Partial<ShineSettings>) => void;
@@ -412,6 +413,11 @@ export const useShine = create<ShineState>()(
       dismissEstablishing: () => set({ establishing: false }),
       dismissCalendarPeek: () => set({ calendarPeek: false }),
       dismissStoryCard: () => set({ storyCard: false }),
+      hearFinaleEve: () => {
+        const { run } = get();
+        if (!run) return;
+        set({ run: { ...run, finaleEveHeard: true } });
+      },
       setSkipOnboarding: (on) => set({ skipOnboarding: on }),
       setMuted: (on) => set({ muted: on }),
     }),

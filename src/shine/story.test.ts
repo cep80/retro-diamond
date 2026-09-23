@@ -18,6 +18,17 @@ describe("story: the promise", () => {
     }
   });
 
+  it("the Finale eve pays off the promise with the line she saved", async () => {
+    const { finaleEveScene, FINALE_LINES } = await import("./story.ts");
+    for (const c of BIBLE) {
+      const s = finaleEveScene(c.id);
+      assert.equal(s.id, "finale-eve");
+      const hers = s.beats.filter((b) => b.who === c.id).map((b) => b.text);
+      assert.ok(hers.some((t) => t.includes(FINALE_LINES[c.id])), `${c.id} says her Finale line`);
+      assert.ok(s.beats.some((b) => b.who === "coach"), `${c.id}: the Coach is there`);
+    }
+  });
+
   it("only she, the Coach and the narrator speak in her scene", () => {
     for (const s of allScenes()) {
       for (const b of s.beats) assert.ok(b.who === "narration" || b.who === "coach" || b.who === s.girl, `${s.girl}: ${b.who}`);

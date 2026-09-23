@@ -223,6 +223,8 @@ export interface TraineeRun {
   definingPa: DefiningPa | null;
   /** First Light's card, so year-end can name the punchouts she actually got. */
   lightCard?: string | null;
+  /** She has had her Finale-eve scene; the game follows it. */
+  finaleEveHeard?: boolean;
 }
 
 export type ShineScreen = "title" | "select" | "shop" | "complex" | "plate" | "postgame" | "year-end" | "weekly" | "wall" | "settings" | "help" | "exhibition";
