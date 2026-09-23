@@ -15,6 +15,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { track as trackEvent } from "@/lib/telemetry.ts";
 import {
+  ballLeavesBat,
+  resultStamp,
+  stampVisible,
   clipEndsAtMs,
   clipFor,
   clipOwner,
@@ -252,6 +255,10 @@ export function ActionStage({
   const cutPose = cutIdx >= 0 && picture.cutIn ? picture.cutIn[cutIdx] : null;
   const underClip = money?.role === "batter" ? stillFor(batter, picture.batter) : money ? stillFor(pitcher, picture.pitcher) : null;
   const showCard = !quietCard && picture.card && view.stage !== "idle" && view.stage !== "situation";
+  const stamp = quietCard ? null : resultStamp(view.beat, view.swung);
+  const stampUp = Boolean(stamp) && sinceResolve >= 0 && stampVisible(sinceResolve);
+  // One white frame the instant the ball meets the bat (no dissolves: a hard cut and a flash).
+  const flash = !view.reduced && view.beat !== null && ballLeavesBat(view.beat) && view.swung && sinceResolve >= 0 && sinceResolve < 90;
   const resolvedKey = view.resolvedAtMs ?? 0;
   const heldPoster = holdBeatPoster({
     clipActive: Boolean(money),
@@ -261,7 +268,7 @@ export function ActionStage({
 
   return (
     <div
-      className={`relative mx-auto aspect-[3/4] h-full max-h-full w-auto max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-ink/35 shadow-[inset_0_0_0_1px_rgba(255,209,102,0.15)] ${className ?? ""}`}
+      className={`relative mx-auto aspect-[3/4] h-full max-h-full w-auto overflow-hidden bg-ink/35 sm:max-w-sm sm:rounded-2xl sm:border sm:border-white/20 sm:shadow-[inset_0_0_0_1px_rgba(255,209,102,0.15)] ${className ?? ""}`}
       data-action-stage={focus}
       data-action-stage-pose={focus === "pitcher" ? picture.pitcher : picture.batter}
       data-pa-film="hybrid-e"
@@ -293,6 +300,12 @@ export function ActionStage({
         />
       )}
       {cutPose && !view.reduced && !quietCard ? <div className="shine-speed-lines pointer-events-none absolute inset-0" data-action-cut-in={cutIdx} aria-hidden /> : null}
+      {cutPose && !quietCard ? (
+        <>
+          <div className="shine-letterbox shine-letterbox-top pointer-events-none absolute inset-x-0 top-0" aria-hidden />
+          <div className="shine-letterbox shine-letterbox-bottom pointer-events-none absolute inset-x-0 bottom-0" aria-hidden />
+        </>
+      ) : null}
       {ball ? (
         <div
           className="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cream shadow-[0_0_12px_#f5f8ff]"
@@ -334,8 +347,17 @@ export function ActionStage({
           aria-hidden
         />
       ) : null}
+      {stamp && stampUp ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
+          <div key={resolvedKey} className={`shine-stamp shine-stamp-${stamp.tone} ${view.reduced ? "shine-stamp-still" : ""}`} data-action-stamp={view.beat ?? ""}>
+            <span className="shine-stamp-jp">{stamp.jp}</span>
+            <span className="shine-stamp-en">{stamp.en}</span>
+          </div>
+        </div>
+      ) : null}
+      {flash ? <div key={`flash-${resolvedKey}`} className="shine-contact-flash pointer-events-none absolute inset-0" aria-hidden /> : null}
       {children ? <div className="absolute inset-[12%]">{children}</div> : null}
-      {showCard ? (
+      {showCard && !stampUp ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
           <p className="shine-outcome-card rounded-full border border-white/25 bg-ink/85 px-3 py-1 font-display text-xs uppercase tracking-widest text-cream" data-action-card={view.beat ?? ""}>
             {picture.card}

@@ -821,6 +821,122 @@
   animation: shine-outcome-card 220ms ease-out both;
 }
 
+/* Result stamp: the verdict slams in on a diagonal after the picture has said it. */
+.shine-stamp {
+  --stamp: var(--color-gold);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+  transform: rotate(-8deg);
+  animation: shine-stamp-slam 420ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  filter: drop-shadow(0 6px 0 rgba(8, 17, 39, 0.85)) drop-shadow(0 0 24px color-mix(in srgb, var(--stamp) 55%, transparent));
+}
+.shine-stamp-gold {
+  --stamp: var(--color-gold);
+}
+.shine-stamp-coral {
+  --stamp: var(--color-coral);
+}
+.shine-stamp-teal {
+  --stamp: var(--color-grass-2);
+}
+.shine-stamp-jp {
+  font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans JP", var(--font-display);
+  font-weight: 900;
+  font-size: clamp(2.6rem, 15vw, 4.4rem);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--color-cream);
+  -webkit-text-stroke: 3px var(--stamp);
+  paint-order: stroke fill;
+  white-space: nowrap;
+}
+.shine-stamp-en {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(0.8rem, 3.6vw, 1.05rem);
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: var(--color-ink);
+  background: var(--stamp);
+  padding: 0.2em 0.7em 0.2em 1em;
+  border-radius: 999px;
+}
+.shine-stamp-still {
+  animation: none;
+}
+
+@keyframes shine-stamp-slam {
+  0% {
+    transform: rotate(-8deg) scale(2.2);
+    opacity: 0;
+  }
+  45% {
+    transform: rotate(-8deg) scale(0.94);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(-8deg) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Letterbox on the swing cut-in: the frame goes cinema for her swing. */
+.shine-letterbox {
+  height: 9%;
+  background: #000;
+}
+.shine-letterbox-top {
+  animation: shine-letterbox-top 110ms ease-out both;
+}
+.shine-letterbox-bottom {
+  animation: shine-letterbox-bottom 110ms ease-out both;
+}
+@keyframes shine-letterbox-top {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+@keyframes shine-letterbox-bottom {
+  0% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* One white frame on contact. A hard cut, not a dissolve. */
+.shine-contact-flash {
+  background: #fff;
+  animation: shine-contact-flash 90ms steps(1, end) both;
+}
+@keyframes shine-contact-flash {
+  0% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shine-stamp {
+    animation: none;
+  }
+  .shine-contact-flash {
+    display: none;
+  }
+  .shine-letterbox-top,
+  .shine-letterbox-bottom {
+    animation: none;
+  }
+}
+
 @keyframes shine-outcome-card {
   0% {
     transform: translateY(8px);

@@ -419,3 +419,20 @@ describe("action art: manifest", () => {
     assert.match(actionBudget(fat).over[0], /^aoi: stills/);
   });
 });
+
+describe("action art: result stamp", () => {
+  it("stamps the at-bat enders, bilingual, and stays quiet on the rest", async () => {
+    const { resultStamp, stampVisible, STAMP_DELAY_MS, STAMP_HOLD_MS } = await import("./action-art.ts");
+    assert.deepEqual(resultStamp("hr", true), { jp: "ホームラン", en: "Home run", tone: "gold" });
+    assert.equal(resultStamp("k", true)?.jp, "三振");
+    assert.equal(resultStamp("k", false)?.jp, "見逃し三振", "a called K reads as caught looking");
+    assert.equal(resultStamp("walk", false)?.en, "Ball four");
+    for (const quiet of ["foul", "foul-tip", "ball", "take-strike", "miss", "grounder-out", "fly-out"] as const) {
+      assert.equal(resultStamp(quiet, true), null, quiet);
+    }
+    assert.equal(resultStamp(null, false), null);
+    assert.equal(stampVisible(STAMP_DELAY_MS - 1), false, "the picture speaks first");
+    assert.equal(stampVisible(STAMP_DELAY_MS), true);
+    assert.equal(stampVisible(STAMP_DELAY_MS + STAMP_HOLD_MS), false, "gone before the next pick");
+  });
+});

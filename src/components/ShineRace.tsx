@@ -570,8 +570,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       </header>
 
       {/* The frame. */}
-      <section className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-3 py-2" aria-label="The plate">
-        <div className="relative h-full max-h-[62dvh] w-full max-w-sm">
+      <section className="relative z-10 flex min-h-0 flex-1 items-center justify-center py-2 sm:px-3" aria-label="The plate">
+        <div className="relative h-full max-h-[70dvh] w-full sm:max-h-[62dvh] sm:max-w-sm">
           <ActionStage
             view={actionView}
             batterId={run.characterId}

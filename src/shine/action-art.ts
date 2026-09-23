@@ -51,6 +51,41 @@ export function resultReadout(opts: { beat: FieldBeat; twoStrikeHold: boolean })
   return line;
 }
 
+/**
+ * The result stamp: the verdict slams in big and bilingual after the
+ * picture has already said it (Uma's race-finish stamp). Only the beats
+ * that end an at-bat on her side get one; fouls, balls and called strikes
+ * stay quiet so the stamp keeps its weight.
+ */
+export interface ResultStamp {
+  jp: string;
+  en: string;
+  tone: "gold" | "coral" | "teal";
+}
+
+const STAMPS: Partial<Record<FieldBeat, ResultStamp>> = {
+  hr: { jp: "ホームラン", en: "Home run", tone: "gold" },
+  double: { jp: "ツーベース", en: "Double", tone: "teal" },
+  single: { jp: "ヒット", en: "Base hit", tone: "teal" },
+  walk: { jp: "フォアボール", en: "Ball four", tone: "teal" },
+  "sac-fly": { jp: "犠牲フライ", en: "Sac fly", tone: "teal" },
+  "bunt-down": { jp: "送りバント", en: "Bunt down", tone: "teal" },
+};
+
+export function resultStamp(beat: FieldBeat | null, swung: boolean): ResultStamp | null {
+  if (!beat) return null;
+  if (beat === "k") return swung ? { jp: "三振", en: "Strike three", tone: "coral" } : { jp: "見逃し三振", en: "Caught looking", tone: "coral" };
+  return STAMPS[beat] ?? null;
+}
+
+/** The stamp lands just after the settle still (CONTACT_HOLD_MS) has spoken, and clears before the next pick. */
+export const STAMP_DELAY_MS = 360;
+export const STAMP_HOLD_MS = 1500;
+
+export function stampVisible(sinceResolveMs: number): boolean {
+  return sinceResolveMs >= STAMP_DELAY_MS && sinceResolveMs < STAMP_DELAY_MS + STAMP_HOLD_MS;
+}
+
 export const BATTER_POSES = ["stance", "load", "cut", "contact", "follow", "take", "celebrate", "crushed", "trot"] as const;
 export type BatterPose = (typeof BATTER_POSES)[number];
 export const PITCHER_POSES = ["set", "windup", "release", "follow"] as const;
