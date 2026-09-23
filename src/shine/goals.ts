@@ -455,7 +455,7 @@ export function proofLine(id: GoalId, ev: PlateEvent[]): string | null {
   switch (id) {
     case "rbi": {
       const e = find("rbi", (x) => x.runs > 0);
-      return e ? `PA ${e.pa}: ${e.runs} run${e.runs > 1 ? "s" : ""} in on her ball.` : null;
+      return e ? `Her ${timeUp(e.pa)} time up: ${e.runs > 1 ? `${e.runs} runs` : "a run"} came in on her ball.` : null;
     }
     case "hit-risp":
     case "hit-late":
@@ -463,7 +463,7 @@ export function proofLine(id: GoalId, ev: PlateEvent[]): string | null {
     case "reach-twice":
     case "reach": {
       const e = find("reach", (x) => x.via === "hit" || id === "reach-once" || id === "reach-twice" || id === "reach");
-      return e ? `PA ${e.pa}: reached on a ${e.via === "hit" ? "base hit" : e.via}.` : null;
+      return e ? `Her ${timeUp(e.pa)} time up: reached on a ${e.via === "hit" ? "base hit" : e.via}.` : null;
     }
     case "steal":
     case "steal-late":
@@ -473,7 +473,7 @@ export function proofLine(id: GoalId, ev: PlateEvent[]): string | null {
     }
     case "score-from-first-single": {
       const e = find("score", (x) => x.runner === "self" && x.from === 1 && x.on === "single");
-      return e ? `Scored from 1st on a single in PA ${e.pa}'s inning.` : null;
+      return e ? "Scored from first on a single." : null;
     }
     case "score-no-hit": {
       const e = find("score", (x) => x.runner === "self" && x.selfReachedBy !== "hit");
@@ -481,15 +481,21 @@ export function proofLine(id: GoalId, ev: PlateEvent[]): string | null {
     }
     case "runners-on-at-bat": {
       const e = find("paStart", (x) => runnersOn(x.bases));
-      return e ? `PA ${e.pa} began with runners aboard.` : null;
+      return e ? `Her ${timeUp(e.pa)} time up, she came up with runners on.` : null;
     }
     case "foul-two-strike": {
       const e = find("foul", (x) => x.twoStrike);
-      return e ? `PA ${e.pa}: fouled one off with two strikes.` : null;
+      return e ? `Her ${timeUp(e.pa)} time up: fouled one off with two strikes.` : null;
     }
     default:
       return null;
   }
+}
+
+/** "first", "second", ... for her trips to the plate. Never "PA 3". */
+function timeUp(pa: number) {
+  const words = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth"];
+  return words[pa - 1] ?? ordinal(pa);
 }
 
 function ordinal(n: number) {

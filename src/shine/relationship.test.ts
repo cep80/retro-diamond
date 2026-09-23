@@ -130,7 +130,7 @@ test("Aoi's rookie year-end names the Gate miss when First Light held", () => {
   run.pgResults[1] = "met";
   const s = relationshipScene(run, "year-end");
   assert.match(s.lines[0]!, /Gate didn't hold/);
-  assert.doesNotMatch(s.lines[0]!, /Every date held/);
+  assert.doesNotMatch(s.lines[0]!, /Every big game held/);
 });
 
 test("Aoi's classic year-end keeps the Gate miss beside the dates that held", () => {
@@ -143,7 +143,7 @@ test("Aoi's classic year-end keeps the Gate miss beside the dates that held", ()
   const s = relationshipScene(run, "year-end");
   assert.match(s.lines[0]!, /Gate didn't hold/);
   assert.match(s.lines[0]!, /Lantern Classic and Night Classic did/);
-  assert.doesNotMatch(s.lines[0]!, /Every date held/);
+  assert.doesNotMatch(s.lines[0]!, /Every big game held/);
 });
 
 test("Miki's rookie year-end names the Gate miss when First Light held", () => {
@@ -167,7 +167,7 @@ test("Miki's classic year-end names both dates when the smaller ask held the pat
   run.pgResults[3] = "missed";
   const s = relationshipScene(run, "year-end");
   assert.match(s.lines[0]!, /Lantern Classic and Night Classic/);
-  assert.match(s.lines[0]!, /Neither ask held/);
+  assert.match(s.lines[0]!, /Neither one held/);
   assert.doesNotMatch(s.lines[0]!, /Everything held/);
 });
 
@@ -181,9 +181,9 @@ test("Sol's rookie year-end names the First Light miss beside the Gate that held
   assert.match(s.lines[0]!, /Gate held/);
   assert.match(s.lines[0]!, /punchouts weren't there/);
   assert.doesNotMatch(s.lines[0]!, /fastball|which pitch/);
-  run.lightCard = "One punchout. The date asked for three.";
+  run.lightCard = "One punchout. She needed three.";
   const kept = relationshipScene(run, "year-end");
-  assert.equal(kept.lines[0], "The Gate held. First Light didn't. One punchout. The date asked for three.");
+  assert.equal(kept.lines[0], "The Gate held. First Light didn't. One punchout. She needed three.");
   assert.doesNotMatch(kept.lines[0]!, /weren't there/);
 });
 
@@ -198,7 +198,7 @@ test("Sol's classic year-end names the Night miss beside the Lantern that held",
   const s = relationshipScene(run, "year-end");
   assert.match(s.lines[0]!, /Lantern Classic held/);
   assert.match(s.lines[0]!, /punchouts didn't come back to back/);
-  assert.doesNotMatch(s.lines[0]!, /crowd was quiet|that clean|Every date held/);
+  assert.doesNotMatch(s.lines[0]!, /crowd was quiet|that clean|Every big game held/);
 });
 
 test("year-end drops the miss counter and keeps the date", () => {
@@ -206,7 +206,7 @@ test("year-end drops the miss counter and keeps the date", () => {
   aoi.pgMisses = 2;
   assert.equal(
     relationshipScene(aoi, "year-end").lines[0],
-    "She's counting the dates that didn't hold the way her mother did.",
+    "She's keeping score of the big games that got away. Her mother does the same thing.",
   );
   const yuki = newRun("yuki");
   yuki.pgMisses = 2;
@@ -216,7 +216,7 @@ test("year-end drops the miss counter and keeps the date", () => {
   miki.pgMisses = 2;
   assert.equal(
     relationshipScene(miki, "year-end").lines[0],
-    "The fight was still worth watching, and someone in section 4 said so.",
+    "Not everything held. Section 4 rang the bell anyway, and she pretended not to hear it.",
   );
   const sol = newRun("sol");
   sol.turn = 20;
@@ -273,7 +273,7 @@ test("Yuki's classic year-end names both dates when neither held", () => {
   run.pgResults[3] = "missed";
   const s = relationshipScene(run, "year-end");
   assert.match(s.lines[0]!, /Lantern Classic and Night Classic/);
-  assert.match(s.lines[0]!, /Neither date held/);
+  assert.match(s.lines[0]!, /Neither one held/);
   assert.doesNotMatch(s.lines[0]!, /kept going/);
 });
 
@@ -284,7 +284,7 @@ test("Yuki's senior year-end names the dates that were sat", () => {
   run.pgResults[5] = "missed";
   run.pgResults[6] = "missed";
   const s = relationshipScene(run, "year-end");
-  assert.match(s.lines[0]!, /None of the dates held/);
+  assert.match(s.lines[0]!, /She came up short in all three/);
   assert.doesNotMatch(s.lines[0]!, /kept going|Stolen third/);
 });
 

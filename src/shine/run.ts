@@ -321,7 +321,7 @@ export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensi
     run.failStreak = { stat: null, count: 0 };
   }
   if (run.lastBreakthrough) {
-    remember(run, { kind: "breakthrough", turn: run.turn, note: `Cage Coach's breakthrough on ${run.lastBreakthrough}.`, warm: true });
+    remember(run, { kind: "breakthrough", turn: run.turn, note: `Cage Coach stayed late, and her ${run.lastBreakthrough} jumped.`, warm: true });
   }
   run.lastWork = { stat, turn: run.turn, from: before, to: run.stats[stat], outcome };
 
@@ -351,7 +351,7 @@ export function resolveYearScene(run: TraineeRun) {
   remember(run, {
     kind: "year-end",
     turn: run.turn,
-    note: run.pgMisses === 0 ? `Year ${run.year} closed with every official goal met.` : `Year ${run.year} closed with ${run.pgMisses} official miss${run.pgMisses > 1 ? "es" : ""}.`,
+    note: run.pgMisses === 0 ? `Year ${run.year} ended with every big game going her way.` : `Year ${run.year} ended with ${run.pgMisses === 1 ? "one big game" : `${run.pgMisses} big games`} that got away.`,
     warm: run.pgMisses === 0,
   });
   logTurn(run, null, "scene");
@@ -381,10 +381,10 @@ export type PlateBox = { hits?: number; walks?: number; ks?: number; won?: boole
 function tickFanBeat(run: TraineeRun) {
   if (run.fans >= 100 && run.fanStory < 100) {
     run.fanStory = 100;
-    run.fanBeat = "Alt look. The next career that inherits her wears it.";
+    run.fanBeat = "The kids at the gate are wearing her number now.";
   } else if (run.fans >= 80 && run.fanStory < 80) {
     run.fanStory = 80;
-    run.fanBeat = "Fan Favorite. The Clubhouse card goes gold.";
+    run.fanBeat = "Fan Favorite. Her Clubhouse card goes gold.";
   } else if (run.fans >= 60 && run.fanStory < 60) {
     run.fanStory = 60;
     run.fanBeat = "A park banner with her number is up in the Clubhouse.";
@@ -451,7 +451,7 @@ export function applyGameResult(
         : pitcher
           ? "The Gate: the outs weren't there."
           : reached
-            ? "The Gate: she reached. The date didn't."
+            ? "The Gate: she reached, but not the way she needed to."
             : "The Gate: she did not reach, and you kept her.",
       warm: true,
     });
@@ -488,16 +488,16 @@ export function applyGameResult(
     run.coachWarning = null;
   } else if (official) {
     if (sgMet) {
-      run.coachWarning = "The goal she came for slipped. The smaller one held. The path stays open.";
+      run.coachWarning = "She didn't get what she came for, but the smaller one held. She's still in it.";
     } else {
       run.pgMisses += 1;
       applyMood(run, pgMissMoodDrop(run.stats.guts));
       run.fans = Math.max(0, run.fans - 3);
       run.coachWarning = isMikiPath(run)
-        ? "The date slipped. Her path stays open."
+        ? "That one got away. North doesn't care, and her path stays open."
         : run.pgMisses >= 2
           ? `${turnMeta(run.turn).label} closed the Academy path.`
-          : "One more slip and the Academy path closes.";
+          : "Miss one more big game and her Academy days are over.";
       if (run.pgMisses >= 2 && !isMikiPath(run)) {
         const page = [...run.highlights].reverse().find((h) => h.kind === "game" && h.turn === run.turn);
         const date = turnMeta(run.turn).label;

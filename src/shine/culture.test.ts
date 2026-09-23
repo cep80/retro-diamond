@@ -101,7 +101,7 @@ describe("culture presentation", () => {
   it("quotes the date she sat in the fan letter", () => {
     const letter = fanLetter({
       characterId: "aoi",
-      highlights: [{ kind: "game", label: "Night Classic", line: "REACH vs Sol. PA 1: reached on a base hit." }],
+      highlights: [{ kind: "game", label: "Night Classic", line: "She got what she came for vs Sol. Her first time up: reached on a base hit." }],
     });
     assert.match(letter, /Night Classic/);
     assert.match(letter, /base hit/);
@@ -142,7 +142,7 @@ describe("culture presentation", () => {
   });
 
   it("rotates the year-start voice without a gacha tile", () => {
-    assert.match(yearVoice(2), /new voice/);
+    assert.match(yearVoice(2), /The new one/);
     assert.doesNotMatch(yearVoice(2), /Palms/);
     assert.equal(
       morningSpeech("She's moving to the Palms organization. A new voice arrives.", 2, "palms"),
@@ -150,7 +150,7 @@ describe("culture presentation", () => {
     );
     assert.equal(
       morningSpeech("She was on. The goal she came for stayed open.", 2, "palms"),
-      "She reached once. The date asked for two.",
+      "She reached once. She needed two.",
     );
     assert.equal(
       morningSpeech("She struck out. The sit never found the pitch.", 3, "palms"),

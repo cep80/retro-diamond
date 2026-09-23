@@ -63,7 +63,10 @@ test("workComparison reports the window in milliseconds for windowed stats", () 
   assert.ok(c);
   assert.ok(c.windowBeforeMs! > 0);
   assert.ok(c.windowAfterMs! > c.windowBeforeMs!);
-  assert.match(c.line, /Contact 6 → 7\. Swing window \d+ → \d+ ms\./);
+  assert.equal(c.from, 6);
+  assert.equal(c.to, 7);
+  // The numbers ride in the chips. The line says what it felt like.
+  assert.doesNotMatch(c.line, /→|\d|window/);
   assert.match(c.where, /Academy Gate/);
 });
 
@@ -72,7 +75,9 @@ test("workComparison says the window did not move on a fail", () => {
   run.lastWork = { stat: "speed", turn: 1, from: 5, to: 5, outcome: "fail" };
   const c = workComparison(run)!;
   assert.equal(c.windowBeforeMs, null);
-  assert.match(c.line, /held at 5/);
+  assert.equal(c.from, c.to);
+  assert.match(c.line, /Nothing took today/);
+  assert.doesNotMatch(c.line, /\d/);
 });
 
 test("workComparison is null without work", () => {

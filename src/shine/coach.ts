@@ -8,7 +8,17 @@ import { isPitcherStyle, officialFor, sheet, type OutingGrade } from "./bible.ts
 import { goalDefinition, type GoalId } from "./goals.ts";
 import { workPreviewWindow } from "./oracle.ts";
 import { energyBand, MOOD_LABELS, moodLevel, stationStat } from "./training.ts";
-import type { StationId, TraineeRun, TraineeStatKey } from "./types.ts";
+import type { CharacterId, StationId, TraineeRun, TraineeStatKey } from "./types.ts";
+
+/** Fresh and in a good mood: she says so herself, in her own voice. */
+const READY_LINE: Record<CharacterId, string> = {
+  aoi: "\"Um, sorry. I'm good. What are we doing today?\"",
+  reina: "\"Again. Tell me what we're fixing.\"",
+  miki: "\"Cool. The heater's actually working today. So. What's the plan?\"",
+  sol: "\"Ninety-six. What are we throwing, Jefe?\"",
+  kira: "\"Here's the deal. I'm ready. You pick, Partner.\"",
+  yuki: "\"Already stretched. What's first, Stopwatch?\"",
+};
 
 export interface CoachBrief {
   /** What the next test asks of her, in one line. */
@@ -41,12 +51,12 @@ export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeSt
     case "reach-once":
     case "reach-twice":
     case "reach":
-      return { stat: "contact", need: "Reach base. Contact puts the ball in play; Eye buys the walk." };
+      return { stat: "contact", need: "Get on base. Contact puts the ball in play; Eye earns the walk." };
     case "rbi":
     case "hit-risp":
-      return { stat: "contact", need: "A hit with runners on. Contact first; Guts widens the window when it matters." };
+      return { stat: "contact", need: "A hit with runners on. Contact first; Guts keeps her steady when it matters." };
     case "hit-late":
-      return { stat: "guts", need: "A hit in the 7th or later. Guts keeps the window open when the park is loud." };
+      return { stat: "guts", need: "A hit in the 7th or later. Guts keeps her steady when the park gets loud." };
     case "quality-abs-3":
       return { stat: "contact", need: "Three solid at-bats. Contact is the whole job." };
     case "see-3-one-pa":
@@ -55,17 +65,17 @@ export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeSt
     case "see-2-one-pa":
     case "full-count":
     case "draw-walk":
-      return { stat: "eye", need: "See pitches. Eye reads the ? out of the hand and keeps the bat on the shoulder." };
+      return { stat: "eye", need: "See pitches. Teach her to see it out of the pitcher's hand, and to keep the bat on her shoulder." };
     case "no-k":
-      return { stat: "eye", need: "Don't strike out. Eye takes the ball; Contact fouls off the strike." };
+      return { stat: "eye", need: "Don't strike out. Eye lets the ball go by; Contact fouls off the strike." };
     case "foul-two-strike":
       return { stat: "contact", need: "Foul one off with two strikes. Contact keeps her alive." };
     case "contact-breaking":
-      return { stat: "eye", need: "Bat on a breaking ball. Eye recognizes it early enough to swing." };
+      return { stat: "eye", need: "Bat on a breaking ball. Eye picks up the spin early enough to swing." };
     case "outfield-ball":
       return { stat: "power", need: "Drive one to the outfield. Power lets it travel." };
     case "runners-on-at-bat":
-      return { stat: "contact", need: "Come up with runners on. Reach earlier so the lineup turns with traffic." };
+      return { stat: "contact", need: "Come up with runners on. Get on early, so there's traffic when she's back up." };
     case "steal":
     case "steal-late":
     case "steal-risp":
@@ -85,11 +95,11 @@ export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeSt
       return { stat: "stuff", need: "Strikeouts. Stuff makes the swing miss." };
     case "innings-5":
     case "quality-start":
-      return { stat: "stamina", need: "Go deep. Stamina keeps the arm honest into the fifth and sixth." };
+      return { stat: "stamina", need: "Go deep. Stamina keeps her arm strong into the fifth and sixth." };
     case "strand-inherited":
     case "escape-jam":
     case "escape-loaded-jam":
-      return { stat: "guts", need: "Runners on, no runs in. Guts holds the window when the inning is on fire." };
+      return { stat: "guts", need: "Runners on, nobody scores. Guts keeps her calm when the inning is on fire." };
     case "curve-strike":
       return { stat: "stuff", need: "A curve for a strike. Stuff gives it bite; Control lands it." };
     case "walk-nobody":
@@ -107,26 +117,25 @@ export function coachBrief(run: TraineeRun): CoachBrief {
   const goalId = official?.pgId ?? null;
   const { stat, need } = goalNeed(goalId, pitcher);
   const station = STAT_STATION[stat];
-  const value = run.stats[stat];
   const turnsAway = Math.max(0, next.turn - run.turn);
   const energyLabel = energyBand(run.energy);
   const moodLabel = MOOD_LABELS[moodLevel(run.mood)];
 
-  let why = `${cap(stat)} ${value}. The most direct line to ${next.label}.`;
+  let why = `${cap(stat)} work is the quickest way to get her ready for ${next.label}.`;
   let choiceStation = station;
   let choiceStat = stat;
   if (run.energy < 40 && turnsAway <= 2) {
     choiceStation = "off-day";
-    why = `Energy ${Math.round(run.energy)} with ${next.label} in ${turnsAway}. Rest is the coaching call; tired work fails more and she carries it into the game.`;
+    why = `She's worn out, and ${next.label} is almost here. Rest her. Tired work goes wrong, and she'd carry it into the game.`;
   } else if (run.energy < 25) {
     choiceStation = "treatment";
-    why = `Energy ${Math.round(run.energy)}. Nothing trains through that. Trainer's room.`;
+    why = "She's running on empty. Nothing trains through that. Send her to the trainer's room.";
   } else if (run.lastWork && run.lastWork.stat === stat && run.lastWork.outcome === "fail" && run.lastWork.turn === run.turn - 1) {
     const alt = secondNeed(goalId, pitcher);
     if (alt && alt !== stat) {
       choiceStation = STAT_STATION[alt];
       choiceStat = alt;
-      why = `${cap(stat)} did not take yesterday. ${cap(alt)} also moves ${next.label}, and a different station resets the streak.`;
+      why = `${cap(stat)} work did not take yesterday. ${cap(alt)} helps for ${next.label} too, and a different station breaks the bad run.`;
     }
   }
 
@@ -134,10 +143,10 @@ export function coachBrief(run: TraineeRun): CoachBrief {
     run.energy < 25
       ? "She's running on nothing."
       : run.energy < 45
-        ? "Tired. One more push, or a day."
+        ? "Tired. One more push, or a day off."
         : moodLevel(run.mood) <= 1
-          ? "Body's fine. Head isn't. Work she can win."
-          : "Ready. Pick the thing the next test asks for.";
+          ? "Body's fine. Head isn't. Give her work she can win."
+          : READY_LINE[run.characterId];
 
   return {
     need,
@@ -207,34 +216,37 @@ export function workComparison(run: TraineeRun): WorkComparison | null {
   const before = windowed ? Math.round(workPreviewWindow(w.stat, w.from, run.carry) * 2000) : null;
   const after = windowed ? Math.round(workPreviewWindow(w.stat, w.to, run.carry) * 2000) : null;
   const next = nextOfficial(run.turn);
-  const where = `Shows up at ${next.label}.`;
+  const where = `You'll see it at ${next.label}.`;
   let line: string;
   if (w.to === w.from) {
-    line = w.outcome === "bad-fail" ? `${cap(w.stat)} held at ${w.from}. She's worn; the window did not move.` : `${cap(w.stat)} held at ${w.from}. Not today.`;
-  } else if (before != null && after != null) {
-    line = `${cap(w.stat)} ${w.from} → ${w.to}. Swing window ${before} → ${after} ms.`;
+    line = w.outcome === "bad-fail" ? "Nothing took today. She's worn out, and it showed." : "Nothing took today. It happens.";
   } else {
-    line = `${cap(w.stat)} ${w.from} → ${w.to}. ${statMeaning(w.stat)}`;
+    line = gainLine(w.stat);
   }
   return { stat: w.stat, from: w.from, to: w.to, windowBeforeMs: before, windowAfterMs: after, line, where };
 }
 
-function statMeaning(stat: TraineeStatKey) {
+/** What the work felt like. The numbers ride in the chips (from/to, window ms), never in this line. */
+function gainLine(stat: TraineeStatKey) {
   switch (stat) {
+    case "contact":
+      return "Something clicked in the cage. She won't say what.";
+    case "power":
+      return "The ball is jumping off her bat in batting practice.";
+    case "guts":
+      return "She's steadier with the game on the line.";
     case "speed":
-      return "Steal odds and the extra base.";
+      return "Her first step is quicker. The catcher will notice.";
     case "eye":
-      return "The ? resolves earlier in flight.";
+      return "She's picking up the spin sooner.";
     case "wit":
-      return "More of the pitcher's book on the HUD.";
+      return "She's starting to read the pitcher's habits.";
     case "stuff":
-      return "More swings miss.";
+      return "Her pitches are moving more. Hitters will miss more.";
     case "control":
-      return "The glove is a bigger target.";
+      return "She's hitting the glove more often.";
     case "stamina":
-      return "The arm holds deeper into the game.";
-    default:
-      return "";
+      return "Her arm is holding up deeper into the game.";
   }
 }
 
@@ -242,13 +254,13 @@ function statMeaning(stat: TraineeStatKey) {
 export function outingLabel(grade: OutingGrade): { name: string; meaning: string } {
   switch (grade) {
     case "A":
-      return { name: "Full outing", meaning: "She goes the distance. The date stays until the inning is hers." };
+      return { name: "Full outing", meaning: "She goes the distance. She stays out there until the game is hers." };
     case "D":
-      return { name: "Closer sprint", meaning: "The ninth only." };
+      return { name: "Closer", meaning: "The ninth only." };
     case "G":
-      return { name: "Long fight", meaning: "Guts turns on when she trails by 5." };
+      return { name: "Long fight", meaning: "She digs in when she trails by 5." };
     default:
-      return { name: "Standard", meaning: "Guts turns on in high leverage." };
+      return { name: "Standard", meaning: "She digs in when the game is close and late." };
   }
 }
 

@@ -61,8 +61,8 @@ export function finaleUnlocked(run: TraineeRun) {
 }
 
 export function finaleGap(run: TraineeRun) {
-  if (finaleFloorMet(run)) return "Diamond Finale is still the last date.";
-  return "Diamond Finale is still the last date. She hasn't grown all the way into it.";
+  if (finaleFloorMet(run)) return "The Diamond Finale is still ahead.";
+  return "The Diamond Finale is still ahead. She hasn't grown all the way into it.";
 }
 
 export function careerClosesEarly(run: TraineeRun) {
@@ -78,7 +78,7 @@ export function seriesFinaleLine(run: TraineeRun): string | null {
 
 /** The fold sentence is the two-miss close. Miki's path stays a countdown. */
 export function yearFoldLine(run: TraineeRun, dateName: string, countdown: string) {
-  return careerClosesEarly(run) ? `The year folds at ${dateName}.` : countdown;
+  return careerClosesEarly(run) ? `Her Academy days end here, at ${dateName}.` : countdown;
 }
 
 export function postgameLeaveLabel(run: TraineeRun, finale: boolean) {
@@ -104,13 +104,13 @@ function closingDateLabel(run: TraineeRun): string | null {
 
 export function endingQuote(run: TraineeRun, rank: EndingRank) {
   const who = sheet(run.characterId);
-  if (rank === "never-quit") return "The cowbell does not wait for a win. They cheer for her anyway.";
+  if (rank === "never-quit") return "Section 4 brought a second cowbell. They ring both for her anyway.";
   if (rank === "S") return `${who.endings.show} 胴上げ. Legend.`;
   if (rank === "A") return who.endings.show;
   if (rank === "B") {
     const finale = officialFor(run.characterId, 60);
     if (run.pgResults[6] === "met" && finale?.pgId === "k-side") return "Diamond Finale. She struck out the side.";
-    if (run.pgResults[6] !== "pending") return "She sat the last date. The show stayed one date short.";
+    if (run.pgResults[6] !== "pending") return "She played the Diamond Finale. The Show stayed one game short.";
     return who.endings.dugout;
   }
   if (rank === "D") {
@@ -267,9 +267,19 @@ export function sparkGapLine(cards: ClubhouseCard[]) {
   const floor = styleFloors(who.style)[0];
   if (!floor) return `Next: Coach ${next}.`;
   const spark = last.sparks.find((s) => s.kind === floor.key);
-  if (!spark) return `Next: Coach ${next}. The year she carries is still unwritten.`;
-  return `${who.name} carries ${spark.kind}. Next: Coach ${next}.`;
+  if (!spark) return `Next: Coach ${next}. ${WAITING[nextGirlId(last.characterId)]}`;
+  return `${who.name} passes on what she learned about ${spark.kind}. Next: Coach ${next}.`;
 }
+
+/** Where the next girl already is when the title names her. */
+const WAITING: Record<TraineeRun["characterId"], string> = {
+  aoi: "Aoi's already in the cage at Koi. She hasn't turned the machine on.",
+  reina: "Reina's in the Koi bullpen, throwing at the same spot.",
+  miki: "Miki's in North's cage, swinging in two shirts.",
+  sol: "Sol's in the Dusters' pen, and it's already ninety-four degrees.",
+  kira: "Kira's waiting by the bullpen door.",
+  yuki: "Yuki's been stretching since six.",
+};
 
 export function inheritSparks(run: TraineeRun, sparks: Spark[]) {
   const who = sheet(run.characterId);
@@ -301,14 +311,14 @@ export function sparkEffectLine(kind: SparkKind) {
   if (kind === "contact") return "She finds more of the barrel";
   if (kind === "power") return "The ball travels farther";
   if (kind === "eye") return "The hand gives it up sooner";
-  if (kind === "guts") return "The big spots sit differently";
+  if (kind === "guts") return "She's calmer in the big spots";
   if (kind === "speed") return "The first step is hers";
-  if (kind === "wit") return "The last-3 column talks";
-  if (kind === "stuff") return "The secondary bites";
-  if (kind === "control") return "The glove is a target";
-  if (kind === "stamina") return "The outing holds";
-  if (kind === "legend") return "Wild card — becomes her style spark";
-  return "Half-power polish";
+  if (kind === "wit") return "She remembers the last three pitches";
+  if (kind === "stuff") return "Her other pitches bite";
+  if (kind === "control") return "She hits the glove";
+  if (kind === "stamina") return "Her arm lasts longer";
+  if (kind === "legend") return "A habit nobody taught her";
+  return "A little extra shine";
 }
 
 export function sparkCount(sparks: Spark[], kind: SparkKind) {
@@ -363,7 +373,7 @@ export function rememberedChoice(run: TraineeRun) {
   const leadN = run.calendar.filter((e) => e.statTrained === lead).length;
   const nextN = run.calendar.filter((e) => e.statTrained === next).length;
   const pitcher = isPitcherStyle(sheet(run.characterId).style);
-  if (!lead || leadN === 0) return "The year stayed even. No date owned the work.";
+  if (!lead || leadN === 0) return "You split the work down the middle. She noticed.";
   if (next && nextN > 0 && leadN < nextN * 2) {
     return pitcher ? "The pen and the poles. She felt both." : "Cage and the poles. She felt both.";
   }
@@ -402,7 +412,7 @@ export function careerStill(run: TraineeRun): CareerStill {
       : `The ${place} stayed empty. ${coach} never got the late night.`;
   let frame = "Lanterns stay lit.";
   if (rank === "S" || rank === "A") frame = "胴上げ.";
-  else if (rank === "never-quit") frame = "Cowbell. They do not wait for a win.";
+  else if (rank === "never-quit") frame = "The bell is still going.";
   else if (rank === "B") frame = pitcher ? "She stood the rubber anyway." : "She walked off anyway.";
   else if (rank === "D") {
     const date = closingDateLabel(run);

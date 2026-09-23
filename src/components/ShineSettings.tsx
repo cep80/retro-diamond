@@ -85,7 +85,7 @@ export function ShineSettings() {
         <section className="mt-4 rounded-2xl border border-line bg-panel/90 p-4">
           <p className="font-display text-[10px] uppercase tracking-widest text-gold">Play</p>
           <p className="mt-3 font-ui text-sm text-cream/80">
-            Sit the zone under her. Press Go. Watch her. She picks the pitch. The mound is the same verb. Nothing is timed in flight.
+            Tap the spot in the zone where she should look. Press Go. Watch her. She decides the swing. Pitching works the same way. Nothing is timed while the ball is in the air.
           </p>
           <label className="mt-3 flex items-start gap-3 font-ui text-sm">
             <input
@@ -124,7 +124,7 @@ export function ShineSettings() {
               Reset
             </button>
           </div>
-          <p className="mt-1 font-ui text-xs text-muted">Enter or Space is Go. The 3×3 is the sit.</p>
+          <p className="mt-1 font-ui text-xs text-muted">Enter or Space is Go. The 3×3 grid is where she looks.</p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {KEY_LABELS.map((k) => (
               <li key={k.id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 px-3 py-2">
@@ -199,7 +199,7 @@ export function ShineSettings() {
             Done
           </PixelBtn>
           <PixelBtn variant="ghost" className="h-12" onClick={openHelp}>
-            How a date works
+            How it works
           </PixelBtn>
         </div>
       </div>
@@ -209,20 +209,20 @@ export function ShineSettings() {
 
 const TEACH_CARDS: { title: string; body: string }[] = [
   {
-    title: "The race",
-    body: "You are her Coach. Sit a cell on the zone under her, press Go, and watch. She decides the swing from who she is and where you sat her. Nothing is tapped in flight.",
+    title: "The at-bat",
+    body: "You are her Coach. Tap the spot in the zone where she should look, press Go, and watch. She decides the swing from who she is and where you told her to look. Nothing is tapped while the ball is in the air.",
   },
   {
-    title: "The sit",
-    body: "The 3×3 is where she looks. The right cell tightens her hands. A cell two away leaves her guessing. That is the whole pick.",
+    title: "Where she looks",
+    body: "The 3×3 grid is where she looks. The right square tightens her hands. A square two away leaves her guessing. That is the whole choice.",
   },
   {
     title: "The mound",
-    body: "Reina, Sol, and Kira throw. Sit the glove under her, press Go. She picks the pitch. Same verb as the plate.",
+    body: "Reina, Sol, and Kira throw. Show her where the catcher sets up, press Go. She picks the pitch. It works just like the plate.",
   },
   {
-    title: "The date",
-    body: "She came for something: REACH, HOLD, COMMAND, FIGHT, RUN. You watch whether she got it. The smaller ask can hold one miss. A second official miss folds the year.",
+    title: "The big games",
+    body: "Every girl has a promise to keep. Each big game asks one thing of her, like getting on base or getting three outs, and you watch whether she does it. If she gets the smaller thing instead, it doesn't count against her. Miss two big games and her Academy days are over.",
   },
   {
     title: "Rivals",
@@ -230,11 +230,11 @@ const TEACH_CARDS: { title: string; body: string }[] = [
   },
   {
     title: "Mood and the shop",
-    body: "The morning shows her mood. One tap, one line. The shop is looks only. Sparks, the plate, Clubhouse cards, the Finale, and Never Quit are never sold.",
+    body: "The morning shows her mood. One tap, one line. The shop sells looks only. What she learns, her games, Clubhouse cards, the Finale, and Never Quit are never for sale.",
   },
   {
     title: "Training",
-    body: "One station. One line. The countdown to the next date stays on.",
+    body: "One station a day. One line about how it went. The countdown to the next big game stays on screen.",
   },
 ];
 
@@ -246,7 +246,7 @@ export function ShineHelp() {
       <div className="title-wash absolute inset-0" />
       <div className="relative z-10 mx-auto max-w-3xl px-4 py-8 sm:px-8">
         <div className="flex items-center justify-between gap-3">
-          <p className="episode-chip w-fit">How a date works</p>
+          <p className="episode-chip w-fit">How it works</p>
           <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={closeOverlay}>
             Back
           </PixelBtn>

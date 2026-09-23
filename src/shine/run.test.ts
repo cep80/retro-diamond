@@ -116,7 +116,7 @@ describe("Aoi Rookie calendar", () => {
     assert.equal(run.pgResults[1], "missed");
     assert.equal(run.fans, 7);
     assert.equal(run.mood, 0);
-    assert.match(run.coachWarning ?? "", /Academy path/);
+    assert.match(run.coachWarning ?? "", /Academy days/);
   });
 
   it("tells Miki a counted miss leaves her path open", () => {
@@ -125,14 +125,14 @@ describe("Aoi Rookie calendar", () => {
     applyGameResult(run, "stretch", false, false, false, false);
     assert.equal(run.pgMisses, 1);
     assert.match(run.coachWarning ?? "", /path stays open/);
-    assert.doesNotMatch(run.coachWarning ?? "", /Academy path closes|One more slip/);
+    assert.doesNotMatch(run.coachWarning ?? "", /Academy days are over|Miss one more/);
   });
 
   it("does not carry a miss warning onto a date she held", () => {
     const run = newAoiRun();
     run.turn = 18;
     applyGameResult(run, "first-light", false, false, false, false);
-    assert.match(run.coachWarning ?? "", /One more slip/);
+    assert.match(run.coachWarning ?? "", /Miss one more/);
     run.turn = 28;
     applyGameResult(run, "lantern-classic", true, false, true, false);
     assert.equal(run.coachWarning, null);
@@ -227,7 +227,7 @@ describe("Aoi Rookie calendar", () => {
     applyGameResult(run, "first-light", true, false, false, false);
     assert.equal(run.fans, 100);
     assert.equal(run.fanStory, 100);
-    assert.match(run.fanBeat ?? "", /Alt look/);
+    assert.match(run.fanBeat ?? "", /wearing her number/);
   });
 
   it("fires the Cage Coach scene without a work choice", () => {

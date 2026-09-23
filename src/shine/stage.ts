@@ -77,7 +77,7 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
       return "Three pitches in one look.";
     }
     if (game.pgId === "no-k") return "She didn't strike out.";
-    if (game.pgId === "foul-two-strike") return "She fouled one off with two strikes. The fight was still worth watching.";
+    if (game.pgId === "foul-two-strike") return "She fouled one off with two strikes and stayed alive.";
     if (game.pgId === "full-count") return "She took it to 3-2.";
     if (game.pgId === "contact-breaking") return "She put the bat on a breaking ball.";
     if (game.pgId === "runners-on-at-bat") return "She came up with runners on.";
@@ -94,12 +94,12 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
   }
   if (game.pgId === "see-3-one-pa") {
     const n = game.maxPaPitches;
-    if (n >= 2) return "Two pitches in the look. The date asked for three.";
-    if (n === 1) return "One pitch in the look. The date asked for three.";
+    if (n >= 2) return "Two pitches in the look. She needed three.";
+    if (n === 1) return "One pitch in the look. She needed three.";
     return "The look never got to three pitches.";
   }
   if (game.pgId === "no-k" && game.struckOut) return "She struck out.";
-  if (game.pgId === "foul-two-strike") return "The two-strike foul didn't come. The fight was still worth watching.";
+  if (game.pgId === "foul-two-strike") return "The two-strike foul didn't come. She kept swinging anyway.";
   if (game.pgId === "full-count") return "The count never got to 3-2.";
   if (game.pgId === "contact-breaking") return "The breaking ball never met the bat.";
   if (game.pgId === "runners-on-at-bat") return "She never came up with runners on.";
@@ -110,7 +110,7 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
   }
   if (game.pgId === "steal-risp") {
     const plain = game.events.some((e) => e.t === "stealResult" && e.safe && !e.risp);
-    return plain ? "She stole. The date asked for a runner in scoring position." : "The steal with a runner in scoring position didn't come.";
+    return plain ? "She stole, but nobody was in scoring position yet." :"The steal with a runner in scoring position didn't come.";
   }
   if (game.pgId === "score-from-first-single") return "She didn't score from first.";
   if (game.pgId === "score-no-hit") {
@@ -120,22 +120,22 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
   const last = game.lastPitches.at(-1);
   if (game.hits > 0 || game.walks > 0) {
     const on = game.hits + game.walks;
-    if (game.pgId === "reach-twice" && on < 2) return "She reached once. The date asked for two.";
-    if (game.pgId === "hit-late") return game.hits > 0 ? "She hit. It was early." : "She walked. The date wanted a hit, late.";
+    if (game.pgId === "reach-twice" && on < 2) return "She reached once. She needed two.";
+    if (game.pgId === "hit-late") return game.hits > 0 ? "She hit. It was early." : "She walked. She needed a hit, and a late one.";
     if (game.pgId === "hit-risp") {
       const walk = game.sgMet ? " The walk held." : "";
       return game.hits > 0 ? `She hit. The runners weren't on.${walk}` : `The hit with runners on didn't come.${walk}`;
     }
-    return on === 1 ? "She reached once. It wasn't the date." : "She was on. It wasn't the date.";
+    return on === 1 ? "She reached once. Not the way she needed to." : "She got on. Not the way she needed to.";
   }
   if (game.struckOut) {
     if (game.qualityAbs > 0) return "She put the ball in play. She never got on.";
-    return "She struck out. The sit never found the pitch.";
+    return "Strike three. She was waiting on the wrong pitch.";
   }
-  if (game.lastContact === "miss") return "Swing through. The ghost sat where the ball crossed.";
+  if (game.lastContact === "miss") return "Swing and a miss. Right where she was looking, too.";
   if (game.lastContact === "hit" || game.lastContact === "barrel") return "In play. She didn't reach.";
   if (last && last.type !== "fastball" && run.stats.eye < 9) return "The breaking ball stayed a question.";
-  if (game.lastContact === "foul-tip") return "Foul tip. Timing was there. The sit was a cell off.";
-  if (game.lastContact === "foul") return "Pulled foul. She was on time. Wrong cell.";
+  if (game.lastContact === "foul-tip") return "Foul tip. The timing was there. She was looking a little off it.";
+  if (game.lastContact === "foul") return "Pulled foul. Good timing, wrong spot. She knows.";
   return "She didn't get what she came for.";
 }

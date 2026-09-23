@@ -80,14 +80,14 @@ const RETIRED_REACH = "She was on. The goal she came for stayed open.";
 const RETIRED_K = "She struck out. The sit never found the pitch.";
 
 export function yearVoice(year: 1 | 2 | 3) {
-  if (year === 2) return "Last year's coach moved on. A new voice arrives.";
+  if (year === 2) return "Last year's coach took a job in Osaka. The new one shows up with donuts.";
   if (year === 3) return "The Stretch is next.";
   return "The year is open.";
 }
 
 /** A saved miss line from before the reach count still names what she did. */
 export function dateSpeech(line: string) {
-  if (line === RETIRED_REACH) return "She reached once. The date asked for two.";
+  if (line === RETIRED_REACH) return "She reached once. She needed two.";
   if (line === RETIRED_K) return "She put the ball in play. She never got on.";
   return line;
 }
@@ -169,27 +169,27 @@ export const VERSES: Record<CharacterId, [string, string, string]> = {
   reina: [
     "レイナ — Cold Count. One more strike.",
     "The 応援団 holds the note until she nods.",
-    "They start it before she leaves the bullpen. COMMAND.",
+    "They start it before she leaves the bullpen. レイナ.",
   ],
   miki: [
     "Cowbell for Miki. They do not wait for a win.",
-    "North still sings at 8–1. FIGHT.",
+    "North still sings when it's 8–1.",
     "The bell is already going when she leaves the on-deck circle.",
   ],
   sol: [
-    "Red Mesa. Heat is not a metaphor.",
+    "Red Mesa on the organ. The radar gun reads a hundred and one.",
     "Gulf wind in the walk-up. She does not smile.",
     "They start it at the warning track. Sol.",
   ],
   kira: [
     "Closer entrance. The ninth is the only inning.",
     "Stars point at the bullpen door, not the sky.",
-    "They start it at 11. HOLD.",
+    "They start it the second the bullpen door opens.",
   ],
   yuki: [
     "Palm steal. She does not wait on a walk.",
-    "Dirt on the white pants is the still.",
-    "They start it as she takes a lead. RUN.",
+    "Dirt all over the white pants. Nobody's surprised.",
+    "They start it as she takes her lead.",
   ],
 };
 
@@ -207,32 +207,32 @@ const RECAP_JP = [
   "The towels keep time with her name.",
   "The bleachers kept the verse.",
   "Koi holds. The booth stays quiet.",
-  "She bows to the field. Flavor.",
+  "She bows to the field before she bows to anyone else.",
   "The last verse is still in the bleachers.",
   "The pinch of dirt stays in the pocket.",
 ];
 
 const RECAP_BLEND = [
   "Cowbell in the 7th. North does not wait.",
-  "Blend park. Quiet gloves, loud bell.",
+  "North Field. Nobody claps, but the bell never stops.",
   "They sing anyway. That is the point.",
   "Inning turns. The bell does not.",
   "North Field keeps the losing crowd.",
   "She heard the bell before the pitch.",
   "The booth calls it a fight, not a result.",
   "Rain on the cowbell. Still going.",
-  "FIGHT is the only verb that fits.",
-  "They cheer for her, not the board.",
+  "The bell says what the scoreboard won't.",
+  "Somebody in section 4 brought a second cowbell.",
 ];
 
 const RECAP_US = [
   "Walk-up sting. The dugout stays put.",
-  "PA plays her hook. No encore promised.",
+  "The organ plays her four bars. She's already in the box.",
   "In the 7th, the organ finds her.",
   "Dugout step. Cap. Crowd.",
   "The booth stays with her. The score can wait.",
   "Harbor wind. The lights stay on.",
-  "Stars. Bullpen door, not the sky.",
+  "A man behind the dugout eats a hot dog like it owes him money.",
 ];
 
 export function recapLine(parkId: string, inning: number): string {

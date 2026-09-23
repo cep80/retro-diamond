@@ -97,7 +97,7 @@ function postGate(id: CharacterId, met: boolean, m: CoachMemory | null, wm: Retu
       ];
     case "miki":
       return [
-        met ? "She saw her pitches. Fought the count until it gave. The cowbell section knows her name now." : "The count didn't give. She's still in the box in her head.",
+        met ? "She saw her pitches. Fought the count until it gave. Section 4 rang the bell the whole way to the bus." : "The count didn't give. She's still in the box in her head.",
         quote ?? "\"You stayed after.\" She's surprised, and covering it. \"Okay.\"",
         wm === "strained" ? "\"Week eleven's coming. Just so you know I'm counting too.\"" : "\"Week eleven's coming.\" She almost smiles. \"I'm not counting anymore, Coach.\"",
       ];
@@ -141,7 +141,7 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
       const nightHeld = run.pgResults[3] === "met";
       const open =
         misses > 0
-          ? "She's counting the dates that didn't hold the way her mother did."
+          ? "She's keeping score of the big games that got away. Her mother does the same thing."
           : rookie && !gateHeld && lightHeld
             ? "The Gate didn't hold. First Light did."
             : rookie && !lightHeld
@@ -150,7 +150,7 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
                 ? "The Gate didn't hold. Lantern Classic and Night Classic did."
                 : run.turn <= 40 && (!lanternHeld || !nightHeld)
                   ? "Lantern Classic and Night Classic. One of them slipped."
-                  : "Every date held. She hands you the lineup card from the last one; she kept it.";
+                  : "Every big game held. She hands you the lineup card from the last one; she kept it.";
       return [
         open,
         quote ?? "\"You saw things. You said them.\" That's the whole review.",
@@ -175,16 +175,16 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
       const nightHeld = run.pgResults[3] === "met";
       const open =
         clean && rookie && !gateHeld
-          ? "The Gate didn't hold. First Light did. The fight was still worth watching."
+          ? "The Gate didn't hold. First Light did. Section 4 rang the bell both times."
           : classic && !rookie && !lanternHeld && !nightHeld
-            ? "Lantern Classic and Night Classic. Neither ask held. The fight was still worth watching."
+            ? "Lantern Classic and Night Classic. Neither one held. The cowbell never stopped."
             : classic && !rookie && !lanternHeld
-              ? "Lantern Classic didn't hold. Night Classic did. The fight was still worth watching."
+              ? "Lantern Classic didn't hold. Night Classic did. She'll tell you about the fouls first."
               : classic && !rookie && !nightHeld
-                ? "Night Classic didn't hold. Lantern Classic did. The fight was still worth watching."
+                ? "Night Classic didn't hold. Lantern Classic did. She counts the fouls, not the misses."
                 : clean
                   ? "Everything held. North doesn't know what to do with that. Neither does she."
-                  : "The fight was still worth watching, and someone in section 4 said so.";
+                  : "Not everything held. Section 4 rang the bell anyway, and she pretended not to hear it.";
       return [
         open,
         quote ?? "\"Past week eleven.\" She says it like a score.",
@@ -210,14 +210,14 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
                 : classic && !rookie && !lanternHeld && nightHeld
                   ? "Night Classic held. Lantern Classic didn't."
                   : classic && !rookie && !lanternHeld && !nightHeld
-                    ? "Lantern Classic and Night Classic. Neither date held."
+                    ? "Lantern Classic and Night Classic. Neither one held."
                     : clean
-                      ? "Every date held. She threw them. She won't say which pitch."
+                      ? "Every big game held. She threw them. She won't say which pitch."
                       : "She'll tell you the inning, not the excuse.";
       return [
         open,
         quote ?? "\"The changeup's mine now. I'm not giving you credit for it out loud.\"",
-        wm === "strained" ? "\"The heat's not a metaphor. Neither is the arm.\"" : "\"Four pitches next year. All of them mine.\"",
+        wm === "strained" ? "\"Ninety-nine, Jefe. That's the arm talking. Give it a week.\"" : "\"Four pitches next year. All of them mine.\"",
       ];
     }
     case "kira": {
@@ -230,7 +230,7 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
           : classic && lanternHeld && !nightHeld
             ? "Lantern Classic held. Night Classic didn't."
             : classic && !lanternHeld && !nightHeld
-              ? "Lantern Classic and Night Classic. Neither date held."
+              ? "Lantern Classic and Night Classic. Neither one held."
               : clean
                 ? "Every ninth held. She points at the bullpen door on her way out."
                 : misses === 1
@@ -260,14 +260,14 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
           : classic && lanternHeld && !nightHeld
             ? "Lantern Classic held. Night Classic didn't."
             : classic && !lanternHeld && !nightHeld
-              ? "Lantern Classic and Night Classic. Neither date held."
+              ? "Lantern Classic and Night Classic. Neither one held."
               : misses > 0
                 ? "She'll talk about the one that got away."
                 : rookie && !gateHeld && lightHeld
                   ? "The Gate didn't hold. First Light did."
                   : rookie && !lightHeld
                     ? "First Light slipped. The legs are still there."
-                    : "Every date, she reached. Most of them, she kept going.";
+                    : "Every big game, she reached. Most of them, she kept going.";
       return [
         open,
         quote ?? "\"You stopped holding me in May. That's when it started working.\"",

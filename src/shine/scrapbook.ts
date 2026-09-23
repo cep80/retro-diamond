@@ -31,8 +31,8 @@ export function gameHighlight(run: TraineeRun, kind: string, pgMet: boolean, sgM
   const vs = record && !(pitching && record.arm === "academy") ? ` vs ${rivalName(record.arm)}` : "";
   let line: string;
   if (record?.summary) line = `${record.summary}${vs}.`;
-  else if (pgMet && proof) line = `${who.pgVerb}${vs}. ${proof}`;
-  else if (pgMet) line = `${who.pgVerb}${vs}.`;
+  else if (pgMet && proof) line = `She got what she came for${vs}. ${proof}`;
+  else if (pgMet) line = `She got what she came for${vs}.`;
   else if (sgMet) line = `The goal she came for slipped${vs}. The smaller one held.`;
   else line = `The goal she came for slipped${vs}.`;
   return { turn: run.turn, label, line, kind: "game" };

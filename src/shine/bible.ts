@@ -83,7 +83,7 @@ const RAW_BIBLE: RawSheet[] = [
     endings: {
       miss2: "The Academy path closed. She still ran it.",
       lantern: "Lanterns stay lit for the ones who didn't make the Show.",
-      dugout: "She watched from the dugout. The diamond still knew her name.",
+      dugout: "She watched from the dugout, scorebook open, pencil going.",
       show: "お立ち台. She does not look at the camera until you nod.",
     },
     stats: { contact: 7, speed: 6, eye: 7, power: 4, guts: 7, wit: 5, stuff: 3, control: 4, stamina: 8 },
@@ -109,9 +109,9 @@ const RAW_BIBLE: RawSheet[] = [
     pgVerb: "COMMAND",
     rival: "sol",
     sg: "Record the outs. The Gate still opens if COMMAND slips.",
-    past: "She has never walked a man in the Lantern Classic, and it is starting to break her.",
+    past: "She has never walked a batter in the Lantern Classic, and it is starting to break her.",
     letters:
-      "I keep the scorecard from your second Lantern Classic — eighteen columns, not one walk. My uncle coached Koi juniors for forty years and said you were the second pitcher he had ever seen who never looked at the runners. The third batter that night was Watanabe, cleanup, who had taken you deep in July — you threw him five fastballs and he watched three of them. That is not a game story. That is a lesson.",
+      "I keep the scorecard from your second Lantern Classic — eighteen columns, not one walk. My uncle coached Koi juniors for forty years and said you were the second pitcher he had ever seen who never looked at the runners. The third batter that night was Watanabe, cleanup, who had taken you deep in July — you threw her five fastballs and she watched three of them. That is not a game story. That is a lesson.",
     yearStills: {
       rookie: "Gate. She took the ball before the umpire offered it.",
       classic: "Lantern Classic. No walks. The sequence was perfect. That is the part that costs her.",
@@ -189,11 +189,11 @@ const RAW_BIBLE: RawSheet[] = [
     pgVerb: "COMMAND",
     rival: "reina",
     sg: "Record an out at the Gate. Two strikeouts at First Light.",
-    past: "The girl you fear on the calendar. Heat is not a metaphor.",
+    past: "Sol from the Dusters. Throws a hundred and one and apologizes to nobody.",
     letters:
-      "The Dusters played in a hundred-and-two degrees the afternoon you struck out eight and walked none in five innings against Academy Central. My grandfather runs the grounds crew and said the dirt was so dry your cleat prints disappeared between batters. The battery was Fuentes, your junior catcher, who caught everything back-handed when it ran inside. The only batter who touched you was number seven, who fouled a fastball off his forearm and stayed in.",
+      "The Dusters played in a hundred-and-two degrees the afternoon you struck out eight and walked none in five innings against Academy Central. My grandfather runs the grounds crew and said the dirt was so dry your cleat prints disappeared between batters. The battery was Fuentes, your junior catcher, who caught everything back-handed when it ran inside. The only batter who touched you was number seven, who fouled a fastball off her forearm and stayed in.",
     yearStills: {
-      rookie: "Gate. The opener. The heat was not a metaphor, and neither was the fastball.",
+      rookie: "Gate. The opener. Fastball after fastball, and nobody caught up.",
       classic: "Night Classic. Consecutive strikeouts. The crowd was quiet because it was that clean.",
       senior: "Series. Six innings, two runs, quality start. The Dusters stayed dry.",
     },
@@ -201,7 +201,7 @@ const RAW_BIBLE: RawSheet[] = [
     walkUp: "Red Mesa",
     curtainCall: "Dugout. She does not smile in the still.",
     endings: {
-      miss2: "The Academy path closed. The Gulf wind still knew her name.",
+      miss2: "The Academy path closed. Sol ices the arm like there's a game tomorrow.",
       lantern: "Heat without the eighth. She walked off anyway.",
       dugout: "Dugout. She does not smile in the still.",
       show: "Dugout. She does not smile in the still.",
@@ -229,7 +229,7 @@ const RAW_BIBLE: RawSheet[] = [
     pgVerb: "HOLD",
     rival: "sol",
     sg: "Record an out at the Gate. Hold the ninth at First Light.",
-    past: "Sprint. The ninth is the only inning that counts.",
+    past: "She only pitches the ninth, and she thinks that's the only inning that counts.",
     letters:
       "I got to Stars on the Metro because I missed the last bus, walked in during the eighth, one-run lead, you already warming in the pen. My seat was behind the bullpen and you were seven feet away, bouncing on your toes, and the ninth was not even set yet. When you came out they played the walk-up and you pointed at the bullpen door — not the crowd, not the camera, the door. I did not understand it until someone told me that is where you go back to.",
     yearStills: {
@@ -271,7 +271,7 @@ const RAW_BIBLE: RawSheet[] = [
     sg: "See 4 pitches at the Gate. Reach once at First Light.",
     past: "The steal is the lesson. She does not wait on a walk.",
     letters:
-      "My daughter has been to the Palms seventeen times this summer because of you specifically and she keeps a chart: your at-bats, the count when you first looked at the coach, the count when you went. On a 1-1 in the sixth you went anyway — two outs, runner on third — and Bernardi, the catcher, did not throw. She asked why. I said because he knew.",
+      "My daughter has been to the Palms seventeen times this summer because of you specifically and she keeps a chart: your at-bats, the count when you first looked at the coach, the count when you went. On a 1-1 in the sixth you went anyway — two outs, runner on third — and Bernardi, the catcher, did not throw. She asked why. I said because she knew.",
     yearStills: {
       rookie: "First Light. She stole second and kept going.",
       classic: "Lantern Classic. She scored from first and kept going.",
@@ -309,8 +309,8 @@ export function sheet(id: CharacterId) {
   return BIBLE.find((c) => c.id === id)!;
 }
 
-const ONE_PUNCHOUT = "One punchout. The date asked for three.";
-const TWO_PUNCHOUTS = "Two punchouts. The date asked for three.";
+const ONE_PUNCHOUT = "One punchout. She needed three.";
+const TWO_PUNCHOUTS = "Two punchouts. She needed three.";
 const NO_PUNCHOUTS = "The outs are in. The punchouts weren't.";
 
 /** The First Light card, when the date already said how many punchouts came. */
@@ -341,17 +341,17 @@ export function yearStillLine(
   if (id === "yuki" && turn <= 40) {
     if (results[2] === "met") return who.yearStills.classic;
     if (results[3] === "met") return "Night Classic. She reached twice.";
-    return "Lantern Classic and Night Classic. Neither date held.";
+    return "Lantern Classic and Night Classic. She came up short in both.";
   }
   if (id === "yuki" && turn > 40) {
     const stretch = results[4];
     const series = results[5];
     const finale = results[6];
     if (stretch === "missed" && series === "missed" && finale !== "met" && finale !== "missed") {
-      return "The Stretch and Skyline Series. Neither date held.";
+      return "The Stretch and Skyline Series. She came up short in both.";
     }
     if (stretch === "missed" && series === "missed" && finale === "missed") {
-      return "The Stretch, Skyline Series, and Diamond Finale. None of the dates held.";
+      return "The Stretch, Skyline Series, and Diamond Finale. She came up short in all three.";
     }
     const bits: string[] = [];
     if (stretch === "met") bits.push("The Stretch. She stole late.");
@@ -378,7 +378,7 @@ export function yearStillLine(
     if (lantern && night) return "Lantern Classic. She drove in a run. Night Classic. She reached twice.";
     if (lantern) return "Lantern Classic. She drove in a run. Night Classic didn't.";
     if (night) return "Night Classic. She reached twice. Lantern Classic didn't.";
-    return "Lantern Classic and Night Classic. Neither date held.";
+    return "Lantern Classic and Night Classic. She came up short in both.";
   }
   if (id === "reina" && turn <= 20) {
     const gate = results[0] === "met";
@@ -386,7 +386,7 @@ export function yearStillLine(
     if (gate && light) return "The Gate. Three outs. First Light. Three punchouts.";
     if (gate) return `The Gate. Three outs. First Light. ${firstLightStill(lightCard)}`;
     if (light) return "The Gate didn't hold. First Light. Three punchouts.";
-    return "The Gate and First Light. Neither date held.";
+    return "The Gate and First Light. She came up short in both.";
   }
   if (id === "reina" && turn <= 40) {
     const lantern = results[2] === "met";
@@ -402,7 +402,7 @@ export function yearStillLine(
     if (gate && light) return "The Gate. Three outs. First Light. Three punchouts.";
     if (gate) return `The Gate. Three outs. First Light. ${firstLightStill(lightCard)}`;
     if (light) return "The Gate didn't hold. First Light. Three punchouts.";
-    return "The Gate and First Light. Neither date held.";
+    return "The Gate and First Light. She came up short in both.";
   }
   if (id === "sol" && turn <= 40) {
     const lantern = results[2] === "met";
@@ -418,7 +418,7 @@ export function yearStillLine(
     if (gate && light) return "The Gate. Three outs. First Light. The lead held.";
     if (gate) return "The Gate. Three outs. First Light. The lead is gone.";
     if (light) return "The Gate didn't hold. First Light. The lead held.";
-    return "The Gate and First Light. Neither date held.";
+    return "The Gate and First Light. She came up short in both.";
   }
   if (id === "kira" && turn <= 40) {
     const lantern = results[2] === "met";
@@ -434,7 +434,7 @@ export function yearStillLine(
     if (gate && light) return "The Gate. Three pitches in one look. First Light. She didn't strike out.";
     if (gate) return "The Gate. Three pitches in one look. First Light. She struck out.";
     if (light) return "The Gate didn't hold. First Light. She didn't strike out.";
-    return "The Gate and First Light. Neither date held.";
+    return "The Gate and First Light. She came up short in both.";
   }
   if (id === "miki" && turn <= 40) {
     const lantern = results[2] === "met";

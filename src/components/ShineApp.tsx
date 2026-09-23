@@ -60,7 +60,7 @@ function Title() {
           <strong>Shine</strong>
         </h1>
         <p className="mt-6 max-w-md font-ui text-base font-medium leading-relaxed text-cream/90 sm:text-lg">
-          Sit the zone under her. Press Go. Watch her.
+          Show her where to look. Press Go. Watch her.
         </p>
         {nextHook ? <p className="mt-3 max-w-md font-ui text-sm text-gold">{nextHook}</p> : null}
         <div className="mt-8 flex w-full max-w-sm flex-col gap-3">
@@ -91,7 +91,7 @@ function Title() {
             >
               <span className="flex flex-col items-start gap-1 text-left">
                 New Rookie year
-                <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Sit. Go. Watch her. The year is dates.</span>
+                <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Three years. One girl. Believe in her.</span>
               </span>
               <span aria-hidden>→</span>
             </PixelBtn>
@@ -204,7 +204,7 @@ function Wall() {
         <p className="episode-chip w-fit">ダイヤシャイン</p>
         <h1 className="mt-4 font-display text-2xl font-bold">Clubhouse</h1>
         <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">
-          Every finished run is a card on the wall. Sparks carry. Stats start fresh. Never sold.
+          Every girl you coach to the end gets a card on the wall. What she learned stays with her. Everything else starts over. None of it is for sale.
         </p>
         {nextHook ? (
           <p className="mt-4 rounded-xl border border-gold/40 bg-ink/70 px-4 py-3 font-ui text-sm text-gold">{nextHook}</p>
@@ -246,7 +246,7 @@ function Wall() {
                       <p className="mt-1 font-ui text-xs text-gold">Park banner · #{who.number}</p>
                     ) : null}
                     {cardAltLook(c) ? (
-                      <p className="mt-1 font-ui text-xs text-gold">Alt look. The next career that inherits her wears it.</p>
+                      <p className="mt-1 font-ui text-xs text-gold">The kids at the gate are wearing her number now.</p>
                     ) : null}
                     {keepsake ? <p className="mt-1 font-ui text-xs text-cream/70">{keepsake}</p> : null}
                     <p className="mt-2 font-ui text-sm leading-relaxed text-cream/85">
@@ -254,9 +254,9 @@ function Wall() {
                     </p>
                   </div>
                   <div className="border-t border-white/10 bg-panel/80 px-4 py-3">
-                    <p className="font-display text-[10px] uppercase tracking-widest text-muted">Sparks · back of the card</p>
+                    <p className="font-display text-[10px] uppercase tracking-widest text-muted">What she passes on</p>
                     <p className="mt-1 font-ui text-xs text-gold">
-                      {c.sparks.slice(0, 3).map((s) => s.kind).join(" · ") || "no sparks"}
+                      {c.sparks.slice(0, 3).map((s) => s.kind).join(" · ") || "Nothing yet"}
                     </p>
                     <p className="mt-2 font-ui text-xs text-cream/70">Next: Coach {nextGirlName(c.characterId)}.</p>
                   </div>
@@ -298,7 +298,7 @@ function Shop() {
         <p className="episode-chip w-fit">ダイヤシャイン</p>
         <h1 className="mt-4 font-display text-2xl font-bold">Shop</h1>
         <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">
-          Looks only. The prices are the list. This preview does not charge. No banners. No pull rates. The year, the plate, and Clubhouse are never sold.
+          Looks only. The prices are the list. This preview does not charge. No banners. No pull rates. Her years, her games, and the Clubhouse are never for sale.
         </p>
         <ul className="mt-6 space-y-3">
           {SKUS.filter((s) => previewClaimable(s)).map((s) => (
@@ -379,7 +379,7 @@ function Select() {
         <h1 className="mt-1 font-display text-3xl font-bold uppercase tracking-tight sm:text-4xl">
           #{who.number} {who.name}
         </h1>
-        <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">Past first. Sit. Go. Watch her year.</p>
+        <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">Meet her first. Then three years, and you watch every one.</p>
         <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
           {BIBLE.map((c) => {
             const face = careerFilmSrc(c.id);
@@ -415,7 +415,7 @@ function Select() {
         {eligible.length ? (
           <div className="mt-6">
             <p className="font-display text-[10px] uppercase tracking-widest text-gold">Parent card</p>
-            <p className="mt-1 font-ui text-xs text-muted">Sparks carry. Stats start fresh. Never sold.</p>
+            <p className="mt-1 font-ui text-xs text-muted">What she learned stays with her. Everything else starts over.</p>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
               <button
                 type="button"
@@ -444,7 +444,7 @@ function Select() {
                     {sheet(c.characterId).name} · {c.ending}
                   </p>
                   <p className="mt-1 font-ui text-sm text-muted">
-                    {c.sparks.slice(0, 3).map((s) => s.kind).join(" · ") || "no sparks"}
+                    {c.sparks.slice(0, 3).map((s) => s.kind).join(" · ") || "Nothing to pass on"}
                   </p>
                 </button>
               ))}
@@ -455,11 +455,11 @@ function Select() {
               </p>
             ) : null}
             {parent && cardAltLook(parent) ? (
-              <p className="mt-2 font-ui text-xs text-gold">Alt look inherited. Fan Favorite from the last career.</p>
+              <p className="mt-2 font-ui text-xs text-gold">She wears the look the kids at the gate copied last time.</p>
             ) : null}
             {parent && parent.sparks.length ? (
               <div className="mt-3">
-                <p className="font-display text-[10px] uppercase tracking-widest text-gold">Pick up to 3 sparks</p>
+                <p className="font-display text-[10px] uppercase tracking-widest text-gold">Pick up to 3 to pass on</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {parent.sparks.filter((s) => s.kind !== "polish").map((s, i) => {
                     const on = sparks.includes(s);
@@ -601,7 +601,7 @@ function Complex() {
       <Shell runTurn={run.turn} label={meta.label}>
         <p className="font-ui text-base leading-relaxed text-cream/90">
           {run.year === 2
-            ? "Classic is open. Lantern Classic is always at Lantern Field."
+            ? "Classic year. The Lantern Classic is always at Lantern Field."
             : run.year === 3
               ? "Senior year. The Stretch is coming."
               : "The year is open."}
@@ -620,7 +620,7 @@ function Complex() {
       <Shell runTurn={run.turn} label={dateLabel(meta, who.style)}>
         <p className="font-ui text-base leading-relaxed text-cream/90">
           {pitcher
-            ? "Bullpen Coach stays after the last look. Just the two of you on the rubber."
+            ? "Bullpen Coach stays after the last pitch. Just the two of you and the rubber."
             : "Cage Coach stays after the last bucket. Just the two of you in the tunnel."}
         </p>
         <PixelBtn className="mt-6 h-12" onClick={finishMentor}>
@@ -696,7 +696,7 @@ function Postgame() {
             </div>
           </div>
           <div className="mt-auto px-4 pb-8 sm:px-8">
-            <p className="font-display text-lg font-bold">{last ? dateLabel(turnMeta(last.turn), who.style) : "The date"}</p>
+            <p className="font-display text-lg font-bold">{last ? dateLabel(turnMeta(last.turn), who.style) : "The game"}</p>
             <p className="mt-2 max-w-md font-ui text-base leading-relaxed text-cream/90 sm:text-lg">{curtainCallLine(who.curtainCall, skin)}</p>
             <p className="mt-3 font-ui text-xs text-cream/70">
               {curtainCaption(run.characterId)} {skin === "otachidai" ? "応援歌." : "Walk-up."}
@@ -725,7 +725,7 @@ function Postgame() {
       <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-ink/30" />
       <div className="relative z-10 mx-auto flex min-h-dvh max-w-5xl flex-col px-4 py-8 sm:px-8">
         <div className="flex items-center justify-between gap-3">
-          <p className="episode-chip w-fit">{last ? dateLabel(turnMeta(last.turn), who.style) : "The date"}</p>
+          <p className="episode-chip w-fit">{last ? dateLabel(turnMeta(last.turn), who.style) : "The game"}</p>
           <div className="flex items-center gap-2">
             <ShineMute />
             <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openSettings} ariaLabel="Settings">
@@ -748,7 +748,7 @@ function Postgame() {
           {run.fanBeat ? <p className="mt-3 font-ui text-sm text-gold">{run.fanBeat}</p> : null}
           {last?.type === "gate" ? <SceneBlock scene={relationshipScene(run, "post-gate")} /> : null}
           {last?.type === "first-light" && run.keepsake === "dirt" ? (
-            <p className="mt-3 font-ui text-sm text-gold">She kept a pinch of dirt from the baseline. It means nothing. It means everything.</p>
+            <p className="mt-3 font-ui text-sm text-gold">She kept a pinch of dirt from the baseline and wrapped it in a sock. &ldquo;Don&apos;t tell anyone. It&apos;s dirt.&rdquo;</p>
           ) : last?.type === "first-light" && run.keepsake === "ball" && isPitcherStyle(who.style) ? (
             <p className="mt-3 font-ui text-sm text-cream/70">She kept the last-out ball.</p>
           ) : last?.type === "first-light" && run.keepsake !== "dirt" ? (
@@ -759,7 +759,7 @@ function Postgame() {
           <p className="mt-2 font-ui text-sm text-cream/70">{recapLine(parkId, run.turn)}</p>
           {seriesFinale ? <p className="mt-3 font-ui text-sm text-gold">{seriesFinale}</p> : null}
           {last?.type === "finale" && !met ? (
-            <p className="mt-3 font-ui text-sm text-cream/70">This date doesn't close the path.</p>
+            <p className="mt-3 font-ui text-sm text-cream/70">Losing the Finale doesn&apos;t take anything away from her.</p>
           ) : null}
           {run.coachWarning && last?.type !== "finale" ? <p className="mt-4 font-ui text-sm text-coral">{run.coachWarning}</p> : null}
           <p className="mt-4 font-ui text-sm text-cream/80">
@@ -887,8 +887,8 @@ function YearEnd() {
           </p>
           <p className="mt-3 font-ui text-sm text-cream/80">
             {run.turn <= 20
-              ? "Classic is open. Lantern Classic is always at Lantern Field."
-              : "Senior is open. The Stretch is coming."}
+              ? "Next spring: the Classic year. The Lantern Classic is always at Lantern Field."
+              : "Next spring: her senior year. The Stretch is coming."}
           </p>
           <SceneBlock scene={relationshipScene(run, "year-end")} />
           <PixelBtn className="mt-6 h-12" onClick={dismissYearEnd}>
@@ -1034,8 +1034,8 @@ function Establishing() {
         <p className="episode-chip w-fit">First Day</p>
         <p className="mt-6 max-w-lg font-ui text-lg font-medium leading-relaxed text-cream/95">
           {isPitcherStyle(who.style)
-            ? "First morning. The bullpen is lit. Sit. Go. Watch her throw."
-            : "First morning. The cage is lit. Sit. Go. Watch her."}
+            ? "First morning. The bullpen lights are on, and she's already out there."
+            : "First morning. The cage lights are on, and she's already inside."}
         </p>
         <div className="max-w-2xl">
           <SceneBlock scene={relationshipScene(run, "opening")} />

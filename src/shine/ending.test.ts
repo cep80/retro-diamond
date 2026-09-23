@@ -43,7 +43,7 @@ describe("Diamond Finale and endings", () => {
     run.pgMisses = 1;
     assert.equal(finaleUnlocked(run), true);
     assert.equal(finaleFloorMet(run), false);
-    assert.equal(finaleGap(run), "Diamond Finale is still the last date. She hasn't grown all the way into it.");
+    assert.equal(finaleGap(run), "The Diamond Finale is still ahead. She hasn't grown all the way into it.");
     assert.doesNotMatch(finaleGap(run), /needs \d|contact \d|speed \d/i);
   });
 
@@ -70,7 +70,7 @@ describe("Diamond Finale and endings", () => {
     const aoi = newAoiRun();
     aoi.pgMisses = 2;
     aoi.turn = 33;
-    assert.equal(yearFoldLine(aoi, "Night Classic", "The Stretch is in 17 days."), "The year folds at Night Classic.");
+    assert.equal(yearFoldLine(aoi, "Night Classic", "The Stretch is in 17 days."), "Her Academy days end here, at Night Classic.");
     assert.equal(postgameLeaveLabel(aoi, false), "The year");
   });
 
@@ -85,7 +85,7 @@ describe("Diamond Finale and endings", () => {
     const run = newAoiRun();
     floorsForAoi(run);
     assert.equal(finaleFloorMet(run), true);
-    assert.equal(finaleGap(run), "Diamond Finale is still the last date.");
+    assert.equal(finaleGap(run), "The Diamond Finale is still ahead.");
     assert.doesNotMatch(finaleGap(run), /hers/);
   });
 
@@ -278,7 +278,7 @@ describe("Diamond Finale and endings", () => {
     const still = careerStill(run);
     assert.equal(still.rank, "B");
     assert.equal(still.frame, "She stood the rubber anyway.");
-    assert.match(still.quote, /sat the last date/);
+    assert.match(still.quote, /played the Diamond Finale/);
     assert.doesNotMatch(still.quote, /from the pen/);
   });
 
@@ -310,7 +310,7 @@ describe("Diamond Finale and endings", () => {
     run.turn = 55;
     run.pgResults = ["met", "met", "missed", "missed", "missed", "missed", "pending"];
     const still = careerStill(run);
-    assert.match(still.quote, /The Stretch and Skyline Series\. Neither date held\./);
+    assert.match(still.quote, /The Stretch and Skyline Series\. She came up short in both./);
     assert.doesNotMatch(still.quote, /took second|Stolen third|ninth/);
   });
 

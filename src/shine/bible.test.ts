@@ -121,16 +121,16 @@ describe("1.0 bible", () => {
     assert.doesNotMatch(sheet("yuki").yearStills.classic, /Stolen base/);
     assert.equal(
       yearStillLine("yuki", 40, ["missed", "met", "missed", "missed", "pending", "pending", "pending"]),
-      "Lantern Classic and Night Classic. Neither date held.",
+      "Lantern Classic and Night Classic. She came up short in both.",
     );
     assert.match(yearStillLine("yuki", 40, ["missed", "met", "met", "missed", "pending", "pending", "pending"]), /scored from first/);
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "missed", "missed", "pending"]),
-      "The Stretch and Skyline Series. Neither date held.",
+      "The Stretch and Skyline Series. She came up short in both.",
     );
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "missed", "missed", "missed"]),
-      "The Stretch, Skyline Series, and Diamond Finale. None of the dates held.",
+      "The Stretch, Skyline Series, and Diamond Finale. She came up short in all three.",
     );
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "met", "met", "met"]),
@@ -185,12 +185,12 @@ describe("1.0 bible", () => {
       "The Gate. Three outs. First Light. The punchouts weren't there.",
     );
     assert.equal(
-      yearStillLine("sol", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"], null, "One punchout. The date asked for three."),
-      "The Gate. Three outs. First Light. One punchout. The date asked for three.",
+      yearStillLine("sol", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"], null, "One punchout. She needed three."),
+      "The Gate. Three outs. First Light. One punchout. She needed three.",
     );
     assert.doesNotMatch(
       yearStillLine("sol", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"]),
-      /fastball|heat was not a metaphor/,
+      /fastball|nobody caught up/i,
     );
   });
 

@@ -66,7 +66,7 @@ describe("scrapbook replay", () => {
     const run = newRun("sol");
     run.turn = 60;
     const page = gameHighlight(run, "finale", true, true, { events: [], arm: "academy", pgId: "k-side" });
-    assert.equal(page.line, "COMMAND.");
+    assert.equal(page.line, "She got what she came for.");
     assert.equal(scrapbookLine("sol", "Diamond Finale COMMAND vs the Academy arm."), "Diamond Finale COMMAND.");
     assert.equal(
       scrapbookLine("sol", "The goal she came for slipped vs the Academy arm. The smaller one held."),
