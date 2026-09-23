@@ -77,3 +77,12 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
 ## Blockers that need the user
 
 - **Generated stills (M5).** Which generator made the current set, and can I reach it (API key, Chrome, or manual)? Until then the HR/walk read fails on pictures. M3's stamp and sound will carry the read in the meantime; they must not replace the pictures.
+
+## Progress log
+
+**2026-09-22 / 23**
+- **M1 (code) done:** exhibition pick `fe796db`; weekly pitcher lead `a94a831`; honest film (pitcher winds up on screen, no early cut, called K is the pitcher's) `f42bec6`; no portrait flash + warm Go gate `277e66b`; pause holds race waits `6c65470` and mound beats `0e43dd7`; coverage table `89a3764`; Duel off in spec `a45f844`. **Still open:** `MoundController` extraction, UI year smoke test, pitcher reaction stills (art, M5). `filmReady` stays a hard gate (the goal says "authored film, not portrait").
+- **M2 pass 1 + 2 done:** voice sheets `2ab1225`; copy pass `f66221c` (517 tests); all-girls league canon `498fb1f`. **Next:** pass 3, the promise scene and its Finale payoff, as a scene player.
+- **M3 in progress:** result stamp + contact flash + letterbox + full-bleed `35ac1d6`; stamp sound `eb64619`; broadcast scorebug `0c48ab8`; money clips cut hard with clean posters `4c4861f`. **Next:** the Aoi 4-second HR sequence to AAA.
+- **Check-in 1 (gameplay programmer):** 7 findings, all fixed in `2f27abe`.
+- **Flag for the game designer:** in about 200 s of exhibition play (Yuki vs Kira, Aoi vs Sol) I saw walks, outs and fouls but no base hits. Check the exhibition hit rate against named arms; a stranger's first three at-bats should usually show at least one hit.
