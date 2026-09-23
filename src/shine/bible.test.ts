@@ -247,3 +247,12 @@ describe("1.0 bible", () => {
     );
   });
 });
+
+describe("bible: saves from before the copy pass", () => {
+  it("still recognize the old First Light strikeout lines", async () => {
+    const { firstLightStill, lightCardFrom } = await import("./bible.ts");
+    assert.equal(firstLightStill("Two punchouts. The date asked for three."), "Two punchouts. She needed three.");
+    assert.equal(lightCardFrom("One punchout. The date asked for three."), "One punchout. She needed three.");
+    assert.equal(firstLightStill("Two punchouts. She needed three."), "Two punchouts. She needed three.");
+  });
+});

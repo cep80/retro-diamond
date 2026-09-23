@@ -22,8 +22,8 @@ import type { Cell } from "@/shine/core/zone.ts";
 import { locCell } from "@/shine/core/zone.ts";
 import { track as trackEvent } from "@/lib/telemetry.ts";
 import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
-import { CONTACT_HOLD_MS, resultStamp, STAMP_DELAY_MS } from "@/shine/action-art.ts";
-import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, sheet } from "@/shine/bible.ts";
+import { CONTACT_HOLD_MS, resultStamp, STAMP_DELAY_MS, STAMP_HOLD_MS } from "@/shine/action-art.ts";
+import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { crowdStem } from "@/shine/culture.ts";
@@ -103,8 +103,18 @@ export function ShinePlate() {
 /** The exhibition: any hitter against any arm, three plate appearances, in memory only. */
 export function ShineExhibition() {
   const [matchup, setMatchup] = useState<Matchup | null>(matchupFromUrl);
-  if (!matchup) return <ExhibitionPick initial={{ batter: "aoi", arm: "reina" }} onPlay={setMatchup} />;
-  return <ExhibitionGame key={`${matchup.batter}-${matchup.arm}`} matchup={matchup} onChange={() => setMatchup(null)} />;
+  const [last, setLast] = useState<Matchup>({ batter: "aoi", arm: "reina" });
+  if (!matchup) return <ExhibitionPick initial={last} onPlay={setMatchup} />;
+  return (
+    <ExhibitionGame
+      key={`${matchup.batter}-${matchup.arm}`}
+      matchup={matchup}
+      onChange={() => {
+        setLast(matchup);
+        setMatchup(null);
+      }}
+    />
+  );
 }
 
 function ExhibitionGame({ matchup, onChange }: { matchup: Matchup; onChange: () => void }) {
@@ -277,16 +287,25 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // Go waits for her stills so the 120 ms cut-in never draws an empty frame.
   // A slow network gets FILM_WARM_CAP_MS, then Go opens anyway.
   const [filmWarm, setFilmWarm] = useState(false);
+  const filmWarmRef = useRef(false);
+  filmWarmRef.current = filmWarm;
+  const [manifestSettled, setManifestSettled] = useState(false);
   useEffect(() => {
     let alive = true;
-    loadActionManifest().then((m) => {
+    // The cap runs from step-in, so a stalled manifest can't hold Go shut either.
+    const cap = new Promise<void>((r) => window.setTimeout(r, FILM_WARM_CAP_MS));
+    const girls = [run.characterId, game.arm];
+    const loaded = loadActionManifest().then((m) => {
       if (!alive) return;
       setManifest(m);
-      const girls = [run.characterId, game.arm];
-      const cap = new Promise<void>((r) => window.setTimeout(r, FILM_WARM_CAP_MS));
-      void Promise.race([warmActionArt(m, girls), cap]).then(() => {
-        if (alive) setFilmWarm(true);
-      });
+      setManifestSettled(true);
+      return warmActionArt(m, girls).then(() => m);
+    });
+    void Promise.race([loaded, cap]).then(() => {
+      if (alive) setFilmWarm(true);
+    });
+    void loaded.then((m) => {
+      if (!alive || !m) return;
       // Clips at step-in, not at the first wind-up: a first-pitch HR has its clip.
       clipsWarmed.current = true;
       preloadActionClips(m, girls);
@@ -368,6 +387,24 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // ticking through the money hold so a clip that outlives the reaction
   // beat still ends on time.
   const clipMayShow = actionCue.resolvedAtMs !== null && snap.phase === "racing" && stage === "idle";
+  // The stamp holds STAMP_HOLD_MS past its landing; keep the clock running
+  // through it even after the card phase, or it freezes on screen.
+  const [stampTick, setStampTick] = useState(false);
+  useEffect(() => {
+    const at = actionCue.resolvedAtMs;
+    if (at === null) return;
+    const end = at + STAMP_DELAY_MS + STAMP_HOLD_MS;
+    setStampTick(true);
+    let raf = 0;
+    const tick = () => {
+      const n = performance.now();
+      setNowMs(n);
+      if (n < end) raf = requestAnimationFrame(tick);
+      else setStampTick(false);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [actionCue.resolvedAtMs]);
   useEffect(() => {
     if (stage !== "flight" && stage !== "field" && stage !== "reaction" && !clipMayShow) return;
     let raf = 0;
@@ -418,7 +455,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       const s = race.getSnapshot();
       if (ev.code === "Enter" || ev.code === "Space") {
         ev.preventDefault();
-        if (s.phase === "pick") go();
+        if (s.phase === "pick" && filmWarmRef.current) go();
         else if (s.phase === "pa-card") race.next();
       }
     };
@@ -514,7 +551,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     u,
     tappedAtU: actionCue.tappedAtU,
     resolvedAtMs: running || takeMiss ? null : contactHeld || foulHeld ? 0 : actionCue.resolvedAtMs,
-    nowMs: contactHeld ? 0 : foulHeld ? CONTACT_HOLD_MS : stage === "field" || stage === "reaction" || clipMayShow ? nowMs : performance.now(),
+    nowMs: contactHeld ? 0 : foulHeld ? CONTACT_HOLD_MS : stage === "field" || stage === "reaction" || clipMayShow || stampTick ? nowMs : performance.now(),
     reduced,
   };
   const twoStrikeHold = (() => {
@@ -602,7 +639,15 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
             prepareMs={reduced ? RACE_PACE.prepareMsReduced : RACE_PACE.prepareMs}
             heroMood={heroMood}
             className="!h-auto !w-full"
-            fallback={<div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-ink/35" aria-busy="true" />}
+            fallback={
+              manifestSettled ? (
+                <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden bg-ink/35 sm:rounded-2xl sm:border sm:border-white/20">
+                  <img src={portraitSrc(run.characterId, "focused")} alt="" className="absolute inset-0 size-full object-cover shine-mound-close" aria-hidden />
+                </div>
+              ) : (
+                <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden bg-ink/35 sm:rounded-2xl sm:border sm:border-white/20" aria-busy="true" />
+              )
+            }
           >
             {sitGrid ? <SitZone aim={plate.aim} onSit={(c) => race.setSit(c)} ghost={ghost} label="Sit" /> : null}
           </ActionStage>

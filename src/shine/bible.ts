@@ -312,15 +312,22 @@ export function sheet(id: CharacterId) {
 const ONE_PUNCHOUT = "One punchout. She needed three.";
 const TWO_PUNCHOUTS = "Two punchouts. She needed three.";
 const NO_PUNCHOUTS = "The outs are in. The punchouts weren't.";
+/** Saves from before the 2026-09-22 copy pass carry the old wording. */
+const RETIRED_PUNCHOUTS: Record<string, string> = {
+  "One punchout. The date asked for three.": ONE_PUNCHOUT,
+  "Two punchouts. The date asked for three.": TWO_PUNCHOUTS,
+};
 
 /** The First Light card, when the date already said how many punchouts came. */
 export function lightCardFrom(line: string | null | undefined): string | null {
+  if (line && RETIRED_PUNCHOUTS[line]) return RETIRED_PUNCHOUTS[line]!;
   if (line === ONE_PUNCHOUT || line === TWO_PUNCHOUTS || line === NO_PUNCHOUTS) return line;
   return null;
 }
 
 /** A First Light miss keeps the punchouts she actually got. */
 export function firstLightStill(card?: string | null): string {
+  if (card && RETIRED_PUNCHOUTS[card]) return RETIRED_PUNCHOUTS[card]!;
   if (card === ONE_PUNCHOUT || card === TWO_PUNCHOUTS) return card;
   return "The punchouts weren't there.";
 }

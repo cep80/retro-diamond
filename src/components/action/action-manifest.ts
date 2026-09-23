@@ -24,7 +24,8 @@ export function loadActionManifest(): Promise<ActionManifest | null> {
   return manifestOnce;
 }
 
-const warmed = new Set<string>();
+/** One fetch per still; a second caller waits on the fetch already in flight. */
+const warmed = new Map<string, Promise<void>>();
 
 /** Fetch the stills for these girls into the HTTP cache. Resolves when they are all in (or failed). */
 export function warmActionArt(manifest: ActionManifest | null, girls: readonly (CharacterId | string)[]): Promise<void> {
@@ -36,17 +37,18 @@ export function warmActionArt(manifest: ActionManifest | null, girls: readonly (
     for (const s of Object.values(girl.stills)) urls.add(s.url);
   }
   return Promise.all(
-    [...urls]
-      .filter((u) => !warmed.has(u))
-      .map((u) => {
-        warmed.add(u);
-        return fetch(u, { cache: "force-cache" }).then(
-          () => undefined,
-          () => {
-            warmed.delete(u);
-          },
-        );
-      }),
+    [...urls].map((u) => {
+      const inFlight = warmed.get(u);
+      if (inFlight) return inFlight;
+      const p = fetch(u, { cache: "force-cache" }).then(
+        () => undefined,
+        () => {
+          warmed.delete(u);
+        },
+      );
+      warmed.set(u, p);
+      return p;
+    }),
   ).then(() => undefined);
 }
 
