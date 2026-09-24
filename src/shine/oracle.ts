@@ -23,7 +23,7 @@ export const LEAD_BARREL_BONUS = 0.05;
 /** Home-run doors by swing: how square (timing x location) and the base chance before power / park / style. */
 export const HR_SQUARE_POWER = 0.68;
 export const HR_BASE_POWER = 0.45;
-export const HR_SQUARE_CONTACT = 0.72;
+export const HR_SQUARE_CONTACT = 0.64;
 export const HR_BASE_CONTACT = 0.3;
 export const LEAD_HR_MOD_PENALTY = 0.80;
 export const LEAD_SB_BONUS = 0.08;

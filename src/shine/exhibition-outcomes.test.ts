@@ -224,7 +224,8 @@ describe("every producible outcome, end to end through the controller", () => {
       "single",
     );
     assert.equal(f.beats[0], "single");
-    assert.equal(f.seed, "single-first-0");
+    // Seed 0 squares it up for extra bases since doubles and contact-swing home runs gate on squareness (2026-09-24).
+    assert.equal(f.seed, "single-first-1");
   });
 
   it("first-pitch miss at exhibition pace (live capture)", () => {

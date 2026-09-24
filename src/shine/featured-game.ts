@@ -78,6 +78,10 @@ function stagePark(run: TraineeRun, kind: string) {
   return parkById(datePark(kind, sheet(run.characterId).parkId) as ParkId);
 }
 
+/** Doubles: a squared-up ball that isn't gone finds the gap this often (power swings more). */
+export const DOUBLE_SQUARE = 0.55;
+export const DOUBLE_BASE = 0.3;
+
 export type GameKind =
   | "practice"
   | "gate"
@@ -892,7 +896,9 @@ export function resolveSwing(
   if (inAir) game.outfield = true;
   if (hit || game.kind === "practice") {
     setVerdict(game, pitch, "reach", aim);
-    const double = contact.quality > 0.78 && r() < 0.35 + (swing === "power" ? 0.2 : 0);
+    // Like the long ball, a double is how square she got it, not her Contact stat
+    // (quality carries contactQuality, ~0.4 fresh, so "quality > 0.78" meant no girl ever doubled).
+    const double = contact.timingQ * contact.locationQ > DOUBLE_SQUARE && r() < DOUBLE_BASE + (swing === "power" ? 0.2 : 0);
     if (swing === "power" && double) noteCallback(run, game, "power");
     const scored = reachBase(run, game, r, "hit", double ? "double" : "single");
     game.banner = scored > 0 ? (double ? `Doubled. ${scored} in.` : `Lined. ${scored} in.`) : contact.quality > 0.7 ? "Lined." : "In play.";
