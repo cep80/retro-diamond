@@ -22,8 +22,9 @@
   --color-danger: #f25277;
   --color-danger-deep: #9d294c;
   --color-ok: #55d99b;
-  --font-display: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
-  --font-ui: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
+  /* Chakra Petch has no kana: every Japanese label falls through to the best JP face on the device, the same one everywhere on that device. */
+  --font-display: "Chakra Petch", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+  --font-ui: "Chakra Petch", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -1008,6 +1009,7 @@
   position: fixed;
   inset: 0;
   z-index: -1;
+  transition: filter 260ms ease-out;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1078,6 +1080,10 @@
 }
 .shine-scene-box.is-narration {
   border-top-color: rgb(255 255 255 / 0.22);
+}
+/* When the Coach speaks, the frame turns to you: her still steps back a little. */
+.shine-scene[data-speaker="coach"] .shine-scene-still {
+  filter: brightness(0.62) saturate(0.85);
 }
 .shine-scene-box.is-coach {
   border-top-color: var(--color-grass-2);

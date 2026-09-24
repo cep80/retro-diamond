@@ -116,7 +116,7 @@ export function ScenePlayer({ scene, reduced, onDone }: { scene: SceneLike; redu
   const speaker = beat.who === "narration" ? null : beat.who === "coach" ? "Coach" : girl!.name;
   const quoted = beat.who !== "narration";
   return (
-    <div className="shine-scene" data-scene={scene.id} data-scene-beat={index} data-scene-done={done ? "1" : "0"}>
+    <div className="shine-scene" data-speaker={beat.who === "coach" ? "coach" : beat.who === "narration" ? "narration" : "girl"} data-scene={scene.id} data-scene-beat={index} data-scene-done={done ? "1" : "0"}>
       <img key={`${still}-${mood}`} src={sceneFilmSrc(still, mood)} alt="" className="shine-scene-still" data-scene-mood={mood} data-scene-still={still} />
       <div className="shine-scene-shade" aria-hidden />
       {index === 0 ? <p className="shine-scene-place">{scene.place}</p> : null}
@@ -134,7 +134,7 @@ export function ScenePlayer({ scene, reduced, onDone }: { scene: SceneLike; redu
       >
         {speaker ? (
           <span className="shine-scene-name">
-            {girl ? <span className="shine-kana">{girl.jp}</span> : null}
+            <span className="shine-kana">{girl ? girl.jp : "コーチ"}</span>
             {speaker}
           </span>
         ) : null}
