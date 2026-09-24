@@ -22,6 +22,7 @@ import { finaleEveScene, promiseScene, TITLE_LINES, type SceneLike } from "@/shi
 import { lowPointScene, rivalIntro, RIVAL_KINDS, type RivalKind } from "@/shine/story-arcs.ts";
 import { effectChips, eventDue, eventKey, type EventChoice, type TrainingEvent } from "@/shine/training-events.ts";
 import { EVENT_LIBRARY } from "@/shine/training-events-library.ts";
+import { endingChip, endingScene, endingTier } from "@/shine/story-endings.ts";
 
 function isRivalKind(t: string | null): t is RivalKind {
   return t !== null && (RIVAL_KINDS as readonly string[]).includes(t);
@@ -1224,6 +1225,15 @@ export function ShineApp() {
   else if (screen === "complex" && run.phase === "complex" && dueEvent) view = <EventScreen key={eventKey(dueEvent)} event={dueEvent} />;
   else if (screen === "plate") view = <ShinePlate />;
   else if (screen === "postgame") view = <Postgame />;
+  else if (screen === "year-end" && run.clubhouseCard && !run.arcsHeard?.includes("ending"))
+    view = (
+      <StoryScreen
+        scene={endingScene(run.characterId, run.clubhouseCard.ending)}
+        chip={endingChip(endingTier(run.characterId, run.clubhouseCard.ending))}
+        cta="To the stage"
+        onDone={() => hearArc("ending")}
+      />
+    );
   else if (screen === "year-end") view = <YearEnd />;
   else view = <Complex />;
 
