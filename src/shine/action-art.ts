@@ -81,9 +81,15 @@ export function resultStamp(beat: FieldBeat | null, swung: boolean): ResultStamp
 /** The stamp lands just after the settle still (CONTACT_HOLD_MS) has spoken, and clears before the next pick. */
 export const STAMP_DELAY_MS = 360;
 export const STAMP_HOLD_MS = 1500;
+/** A home run is its own moment: the stamp stays up while the park goes off. */
+export const HR_STAMP_HOLD_MS = 2600;
 
-export function stampVisible(sinceResolveMs: number): boolean {
-  return sinceResolveMs >= STAMP_DELAY_MS && sinceResolveMs < STAMP_DELAY_MS + STAMP_HOLD_MS;
+export function stampHoldMs(beat: FieldBeat | null): number {
+  return beat === "hr" ? HR_STAMP_HOLD_MS : STAMP_HOLD_MS;
+}
+
+export function stampVisible(sinceResolveMs: number, beat: FieldBeat | null = null): boolean {
+  return sinceResolveMs >= STAMP_DELAY_MS && sinceResolveMs < STAMP_DELAY_MS + stampHoldMs(beat);
 }
 
 export const BATTER_POSES = ["stance", "load", "cut", "contact", "follow", "take", "celebrate", "crushed", "trot"] as const;

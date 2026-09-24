@@ -300,7 +300,16 @@ export class RaceController {
         // The money clip (HR / K / walk) plays past the plate's reaction
         // beat; the card waits for it.
         const beat = fieldBeatFor(game);
-        const hold = beat === "hr" || beat === "k" || beat === "walk" ? (this.reduced ? this.pace.moneyHoldMsReduced : this.pace.moneyHoldMs) : 0;
+        const hold =
+          beat === "hr"
+            ? this.reduced
+              ? this.pace.hrHoldMsReduced
+              : this.pace.hrHoldMs
+            : beat === "k" || beat === "walk"
+              ? this.reduced
+                ? this.pace.moneyHoldMsReduced
+                : this.pace.moneyHoldMs
+              : 0;
         this.later("card", () => this.closePa(game), hold);
         return;
       }

@@ -436,3 +436,18 @@ describe("action art: result stamp", () => {
     assert.equal(stampVisible(STAMP_DELAY_MS + STAMP_HOLD_MS), false, "gone before the next pick");
   });
 });
+
+describe("the home run is its own moment", () => {
+  it("holds its stamp longer than a single, and the race waits for it", async () => {
+    const { stampVisible, stampHoldMs, STAMP_DELAY_MS, STAMP_HOLD_MS, HR_STAMP_HOLD_MS } = await import("./action-art.ts");
+    const { RACE_PACE } = await import("./race.ts");
+    assert.ok(HR_STAMP_HOLD_MS > STAMP_HOLD_MS);
+    assert.equal(stampHoldMs("hr"), HR_STAMP_HOLD_MS);
+    assert.equal(stampHoldMs("single"), STAMP_HOLD_MS);
+    const late = STAMP_DELAY_MS + STAMP_HOLD_MS + 200;
+    assert.equal(stampVisible(late, "hr"), true, "still up for a home run");
+    assert.equal(stampVisible(late, "single"), false, "a single has cleared");
+    assert.ok(RACE_PACE.hrHoldMs >= STAMP_DELAY_MS + HR_STAMP_HOLD_MS, "the card waits until the stamp is done");
+  });
+});
+

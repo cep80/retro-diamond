@@ -882,6 +882,116 @@
   }
 }
 
+/* Home run: its own three seconds. The park shakes once, gold rays turn behind
+   her, streamers fall, the kana land one at a time, then her name. */
+.shine-hr {
+  overflow: hidden;
+  animation: shine-hr-shake 420ms steps(2, end) 1;
+}
+.shine-hr-rays {
+  position: absolute;
+  inset: -50%;
+  background: repeating-conic-gradient(from 0deg, rgb(255 209 102 / 0.2) 0deg 8deg, transparent 8deg 22deg);
+  mask-image: radial-gradient(circle, transparent 0%, #000 14%, #000 26%, transparent 56%);
+  animation:
+    shine-hr-rays-in 360ms ease-out both,
+    shine-hr-rays-turn 9s linear infinite;
+}
+.shine-hr-streamer {
+  position: absolute;
+  top: -12%;
+  left: var(--x);
+  width: 0.45rem;
+  height: 1.3rem;
+  border-radius: 2px;
+  background: var(--c);
+  transform: rotate(var(--r));
+  animation: shine-hr-fall 2300ms cubic-bezier(0.3, 0.1, 0.5, 1) var(--d) both;
+}
+.shine-stamp-hr {
+  animation: none;
+}
+.shine-stamp-hr .shine-stamp-jp {
+  font-size: clamp(3rem, 17vw, 5.2rem);
+}
+.shine-hr-kana {
+  display: inline-block;
+  animation: shine-hr-kana 300ms cubic-bezier(0.2, 1.7, 0.4, 1) calc(var(--i) * 90ms) both;
+}
+.shine-stamp-hr .shine-stamp-en {
+  animation: shine-outcome-card 240ms ease-out 520ms both;
+}
+.shine-hr-name {
+  padding: 0.3rem 0.9rem;
+  border-radius: 999px;
+  background: rgb(8 17 39 / 0.82);
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  animation: shine-outcome-card 260ms ease-out 760ms both;
+}
+.shine-hr-still,
+.shine-hr-still .shine-hr-rays,
+.shine-hr-still .shine-hr-kana,
+.shine-hr-still .shine-stamp-en,
+.shine-hr-still .shine-hr-name {
+  animation: none;
+}
+@keyframes shine-hr-shake {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-6px, 4px);
+  }
+  50% {
+    transform: translate(5px, -3px);
+  }
+  75% {
+    transform: translate(-3px, 2px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@keyframes shine-hr-rays-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+@keyframes shine-hr-rays-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+@keyframes shine-hr-fall {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.9;
+    translate: 1.5rem 34rem;
+  }
+}
+@keyframes shine-hr-kana {
+  0% {
+    opacity: 0;
+    transform: translateY(-0.6em) scale(1.8);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* JRPG scene: her still fills the frame, a text box sits along the bottom. */
 /* The scene is full-bleed: her still fills the screen behind the page, and
    the box sits low, where the eye lands after her face. */
@@ -1150,6 +1260,16 @@
 @media (prefers-reduced-motion: reduce) {
   .shine-stamp {
     animation: none;
+  }
+  .shine-hr,
+  .shine-hr-rays,
+  .shine-hr-kana,
+  .shine-stamp-hr .shine-stamp-en,
+  .shine-hr-name {
+    animation: none;
+  }
+  .shine-hr-streamer {
+    display: none;
   }
   .shine-contact-flash {
     display: none;

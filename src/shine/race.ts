@@ -205,6 +205,9 @@ export const RACE_PACE = {
   /** HR / K / walk: the money clip finishes past the reaction beat before the card. */
   moneyHoldMs: 2200,
   moneyHoldMsReduced: 800,
+  /** A home run holds longer: the stamp, the burst and the crowd finish before the card. */
+  hrHoldMs: 3000,
+  hrHoldMsReduced: 1000,
 } as const;
 
 /** One line for the result card, sportswriter voice. */

@@ -17,12 +17,12 @@ import { PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
 import { ShineMute } from "@/components/ShineMute";
 import { exhibitionAudioCue, type ExhibitionAudioIo } from "@/components/exhibition/audio-cues";
 import { basepathRead, boxLine, dateCloseBeat, dateHeadline, goLabel, leaveLabel, pickPrompt, RACE_COPY, raceCaption, runningClose, showSitGrid, situationParts } from "@/components/race-ui";
-import { duckCrowd, setCrowdLevel, sfxAnticipation, sfxCrowd, sfxRelease, sfxSelect, sfxStamp, startWalkUp, stopCrowd, stopMusic, unlockAudio } from "@/shine/audio.ts";
+import { duckCrowd, setCrowdLevel, sfxAnticipation, sfxCrowd, sfxCrowdBurst, sfxRelease, sfxSelect, sfxStamp, startWalkUp, stopCrowd, stopMusic, unlockAudio } from "@/shine/audio.ts";
 import type { Cell } from "@/shine/core/zone.ts";
 import { locCell } from "@/shine/core/zone.ts";
 import { track as trackEvent } from "@/lib/telemetry.ts";
 import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
-import { CONTACT_HOLD_MS, resultStamp, STAMP_DELAY_MS, STAMP_HOLD_MS } from "@/shine/action-art.ts";
+import { CONTACT_HOLD_MS, resultStamp, STAMP_DELAY_MS, stampHoldMs } from "@/shine/action-art.ts";
 import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
@@ -361,6 +361,11 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         // The stamp's slam gets its own hit, on the frame it lands.
         const stamp = resultStamp(cue.beat, cue.swung);
         if (stamp) stampTimers.push(window.setTimeout(() => sfxStamp(stamp.tone), STAMP_DELAY_MS));
+        // A home run's roar rolls on: it swells again when the stamp lands, and once more as her name comes up.
+        if (cue.beat === "hr") {
+          stampTimers.push(window.setTimeout(sfxCrowdBurst, STAMP_DELAY_MS));
+          stampTimers.push(window.setTimeout(sfxCrowdBurst, STAMP_DELAY_MS + 900));
+        }
       }
     });
     const offRace = race.onCue((cue: RaceCue) => {
@@ -387,13 +392,13 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // ticking through the money hold so a clip that outlives the reaction
   // beat still ends on time.
   const clipMayShow = actionCue.resolvedAtMs !== null && snap.phase === "racing" && stage === "idle";
-  // The stamp holds STAMP_HOLD_MS past its landing; keep the clock running
+  // The stamp holds stampHoldMs past its landing; keep the clock running
   // through it even after the card phase, or it freezes on screen.
   const [stampTick, setStampTick] = useState(false);
   useEffect(() => {
     const at = actionCue.resolvedAtMs;
     if (at === null) return;
-    const end = at + STAMP_DELAY_MS + STAMP_HOLD_MS;
+    const end = at + STAMP_DELAY_MS + stampHoldMs(actionCue.beat);
     setStampTick(true);
     let raf = 0;
     const tick = () => {

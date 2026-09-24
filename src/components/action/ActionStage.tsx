@@ -40,7 +40,7 @@ import {
 import type { LivePitch } from "@/shine/featured-game.ts";
 import type { RivalArmId } from "@/shine/rivals.ts";
 import type { CharacterId } from "@/shine/types.ts";
-import { portraitSrc, type PortraitMood } from "@/shine/bible.ts";
+import { portraitSrc, sheet, type PortraitMood } from "@/shine/bible.ts";
 
 export interface ActionStageProps {
   view: ActionView;
@@ -72,6 +72,28 @@ export interface ActionStageProps {
 }
 
 const missingReported = new Set<string>();
+/** Home-run streamers: fixed spots so every HR falls the same way (no random in render). */
+const HR_STREAMERS = [
+  { x: 11, d: 0, r: -60, c: "var(--color-gold)" },
+  { x: 48, d: 73, r: -7, c: "var(--color-coral)" },
+  { x: 85, d: 146, r: 46, c: "var(--color-cream)" },
+  { x: 22, d: 219, r: -21, c: "var(--color-grass-2)" },
+  { x: 59, d: 292, r: 32, c: "var(--color-gold)" },
+  { x: 96, d: 365, r: -35, c: "var(--color-coral)" },
+  { x: 33, d: 438, r: 18, c: "var(--color-cream)" },
+  { x: 70, d: 511, r: -49, c: "var(--color-grass-2)" },
+  { x: 7, d: 64, r: 4, c: "var(--color-gold)" },
+  { x: 44, d: 137, r: 57, c: "var(--color-coral)" },
+  { x: 81, d: 210, r: -10, c: "var(--color-cream)" },
+  { x: 18, d: 283, r: 43, c: "var(--color-grass-2)" },
+  { x: 55, d: 356, r: -24, c: "var(--color-gold)" },
+  { x: 92, d: 429, r: 29, c: "var(--color-coral)" },
+  { x: 29, d: 502, r: -38, c: "var(--color-cream)" },
+  { x: 66, d: 55, r: 15, c: "var(--color-grass-2)" },
+  { x: 3, d: 128, r: -52, c: "var(--color-gold)" },
+  { x: 40, d: 201, r: 1, c: "var(--color-coral)" },
+];
+
 function reportMissing(layer: string, what: string) {
   const key = `${layer}:${what}`;
   if (missingReported.has(key)) return;
@@ -256,7 +278,8 @@ export function ActionStage({
   const underClip = money?.role === "batter" ? stillFor(batter, picture.batter) : money ? stillFor(pitcher, picture.pitcher) : null;
   const showCard = !quietCard && picture.card && view.stage !== "idle" && view.stage !== "situation";
   const stamp = quietCard ? null : resultStamp(view.beat, view.swung);
-  const stampUp = Boolean(stamp) && sinceResolve >= 0 && stampVisible(sinceResolve);
+  const stampUp = Boolean(stamp) && sinceResolve >= 0 && stampVisible(sinceResolve, view.beat);
+  const hr = view.beat === "hr" && stampUp;
   // One white frame the instant the ball meets the bat (no dissolves: a hard cut and a flash).
   const flash = !view.reduced && view.beat !== null && ballLeavesBat(view.beat) && view.swung && sinceResolve >= 0 && sinceResolve < 90;
   const resolvedKey = view.resolvedAtMs ?? 0;
@@ -347,7 +370,36 @@ export function ActionStage({
           aria-hidden
         />
       ) : null}
-      {stamp && stampUp ? (
+      {stamp && stampUp && hr ? (
+        // A home run is its own moment: gold rays turn behind her, streamers fall, the park shakes, and the kana land one by one.
+        <div key={`hr-${resolvedKey}`} className={`shine-hr pointer-events-none absolute inset-0 ${view.reduced ? "shine-hr-still" : ""}`} data-action-stamp="hr" aria-hidden>
+          <div className="shine-hr-rays" />
+          {view.reduced
+            ? null
+            : HR_STREAMERS.map((s, i) => (
+                <span
+                  key={i}
+                  className="shine-hr-streamer"
+                  style={{ ["--x" as string]: `${s.x}%`, ["--d" as string]: `${s.d}ms`, ["--r" as string]: `${s.r}deg`, ["--c" as string]: s.c }}
+                />
+              ))}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+            <div className="shine-stamp shine-stamp-gold shine-stamp-hr">
+              <span className="shine-stamp-jp">
+                {[...stamp.jp].map((ch, i) => (
+                  <span key={i} className="shine-hr-kana" style={{ ["--i" as string]: i }}>
+                    {ch}
+                  </span>
+                ))}
+              </span>
+              <span className="shine-stamp-en">{stamp.en}</span>
+            </div>
+            <p className="shine-hr-name">
+              <span className="shine-kana">{sheet(batterId).jp}</span> {sheet(batterId).name} · #{sheet(batterId).number}
+            </p>
+          </div>
+        </div>
+      ) : stamp && stampUp ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
           <div key={resolvedKey} className={`shine-stamp shine-stamp-${stamp.tone} ${view.reduced ? "shine-stamp-still" : ""}`} data-action-stamp={view.beat ?? ""}>
             <span className="shine-stamp-jp">{stamp.jp}</span>
