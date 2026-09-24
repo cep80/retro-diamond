@@ -97,3 +97,11 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
 - **Major:** per-letter voice blips; the Coach needs a presence on screen.
 - **Major:** the title's one door reads "Begin her year", Exhibition moves to the footer, plus a line a stranger understands.
 - **Polish:** button styles, JP font stacks, the walk is said three times, Aoi's "Um, sorry".
+
+**2026-09-23 / 24 (Claude Code, after the restart)**
+- **Check-in 2 (narrative director):** 15 findings. Fixed in `af5e646`: Kira's tin is one canon (one transfer from each of nine stops; the last is Stars Park, punched on move-in day); Aoi leads off; Reina's "fifth pitch" became walking Miki; the Coach remembers Reina's eleven full counts; Yuki's lighthouse stays secret; summaries, aphorisms and system lines cut; "Um, sorry" is down to 4 (promise, Finale eve, low point, title). Also fixed in `3a2d3cc` by the writer: the copied Kira/Miki debt scene is replaced (storm-soaked transfers), and 12 choices now break the kind = free / work = joyless pattern.
+- **M2 pass 3 done:** spoken endings `27ae2d9`. Each girl has three tiers (show / finale / short), plus Miki's never-quit. They play once before the Winning Live, and each one answers her promise.
+- **VN box `2a05976`:** a full-bleed still, a dark box sitting low, per-letter voice blips at each speaker's pitch, and choices in a reserved band so a mashed tap can't pick one.
+- **Check-in 3 (gameplay programmer):** 6 findings, all fixed in `8672027`: event stats cap at potential; tap-to-finish actually sticks (the rAF loop was overwriting it); Skip doesn't retype; Enter/Space leave buttons and dialogs alone; a picked choice survives a reload; focus follows the scene.
+- **Open question (lore):** Aoi and Reina are Koi teammates, yet three rival intros have Aoi batting against Reina. Working answer: the big dates are Academy showcase games with drawn sides. Put this in the plate spec.
+- **Next:** the HR sequence (M3, creative director major), then the title's one door "Begin her year", the Coach's presence, JP font stacks, and the walk said three times.
