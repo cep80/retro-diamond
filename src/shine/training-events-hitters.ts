@@ -92,7 +92,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "narration", text: "She walks it. Halfway there she starts laughing and trips over her own feet, which makes her laugh harder." },
           { who: "aoi", text: "That was terrible. Nobody's ever done anything that slow on purpose. Yuki would faint.", mood: "elated" },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Run twenty more. I'll time every one.",
@@ -124,7 +124,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "aoi", text: "Allowed. Okay. …That one went foul too. Coach, I'm having such a good time.", mood: "elated" },
           { who: "narration", text: "Reina says \"Ha.\" Then she looks away, as if it didn't happen." },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Take the pitch. Make her throw a fourth.",
@@ -156,7 +156,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "narration", text: "Haruko wipes her hands and looks at it for a long time. Then she tapes it to the register." },
           { who: "aoi", text: "She said, \"Finally, a face.\" What does that mean? Coach. What does that mean?", mood: "elated" },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Eat up. Then the cage, till it feels fair.",
@@ -187,7 +187,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "aoi", text: "Coach! …They're the good ones. You're very good. It's annoying. I'd rather you heard it from me.", mood: "neutral" },
           { who: "yuki", text: "Already knew. …I didn't know. Give me the pencil. I'm starring one of your library returns.", mood: "elated" },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Hand back the book. Study their pitcher.",
@@ -218,7 +218,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "aoi", text: "Oh. Oh, it's still the same pencil. It just has help now.", mood: "elated" },
           { who: "aoi", text: "Coach, that's exactly what Mom would do.", mood: "elated" },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Keep score in your head today.",
@@ -251,7 +251,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "aoi", text: "Not tonight. …Thank you. I wanted somebody to say not tonight.", mood: "neutral" },
           { who: "narration", text: "Haruko sets down two plates, extra bonito on both. She doesn't ask what you were whispering about." },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Write it once, clean. Then go hit.",
@@ -317,7 +317,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "narration", text: "Gary gives one last clank and settles into a hum. She looks at you like you did it." },
           { who: "miki", text: "Don't let it go to your head. Gary'll break again Thursday.", mood: "elated" },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Leave Gary. Hit in the heat.",
@@ -350,7 +350,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "narration", text: "She laughs. A real one, surprised out of her." },
           { who: "miki", text: "Gross. You chew like a cow. …Okay. Same time tomorrow.", mood: "elated" },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Kick Gary on. We hit in the rain.",
@@ -382,7 +382,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "miki", text: "Thank them? Out loud? With my face?", mood: "neutral" },
           { who: "narration", text: "She goes. One of the mail carriers hands her the new cowbell to try. She rings it once, badly, and laughs so hard she has to hold the rail." },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Have them ring it while you hit.",
@@ -415,7 +415,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "miki", text: "Two. In case.", mood: "elated" },
           { who: "narration", text: "You buy two. She eats both, and doesn't say in case of what." },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Then count fouls instead. Two strikes.",
@@ -447,7 +447,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "kira", text: "I'll owe you for breakfast, Partner.", mood: "elated" },
           { who: "miki", text: "…Okay. That works. That's a new one.", mood: "elated" },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Watch the seven fouls back with her.",
@@ -510,7 +510,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "miki", text: "Fine. It's three words. \"Thanks. Ring louder.\"", mood: "neutral" },
           { who: "miki", text: "…Four. I'm putting you in. Don't cry, it's gross.", mood: "elated" },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Let her say it with a bat instead.",
@@ -574,7 +574,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "miki", text: "Not over. …Cool.", mood: "neutral" },
           { who: "narration", text: "She puts the phone away. On the bus she takes the window seat and doesn't look at you, and her reflection is grinning." },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Delete the list. Cage at six tomorrow.",
@@ -608,7 +608,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "narration", text: "You get coffee. When you come back at seven, she's running the bags like nothing happened." },
           { who: "yuki", text: "You got the one with the foam. …Thanks. For the coffee. Just the coffee.", mood: "elated" },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: -5 },
       },
       {
         label: "Wait by first base with the watch.",
@@ -616,7 +616,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "yuki", text: "Waiting. Gross. …You saw the leg. Fine. You saw it.", mood: "focused" },
           { who: "narration", text: "She stands up at 7:02, runs one bag at half speed, and stops there. She doesn't talk to you again until lunch, and at lunch it's only about the weather." },
         ],
-        effect: { mood: -1, energy: 10 },
+        effect: { mood: -1, energy: 15 },
       },
     ],
   },
@@ -639,7 +639,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "yuki", text: "Strawberry. Milk on top. I'm going to eat it too fast.", mood: "elated" },
           { who: "narration", text: "She does. Brain freeze. She laughs so hard at her own brain freeze that the stand lady gives her a free refill." },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Walk her through the catcher's knees.",
@@ -702,7 +702,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "yuki", text: "Just the cap! See? You get it. You're getting faster.", mood: "elated" },
           { who: "narration", text: "She celebrates by buying a pink shaved ice, and admits it tastes the same." },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Cap, then belt. Every time. Again.",
@@ -741,8 +741,9 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
         reply: [
           { who: "narration", text: "She takes the turn at second a half-step wider than she used to. It looks slower. She's faster home." },
           { who: "yuki", text: "Huh. Wider is faster. That's rude.", mood: "focused" },
+          { who: "yuki", text: "Again. Time me again. Stopwatch, this is the best day of the week.", mood: "elated" },
         ],
-        effect: { stat: { key: "speed", delta: 1 }, energy: -10 },
+        effect: { stat: { key: "speed", delta: 1 }, mood: 1, energy: -10 },
       },
     ],
   },
@@ -797,7 +798,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "yuki", text: "New battery. Same watch. …Good. Okay. Good.", mood: "elated" },
           { who: "narration", text: "Next morning, first run: 3.2. She makes you show her the screen twice." },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Buy the new one. Real times only.",
@@ -829,7 +830,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "narration", text: "Yuki touches her cap. The kid is gone before Yuki's hand comes down." },
           { who: "yuki", text: "Did you see that? That's how it looks? From your side? Stopwatch, that's so good.", mood: "elated" },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Make her the rabbit. Forty races.",
@@ -860,7 +861,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "yuki", text: "After. There's an after. …Okay.", mood: "elated" },
           { who: "narration", text: "She tucks it into the stopwatch pouch and zips it shut. \"You hold that too.\"" },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: 10 },
       },
       {
         label: "Put it in. Then I'll time you on the bags.",

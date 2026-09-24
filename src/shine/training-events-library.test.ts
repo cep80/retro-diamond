@@ -26,3 +26,12 @@ test("every girl gets an event on every event turn", () => {
     }
   }
 });
+
+test("no event offers a choice that's worse on every count", () => {
+  const score = (e: { mood?: number; energy?: number; stat?: { delta: number } }) => [e.mood ?? 0, e.energy ?? 0, e.stat?.delta ?? 0];
+  const dominated = (a: number[], b: number[]) => a.every((x, i) => x <= b[i]!) && a.some((x, i) => x < b[i]!);
+  for (const e of EVENT_LIBRARY) {
+    const [a, b] = e.choices.map((c) => score(c.effect));
+    assert.ok(!dominated(a!, b!) && !dominated(b!, a!), `${e.girl} y${e.year}s${e.slot}: ${JSON.stringify(e.choices.map((c) => c.effect))}`);
+  }
+});

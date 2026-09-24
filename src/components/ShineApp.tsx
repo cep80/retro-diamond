@@ -810,6 +810,9 @@ function YearEnd() {
             >
               {still.frame}
             </p>
+            <p className="mt-1 max-w-md font-ui text-xs text-cream/70" data-ending-why>
+              {rankLabel} · {still.why}
+            </p>
             {pages ? (
               <>
                 <p className="mt-4 max-w-md font-ui text-sm text-gold">

@@ -427,3 +427,23 @@ describe("Diamond Finale and endings", () => {
     assert.equal(nextGirlId("yuki"), "aoi");
   });
 });
+
+describe("the ending says why", () => {
+  it("names the numbers, and the next rank's ask is what would have lifted her", async () => {
+    const { endingRank, endingWhy, RANK_FANS } = await import("./ending.ts");
+    const { newRun } = await import("./run.ts");
+    const run = newRun("aoi");
+    run.pgMisses = 1;
+    run.fans = 70;
+    const a = endingRank(run, true, true);
+    assert.equal(a, "A");
+    assert.match(endingWhy(run, a, true, true), /70 fans, one goal missed, the Finale won\. S asks for every goal and 80 fans\./);
+    run.pgMisses = 0;
+    run.fans = RANK_FANS.S;
+    assert.equal(endingRank(run, true, true), "S", "doing what A's line asked for makes it S");
+    run.fans = 45;
+    const b = endingRank(run, false, false);
+    assert.equal(b, "B");
+    assert.match(endingWhy(run, b, false, false), /A asks for the Diamond Finale/);
+  });
+});

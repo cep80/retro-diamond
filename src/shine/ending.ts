@@ -85,15 +85,38 @@ export function postgameLeaveLabel(run: TraineeRun, finale: boolean) {
   return finale || careerClosesEarly(run) ? "The year" : "Back to the complex";
 }
 
+/** The fan counts each rank asks for. endingRank and endingWhy both read these. */
+export const RANK_FANS = { S: 80, A: 60, B: 40, C: 20, neverQuit: 60 } as const;
+
 export function endingRank(run: TraineeRun, finalePlayed: boolean, finalePg: boolean): EndingRank {
-  if (isMikiPath(run) && run.fans >= 60 && !finaleFloorMet(run)) return "never-quit";
+  if (isMikiPath(run) && run.fans >= RANK_FANS.neverQuit && !finaleFloorMet(run)) return "never-quit";
   if (careerClosesEarly(run)) return "D";
-  if (finalePlayed && finalePg && run.pgMisses === 0 && run.fans >= 80) return "S";
-  if (finalePlayed && finalePg && run.pgMisses <= 1 && run.fans >= 60) return "A";
+  if (finalePlayed && finalePg && run.pgMisses === 0 && run.fans >= RANK_FANS.S) return "S";
+  if (finalePlayed && finalePg && run.pgMisses <= 1 && run.fans >= RANK_FANS.A) return "A";
   if (finalePlayed) return "B";
-  if (run.fans >= 40) return "B";
-  if (run.fans >= 20) return "C";
+  if (run.fans >= RANK_FANS.B) return "B";
+  if (run.fans >= RANK_FANS.C) return "C";
   return "D";
+}
+
+/**
+ * Why she finished where she did, in one plain line, and what the next rank
+ * up asks for. The rank is fair math; this is what lets the player see it.
+ */
+export function endingWhy(run: TraineeRun, rank: EndingRank, finalePlayed: boolean, finalePg: boolean): string {
+  const fans = `${run.fans} fans`;
+  const misses = run.pgMisses === 0 ? "every goal met" : run.pgMisses === 1 ? "one goal missed" : `${run.pgMisses} goals missed`;
+  if (rank === "S") return `${fans}, ${misses}, the Finale won. Nothing above this.`;
+  if (rank === "A") return `${fans}, ${misses}, the Finale won. S asks for every goal and ${RANK_FANS.S} fans.`;
+  if (rank === "never-quit") return `${fans} and no Finale. Section 4 stayed anyway.`;
+  if (rank === "B" && finalePlayed)
+    return finalePg
+      ? `${fans}, ${misses}, the Finale won. A asks for one miss at most and ${RANK_FANS.A} fans.`
+      : `${fans}. She played the Finale and missed its goal. A asks for that goal.`;
+  if (rank === "B") return `${fans}. A asks for the Diamond Finale.`;
+  if (rank === "C") return `${fans}. B asks for ${RANK_FANS.B}.`;
+  if (careerClosesEarly(run)) return `The Academy path closed early. ${fans}.`;
+  return `${fans}. C asks for ${RANK_FANS.C}.`;
 }
 
 function closingDateLabel(run: TraineeRun): string | null {
@@ -395,6 +418,8 @@ export interface CareerStill {
   trained: string;
   mentor: string;
   frame: string;
+  /** How the rank was earned, and what the next one asks for. */
+  why: string;
 }
 
 export function careerStill(run: TraineeRun): CareerStill {
@@ -425,5 +450,6 @@ export function careerStill(run: TraineeRun): CareerStill {
     trained,
     mentor: mentorLine,
     frame,
+    why: endingWhy(run, rank, finalePlayed, finalePg),
   };
 }
