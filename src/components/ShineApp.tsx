@@ -989,7 +989,7 @@ function Establishing() {
     <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
       <img src="/bg/skyline-complex.png" alt="" className="absolute inset-0 size-full object-cover opacity-40" />
       <div className="title-wash absolute inset-0" />
-      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-4 px-3 py-6 sm:px-6">
+      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-3 py-6 sm:px-6">
         <p className="episode-chip w-fit">First Day</p>
         <ScenePlayer scene={promiseScene(run.characterId)} reduced={reduced} onDone={() => setHeard(true)} />
         {heard ? (
@@ -1021,7 +1021,7 @@ function StoryScreen({ scene, chip, cta, onDone }: { scene: SceneLike; chip: str
   return (
     <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
       <div className="title-wash absolute inset-0" />
-      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-4 px-3 py-6 sm:px-6">
+      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-3 py-6 sm:px-6">
         <p className="episode-chip w-fit">{chip}</p>
         <ScenePlayer key={`${scene.id}-${scene.girl}-${scene.place}`} scene={scene} reduced={reduced} onDone={() => setHeard(true)} />
         {heard ? (
@@ -1046,6 +1046,13 @@ function EventScreen({ event }: { event: TrainingEvent }) {
   const [heard, setHeard] = useState(false);
   const [choice, setChoice] = useState<EventChoice | null>(null);
   const [replied, setReplied] = useState(false);
+  // Choices appear where the thumb was tapping through the scene: hold them a beat so a tap meant for the last line can't pick one.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!heard) return;
+    const t = window.setTimeout(() => setArmed(true), 600);
+    return () => window.clearTimeout(t);
+  }, [heard]);
   const key = eventKey(event);
   const scene = choice
     ? { id: `${key}-reply-${event.choices.indexOf(choice)}`, girl: event.girl, place: event.place, beats: choice.reply }
@@ -1053,32 +1060,33 @@ function EventScreen({ event }: { event: TrainingEvent }) {
   return (
     <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
       <div className="title-wash absolute inset-0" />
-      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-4 px-3 py-6 sm:px-6">
+      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-3 py-6 sm:px-6">
         <p className="episode-chip w-fit">{dateLabel(turnMeta(run.turn), sheet(run.characterId).style)} · before work</p>
         <ScenePlayer key={scene.id} scene={scene} reduced={reduced} onDone={() => (choice ? setReplied(true) : setHeard(true))} />
-        {heard && !choice ? (
-          <div className="flex flex-col gap-2">
-            {event.choices.map((c) => (
-              <PixelBtn key={c.label} variant="ghost" className="min-h-12 px-4 py-2 text-left normal-case" onClick={() => setChoice(c)}>
-                {c.label}
+        {/* The bottom is reserved from the first line, so the box never moves and a tap meant for it can't land on a choice. */}
+        <div className="flex min-h-[8.25rem] flex-col justify-end gap-2">
+          {heard && !choice
+            ? event.choices.map((c) => (
+                <PixelBtn key={c.label} variant="ghost" className="min-h-12 px-4 py-2 text-left normal-case" disabled={!armed} onClick={() => setChoice(c)}>
+                  {c.label}
+                </PixelBtn>
+              ))
+            : null}
+          {choice && replied ? (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {effectChips(choice.effect).map((chip) => (
+                  <span key={chip} className="episode-chip">
+                    {chip}
+                  </span>
+                ))}
+              </div>
+              <PixelBtn className="h-12" onClick={() => resolveEvent(key, choice.effect)}>
+                To work
               </PixelBtn>
-            ))}
-          </div>
-        ) : null}
-        {choice && replied ? (
-          <>
-            <div className="flex flex-wrap gap-2">
-              {effectChips(choice.effect).map((chip) => (
-                <span key={chip} className="episode-chip">
-                  {chip}
-                </span>
-              ))}
-            </div>
-            <PixelBtn className="h-12" onClick={() => resolveEvent(key, choice.effect)}>
-              To work
-            </PixelBtn>
-          </>
-        ) : null}
+            </>
+          ) : null}
+        </div>
       </div>
     </main>
   );

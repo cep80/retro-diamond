@@ -3,17 +3,28 @@
 /**
  * A JRPG scene: one beat at a time over her still. Tap (or Enter / Space)
  * finishes the line; tap again moves on. Narration has no nameplate, the
- * Coach's lines sit on the right, hers carry her name. Her still follows the
- * mood of her last line. Reduced motion prints each line whole.
+ * Coach's lines sit on the right, hers carry her name. Her still fills the
+ * screen behind the box and follows the mood of her last line; each letter she
+ * says blips at her own pitch. Reduced motion prints each line whole.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sceneFilmSrc, sheet } from "@/shine/bible.ts";
 import { kitAccent } from "@/shine/stage.ts";
-import { sfxBlip } from "@/shine/audio.ts";
+import { sfxBlip, sfxVoice } from "@/shine/audio.ts";
 import type { Beat, Mood, SceneLike } from "@/shine/story.ts";
 import type { CharacterId } from "@/shine/types.ts";
 
 const CHARS_PER_SEC = 42;
+/** Each voice has its own pitch; narration is silent. Blips every other letter. */
+const VOICE_HZ: Record<CharacterId | "coach", number> = {
+  aoi: 660,
+  miki: 740,
+  yuki: 820,
+  reina: 520,
+  sol: 600,
+  kira: 700,
+  coach: 300,
+};
 
 export function ScenePlayer({ scene, reduced, onDone }: { scene: SceneLike; reduced: boolean; onDone: () => void }) {
   const [index, setIndex] = useState(0);
@@ -42,10 +53,14 @@ export function ScenePlayer({ scene, reduced, onDone }: { scene: SceneLike; redu
       return;
     }
     setShown(0);
+    const voice = beat.who === "narration" ? 0 : (VOICE_HZ[beat.who as CharacterId | "coach"] ?? 0);
+    let last = 0;
     const start = performance.now();
     let raf = 0;
     const tick = () => {
       const n = Math.min(full, Math.floor(((performance.now() - start) / 1000) * CHARS_PER_SEC));
+      if (voice && Math.floor(n / 2) > Math.floor(last / 2) && /\S/.test(beat.text[n - 1] ?? "")) sfxVoice(voice);
+      last = n;
       setShown(n);
       if (n < full) raf = requestAnimationFrame(tick);
     };

@@ -883,20 +883,21 @@
 }
 
 /* JRPG scene: her still fills the frame, a text box sits along the bottom. */
+/* The scene is full-bleed: her still fills the screen behind the page, and
+   the box sits low, where the eye lands after her face. */
 .shine-scene {
   position: relative;
   display: flex;
+  flex: 1;
   flex-direction: column;
   justify-content: flex-end;
   width: 100%;
-  min-height: min(78dvh, 44rem);
-  overflow: hidden;
-  border-radius: 1.25rem;
-  background: var(--color-ink);
+  min-height: min(62dvh, 36rem);
 }
 .shine-scene-still {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  z-index: -1;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -914,15 +915,18 @@
   }
 }
 .shine-scene-shade {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  background: linear-gradient(0deg, rgb(8 17 39 / 0.92) 0%, rgb(8 17 39 / 0.45) 32%, transparent 58%);
+  z-index: -1;
+  background:
+    linear-gradient(0deg, rgb(8 17 39 / 0.96) 0%, rgb(8 17 39 / 0.6) 34%, transparent 60%),
+    linear-gradient(180deg, rgb(8 17 39 / 0.55) 0%, transparent 16%);
 }
 .shine-scene-place {
   position: absolute;
-  top: 1rem;
-  left: 1rem;
-  right: 5.5rem;
+  top: 0;
+  left: 0;
+  right: 5rem;
   width: fit-content;
   line-height: 1.5;
   padding: 0.3rem 0.75rem;
@@ -936,8 +940,8 @@
 }
 .shine-scene-skip {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: 0;
+  right: 0;
   padding: 0.3rem 0.75rem;
   border: 1px solid rgb(255 255 255 / 0.25);
   border-radius: 999px;
@@ -951,23 +955,22 @@
 .shine-scene-box {
   position: relative;
   display: block;
-  margin: 0 0.75rem 0.75rem;
-  min-height: 7.5rem;
-  padding: 1.35rem 1.1rem 1rem;
-  border: 1px solid rgb(255 209 102 / 0.4);
-  border-radius: 1rem;
-  background: rgb(245 248 255 / 0.95);
-  color: var(--color-ink);
+  min-height: 8.5rem;
+  padding: 1.5rem 1.2rem 1.1rem;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-top: 2px solid var(--shine-accent, var(--color-gold));
+  border-radius: 0.9rem;
+  background: rgb(8 17 39 / 0.9);
+  color: var(--color-cream);
   text-align: left;
-  box-shadow: 0 12px 30px rgb(0 0 0 / 0.4);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 0.55);
+  backdrop-filter: blur(6px);
 }
 .shine-scene-box.is-narration {
-  background: rgb(8 17 39 / 0.86);
-  border-color: rgb(255 255 255 / 0.18);
-  color: var(--color-cream);
+  border-top-color: rgb(255 255 255 / 0.22);
 }
 .shine-scene-box.is-coach {
-  border-color: rgb(120 234 220 / 0.6);
+  border-top-color: var(--color-grass-2);
 }
 .shine-scene-name {
   position: absolute;

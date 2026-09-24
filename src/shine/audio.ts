@@ -252,6 +252,12 @@ export function sfxBlip() {
   tone(880, 0.06, "square", 0.05);
 }
 
+/** One letter of a spoken line: a soft, short blip at the speaker's pitch. */
+export function sfxVoice(freq: number) {
+  if (!enabled.sfx) return;
+  tone(freq * (0.97 + Math.random() * 0.06), 0.035, "triangle", 0.025);
+}
+
 export function sfxSelect() {
   if (!enabled.sfx) return;
   tone(520, 0.05, "square", 0.04);
