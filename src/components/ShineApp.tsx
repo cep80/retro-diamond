@@ -20,6 +20,8 @@ import { MOOD_LABELS, moodLevel } from "@/shine/training.ts";
 import { useShine } from "@/shine/store.ts";
 import { finaleEveScene, promiseScene, TITLE_LINES, type SceneLike } from "@/shine/story.ts";
 import { lowPointScene, rivalIntro, RIVAL_KINDS, type RivalKind } from "@/shine/story-arcs.ts";
+import { effectChips, eventDue, eventKey, type EventChoice, type TrainingEvent } from "@/shine/training-events.ts";
+import { EVENT_LIBRARY } from "@/shine/training-events-library.ts";
 
 function isRivalKind(t: string | null): t is RivalKind {
   return t !== null && (RIVAL_KINDS as readonly string[]).includes(t);
@@ -1032,6 +1034,56 @@ function StoryScreen({ scene, chip, cta, onDone }: { scene: SceneLike; chip: str
   );
 }
 
+/**
+ * A training event: an ordinary day before work, a short scene, and a choice
+ * that's the Coach's to make. Her reply plays, the chips say what it did,
+ * and then it's off to work.
+ */
+function EventScreen({ event }: { event: TrainingEvent }) {
+  const run = useShine((s) => s.run)!;
+  const reduced = useShine((s) => s.settings.reducedMotion);
+  const resolveEvent = useShine((s) => s.resolveEvent);
+  const [heard, setHeard] = useState(false);
+  const [choice, setChoice] = useState<EventChoice | null>(null);
+  const [replied, setReplied] = useState(false);
+  const key = eventKey(event);
+  const scene = choice
+    ? { id: `${key}-reply-${event.choices.indexOf(choice)}`, girl: event.girl, place: event.place, beats: choice.reply }
+    : { id: key, girl: event.girl, place: event.place, beats: event.beats };
+  return (
+    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
+      <div className="title-wash absolute inset-0" />
+      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-4 px-3 py-6 sm:px-6">
+        <p className="episode-chip w-fit">{dateLabel(turnMeta(run.turn), sheet(run.characterId).style)} · before work</p>
+        <ScenePlayer key={scene.id} scene={scene} reduced={reduced} onDone={() => (choice ? setReplied(true) : setHeard(true))} />
+        {heard && !choice ? (
+          <div className="flex flex-col gap-2">
+            {event.choices.map((c) => (
+              <PixelBtn key={c.label} variant="ghost" className="min-h-12 px-4 py-2 text-left normal-case" onClick={() => setChoice(c)}>
+                {c.label}
+              </PixelBtn>
+            ))}
+          </div>
+        ) : null}
+        {choice && replied ? (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {effectChips(choice.effect).map((chip) => (
+                <span key={chip} className="episode-chip">
+                  {chip}
+                </span>
+              ))}
+            </div>
+            <PixelBtn className="h-12" onClick={() => resolveEvent(key, choice.effect)}>
+              To work
+            </PixelBtn>
+          </>
+        ) : null}
+      </div>
+    </main>
+  );
+}
+
 const RIVAL_CHIP: Record<RivalKind, string> = {
   "lantern-classic": "Lantern Classic · before the game",
   "night-classic": "Night Classic · before the game",
@@ -1129,6 +1181,7 @@ export function ShineApp() {
   let view: ReactNode;
   const turnType = run ? turnMeta(run.turn).type : null;
   const resuming = Boolean(run && liveGame && liveGame.runId === run.id && liveGame.turn === run.turn);
+  const dueEvent = run ? eventDue(run, EVENT_LIBRARY) : null;
   if (!hydrated) {
     view = (
       <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream">
@@ -1160,6 +1213,7 @@ export function ShineApp() {
     view = <StoryScreen scene={rivalIntro(run.characterId, turnType)} chip={RIVAL_CHIP[turnType]} cta="To the park" onDone={() => hearArc(`rival:${turnType}`)} />;
   else if (screen === "complex" && run.phase === "complex" && run.pgMisses >= 1 && !run.arcsHeard?.includes("low-point"))
     view = <StoryScreen scene={lowPointScene(run.characterId)} chip="That night" cta="Tomorrow" onDone={() => hearArc("low-point")} />;
+  else if (screen === "complex" && run.phase === "complex" && dueEvent) view = <EventScreen key={eventKey(dueEvent)} event={dueEvent} />;
   else if (screen === "plate") view = <ShinePlate />;
   else if (screen === "postgame") view = <Postgame />;
   else if (screen === "year-end") view = <YearEnd />;

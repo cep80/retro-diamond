@@ -19,6 +19,7 @@ import { applyParentPeak, pickInheritSparks } from "./ending.ts";
 import { decodeCard } from "./carry.ts";
 import { weeklyGuestFor } from "./rivals.ts";
 import { yearVoice } from "./culture.ts";
+import { applyEventChoice, type EventEffect } from "./training-events.ts";
 import { previewClaimable, SKUS } from "./commerce.ts";
 import { isPitcherStyle, lightCardFrom, sheet } from "./bible.ts";
 import {
@@ -102,6 +103,8 @@ export interface ShineState {
   dismissStoryCard: () => void;
   hearFinaleEve: () => void;
   hearArc: (key: string) => void;
+  /** A training event's choice: apply its effect and mark the event heard, together. */
+  resolveEvent: (key: string, effect: EventEffect) => void;
   setSkipOnboarding: (on: boolean) => void;
   setMuted: (on: boolean) => void;
   setSettings: (patch: Partial<ShineSettings>) => void;
@@ -418,6 +421,13 @@ export const useShine = create<ShineState>()(
         const { run } = get();
         if (!run || run.arcsHeard?.includes(key)) return;
         set({ run: { ...run, arcsHeard: [...(run.arcsHeard ?? []), key] } });
+      },
+      resolveEvent: (key, effect) => {
+        const { run } = get();
+        if (!run || run.arcsHeard?.includes(key)) return;
+        const next: TraineeRun = { ...run, stats: { ...run.stats }, arcsHeard: [...(run.arcsHeard ?? []), key] };
+        applyEventChoice(next, effect);
+        set({ run: next });
       },
       hearFinaleEve: () => {
         const { run } = get();
