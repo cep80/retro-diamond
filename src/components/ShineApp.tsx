@@ -115,24 +115,18 @@ function Title() {
                 <span aria-hidden>→</span>
               </PixelBtn>
             ) : (
-              <PixelBtn className="h-14 justify-between px-5 text-sm" onClick={go(openExhibition)}>
+              <PixelBtn className="h-14 justify-between px-5 text-sm" onClick={go(openSelect)}>
                 <span className="flex flex-col items-start gap-1 text-left">
-                  Play ball
-                  <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Three at-bats. Pick her, press Go, watch.</span>
+                  Begin her year
+                  <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Pick a girl. Coach her three years. Get her to the top.</span>
                 </span>
                 <span aria-hidden>→</span>
               </PixelBtn>
             )}
-            {run ? (
-              <PixelBtn variant="ghost" className="h-12" onClick={go(openExhibition)}>
-                Exhibition
-              </PixelBtn>
-            ) : (
-              <PixelBtn variant="ghost" className="h-12" onClick={go(openSelect)}>
-                Begin her year
-              </PixelBtn>
-            )}
             <nav className="shine-title-row" aria-label="More">
+              <button type="button" onClick={go(openExhibition)}>
+                Exhibition
+              </button>
               <button type="button" onClick={go(openWall)}>
                 Clubhouse{clubhouse.length > 0 ? ` · ${clubhouse.length}` : ""}
               </button>
