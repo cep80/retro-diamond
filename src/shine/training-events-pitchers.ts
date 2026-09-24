@@ -17,7 +17,6 @@ const reina = (text: string, mood: Mood = "neutral"): Beat => ({ who: "reina", t
 const sol = (text: string, mood: Mood = "neutral"): Beat => ({ who: "sol", text, mood });
 const kira = (text: string, mood: Mood = "neutral"): Beat => ({ who: "kira", text, mood });
 const aoi = (text: string, mood: Mood = "neutral"): Beat => ({ who: "aoi", text, mood });
-const miki = (text: string, mood: Mood = "neutral"): Beat => ({ who: "miki", text, mood });
 
 const REINA: TrainingEvent[] = [
   // Year 1: zero walks, barely any sleep, the same onigiri. She calls you nothing.
@@ -46,9 +45,10 @@ const REINA: TrainingEvent[] = [
         label: "Try the tuna-mayo. Just once.",
         reply: [
           reina("Tuna-mayo. That's Kira's. She'll smell it on me.", "focused"),
-          nar("She eats it without saying if it was good. Her first pitch that morning goes right down the middle, hard, on purpose, and she looks at you like you did that."),
+          nar("She eats it in four bites, same as always, and doesn't say if it was good. She pitches fine. She's quiet all day, the way a room is quiet after somebody moves the furniture."),
+          reina("Seven innings on the wrong onigiri. Nothing fell down. Write that in the notebook. Small.", "neutral"),
         ],
-        effect: { stat: { key: "stuff", delta: 1 } },
+        effect: { mood: -1, stat: { key: "guts", delta: 1 } },
       },
     ],
   },
@@ -212,9 +212,9 @@ const REINA: TrainingEvent[] = [
         label: "Keep it between the two of you.",
         reply: [
           reina("Good. Somebody has to keep things.", "neutral"),
-          nar("She throws eleven to the same spot, loud, so the next mound can hear every one."),
+          nar("She stops throwing and watches Sol's next twenty. On the walk out she tells you where Sol's catcher set up for every one, in order, and which two Sol shook off."),
         ],
-        effect: { mood: 1 },
+        effect: { stat: { key: "wit", delta: 1 } },
       },
     ],
   },
@@ -376,9 +376,9 @@ const SOL: TrainingEvent[] = [
         label: "No reason today. Throw what you trust.",
         reply: [
           sol("Heat.", "elated"),
-          nar("Twenty fastballs. Fuentes stops putting down two fingers. On the walk out, Sol taps the inside of her glove against her leg, twice, like she's checking it's still there."),
+          nar("Forty fastballs, the last as hard as the first. Fuentes stops putting down two fingers. On the walk out, Sol taps the inside of her glove against her leg, twice, like she's checking it's still there."),
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: -10 },
       },
     ],
   },
@@ -541,7 +541,7 @@ const SOL: TrainingEvent[] = [
           sol("…I'm in. Loser buys elote.", "elated"),
           nar("Reina wins by an inch. Sol makes her say the inch out loud, and grins about it for ten minutes."),
         ],
-        effect: { stat: { key: "control", delta: 1 }, energy: -10 },
+        effect: { stat: { key: "control", delta: 1 }, mood: 1, energy: -10 },
       },
     ],
   },
@@ -689,8 +689,9 @@ const KIRA: TrainingEvent[] = [
         reply: [
           kira("Slow? Partner, I don't know slow. …Fine. Once.", "neutral"),
           nar("Fifty-two steps. She notices the dew on the grass, the chalk, the crack in the rubber that looks like a bus route. She's quiet all the way back to the door."),
+          kira("The mound's soft on the first-base side, Partner. Nobody told me. I saw it.", "focused"),
         ],
-        effect: { mood: 1 },
+        effect: { stat: { key: "wit", delta: 1 } },
       },
       {
         label: "Time her. Get it to thirty-eight.",
@@ -738,32 +739,32 @@ const KIRA: TrainingEvent[] = [
     girl: "kira",
     year: 2,
     slot: 1,
-    place: "Outside the pen · the vending machine that eats every third coin",
+    place: "Stars Park bullpen door · after a summer storm, the gutter still pouring",
     beats: [
-      nar("Kira and Miki are in front of the vending machine, arguing about whose turn it is."),
-      miki("You owe me a juice. From April.", "neutral"),
-      kira("I bought you a melon pan in May! That cancels!", "elated"),
-      miki("It doesn't cancel. Juice and melon pan are different money.", "focused"),
-      kira("Partner! Settle it. Whoever loses buys.", "elated"),
-      nar("Then, quieter, just to you: \"Don't settle it too good. If it's settled, she doesn't have to talk to me.\""),
+      nar("The gutter over the bullpen door overflowed in the storm. Kira's bag was right under it, where it always is."),
+      nar("Now everything she owns is laid out on the pen bench to dry. Two shirts, a toothbrush, a hoodie from her third school, and the tin, open."),
+      kira("Partner. Don't look at the shirts. Look at the transfers. The transfers are the emergency.", "crushed"),
+      nar("Nine of them, in route order down the bench. The water got in at the hinge, at the back of the tin, and the back is where Stars Park goes. The ink has run into a blue cloud."),
+      kira("The hole's fine, though. Mom punched it. The hole's the important part.", "neutral"),
+      kira("Here's the deal. If I leave them out, they dry. If I leave them out, they're here all night without me. I've never left anything anywhere.", "focused"),
     ],
     choices: [
       {
-        label: "Buy both juices yourself.",
+        label: "Leave them on the bench overnight.",
         reply: [
-          kira("Partner, no! Now nobody owes anybody!", "crushed"),
-          miki("Cool. So now I owe Coach. And Kira still owes me for April. Still broken. Nice.", "elated"),
-          kira("…Still broken. Okay. Good. Thank you.", "elated"),
+          kira("Overnight. Okay. I'm going home with an empty tin. It's so light. It's wrong.", "neutral"),
+          nar("She texts you at 1:40 a.m. to ask if the pen roof leaks. At six she's at the door before the groundskeeper, and all nine are there, flat and dry, in route order."),
+          kira("They stayed, Partner. I slept about an hour. Don't tell Reina, she'll want the exact number.", "elated"),
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: -10 },
       },
       {
-        label: "Settle it later. Bullpen, now.",
+        label: "Pack them back up. Damp is fine.",
         reply: [
-          kira("An open case! Partner, I love an open case.", "elated"),
-          nar("She throws twenty-five in the pen and points at Miki after every strike. Miki pretends not to see. She stays for all twenty-five."),
+          kira("Damp is fine. Damp is fine. Route order, though. I'm not an animal.", "focused"),
+          nar("She packs the bag the way she does every night, tin on top, and throws thirty with it zipped at her feet where she can see it. Every one goes where she's looking."),
         ],
-        effect: { stat: { key: "stuff", delta: 1 }, energy: -10 },
+        effect: { stat: { key: "control", delta: 1 } },
       },
     ],
   },
@@ -850,8 +851,9 @@ const KIRA: TrainingEvent[] = [
         reply: [
           kira("Hypothetically, okay. Forty-two. Forty-three.", "focused"),
           nar("She stops at sixty. She doesn't look at the door once the whole second half."),
+          kira("Sixty, Partner. My arm feels like the back row with the heater on.", "elated"),
         ],
-        effect: { stat: { key: "stamina", delta: 1 }, energy: -15 },
+        effect: { stat: { key: "stamina", delta: 1 }, mood: 1, energy: -15 },
       },
       {
         label: "Tell her to ask you properly, at the door.",

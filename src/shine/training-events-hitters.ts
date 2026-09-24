@@ -58,9 +58,9 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
         label: "Stay for the rush. Practice can wait.",
         reply: [
           { who: "aoi", text: "Okay. Then you're on drinks, Coach. Table three is a lot.", mood: "elated" },
-          { who: "narration", text: "By one-thirty you've carried eleven iced teas, and Aoi has laughed at the umpire twice more." },
+          { who: "narration", text: "By one-thirty you've carried fourteen iced teas, Aoi has bussed every table twice, and she's laughed at the umpire twice more." },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: -10 },
       },
       {
         label: "Go early. We'll work the count.",
@@ -224,9 +224,10 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
         label: "Keep score in your head today.",
         reply: [
           { who: "aoi", text: "In my head. Okay. 6-3, 4-3, that's a walk, that's…", mood: "focused" },
-          { who: "aoi", text: "I watched every pitch, because I couldn't write them down. Coach, I think I saw more.", mood: "neutral" },
+          { who: "narration", text: "By the fifth inning she's mouthing the count, and her hand keeps reaching for a pencil that isn't there." },
+          { who: "aoi", text: "I watched every pitch, because I couldn't write them down. I think I saw more, Coach. I didn't like it one bit.", mood: "neutral" },
         ],
-        effect: { stat: { key: "eye", delta: 1 }, energy: -10 },
+        effect: { stat: { key: "eye", delta: 1 }, mood: -1 },
       },
     ],
   },
@@ -422,7 +423,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
           { who: "miki", text: "Two strikes, every pitch, count what I spoil. Okay.", mood: "focused" },
           { who: "miki", text: "Thirty-one. Coach, thirty-one. That's a number I like.", mood: "elated" },
         ],
-        effect: { stat: { key: "contact", delta: 1 }, energy: -10 },
+        effect: { stat: { key: "contact", delta: 1 }, mood: 1, energy: -10 },
       },
     ],
   },
@@ -538,10 +539,10 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
       {
         label: "Stay till close. Let her be a regular.",
         reply: [
-          { who: "narration", text: "She stays till close. Haruko does the umpire. Miki laughs, then looks hard at the grill instead of anyone." },
+          { who: "narration", text: "She stays till close, which is after midnight. Haruko does the umpire twice. Miki laughs, then looks hard at the grill instead of anyone." },
           { who: "miki", text: "Coach, her mom asked when I'm coming back. Like it's a given. People don't do that.", mood: "elated" },
         ],
-        effect: { mood: 1 },
+        effect: { mood: 1, energy: -10 },
       },
       {
         label: "Take it to go. The cage is open till ten.",
@@ -612,11 +613,10 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
       {
         label: "Wait by first base with the watch.",
         reply: [
-          { who: "yuki", text: "Waiting. Gross. …Fine. When I stand up, start it.", mood: "neutral" },
-          { who: "narration", text: "She stands up at 7:02 and she's gone before your thumb moves." },
-          { who: "yuki", text: "3.3. You were late. You're always late.", mood: "elated" },
+          { who: "yuki", text: "Waiting. Gross. …You saw the leg. Fine. You saw it.", mood: "focused" },
+          { who: "narration", text: "She stands up at 7:02, runs one bag at half speed, and stops there. She doesn't talk to you again until lunch, and at lunch it's only about the weather." },
         ],
-        effect: { stat: { key: "speed", delta: 1 }, energy: -5 },
+        effect: { mood: -1, energy: 10 },
       },
     ],
   },
@@ -731,9 +731,10 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
         label: "Rest the leg today. The ice is on me.",
         reply: [
           { who: "yuki", text: "Rest. On purpose. …Okay. Once. Because you asked with ice.", mood: "neutral" },
-          { who: "narration", text: "She gets melon, since there's no strawberry. She eats it slowly. It's the slowest you've ever seen her eat anything." },
+          { who: "narration", text: "She gets melon, since there's no strawberry, and eats it slowly on the bleachers while the second team runs the bags. She watches every catcher's knees." },
+          { who: "yuki", text: "The one on first goes on the next pitch. …See? Told you. I didn't even stand up.", mood: "elated" },
         ],
-        effect: { energy: 20 },
+        effect: { stat: { key: "wit", delta: 1 }, energy: 10 },
       },
       {
         label: "Time her first to home. Every turn.",
