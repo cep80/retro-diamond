@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { turnMeta } from "./calendar.ts";
 import { newRun } from "./run.ts";
-import { applyEventChoice, effectChips, EVENT_TURNS, eventDue, eventKey, type TrainingEvent } from "./training-events.ts";
+import { applyEventChoice, cappedEffect, effectChips, EVENT_TURNS, eventDue, eventKey, type TrainingEvent } from "./training-events.ts";
 
 const sample: TrainingEvent = {
   girl: "aoi",
@@ -47,5 +47,18 @@ describe("training events: the rules", () => {
     assert.equal(run.energy, 100);
     assert.equal(run.stats.contact, before + 1);
     assert.deepEqual(effectChips({ mood: -1, energy: -10, stat: { key: "eye", delta: 2 } }), ["Mood down", "Energy -10", "Eye +2"]);
+  });
+
+  it("never lift a stat past her potential, and the chips only show what landed", () => {
+    const run = newRun("aoi");
+    run.mood = 4;
+    run.energy = 95;
+    run.stats.guts = run.potential - 1;
+    const effect = { mood: 1 as const, energy: 15, stat: { key: "guts" as const, delta: 2 as const } };
+    assert.deepEqual(effectChips(cappedEffect(run, effect)), ["Energy +5", "Guts +1"]);
+    applyEventChoice(run, effect);
+    assert.equal(run.stats.guts, run.potential);
+    applyEventChoice(run, effect);
+    assert.equal(run.stats.guts, run.potential, "a second push stays at the ceiling");
   });
 });

@@ -105,6 +105,7 @@ export interface ShineState {
   hearArc: (key: string) => void;
   /** A training event's choice: apply its effect and mark the event heard, together. */
   resolveEvent: (key: string, effect: EventEffect) => void;
+  pickEvent: (key: string, index: 0 | 1) => void;
   setSkipOnboarding: (on: boolean) => void;
   setMuted: (on: boolean) => void;
   setSettings: (patch: Partial<ShineSettings>) => void;
@@ -425,9 +426,14 @@ export const useShine = create<ShineState>()(
       resolveEvent: (key, effect) => {
         const { run } = get();
         if (!run || run.arcsHeard?.includes(key)) return;
-        const next: TraineeRun = { ...run, stats: { ...run.stats }, arcsHeard: [...(run.arcsHeard ?? []), key] };
+        const next: TraineeRun = { ...run, stats: { ...run.stats }, arcsHeard: [...(run.arcsHeard ?? []), key], eventPick: undefined };
         applyEventChoice(next, effect);
         set({ run: next });
+      },
+      pickEvent: (key, index) => {
+        const { run } = get();
+        if (!run || run.arcsHeard?.includes(key) || run.eventPick?.key === key) return;
+        set({ run: { ...run, eventPick: { key, index } } });
       },
       hearFinaleEve: () => {
         const { run } = get();

@@ -20,7 +20,7 @@ import { MOOD_LABELS, moodLevel } from "@/shine/training.ts";
 import { useShine } from "@/shine/store.ts";
 import { finaleEveScene, promiseScene, TITLE_LINES, type SceneLike } from "@/shine/story.ts";
 import { lowPointScene, rivalIntro, RIVAL_KINDS, type RivalKind } from "@/shine/story-arcs.ts";
-import { effectChips, eventDue, eventKey, type EventChoice, type TrainingEvent } from "@/shine/training-events.ts";
+import { cappedEffect, effectChips, eventDue, eventKey, type EventChoice, type TrainingEvent } from "@/shine/training-events.ts";
 import { EVENT_LIBRARY } from "@/shine/training-events-library.ts";
 import { endingChip, endingScene, endingTier } from "@/shine/story-endings.ts";
 
@@ -988,7 +988,6 @@ function Establishing() {
   // Her promise, one line at a time. The year starts when she's said it.
   return (
     <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
-      <img src="/bg/skyline-complex.png" alt="" className="absolute inset-0 size-full object-cover opacity-40" />
       <div className="title-wash absolute inset-0" />
       <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-3 py-6 sm:px-6">
         <p className="episode-chip w-fit">First Day</p>
@@ -1044,8 +1043,11 @@ function EventScreen({ event }: { event: TrainingEvent }) {
   const run = useShine((s) => s.run)!;
   const reduced = useShine((s) => s.settings.reducedMotion);
   const resolveEvent = useShine((s) => s.resolveEvent);
-  const [heard, setHeard] = useState(false);
-  const [choice, setChoice] = useState<EventChoice | null>(null);
+  const pickEvent = useShine((s) => s.pickEvent);
+  // A pick survives a reload: the scene resumes on her reply, not on the choice.
+  const saved = run.eventPick?.key === eventKey(event) ? event.choices[run.eventPick.index] : null;
+  const [heard, setHeard] = useState(Boolean(saved));
+  const [choice, setChoice] = useState<EventChoice | null>(saved ?? null);
   const [replied, setReplied] = useState(false);
   // Choices appear where the thumb was tapping through the scene: hold them a beat so a tap meant for the last line can't pick one.
   const [armed, setArmed] = useState(false);
@@ -1054,6 +1056,10 @@ function EventScreen({ event }: { event: TrainingEvent }) {
     const t = window.setTimeout(() => setArmed(true), 600);
     return () => window.clearTimeout(t);
   }, [heard]);
+  // Keyboard focus follows the scene when the choice buttons go away.
+  useEffect(() => {
+    if (choice) document.querySelector<HTMLButtonElement>(".shine-scene-box")?.focus();
+  }, [choice]);
   const key = eventKey(event);
   const scene = choice
     ? { id: `${key}-reply-${event.choices.indexOf(choice)}`, girl: event.girl, place: event.place, beats: choice.reply }
@@ -1067,8 +1073,17 @@ function EventScreen({ event }: { event: TrainingEvent }) {
         {/* The bottom is reserved from the first line, so the box never moves and a tap meant for it can't land on a choice. */}
         <div className="flex min-h-[8.25rem] flex-col justify-end gap-2">
           {heard && !choice
-            ? event.choices.map((c) => (
-                <PixelBtn key={c.label} variant="ghost" className="min-h-12 px-4 py-2 text-left normal-case" disabled={!armed} onClick={() => setChoice(c)}>
+            ? event.choices.map((c, i) => (
+                <PixelBtn
+                  key={c.label}
+                  variant="ghost"
+                  className="min-h-12 px-4 py-2 text-left normal-case"
+                  disabled={!armed}
+                  onClick={() => {
+                    pickEvent(eventKey(event), i as 0 | 1);
+                    setChoice(c);
+                  }}
+                >
                   {c.label}
                 </PixelBtn>
               ))
@@ -1076,7 +1091,7 @@ function EventScreen({ event }: { event: TrainingEvent }) {
           {choice && replied ? (
             <>
               <div className="flex flex-wrap gap-2">
-                {effectChips(choice.effect).map((chip) => (
+                {effectChips(cappedEffect(run, choice.effect)).map((chip) => (
                   <span key={chip} className="episode-chip">
                     {chip}
                   </span>

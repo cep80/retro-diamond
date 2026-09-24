@@ -47,8 +47,11 @@ export function ScenePlayer({ scene, reduced, onDone }: { scene: SceneLike; redu
   const speakerId = beat.who !== "narration" && beat.who !== "coach" ? beat.who : null;
   const girl = speakerId ? sheet(speakerId) : null;
 
+  // The typing loop lives in a ref so a tap (or Skip) can stop it; otherwise the next frame types the line back over the finished one.
+  const rafRef = useRef(0);
+  const doneRef = useRef(false);
   useEffect(() => {
-    if (reduced) {
+    if (reduced || doneRef.current) {
       setShown(full);
       return;
     }
@@ -56,21 +59,21 @@ export function ScenePlayer({ scene, reduced, onDone }: { scene: SceneLike; redu
     const voice = beat.who === "narration" ? 0 : (VOICE_HZ[beat.who as CharacterId | "coach"] ?? 0);
     let last = 0;
     const start = performance.now();
-    let raf = 0;
     const tick = () => {
       const n = Math.min(full, Math.floor(((performance.now() - start) / 1000) * CHARS_PER_SEC));
       if (voice && Math.floor(n / 2) > Math.floor(last / 2) && /\S/.test(beat.text[n - 1] ?? "")) sfxVoice(voice);
       last = n;
       setShown(n);
-      if (n < full) raf = requestAnimationFrame(tick);
+      if (n < full) rafRef.current = requestAnimationFrame(tick);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
   }, [index, full, reduced]);
 
   const advance = useCallback(() => {
     if (done) return;
     if (typing) {
+      cancelAnimationFrame(rafRef.current);
       setShown(full);
       return;
     }
@@ -79,6 +82,7 @@ export function ScenePlayer({ scene, reduced, onDone }: { scene: SceneLike; redu
       setIndex(index + 1);
       return;
     }
+    doneRef.current = true;
     setDone(true);
     onDone();
   }, [done, typing, full, index, scene.beats.length, onDone]);
@@ -87,7 +91,10 @@ export function ScenePlayer({ scene, reduced, onDone }: { scene: SceneLike; redu
   advanceRef.current = advance;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
+      if (e.repeat || doneRef.current) return;
+      // A focused button, field or open dialog handles its own Enter/Space.
+      const t = e.target instanceof Element ? e.target : null;
+      if (t?.closest("button, a, input, select, textarea, [role=dialog]") || document.querySelector("[role=dialog], [aria-modal=true]")) return;
       if (e.code === "Enter" || e.code === "Space") {
         e.preventDefault();
         advanceRef.current();
@@ -98,6 +105,8 @@ export function ScenePlayer({ scene, reduced, onDone }: { scene: SceneLike; redu
   }, []);
 
   const skip = () => {
+    doneRef.current = true;
+    cancelAnimationFrame(rafRef.current);
     setIndex(scene.beats.length - 1);
     setShown(scene.beats.at(-1)!.text.length);
     setDone(true);

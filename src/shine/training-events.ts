@@ -7,6 +7,7 @@
  * the shape, the calendar and the rules.
  */
 import { clamp } from "./core/rng.ts";
+import { clampStat } from "./training.ts";
 import type { Beat } from "./story.ts";
 import type { CharacterId, TraineeRun, TraineeStatKey } from "./types.ts";
 
@@ -64,11 +65,32 @@ export function eventDue(
   return null;
 }
 
-/** Apply a choice's effect. Mood 0–4, energy 0–100, stats 1–20. */
+/**
+ * What a choice will actually do to her right now: mood 0–4, energy 0–100,
+ * and no stat past her potential. Anything a cap swallows is dropped, so the
+ * chips never promise a point she didn't get.
+ */
+export function cappedEffect(run: Pick<TraineeRun, "mood" | "energy" | "stats" | "potential">, effect: EventEffect): EventEffect {
+  const out: EventEffect = {};
+  if (effect.mood && clamp(run.mood + effect.mood, 0, 4) !== run.mood) out.mood = effect.mood;
+  if (effect.energy) {
+    const d = clamp(run.energy + effect.energy, 0, 100) - run.energy;
+    if (d) out.energy = d;
+  }
+  if (effect.stat) {
+    const now = run.stats[effect.stat.key];
+    const d = clampStat(now + effect.stat.delta, run.potential) - now;
+    if (d === 1 || d === 2) out.stat = { key: effect.stat.key, delta: d };
+  }
+  return out;
+}
+
+/** Apply a choice's effect, capped the same way as training. */
 export function applyEventChoice(run: TraineeRun, effect: EventEffect): void {
-  if (effect.mood) run.mood = clamp(run.mood + effect.mood, 0, 4);
-  if (effect.energy) run.energy = clamp(run.energy + effect.energy, 0, 100);
-  if (effect.stat) run.stats[effect.stat.key] = clamp(run.stats[effect.stat.key] + effect.stat.delta, 1, 20);
+  const e = cappedEffect(run, effect);
+  if (e.mood) run.mood += e.mood;
+  if (e.energy) run.energy += e.energy;
+  if (e.stat) run.stats[e.stat.key] += e.stat.delta;
 }
 
 const STAT_NAME: Record<TraineeStatKey, string> = {

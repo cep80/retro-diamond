@@ -227,6 +227,8 @@ export interface TraineeRun {
   finaleEveHeard?: boolean;
   /** Story arcs already played this run: "rival:<kind>", "low-point". */
   arcsHeard?: string[];
+  /** A training event's choice, saved the moment it's picked so a reload can't take it back. */
+  eventPick?: { key: string; index: 0 | 1 };
 }
 
 export type ShineScreen = "title" | "select" | "shop" | "complex" | "plate" | "postgame" | "year-end" | "weekly" | "wall" | "settings" | "help" | "exhibition";
