@@ -65,7 +65,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
       {
         label: "Go early. We'll work the count.",
         reply: [
-          { who: "aoi", text: "She says the grill has had her since before I was born. That's fair.", mood: "neutral" },
+          { who: "aoi", text: "She says the grill was fine without me for twenty years. She's being nice. Let's go.", mood: "neutral" },
           { who: "aoi", text: "Coach, she waved at us with the spatula the whole way down the street.", mood: "focused" },
         ],
         effect: { stat: { key: "eye", delta: 1 }, energy: -10 },
@@ -239,7 +239,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
       { who: "narration", text: "The shop is empty except for a delivery driver eating fast and Haruko scraping the grill." },
       { who: "aoi", text: "Can I practice something on you? It's a question. It's for her.", mood: "neutral" },
       { who: "aoi", text: "\"Mom, what was the pitch.\" No. \"Mom, do you think about it.\" No. That one's mean.", mood: "focused" },
-      { who: "narration", text: "The questions are in the back of her scorebook, crossed out one by one. There are eleven." },
+      { who: "narration", text: "The questions are in the back of her scorebook, crossed out one by one. There are nine." },
       { who: "coach", text: "What do you actually want to know?" },
       { who: "aoi", text: "If she'd swing again. That's all. If it was worth it.", mood: "crushed" },
     ],
@@ -271,7 +271,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
       { who: "narration", text: "Late October. The cage lights hum. The last bucket is empty, and the balls are all over the turf like somebody dropped a necklace." },
       { who: "aoi", text: "I don't want to pick them up yet. If I pick them up, practice is over, and then it's the Series.", mood: "neutral" },
       { who: "narration", text: "She turns the bucket over and perches on it." },
-      { who: "aoi", text: "Three years ago I was paying back something nobody asked me to pay. Now I just like it here. On first. In the cage. With you telling me what you see.", mood: "focused" },
+      { who: "aoi", text: "Day one I wrote 'said top' on my glove. I've kept score every day since. I've never kept score of anything this long.", mood: "focused" },
       { who: "aoi", text: "Coach.", mood: "elated" },
       { who: "narration", text: "She says it the way Haruko says the names of her regulars. The ones who get the good table." },
     ],
@@ -404,12 +404,12 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
       { who: "narration", text: "Last spring she'd have told you the week before you'd put your bag down. She hasn't said anything." },
       { who: "coach", text: "What week is it?" },
       { who: "miki", text: "Dunno. I stopped.", mood: "neutral" },
-      { who: "miki", text: "Don't make it a thing. I didn't delete anything. I just didn't open it. People don't open apps.", mood: "focused" },
+      { who: "miki", text: "Don't. I didn't delete anything. I just didn't open it. People don't open apps.", mood: "focused" },
       { who: "narration", text: "She fouls one into the frame. Gary clanks right on time, like a laugh track." },
     ],
     choices: [
       {
-        label: "Don't make it a thing. Buy melon pan.",
+        label: "Don't say a word. Buy melon pan.",
         reply: [
           { who: "miki", text: "Two. In case.", mood: "elated" },
           { who: "narration", text: "You buy two. She eats both, and doesn't say in case of what." },
@@ -436,7 +436,6 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
       { who: "kira", text: "Here's the deal. Seven fouls with two strikes. Seven! I watched from the door. I owe you a melon pan for that.", mood: "elated" },
       { who: "miki", text: "You owe me four melon pan.", mood: "neutral" },
       { who: "kira", text: "Five, then. Deal?", mood: "elated" },
-      { who: "narration", text: "Neither of them wants the debt to end, and both of them know it." },
       { who: "miki", text: "Section 4 rang the bell till the ushers asked them to stop. They didn't stop. Coach, they didn't stop.", mood: "elated" },
     ],
     choices: [
@@ -724,7 +723,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
       { who: "narration", text: "The shaved-ice stand is out of strawberry, because Yuki bought four last night, and the stand lady has made a sign about it." },
       { who: "yuki", text: "First to home! On a single! Did you see the catcher? She had a face.", mood: "elated" },
       { who: "narration", text: "Then she goes quiet, which Yuki doesn't do, and looks at her left leg." },
-      { who: "yuki", text: "I told you. About the leg. Last week. And you didn't write it down, and you didn't pull me. You just waited with me.", mood: "neutral" },
+      { who: "yuki", text: "I told you before the game this time. Not after. And you didn't write it down, and you didn't pull me. You just waited with me.", mood: "neutral" },
       { who: "yuki", text: "First time I ever waited for anything. It was awful. Did it help? Don't answer that.", mood: "focused" },
     ],
     choices: [
@@ -851,7 +850,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
       { who: "yuki", text: "I lost it. No. I didn't lose it.", mood: "neutral" },
       { who: "narration", text: "She opens her hand. The last piece. It's been in her pocket since the Stretch." },
       { who: "yuki", text: "If I put it in, it's done. Then there's no slow thing left. Then it's the Series, and the Finale, and then it's over, Stopwatch.", mood: "crushed" },
-      { who: "yuki", text: "Everybody told me to wait when I was fifteen. I hated it. Now I'm the one who doesn't want to finish something.", mood: "focused" },
+      { who: "yuki", text: "It's a lighthouse. It doesn't even go anywhere, Stopwatch.", mood: "focused" },
     ],
     choices: [
       {

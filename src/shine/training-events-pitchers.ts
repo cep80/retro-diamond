@@ -96,7 +96,7 @@ const REINA: TrainingEvent[] = [
       reina("I'm not tired. I'm ruling pages. A hundred and twelve. I've done sixty.", "focused"),
       coach("It's eleven."),
       reina("I don't sleep the night before a start. Tonight's practice for not sleeping.", "neutral"),
-      reina("Nobody knows that. Now you do. I don't know why I told you.", "crushed"),
+      reina("I don't know why I said that. Forget the number.", "crushed"),
     ],
     choices: [
       {
@@ -200,7 +200,7 @@ const REINA: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Tell Sol what Reina just said.",
+        label: "Tell her to say it to Sol herself.",
         reply: [
           reina("Coach.", "crushed"),
           nar("Sol laughs with her whole body, then looks annoyed about it. \"Tell her the fridge was fine.\""),
@@ -294,7 +294,7 @@ const REINA: TrainingEvent[] = [
       kira("Here's the deal. I dropped four, but I'm keeping them. They're decorative.", "elated"),
       reina("They're holes.", "focused"),
       kira("Decorative holes!", "elated"),
-      nar("Reina says \"Ha.\" One sharp one, and then she looks away as if it didn't happen. Kira pumps a fist."),
+      nar("Reina's mouth twitches at one corner. Kira sees it and pumps a fist."),
       nar("In Reina's own lap, the Finale scarf. A dropped stitch in the third row. She found it this morning. It's still there."),
     ],
     choices: [
@@ -426,7 +426,7 @@ const SOL: TrainingEvent[] = [
       nar("Sol throws harder. The catcher says ow, quietly, into her mitt."),
       nar("By the bullpen door, Kira's bag is on her shoulder. It's zipped. It's always zipped."),
       sol("Don't look at the bag, Jefe.", "focused"),
-      sol("It's packed. It's always packed. I can take people looking. Kira can't. Don't confuse us.", "neutral"),
+      sol("It's packed. It's always packed. I can take people looking. Kira can't. That's the difference.", "neutral"),
     ],
     choices: [
       {
@@ -442,7 +442,7 @@ const SOL: TrainingEvent[] = [
         reply: [
           sol("That's a terrible reason, Jefe.", "neutral"),
           nar("She throws it anyway. It bends off the table. At the door, Kira stops mid-heckle with her mouth still open."),
-          sol("Ninety-seven. That's what quiet sounds like.", "elated"),
+          sol("Look at that. She's speechless. Somebody write this down.", "elated"),
         ],
         effect: { stat: { key: "wit", delta: 1 }, energy: -5 },
       },
@@ -518,7 +518,7 @@ const SOL: TrainingEvent[] = [
     place: "The Academy dining hall · a fridge with a label on every shelf",
     beats: [
       nar("Someone has labeled the pitchers' fridge. Top shelf: REINA. Every other shelf: NOT REINA."),
-      nar("Sol laughs with her whole body, then looks annoyed about it."),
+      nar("Sol snorts into her elote."),
       reina("Your elote is touching my shelf.", "focused"),
       sol("It's on NOT REINA. That's everybody.", "neutral"),
       reina("It's over the line. By a centimeter.", "focused"),
@@ -538,7 +538,7 @@ const SOL: TrainingEvent[] = [
         label: "Bet them: closest to the corner wins.",
         reply: [
           sol("Against Reina? On control? Jefe, that's how people die.", "neutral"),
-          sol("…I'm in. Ninety-seven.", "elated"),
+          sol("…I'm in. Loser buys elote.", "elated"),
           nar("Reina wins by an inch. Sol makes her say the inch out loud, and grins about it for ten minutes."),
         ],
         effect: { stat: { key: "control", delta: 1 }, energy: -10 },
@@ -618,7 +618,7 @@ const KIRA: TrainingEvent[] = [
     beats: [
       nar("Kira is on the curb with a tuna-mayo onigiri in one hand and a tin open on her knees. Paper bus transfers, filed on their edges."),
       kira("Partner! Don't touch. They're in route order. Color order is for amateurs.", "elated"),
-      kira("Forty-one. Every one's a stop I got off at for good.", "neutral"),
+      kira("Nine. One from every stop I ever lived near. The last one's Stars Park. Mom punched it the day we moved in.", "neutral"),
       kira("Here's the deal. You tell me your stop, I give you a transfer, and then you're in the tin. That's big. Nobody's in the tin.", "focused"),
     ],
     choices: [
@@ -678,7 +678,7 @@ const KIRA: TrainingEvent[] = [
     place: "Stars Park · the bullpen door to the mound, two days before First Light",
     beats: [
       nar("She's timing the run from the bullpen door to the mound. Door, grass, chalk, rubber. Again. Again."),
-      kira("Forty-one steps. I want thirty-eight. Shorter's better.", "focused"),
+      kira("Forty-four steps. I want thirty-eight. Shorter's better.", "focused"),
       coach("Why shorter?"),
       kira("Short, nobody gets attached. You go in, you get three, you go home. It's clean. It's so—", "elated"),
       nar("She's laughing before she gets there, and she never does get there."),
@@ -774,7 +774,7 @@ const KIRA: TrainingEvent[] = [
     place: "The Dusters' park · the visitors' bullpen door, the ninth inning",
     beats: [
       nar("Sol is finishing another one. Nine innings, a hundred and twelve pitches. Kira has been warm since the sixth, for nothing."),
-      kira("Sol! Leave me one! A walk-off-shaped one! I'm not picky!", "elated"),
+      kira("Sol! Leave me one! A one-run one! I'm not picky!", "elated"),
       nar("Sol strikes out the last hitter. On the way off, she stops at the door."),
       sol("You're warm. Go home and sleep.", "neutral"),
       sol("And unpack something else. The mug's lonely.", "focused"),
@@ -839,7 +839,7 @@ const KIRA: TrainingEvent[] = [
     slot: 1,
     place: "Stars Park bullpen · a week before the Stretch",
     beats: [
-      nar("Her warmup has always been twenty pitches. Today you've counted forty-one, and she's still going."),
+      nar("Her warmup has always been twenty pitches. Today you've counted thirty-five, and she's still going."),
       kira("I'm not doing anything. I'm warming up. Twice. Some people warm up twice.", "neutral"),
       kira("Here's the deal. Hypothetically. If a closer wanted more than three outs, is that a thing people do? Or is it a thing that gets you moved somewhere?", "focused"),
       nar("She doesn't look at you when she asks. She looks at the door."),
