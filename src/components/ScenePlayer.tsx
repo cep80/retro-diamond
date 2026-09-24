@@ -3,12 +3,12 @@
 /**
  * A JRPG scene: one beat at a time over her still. Tap (or Enter / Space)
  * finishes the line; tap again moves on. Narration has no nameplate, the
- * Coach's lines sit on the right, hers carry her name. Her still fills the
- * screen behind the box and follows the mood of her last line; each letter she
- * says blips at her own pitch. Reduced motion prints each line whole.
+ * Coach's lines sit on the right, hers carry her name. The place's plate
+ * fills the screen, blurred; her bust stands in front of it and wears the mood
+ * of her last line; each letter she says blips at her own pitch. Reduced motion prints each line whole.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { sceneFilmSrc, sheet } from "@/shine/bible.ts";
+import { placePlateSrc, sceneBustSrc, sheet } from "@/shine/bible.ts";
 import { kitAccent } from "@/shine/stage.ts";
 import { sfxBlip, sfxVoice } from "@/shine/audio.ts";
 import type { Beat, Mood, SceneLike } from "@/shine/story.ts";
@@ -117,7 +117,8 @@ export function ScenePlayer({ scene, reduced, onDone }: { scene: SceneLike; redu
   const quoted = beat.who !== "narration";
   return (
     <div className="shine-scene" data-speaker={beat.who === "coach" ? "coach" : beat.who === "narration" ? "narration" : "girl"} data-scene={scene.id} data-scene-beat={index} data-scene-done={done ? "1" : "0"}>
-      <img key={`${still}-${mood}`} src={sceneFilmSrc(still, mood)} alt="" className="shine-scene-still" data-scene-mood={mood} data-scene-still={still} />
+      <img src={placePlateSrc(scene.place, scene.girl)} alt="" className="shine-scene-plate" aria-hidden />
+      <img key={`${still}-${mood}`} src={sceneBustSrc(still, mood)} alt="" className="shine-scene-bust" data-scene-mood={mood} data-scene-still={still} />
       <div className="shine-scene-shade" aria-hidden />
       {index === 0 ? <p className="shine-scene-place">{scene.place}</p> : null}
       {!done ? (

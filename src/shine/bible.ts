@@ -571,6 +571,28 @@ export function parkSrc(parkId: string) {
   return `/bg/park-${parkId}.jpg`;
 }
 
+/** A scene's bust: her game-kit portrait, cut out, in the mood of her line (scripts/key-busts.py). */
+export function sceneBustSrc(id: CharacterId, mood: PortraitMood = "neutral") {
+  return `/art/busts/${id}/${mood}.webp`;
+}
+
+const HOME_PARK: Record<CharacterId, string> = { aoi: "koi", reina: "koi", miki: "north", sol: "dusters", kira: "stars", yuki: "palms" };
+
+/**
+ * The plate behind a scene: the park the place belongs to, blurred on screen
+ * so it reads as light and weather, not pixels. Places off any park (the
+ * Academy, your office) fall back to the city; anything unnamed goes home.
+ */
+export function placePlateSrc(place: string, girl: CharacterId) {
+  if (/Koi|6-4-3|salt-plum/i.test(place)) return parkSrc("koi");
+  if (/Palms|shaved-ice/i.test(place)) return parkSrc("palms");
+  if (/North/i.test(place)) return parkSrc("north");
+  if (/Stars|last bus/i.test(place)) return parkSrc("stars");
+  if (/Dusters|Luz/i.test(place)) return parkSrc("dusters");
+  if (/Academy|office|Skyline|Lantern|Finale|Series/i.test(place)) return "/bg/skyline-complex.png";
+  return parkSrc(HOME_PARK[girl]);
+}
+
 export function mikiResultsPgCount() {
   return sheet("miki").official.filter((g) => g.resultsPg || /get a hit/i.test(g.verb)).length;
 }
