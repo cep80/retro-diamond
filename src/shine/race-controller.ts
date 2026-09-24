@@ -11,6 +11,7 @@
  */
 import type { Cell } from "./core/zone.ts";
 import { hashId, makeRng } from "./core/rng.ts";
+import { resultStamp } from "./action-art.ts";
 import { sheet } from "./bible.ts";
 import type { CoachCardId, DuelCall } from "./duel.ts";
 import { featuredLi, fieldBeatFor, type EncounterConfig, type FeaturedGame, type FieldBeat, type GameKind, type SwingKind } from "./featured-game.ts";
@@ -391,7 +392,9 @@ export class RaceController {
     const reached = beat === "single" || beat === "double" || beat === "hr" || beat === "walk" || beat === "bunt-down";
     const rbiThisPa = game.events.reduce((n, e) => (e.t === "rbi" && e.pa === this.paAtGo ? n + e.runs : n), 0);
     const line = paCardLine({ beat, banner: game.banner, reached, struckOut: beat === "k", rbi: rbiThisPa });
-    this.card = { pa: this.paAtGo, beat, line, reached, verdict: cardVerdict(line, game.lastVerdict) };
+    // The stamp said its words first; the verdict doesn't say them again.
+    const stamped = [resultStamp(beat, true), resultStamp(beat, false)].map((st) => (st ? ` ${st.en}.` : "")).join("");
+    this.card = { pa: this.paAtGo, beat, line, reached, verdict: cardVerdict(line + stamped, game.lastVerdict) };
     this.cue({ t: "pa-card", pa: this.paAtGo, beat, line, reached });
   }
 

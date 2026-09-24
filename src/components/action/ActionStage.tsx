@@ -409,7 +409,8 @@ export function ActionStage({
       ) : null}
       {flash ? <div key={`flash-${resolvedKey}`} className="shine-contact-flash pointer-events-none absolute inset-0" aria-hidden /> : null}
       {children ? <div className="absolute inset-[12%]">{children}</div> : null}
-      {showCard && !stampUp ? (
+      {/* A stamped beat's stamp is its card: say it once. */}
+      {showCard && !stamp ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
           <p className="shine-outcome-card rounded-full border border-white/25 bg-ink/85 px-3 py-1 font-display text-xs uppercase tracking-widest text-cream" data-action-card={view.beat ?? ""}>
             {picture.card}

@@ -36,6 +36,7 @@ describe("race controller", () => {
     assert.equal(cardVerdict("Strike three.", "Strike three."), "");
     assert.equal(cardVerdict("Through the hole.", "Sat right. Squared it."), "Sat right. Squared it.");
     assert.equal(cardVerdict("Gone.", ""), "");
+    assert.equal(cardVerdict("She takes first. Ball four.", "Ball four. She walked her."), "She walked her.", "the stamp's words count as said");
   });
 
   it("opens on the pick with the plate stepped in and nothing in the air", () => {

@@ -126,8 +126,8 @@ describe("race: her swing decision", () => {
   it("the PA card names the beat in one line", () => {
     assert.equal(paCardLine({ beat: "hr", banner: "", reached: true, struckOut: false, rbi: 1 }), "Gone.");
     assert.equal(paCardLine({ beat: "hr", banner: "", reached: true, struckOut: false, rbi: 3 }), "Gone. 3 runs.");
-    assert.equal(paCardLine({ beat: "k", banner: "", reached: false, struckOut: true, rbi: 0 }), "Strike three.");
-    assert.equal(paCardLine({ beat: "walk", banner: "", reached: true, struckOut: false, rbi: 0 }), "Ball four. She's on.");
+    assert.equal(paCardLine({ beat: "k", banner: "", reached: false, struckOut: true, rbi: 0 }), "Sat down on strikes.");
+    assert.equal(paCardLine({ beat: "walk", banner: "", reached: true, struckOut: false, rbi: 0 }), "She takes first.");
     assert.equal(paCardLine({ beat: "fly-out", banner: "x", reached: false, struckOut: false, rbi: 0 }), "Out.");
   });
 });

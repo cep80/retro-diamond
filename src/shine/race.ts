@@ -213,8 +213,9 @@ export const RACE_PACE = {
 /** One line for the result card, sportswriter voice. */
 export function paCardLine(opts: { beat: string | null; banner: string; reached: boolean; struckOut: boolean; rbi: number }): string {
   if (opts.beat === "hr") return opts.rbi > 1 ? `Gone. ${opts.rbi} runs.` : "Gone.";
-  if (opts.beat === "k") return "Strike three.";
-  if (opts.beat === "walk") return "Ball four. She's on.";
+  // The stamp already said "Strike three" / "Ball four": the card says what happens next.
+  if (opts.beat === "k") return "Sat down on strikes.";
+  if (opts.beat === "walk") return "She takes first.";
   if (opts.beat === "single" || opts.beat === "bunt-down") return opts.rbi > 0 ? `She's on. ${opts.rbi} in.` : "She's on.";
   if (opts.beat === "double") return opts.rbi > 0 ? `Into the gap. ${opts.rbi} in.` : "Into the gap.";
   if (opts.beat === "sac-fly") return "Deep enough. The run scores.";
