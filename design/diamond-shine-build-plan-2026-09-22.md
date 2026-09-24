@@ -86,3 +86,14 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
 - **M3 in progress:** result stamp + contact flash + letterbox + full-bleed `35ac1d6`; stamp sound `eb64619`; broadcast scorebug `0c48ab8`; money clips cut hard with clean posters `4c4861f`. **Next:** the Aoi 4-second HR sequence to AAA.
 - **Check-in 1 (gameplay programmer):** 7 findings, all fixed in `2f27abe`.
 - **Flag for the game designer:** in about 200 s of exhibition play (Yuki vs Kira, Aoi vs Sol) I saw walks, outs and fouls but no base hits. Check the exhibition hit rate against named arms; a stranger's first three at-bats should usually show at least one hit.
+- **Since then (M2 pass 3, M4):** promise `9d785c1`; Finale eve `ba3b851`; title with one door `abed0ce`; HRs exist and hits find grass `4dc258a` (closes the no-hits flag); rival intros + low point `d2f08e7`; training-events engine `40f4f99`; 54 event scenes `fd59597`; events wired into the work screen `c1daf80` (headless check: scene → choice → reply → chip → "To work", marked heard, energy applied; the place pill no longer runs under Skip).
+- **M2 pass 3 left:** a spoken ending per rank. Then pass 4 (repetition + lore). Aoi's "Um, sorry" is cut to 2 in the event files; still 14 in story-arcs.ts and 3 in story.ts.
+
+**Creative director review 2 (2026-09-23), open:**
+- **Blocker (art, user step):** scenes use action poses, not faces. Needs VN busts, 4 expressions per girl. Build the bust layering code first so art drops in.
+- **Blocker (art):** no per-place backgrounds (about 8 plates: Koi Park cage, 6-4-3, the pen, the bus loop, and so on).
+- **Major:** the HR stamp is the same as a single's. HR needs its own ~3 s sequence (this is the M3 "Aoi HR to AAA" item).
+- **Major:** the scene box should be a full-bleed dark VN box.
+- **Major:** per-letter voice blips; the Coach needs a presence on screen.
+- **Major:** the title's one door reads "Begin her year", Exhibition moves to the footer, plus a line a stranger understands.
+- **Polish:** button styles, JP font stacks, the walk is said three times, Aoi's "Um, sorry".
