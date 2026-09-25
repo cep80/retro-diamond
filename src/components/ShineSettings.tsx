@@ -63,8 +63,9 @@ export function ShineSettings() {
   }, [listening, settings.keys, setSettings]);
 
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-ink text-cream">
-      <div className="title-wash absolute inset-0" />
+    // Settings opens as a fixed overlay, so it scrolls itself; otherwise Done sits below a short phone.
+    <main className="relative h-dvh overflow-y-auto overscroll-contain bg-ink text-cream">
+      <div className="title-wash fixed inset-0" />
       <div className="relative z-10 mx-auto max-w-3xl px-4 py-8 sm:px-8">
         <div className="flex items-center justify-between gap-3">
           <p className="episode-chip w-fit">Settings</p>
@@ -73,7 +74,27 @@ export function ShineSettings() {
           </PixelBtn>
         </div>
 
-        <section className="mt-6 rounded-2xl border border-line bg-panel/90 p-4">
+        <button
+          type="button"
+          className="shine-settings-help mt-6"
+          onClick={() => {
+            sfxSelect();
+            openHelp();
+          }}
+        >
+          <span className="shine-settings-help-mark" aria-hidden>
+            ?
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="shine-settings-help-title">How it works</span>
+            <span className="shine-settings-help-note">Where she looks, the mound, and the big games.</span>
+          </span>
+          <span className="shine-settings-help-go" aria-hidden>
+            ›
+          </span>
+        </button>
+
+        <section className="mt-4 rounded-2xl border border-line bg-panel/90 p-4">
           <p className="font-display text-[10px] uppercase tracking-widest text-gold">Mix</p>
           <div className="mt-3 space-y-4">
             <Slider label="Music" value={settings.music} onChange={(v) => setSettings({ music: v })} />
@@ -194,12 +215,9 @@ export function ShineSettings() {
           </section>
         ) : null}
 
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex gap-3 pb-[env(safe-area-inset-bottom)]">
           <PixelBtn className="h-12" onClick={closeOverlay}>
             Done
-          </PixelBtn>
-          <PixelBtn variant="ghost" className="h-12" onClick={openHelp}>
-            How it works
           </PixelBtn>
         </div>
       </div>
@@ -242,8 +260,8 @@ export function ShineHelp() {
   const closeOverlay = useShine((s) => s.closeOverlay);
   const openSettings = useShine((s) => s.openSettings);
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-ink text-cream">
-      <div className="title-wash absolute inset-0" />
+    <main className="relative h-dvh overflow-y-auto overscroll-contain bg-ink text-cream">
+      <div className="title-wash fixed inset-0" />
       <div className="relative z-10 mx-auto max-w-3xl px-4 py-8 sm:px-8">
         <div className="flex items-center justify-between gap-3">
           <p className="episode-chip w-fit">How it works</p>
@@ -259,7 +277,7 @@ export function ShineHelp() {
             </article>
           ))}
         </div>
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex gap-3 pb-[env(safe-area-inset-bottom)]">
           <PixelBtn className="h-12" onClick={closeOverlay}>
             Done
           </PixelBtn>

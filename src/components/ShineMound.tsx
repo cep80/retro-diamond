@@ -10,7 +10,7 @@ import { dateHeadline, leaveLabel, middleRead, moundRead, moundSituation } from 
 import { ActionStage } from "@/components/action/ActionStage";
 import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
 import { ShineMute } from "@/components/ShineMute";
-import { PauseOverlay, SitZone, usePlatePause } from "@/components/ShinePlateBits";
+import { PauseButton, PauseOverlay, SitZone, usePlatePause } from "@/components/ShinePlateBits";
 import {
   duckCrowd,
   setCrowdLevel,
@@ -485,16 +485,9 @@ export function ShineMound() {
           ) : null}
           {ask ? <span className="truncate font-ui text-[11px] text-gold">{who.pgVerb} · {speakGoal(ask.verb)}</span> : null}
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           <ShineMute />
-          <button
-            type="button"
-            className="rounded-full border border-white/20 bg-ink/70 px-2.5 py-1 font-display text-[10px] uppercase tracking-widest text-cream/80 hover:border-gold"
-            onClick={() => pause("user")}
-            aria-label="Pause"
-          >
-            Pause
-          </button>
+          <PauseButton onPause={() => pause("user")} />
         </div>
       </header>
 

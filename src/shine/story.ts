@@ -259,14 +259,17 @@ export const FINALE_LINES: Record<CharacterId, string> = {
   yuki: "Say go, Stopwatch.",
 };
 
-/** One line on the title, in her voice. Nothing that spoils her year. */
+/**
+ * One line on the title, in her voice, said to the Coach walking in. A stranger
+ * has to follow it: no scoring shorthand, nothing that spoils her year.
+ */
 export const TITLE_LINES: Record<CharacterId, string> = {
-  aoi: "Um, sorry. One more? That last one was a 6‑3 in my head.",
-  reina: "Again. That was a quarter-inch up. You didn't see it. I did.",
-  miki: "Gary's making the noise again. That means he loves us.",
-  sol: "Ninety-six. That's how I feel. It's good.",
-  kira: "Here's the deal. Ten pitches, then you buy me a juice.",
-  yuki: "Already stretched. Already ran the bags. You're slow.",
+  aoi: "Coach? You came. …Okay. Three years. Get me to the top.",
+  reina: "You came. Good. Watch every pitch, and tell me the truth.",
+  miki: "Oh. You came back. …Cool. That's cool.",
+  sol: "How am I? Ninety-six. That means good, Jefe.",
+  kira: "Partner! Here's the deal. Stay three years, and I'll make them worth it.",
+  yuki: "Already warmed up. Already waiting. You're slow, Stopwatch.",
 };
 
 /** Every authored scene, for the lint tests. */

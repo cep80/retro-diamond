@@ -6,7 +6,7 @@ import { ShineMute } from "@/components/ShineMute";
 import { careerMuteAppliesToScreen, setMasterMuted, setMix, sfxCowbell, sfxGain, sfxSelect, sfxTitleSting, startEnding, startMusic, stopMusic, unlockAudio } from "@/shine/audio.ts";
 import { ShineHelp, ShineSettings } from "@/components/ShineSettings";
 import { nextNamedBeat, nextDateLine, turnMeta, dateLabel, daysAwayLabel, yearOf, PLATE_TURNS } from "@/shine/calendar.ts";
-import { BIBLE, careerFilmSrc, endingClipSrc, endingFilmSrc, isPitcherStyle, parkSrc, sceneFilmSrc, sheet, yearStillLine } from "@/shine/bible.ts";
+import { BIBLE, careerFilmSrc, endingClipSrc, endingFilmSrc, isPitcherStyle, parkSrc, sceneBustSrc, sceneFilmSrc, sheet, yearStillLine } from "@/shine/bible.ts";
 import { NEVER_SOLD, SKUS, cosmeticClasses, previewClaimable } from "@/shine/commerce.ts";
 import { kitAccent } from "@/shine/stage.ts";
 import { cheerLines, curtainCallLine, curtainCaption, curtainFilmSrc, curtainSkin, datePark, dateSpeech, endingRankLabel, fanLetter, recapLine, shouldCurtainCall, yearVoice } from "@/shine/culture.ts";
@@ -32,6 +32,59 @@ import { catchWithCoachScene, memoryLine, relationshipScene, type RelationshipSc
 import { keepsakeWallLine, replayLines, scrapbookLine } from "@/shine/scrapbook.ts";
 import type { CharacterId, DefiningPa, Highlight, Spark } from "@/shine/types.ts";
 
+type TitleIcon = "exhibition" | "clubhouse" | "shop" | "settings";
+
+/** Line icons for the title's four side doors; stroke follows the label colour. */
+const TITLE_ICON_PATHS: Record<TitleIcon, ReactNode> = {
+  // A ball with its two seams.
+  exhibition: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M7.6 5.3c1.5 1.8 2.3 4.1 2.3 6.7s-.8 4.9-2.3 6.7M16.4 5.3c-1.5 1.8-2.3 4.1-2.3 6.7s.8 4.9 2.3 6.7" />
+    </>
+  ),
+  clubhouse: (
+    <>
+      <path d="M3.5 11 12 4l8.5 7" />
+      <path d="M6 9.5V20h12V9.5M10 20v-5h4v5" />
+    </>
+  ),
+  shop: (
+    <>
+      <path d="M5 8.5h14l-1.1 11.5H6.1L5 8.5z" />
+      <path d="M9 8.5V7a3 3 0 0 1 6 0v1.5" />
+    </>
+  ),
+  // Mixing sliders: most of what Settings holds is the sound.
+  settings: (
+    <>
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+      <circle cx="15" cy="7" r="2" />
+      <circle cx="9" cy="17" r="2" />
+    </>
+  ),
+};
+
+function TitleIconButton({ icon, label, count = 0, onClick }: { icon: TitleIcon; label: string; count?: number; onClick: () => void }) {
+  return (
+    <button type="button" className="shine-title-door" onClick={onClick} aria-label={count > 0 ? `${label}, ${count}` : label}>
+      <span className="shine-title-door-icon">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          {TITLE_ICON_PATHS[icon]}
+        </svg>
+        {count > 0 ? (
+          <span className="shine-title-door-count" aria-hidden>
+            {count}
+          </span>
+        ) : null}
+      </span>
+      <span className="shine-title-door-label" aria-hidden>
+        {label}
+      </span>
+    </button>
+  );
+}
+
 function Title() {
   const run = useShine((s) => s.run);
   const clubhouse = useShine((s) => s.clubhouse);
@@ -41,7 +94,6 @@ function Title() {
   const openExhibition = useShine((s) => s.openExhibition);
   const continueRun = useShine((s) => s.continueRun);
   const openSettings = useShine((s) => s.openSettings);
-  const openHelp = useShine((s) => s.openHelp);
   const nextHook = sparkGapLine(clubhouse);
   const [endYear, setEndYear] = useState(false);
   // Tap to start: the tap is the gesture that lets the sound play at all.
@@ -85,11 +137,11 @@ function Title() {
       <img src="/bg/diamond-shine-hero.png" alt="" className={`absolute inset-0 size-full object-cover object-[78%_28%] ${started ? "" : "shine-title-breathe"}`} />
       <div className="shine-title-wash absolute inset-0" />
       {started ? (
-        <div className="absolute right-6 top-8 z-20 sm:right-10">
+        <div className="shine-title-corner">
           <ShineMute />
         </div>
       ) : null}
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-end px-6 pb-10 pt-14 sm:px-10 lg:justify-center">
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-end px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-14 sm:px-10 lg:justify-center">
         <p className="episode-chip w-fit">ダイヤシャイン</p>
         <h1 className="anime-logo shine-title-logo mt-6 max-w-2xl">
           <span>Diamond</span>
@@ -100,45 +152,40 @@ function Title() {
             Tap to start
           </button>
         ) : (
-          <div className="shine-title-menu-in mt-6 flex w-full max-w-sm flex-col gap-3">
-            <div className="shine-title-voice">
-              <img src={careerFilmSrc(girl) ?? ""} alt="" />
-              <p>
-                <span className="shine-kana">{who.jp}</span>
-                {TITLE_LINES[girl]}
-              </p>
-            </div>
-            {nextHook ? <p className="font-ui text-sm text-gold">{nextHook}</p> : null}
+          <div className="shine-title-menu-in mt-5 flex w-full max-w-sm flex-col gap-3">
+            {/* Her face already fills the screen, so her line sits on the art like a subtitle. */}
+            <p className="shine-title-sub">
+              <span className="shine-title-sub-name">{who.jp}</span>
+              {TITLE_LINES[girl]}
+            </p>
+            {nextHook ? <p className="shine-title-hook">{nextHook}</p> : null}
             {run ? (
-              <PixelBtn className="h-14 justify-between px-5 text-sm" onClick={go(continueRun)}>
+              <PixelBtn className="min-h-14 justify-between px-5 py-2.5 text-sm" onClick={go(continueRun)}>
                 {run.clubhouseCard ? `${who.name} · The year is over` : `Continue ${who.name} · Day ${run.turn}`}
                 <span aria-hidden>→</span>
               </PixelBtn>
             ) : (
-              <PixelBtn className="h-14 justify-between px-5 text-sm" onClick={go(openSelect)}>
+              // Aoi's line above already says "the top", so the door doesn't repeat it.
+              <PixelBtn className="min-h-14 justify-between px-5 py-2.5 text-sm" onClick={go(openSelect)}>
                 <span className="flex flex-col items-start gap-1 text-left">
                   Begin her year
-                  <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Pick a girl. Coach her three years. Get her to the top.</span>
+                  <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Pick a girl. Coach her three years.</span>
                 </span>
                 <span aria-hidden>→</span>
               </PixelBtn>
             )}
-            <nav className="shine-title-row" aria-label="More">
-              <button type="button" onClick={go(openExhibition)}>
-                Exhibition
-              </button>
-              <button type="button" onClick={go(openWall)}>
-                Clubhouse{clubhouse.length > 0 ? ` · ${clubhouse.length}` : ""}
-              </button>
-              <button type="button" onClick={go(openShop)}>
-                Shop
-              </button>
-              <button type="button" onClick={() => { sfxSelect(); openSettings(); }}>
-                Settings
-              </button>
-              <button type="button" onClick={() => { sfxSelect(); openHelp(); }}>
-                How it works
-              </button>
+            <nav className="shine-title-dock" aria-label="More">
+              <TitleIconButton icon="exhibition" label="Exhibition" onClick={go(openExhibition)} />
+              <TitleIconButton icon="clubhouse" label="Clubhouse" count={clubhouse.length} onClick={go(openWall)} />
+              <TitleIconButton icon="shop" label="Shop" onClick={go(openShop)} />
+              <TitleIconButton
+                icon="settings"
+                label="Settings"
+                onClick={() => {
+                  sfxSelect();
+                  openSettings();
+                }}
+              />
             </nav>
             {run && !run.clubhouseCard ? (
               endYear ? (
@@ -305,6 +352,44 @@ function Shop() {
   );
 }
 
+/**
+ * What she says the first time you look at her, and one line about her the way
+ * a teammate would put it. No goals and no numbers: those come in her year.
+ */
+const MEET: Record<CharacterId, { line: string; lore: string }> = {
+  aoi: {
+    line: "I just want to be standing on first. Every time, if you can get me there.",
+    lore: "Koi Park's lead-off. Her mom runs the okonomiyaki shop by the gate.",
+  },
+  reina: {
+    line: "Tell me when my arm starts to drop. I can't see it. You can.",
+    lore: "Koi Park's ace. She has never once walked a batter.",
+  },
+  miki: {
+    line: "You're the new one. Cool. Everyone who coached me quit around week eleven.",
+    lore: "North Field. Two melon pans in her bag, always. In case.",
+  },
+  sol: {
+    line: "A hundred and one. Everybody who watches me says one word, and it's ‘fastball.’",
+    lore: "The Dusters' ace. Her big sister taught her three more pitches. She won't throw them.",
+  },
+  kira: {
+    line: "Partner! Here's the deal. The ninth is mine. Get me there with a lead.",
+    lore: "Stars Park's closer. Her bag stays packed by the bullpen door.",
+  },
+  yuki: {
+    line: "Already stretched. Already ran the bags. You can come, if you keep up.",
+    lore: "The Palms' base stealer. She's gone before anyone says go.",
+  },
+};
+
+/** A missing bust falls back once to her plate still, never to a broken image. */
+function fallBackTo(img: HTMLImageElement, src: string) {
+  if (img.dataset.fallback) return;
+  img.dataset.fallback = "true";
+  img.src = src;
+}
+
 function Select() {
   const startRun = useShine((s) => s.startRun);
   const openTitle = useShine((s) => s.openTitle);
@@ -319,13 +404,21 @@ function Select() {
   const [sparks, setSparks] = useState<Spark[]>([]);
   const [carry, setCarry] = useState("");
   const [manifest, setManifest] = useState<ActionManifest | null>(null);
+  // Parent card and carry wait in a sheet, so the first look is only her.
+  const [legacyOpen, setLegacyOpen] = useState(false);
   const who = sheet(pick);
-  const art = careerFilmSrc(pick);
+  const meet = MEET[pick];
+  const still = careerFilmSrc(pick);
   const eligible = clubhouse.filter((c) => parentEligible(c, pick, clubhouse.length));
   const parent = eligible.find((c) => c.id === parentId);
   const accent = kitAccent(pick);
   const pending = manifest === null;
   const ready = filmReady(pick, manifest);
+  const legacyLabel = parent
+    ? `She learns from ${sheet(parent.characterId).name}${sparks.length ? ` · ${sparks.length} to pass on` : ""}`
+    : eligible.length
+      ? "Who does she learn from?"
+      : "Bring in a friend's card";
 
   useEffect(() => {
     let live = true;
@@ -338,181 +431,196 @@ function Select() {
   }, []);
 
   return (
-    <main className="shine-stage text-cream" style={{ ["--shine-accent" as string]: accent }}>
-      <img src={parkSrc(who.parkId)} alt="" className="absolute inset-0 size-full object-cover" />
-      <div className="shine-stage-wash absolute inset-0" />
-      <div className="relative z-10 mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 py-6 sm:px-8">
-        <div className="flex items-center justify-between gap-3">
-          <p className="episode-chip w-fit">ダイヤシャイン</p>
-          <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
-            Title
+    <main className="shine-pick text-cream" style={{ ["--shine-accent" as string]: accent }} data-pick={pick}>
+      <div className="shine-pick-backdrop" aria-hidden>
+        <img src={parkSrc(who.parkId)} alt="" className="shine-pick-plate" />
+        <img key={pick} src={sceneBustSrc(pick, "neutral")} alt="" className="shine-pick-bust" onError={(e) => fallBackTo(e.currentTarget, still)} />
+        <div className="shine-pick-shade" />
+      </div>
+      <div className="shine-pick-top">
+        <h1 className="shine-pick-ask">Who will you coach?</h1>
+        <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
+          Title
+        </PixelBtn>
+      </div>
+      <div className="shine-pick-grid" role="group" aria-label="The girls">
+        {BIBLE.map((c) => {
+          const on = pick === c.id;
+          const inFilm = pending || filmReady(c.id, manifest);
+          return (
+            <button
+              key={c.id}
+              type="button"
+              aria-pressed={on}
+              aria-label={inFilm ? `${c.name}, number ${c.number}` : `${c.name}. Her film is not in.`}
+              data-locked={inFilm ? undefined : "true"}
+              onClick={() => {
+                if (on) return;
+                sfxSelect();
+                setPick(c.id);
+                setParentId(null);
+                setSparks([]);
+              }}
+              className="shine-pick-face"
+              style={{ ["--face-accent" as string]: kitAccent(c.id) }}
+            >
+              <span className="shine-pick-face-art">
+                <img src={sceneBustSrc(c.id, "neutral")} alt="" onError={(e) => fallBackTo(e.currentTarget, careerFilmSrc(c.id))} />
+                <span className="shine-pick-face-num">{c.number}</span>
+              </span>
+              <span className="shine-pick-face-name">{c.name}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="shine-pick-spacer" />
+      <div className="shine-pick-dock">
+        {clubhouse.length > 0 ? (
+          <button
+            type="button"
+            className="shine-choice shine-pick-legacy"
+            onClick={() => {
+              sfxSelect();
+              setLegacyOpen(true);
+            }}
+          >
+            {legacyLabel}
+          </button>
+        ) : null}
+        <section className="shine-pick-box" aria-live="polite">
+          <span className="shine-pick-name">
+            <span className="shine-kana">{who.jp}</span>
+            {who.name}
+            <span className="shine-pick-num">#{who.number}</span>
+          </span>
+          <p key={pick} className="shine-pick-line">
+            {meet.line}
+          </p>
+          <p className="shine-pick-lore">{meet.lore}</p>
+          <PixelBtn
+            className="shine-pick-go h-12 w-full justify-between px-5 text-sm"
+            disabled={pending || !ready}
+            onClick={() => {
+              if (pending || !ready) return;
+              startRun(pick, parentId, pickInheritSparks(parent?.sparks ?? [], sparks));
+            }}
+          >
+            {pending || ready ? `Coach ${who.name}` : "Her film is not in."}
+            {pending || ready ? <span aria-hidden>→</span> : null}
           </PixelBtn>
-        </div>
-        <p className="shine-kana mt-4 text-sm text-gold">{who.jp}</p>
-        <h1 className="mt-1 font-display text-3xl font-bold uppercase tracking-tight sm:text-4xl">
-          #{who.number} {who.name}
-        </h1>
-        <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">Meet her first. Then three years, and you watch every one.</p>
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {BIBLE.map((c) => {
-            const face = careerFilmSrc(c.id);
-            const on = pick === c.id;
-            const inFilm = pending || filmReady(c.id, manifest);
-            return (
-              <button
-                key={c.id}
-                type="button"
-                aria-pressed={on}
-                onClick={() => {
-                  setPick(c.id);
-                  setParentId(null);
-                  setSparks([]);
-                }}
-                className="shine-cast-card"
-                style={on ? { ["--shine-accent" as string]: kitAccent(c.id) } : undefined}
-              >
-                {face ? <img src={face} alt="" /> : null}
-                <span className="shine-cast-meta">
-                  <span className="shine-kana block text-[11px] text-gold">{c.jp}</span>
-                  <span className="mt-0.5 block font-display text-xs font-bold uppercase tracking-wide">
-                    #{c.number} {c.name}
-                  </span>
-                  <span className="mt-0.5 block font-display text-[10px] uppercase tracking-widest text-cream/70">
-                    {inFilm ? c.pgVerb : "Her film is not in."}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        {eligible.length ? (
-          <div className="mt-6">
-            <p className="font-display text-[10px] uppercase tracking-widest text-gold">Parent card</p>
-            <p className="mt-1 font-ui text-xs text-muted">What she learned stays with her. Everything else starts over.</p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <button
-                type="button"
-                aria-pressed={parentId === null}
-                onClick={() => {
-                  setParentId(null);
-                  setSparks([]);
-                }}
-                className={`club-nav-tile px-4 py-3 text-left ${parentId === null ? "border-gold" : ""}`}
-              >
-                <p className="font-display text-xs font-bold uppercase">No parent</p>
-                <p className="mt-1 font-ui text-sm text-muted">First year. Fresh.</p>
-              </button>
-              {eligible.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  aria-pressed={parentId === c.id}
-                  onClick={() => {
-                    setParentId(c.id);
-                    setSparks(c.sparks.filter((s) => s.kind !== "polish").slice(0, 3));
-                  }}
-                  className={`club-nav-tile px-4 py-3 text-left ${parentId === c.id ? "border-gold" : ""}`}
-                >
-                  <p className="font-display text-xs font-bold uppercase">
-                    {sheet(c.characterId).name} · {c.ending}
-                  </p>
-                  <p className="mt-1 font-ui text-sm text-muted">
-                    {c.sparks.slice(0, 3).map((s) => s.kind).join(" · ") || "Nothing to pass on"}
-                  </p>
-                </button>
-              ))}
-            </div>
-            {parent ? (
-              <p className="mt-2 font-ui text-xs text-grass-2">
-                {parent.sparks.slice(0, 3).map((s) => sparkEffectLine(s.kind)).join(" · ")}
-              </p>
-            ) : null}
-            {parent && cardAltLook(parent) ? (
-              <p className="mt-2 font-ui text-xs text-gold">She wears the look the kids at the gate copied last time.</p>
-            ) : null}
-            {parent && parent.sparks.length ? (
-              <div className="mt-3">
-                <p className="font-display text-[10px] uppercase tracking-widest text-gold">Pick up to 3 to pass on</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {parent.sparks.filter((s) => s.kind !== "polish").map((s, i) => {
-                    const on = sparks.includes(s);
-                    return (
-                      <button
-                        key={`${s.kind}-${i}`}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() => {
-                          if (on) setSparks(sparks.filter((p) => p !== s));
-                          else if (sparks.length < 3) setSparks([...sparks, s]);
-                        }}
-                        className={`club-nav-tile px-3 py-2 ${on ? "border-gold" : ""}`}
-                      >
-                        <p className="font-display text-[10px] font-bold uppercase">{s.kind}</p>
-                        <p className="font-ui text-[10px] text-muted">{sparkEffectLine(s.kind)}</p>
-                      </button>
-                    );
-                  })}
+        </section>
+      </div>
+      {legacyOpen ? (
+        <div className="shine-pick-sheet" role="dialog" aria-modal="true" aria-label={eligible.length ? "Who she learns from" : "A friend's card"}>
+          <div className="shine-pick-sheet-body">
+            <p className="shine-pick-sheet-title">{eligible.length ? `Who ${who.name} learns from` : "A friend's card"}</p>
+            {eligible.length ? (
+              <div className="mt-4">
+                <p className="font-display text-[10px] uppercase tracking-widest text-gold">Parent card</p>
+                <p className="mt-1 font-ui text-xs text-muted">What she learned stays with her. Everything else starts over.</p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    aria-pressed={parentId === null}
+                    onClick={() => {
+                      setParentId(null);
+                      setSparks([]);
+                    }}
+                    className={`club-nav-tile px-4 py-3 text-left ${parentId === null ? "border-gold" : ""}`}
+                  >
+                    <p className="font-display text-xs font-bold uppercase">No parent</p>
+                    <p className="mt-1 font-ui text-sm text-muted">First year. Fresh.</p>
+                  </button>
+                  {eligible.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      aria-pressed={parentId === c.id}
+                      onClick={() => {
+                        setParentId(c.id);
+                        setSparks(c.sparks.filter((s) => s.kind !== "polish").slice(0, 3));
+                      }}
+                      className={`club-nav-tile px-4 py-3 text-left ${parentId === c.id ? "border-gold" : ""}`}
+                    >
+                      <p className="font-display text-xs font-bold uppercase">
+                        {sheet(c.characterId).name} · {c.ending}
+                      </p>
+                      <p className="mt-1 font-ui text-sm text-muted">
+                        {c.sparks.slice(0, 3).map((s) => s.kind).join(" · ") || "Nothing to pass on"}
+                      </p>
+                    </button>
+                  ))}
                 </div>
+                {parent ? (
+                  <p className="mt-2 font-ui text-xs text-grass-2">
+                    {parent.sparks.slice(0, 3).map((s) => sparkEffectLine(s.kind)).join(" · ")}
+                  </p>
+                ) : null}
+                {parent && cardAltLook(parent) ? (
+                  <p className="mt-2 font-ui text-xs text-gold">She wears the look the kids at the gate copied last time.</p>
+                ) : null}
+                {parent && parent.sparks.length ? (
+                  <div className="mt-3">
+                    <p className="font-display text-[10px] uppercase tracking-widest text-gold">Pick up to 3 to pass on</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {parent.sparks.filter((s) => s.kind !== "polish").map((s, i) => {
+                        const on = sparks.includes(s);
+                        return (
+                          <button
+                            key={`${s.kind}-${i}`}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => {
+                              if (on) setSparks(sparks.filter((p) => p !== s));
+                              else if (sparks.length < 3) setSparks([...sparks, s]);
+                            }}
+                            className={`club-nav-tile px-3 py-2 ${on ? "border-gold" : ""}`}
+                          >
+                            <p className="font-display text-[10px] font-bold uppercase">{s.kind}</p>
+                            <p className="font-ui text-[10px] text-muted">{sparkEffectLine(s.kind)}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {clubhouse.length > 0 ? (
+              <div className="mt-6">
+                <p className="font-display text-[10px] uppercase tracking-widest text-gold">Carry a card</p>
+                <p className="mt-1 font-ui text-xs text-muted">A finished year can walk into the next. Stats start fresh.</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <input
+                    value={carry}
+                    onChange={(e) => setCarry(e.target.value)}
+                    placeholder="A friend's card"
+                    className="min-h-11 min-w-[12rem] flex-1 rounded-xl border border-white/20 bg-ink/70 px-3 font-ui text-sm text-cream"
+                    aria-label="Friend carry code"
+                  />
+                  <PixelBtn
+                    variant="ghost"
+                    className="h-11"
+                    onClick={() => {
+                      const ok = importCarry(carry);
+                      setCarryNote(useShine.getState().lastLine);
+                      if (ok) setCarry("");
+                    }}
+                  >
+                    Carry
+                  </PixelBtn>
+                </div>
+                {carryNote ? <p className="mt-2 font-ui text-xs text-grass-2">{carryNote}</p> : null}
               </div>
             ) : null}
           </div>
-        ) : null}
-        {clubhouse.length > 0 ? (
-          <div className="mt-6">
-            <p className="font-display text-[10px] uppercase tracking-widest text-gold">Carry a card</p>
-            <p className="mt-1 font-ui text-xs text-muted">A finished year can walk into the next. Stats start fresh.</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <input
-                value={carry}
-                onChange={(e) => setCarry(e.target.value)}
-                placeholder="A friend's card"
-                className="min-h-11 min-w-[12rem] flex-1 rounded-xl border border-white/20 bg-ink/70 px-3 font-ui text-sm text-cream"
-                aria-label="Friend carry code"
-              />
-              <PixelBtn
-                variant="ghost"
-                className="h-11"
-                onClick={() => {
-                  const ok = importCarry(carry);
-                  setCarryNote(useShine.getState().lastLine);
-                  if (ok) setCarry("");
-                }}
-              >
-                Carry
-              </PixelBtn>
-            </div>
-            {carryNote ? <p className="mt-2 font-ui text-xs text-grass-2">{carryNote}</p> : null}
-          </div>
-        ) : null}
-        <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-end">
-          {art ? (
-            <img
-              src={art}
-              alt={who.name}
-              className="shine-hero-stand mx-auto h-56 w-auto object-contain sm:h-72 lg:mx-0 lg:h-[22rem]"
-            />
-          ) : null}
-          <div className="max-w-md flex-1">
-            <div className="shine-speech">
-              <p className="font-ui text-xs uppercase tracking-widest text-ink/55">
-                vs {sheet(who.rival).jp} · {who.pgVerb}
-              </p>
-              <p className="mt-2 font-ui text-sm leading-relaxed">{who.past}</p>
-              <p className="mt-2 font-ui text-xs text-ink/60">{who.sg}</p>
-            </div>
-            <PixelBtn
-              className="mt-4 h-12 w-full"
-              disabled={pending || !ready}
-              onClick={() => {
-                if (pending || !ready) return;
-                startRun(pick, parentId, pickInheritSparks(parent?.sparks ?? [], sparks));
-              }}
-            >
-              {pending || ready ? `Coach ${who.name}` : "Her film is not in."}
+          <div className="shine-pick-sheet-foot">
+            <PixelBtn className="h-12 w-full" onClick={() => setLegacyOpen(false)}>
+              Done
             </PixelBtn>
           </div>
         </div>
-      </div>
+      ) : null}
     </main>
   );
 }

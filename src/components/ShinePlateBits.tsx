@@ -90,6 +90,18 @@ export function usePlatePause(opts: { onFreeze: () => void; onResume: () => bool
   return { paused: reason !== null, pauseReason: reason, pause, resume };
 }
 
+/** Time: a 36 px pause glyph, drawn in the same line as the mute speaker beside it. */
+export function PauseButton({ onPause }: { onPause: () => void }) {
+  return (
+    <button type="button" className="shine-hud-btn" onClick={onPause} aria-label="Pause">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" fillOpacity="0.18" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" aria-hidden>
+        <rect x="6.5" y="5.5" width="3.6" height="13" rx="1.2" />
+        <rect x="13.9" y="5.5" width="3.6" height="13" rx="1.2" />
+      </svg>
+    </button>
+  );
+}
+
 export function PauseOverlay({
   reason,
   onResume,
@@ -104,7 +116,8 @@ export function PauseOverlay({
   resumeLabel?: string;
 }) {
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-ink/80 p-6" role="dialog" aria-modal="true" aria-label="Paused">
+    // Fixed above the home-run layer (z 60): a pause mid-moment still reads.
+    <div className="fixed inset-0 z-[65] flex items-center justify-center bg-ink/80 p-6" role="dialog" aria-modal="true" aria-label="Paused">
       <div className="w-full max-w-sm rounded-2xl border border-white/20 bg-panel p-5 text-cream shadow-2xl">
         <p className="font-display text-xs uppercase tracking-widest text-grass-2">Time</p>
         <p className="mt-2 font-display text-xl font-bold">{reason === "hidden" ? "She stepped out." : "Paused."}</p>
@@ -147,7 +160,7 @@ export function BasesDiamond({ bases, self }: { bases: Bases; self: 1 | 2 | 3 | 
 
 /**
  * The broadcast scorebug: inning and score, the count with its letters, the
- * outs, the bases. It sits on its own plate above the film, never on her face.
+ * outs, the bases. It floats in the top corner of the film, above her head.
  */
 export function Scorebug({
   inning,

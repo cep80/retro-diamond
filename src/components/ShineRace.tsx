@@ -11,12 +11,12 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
-import { ActionStage } from "@/components/action/ActionStage";
+import { ActionStage, hrMomentUp } from "@/components/action/ActionStage";
 import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
-import { PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
+import { PauseButton, PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
 import { ShineMute } from "@/components/ShineMute";
 import { exhibitionAudioCue, type ExhibitionAudioIo } from "@/components/exhibition/audio-cues";
-import { basepathRead, boxLine, dateCloseBeat, dateHeadline, goLabel, leaveLabel, pickPrompt, RACE_COPY, raceCaption, runningClose, showSitGrid, situationParts } from "@/components/race-ui";
+import { basepathRead, boxLine, dateCloseBeat, dateHeadline, goLabel, leaveLabel, pickPrompt, RACE_COPY, raceCaption, runningClose, scorePhrase, showSitGrid, situationParts } from "@/components/race-ui";
 import { duckCrowd, setCrowdLevel, sfxAnticipation, sfxCrowd, sfxCrowdBurst, sfxRelease, sfxSelect, sfxStamp, startWalkUp, stopCrowd, stopMusic, unlockAudio } from "@/shine/audio.ts";
 import type { Cell } from "@/shine/core/zone.ts";
 import { locCell } from "@/shine/core/zone.ts";
@@ -27,12 +27,13 @@ import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMoo
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { crowdStem } from "@/shine/culture.ts";
+import { EMPTY_BASES, type Bases } from "@/shine/events.ts";
 import { type EncounterConfig, type FeaturedGame, type GameKind } from "@/shine/featured-game.ts";
 import type { PlateCue } from "@/shine/plate-controller.ts";
 import { RaceController, type RaceCue } from "@/shine/race-controller.ts";
 import { RACE_PACE } from "@/shine/race.ts";
 import { newRun } from "@/shine/run.ts";
-import { featuredParkId, kitAccent, parkSkyClass, plateRead } from "@/shine/stage.ts";
+import { featuredParkId, kitAccent, plateRead } from "@/shine/stage.ts";
 import { useShine } from "@/shine/store.ts";
 import type { CharacterId, TraineeRun } from "@/shine/types.ts";
 import { ShineMound } from "./ShineMound";
@@ -45,6 +46,17 @@ const ARMS = BIBLE.filter((c) => isPitcherStyle(c.style));
 interface Matchup {
   batter: CharacterId;
   arm: CharacterId;
+}
+
+/** What the scorebug shows; `score` is the raw run difference (null when the kind has no score). */
+interface BugState {
+  inning: string | null;
+  score: number | null;
+  atBat: string;
+  count: { balls: number; strikes: number };
+  outs: number;
+  bases: Bases;
+  self: 1 | 2 | 3 | null;
 }
 
 /** `?batter=miki&pitcher=kira` skips the pick (captures, read tests). */
@@ -76,6 +88,23 @@ function kindFor(run: TraineeRun, weekly: boolean): GameKind {
 
 function cellKey(c: Cell) {
   return `${c.row}-${c.col}`;
+}
+
+/** The bug at the end of her at-bat: her runs on the board, her out on the lamps, a home run's bases cleared. */
+function settleBug(held: BugState, game: FeaturedGame, pa: number, homer: boolean): BugState {
+  let rbi = 0;
+  let out = false;
+  for (const e of game.events) {
+    if (e.t === "rbi" && e.pa === pa) rbi += e.runs;
+    if (e.t === "paComplete" && e.pa === pa) out = !e.reached;
+  }
+  return {
+    ...held,
+    score: held.score === null ? null : held.score + rbi,
+    outs: out ? Math.min(2, held.outs + 1) : held.outs,
+    bases: homer ? EMPTY_BASES : held.bases,
+    self: homer ? null : held.self,
+  };
 }
 
 /** Career / weekly door. Pitchers still take the mound. */
@@ -266,7 +295,6 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const who = sheet(run.characterId);
   const ask = practice || exhibition ? null : officialFor(run.characterId, run.turn);
   const parkId = featuredParkId({ weekly, kind: game.kind, homePark: who.parkId });
-  const park = parkSrc(parkId);
 
   // Film state fed to the stage.
   const [manifest, setManifest] = useState<ActionManifest | null>(null);
@@ -283,6 +311,9 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const [ghost, setGhost] = useState<Cell | null>(null);
   const decisionU = useRef<number | null>(null);
   const clipsWarmed = useRef(false);
+  // The at-bat the last Go started, and the scorebug as it stood during it.
+  const goPa = useRef<number | null>(null);
+  const heldBug = useRef<BugState | null>(null);
 
   // Go waits for her stills so the 120 ms cut-in never draws an empty frame.
   // A slow network gets FILM_WARM_CAP_MS, then Go opens anyway.
@@ -376,7 +407,10 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           setActionCue((prev) => ({ ...prev, tappedAtU: cue.decision.u }));
         }
       }
-      if (cue.t === "go") trackEvent("race_go", { pa: cue.pa, call: race.getSnapshot().pick.call, kind });
+      if (cue.t === "go") {
+        goPa.current = cue.pa;
+        trackEvent("race_go", { pa: cue.pa, call: race.getSnapshot().pick.call, kind });
+      }
       if (cue.t === "pa-card") trackEvent("race_pa", { pa: cue.pa, beat: cue.beat, reached: cue.reached, kind });
     });
     return () => {
@@ -574,12 +608,35 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     done: snap.phase === "done",
     pgMet: exhibition ? game.hits + game.walks > 0 : weekly ? game.reached : game.pgMet,
   });
+  // The game deals the next at-bat (inning, count, runners) the instant a PA's
+  // last pitch resolves. The bug holds the at-bat that just ended, with her runs
+  // and her out on it, until the card clears and the next Go starts the new one.
+  // Count and bases are copied: the resolvers mutate them in place.
+  const liveBug: BugState | null = parts
+    ? {
+        inning: parts.inning,
+        score: parts.score === null ? null : game.scoreDiff,
+        atBat: parts.atBat,
+        count: { ...game.count },
+        outs: game.outs,
+        bases: { ...game.bases },
+        self: game.selfOnBase,
+      }
+    : null;
+  const endedPa = goPa.current !== null && (game.done || game.paIndex !== goPa.current) ? goPa.current : null;
+  if (endedPa === null) heldBug.current = liveBug;
+  const bug = endedPa !== null && heldBug.current ? settleBug(heldBug.current, game, endedPa, actionCue.beat === "hr") : liveBug;
+  const hrUp = hrMomentUp(actionView);
 
   return (
-    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" data-stage={stage} data-race-phase={snap.phase} data-pa-film="hybrid-e">
-      <img src={park} alt="" className={`absolute inset-0 size-full object-cover object-[center_70%] opacity-60 ${parkSkyClass(parkId)}`} />
-      <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-ink/40" />
-
+    <main
+      className="shine-race text-cream"
+      data-stage={stage}
+      data-race-phase={snap.phase}
+      data-pa-film="hybrid-e"
+      data-hr={hrUp ? "" : undefined}
+      style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}
+    >
       {paused ? (
         <PauseOverlay
           reason={plate.pauseReason}
@@ -593,144 +650,135 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         />
       ) : null}
 
-      {/* Header: the smallest possible. */}
-      <header className="relative z-10 flex items-center justify-between gap-2 px-3 pt-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="rounded-full border border-white/20 bg-ink/70 px-2.5 py-1 font-display text-[10px] uppercase tracking-widest text-grass-2">
-            {exhibition ? "Exhibition" : dateLabel(turnMeta(run.turn), who.style)}
-          </span>
-          {ask ? <span className="truncate font-ui text-[11px] text-gold">{who.pgVerb} · {speakGoal(ask.verb)}</span> : null}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <ShineMute />
-          <button
-            type="button"
-            className="rounded-full border border-white/20 bg-ink/70 px-2.5 py-1 font-display text-[10px] uppercase tracking-widest text-cream/80 hover:border-gold"
-            onClick={() => race.pause("user")}
-            aria-label="Pause"
-          >
-            {RACE_COPY.paused}
-          </button>
-        </div>
-      </header>
+      <div className="shine-race-screen">
+        {/* The film, edge to edge. */}
+        <ActionStage
+          bleed
+          view={actionView}
+          batterId={run.characterId}
+          armId={game.arm}
+          manifest={manifest}
+          pitch={plate.pitch}
+          recognized={recognized}
+          flags={flags}
+          twoStrikeHold={twoStrikeHold}
+          prepareMs={reduced ? RACE_PACE.prepareMsReduced : RACE_PACE.prepareMs}
+          heroMood={heroMood}
+          fallback={
+            <div className="absolute inset-0 overflow-hidden" aria-busy={manifestSettled ? undefined : "true"}>
+              {manifestSettled ? (
+                <img src={portraitSrc(run.characterId, "focused")} alt="" className="absolute inset-0 size-full object-cover shine-mound-close" aria-hidden />
+              ) : null}
+            </div>
+          }
+        >
+          {sitGrid ? <SitZone aim={plate.aim} onSit={(c) => race.setSit(c)} ghost={ghost} label="Sit" /> : null}
+        </ActionStage>
 
-      {/* The scorebug: its own plate above the film, never on her face. */}
-      {parts && snap.phase !== "done" ? (
-        <div className="relative z-10 flex justify-center px-3 pt-2">
-          <Scorebug
-            inning={parts.inning}
-            score={parts.score}
-            atBat={parts.atBat}
-            count={game.count}
-            outs={game.outs}
-            bases={game.bases}
-            self={game.selfOnBase}
-          />
-        </div>
-      ) : null}
-
-      {/* The frame. */}
-      <section className="relative z-10 flex min-h-0 flex-1 items-center justify-center py-2 sm:px-3" aria-label="The plate">
-        <div className="relative h-full max-h-[70dvh] w-full sm:max-h-[62dvh] sm:max-w-sm">
-          <ActionStage
-            view={actionView}
-            batterId={run.characterId}
-            armId={game.arm}
-            manifest={manifest}
-            pitch={plate.pitch}
-            recognized={recognized}
-            flags={flags}
-            twoStrikeHold={twoStrikeHold}
-            prepareMs={reduced ? RACE_PACE.prepareMsReduced : RACE_PACE.prepareMs}
-            heroMood={heroMood}
-            className="!h-auto !w-full"
-            fallback={
-              manifestSettled ? (
-                <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden bg-ink/35 sm:rounded-2xl sm:border sm:border-white/20">
-                  <img src={portraitSrc(run.characterId, "focused")} alt="" className="absolute inset-0 size-full object-cover shine-mound-close" aria-hidden />
-                </div>
-              ) : (
-                <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden bg-ink/35 sm:rounded-2xl sm:border sm:border-white/20" aria-busy="true" />
-              )
-            }
-          >
-            {sitGrid ? <SitZone aim={plate.aim} onSit={(c) => race.setSit(c)} ghost={ghost} label="Sit" /> : null}
-          </ActionStage>
-
-        </div>
-      </section>
-
-      {/* Under the frame: the pick, the caption, the card. */}
-      <section className="relative z-10 mx-auto w-full max-w-sm px-3 pb-[max(env(safe-area-inset-bottom),12px)]" aria-label="The Coach">
-        {snap.phase === "pick" && snap.watching ? (
-          <p className="min-h-10 text-center font-ui text-sm text-cream/85" aria-live="polite">
-            {snap.card?.line ?? game.banner}
-          </p>
-        ) : null}
-        {snap.phase === "pick" && !snap.watching ? (
-          <div className="flex flex-col gap-2">
-            {prompt ? <p className="text-center font-ui text-sm text-cream/85">{prompt}</p> : null}
-            {basepath ? <p className="text-center font-ui text-sm text-gold">{basepath}</p> : null}
-            <PixelBtn className="h-14 text-sm shine-go" onClick={go} disabled={!filmWarm} ariaLabel={goLabel({ practice, stage })}>
-              {goLabel({ practice, stage })}
-            </PixelBtn>
-          </div>
-        ) : null}
-
-        {snap.phase === "racing" ? (
-          <p className="min-h-10 text-center font-ui text-sm text-cream/85" aria-live="polite">
-            {caption ?? ""}
-          </p>
-        ) : null}
-
-        {snap.phase === "pa-card" && snap.card ? (
-          <div className="flex flex-col gap-2" data-race-card={snap.card.beat}>
-            <p className="text-center font-display text-2xl font-bold text-cream">{snap.card.line}</p>
-            {basepath ? <p className="text-center font-ui text-sm text-gold">{basepath}</p> : null}
-            {snap.card.verdict ? <p className="text-center font-ui text-sm text-cream/75">{snap.card.verdict}</p> : null}
-            <PixelBtn variant="ghost" className="h-11" onClick={() => race.next()}>
-              {RACE_COPY.next}
-            </PixelBtn>
-          </div>
-        ) : null}
-
-        {snap.phase === "done" ? (
-          <div className="flex flex-col gap-2" data-race-done={game.kind}>
-            <p className="text-center font-display text-[10px] uppercase tracking-widest text-grass-2">{exhibition ? "Under the lanterns" : "Her day"}</p>
-            <p className="text-center font-display text-xl font-bold text-cream">
-              {dateHeadline({
-                exhibition,
-                practice,
-                pgMet: game.pgMet,
-                verb: who.pgVerb,
-                banner: game.banner,
-                cardLine: snap.card?.line ?? null,
-                pgId: game.pgId,
-              })}
+        {/* The HUD floats on the film: the scorebug and her tag, then sound and time. */}
+        <header className="shine-race-hud">
+          <div className="min-w-0">
+            {bug && snap.phase !== "done" ? (
+              <Scorebug
+                inning={bug.inning}
+                score={bug.score === null ? null : scorePhrase(bug.score)}
+                atBat={bug.atBat}
+                count={bug.count}
+                outs={bug.outs}
+                bases={bug.bases}
+                self={bug.self}
+              />
+            ) : null}
+            <p className="shine-race-tag">
+              {exhibition ? RACE_COPY.exhibitionChip : dateLabel(turnMeta(run.turn), who.style)}
+              {ask ? (
+                <>
+                  {" · "}
+                  <b>
+                    {who.pgVerb} · {speakGoal(ask.verb)}
+                  </b>
+                </>
+              ) : null}
             </p>
-            {basepath && !countDate ? <p className="text-center font-ui text-sm text-gold">{basepath}</p> : null}
-            <p className="text-center font-ui text-sm text-cream/80">{exhibition ? RACE_COPY.exhibitionClose(exhibitionArmName(game)) : plateRead(run, game)}</p>
-            {boxLine(game) ? <p className="text-center font-ui text-xs text-muted">{boxLine(game)}</p> : null}
-            {exhibition ? (
-              <>
-                <PixelBtn className="h-12" onClick={() => onReplay?.()}>
-                  {RACE_COPY.again}
-                </PixelBtn>
-                <PixelBtn variant="ghost" className="h-11" onClick={() => onChangeMatchup?.()}>
-                  {RACE_COPY.otherMatchup}
-                </PixelBtn>
-                <PixelBtn variant="ghost" className="h-11" onClick={leave}>
-                  {RACE_COPY.title}
-                </PixelBtn>
-              </>
-            ) : (
-              <PixelBtn className="h-12" onClick={leave}>
-                {leaveLabel({ practice })}
-              </PixelBtn>
-            )}
           </div>
-        ) : null}
-      </section>
+          <div className="flex items-center gap-1.5">
+            <ShineMute />
+            <PauseButton onPause={() => race.pause("user")} />
+          </div>
+        </header>
+
+        {/* Over the bottom of the film: the pick, the caption, the card. */}
+        <section className="shine-race-coach" aria-label="The Coach">
+          {snap.phase === "pick" && snap.watching ? (
+            <p className="min-h-10 text-center font-story text-sm text-cream/90" aria-live="polite">
+              {snap.card?.line ?? game.banner}
+            </p>
+          ) : null}
+          {snap.phase === "pick" && !snap.watching ? (
+            <div className="flex flex-col gap-2">
+              {prompt ? <p className="text-center font-story text-sm text-cream/90">{prompt}</p> : null}
+              {basepath ? <p className="text-center font-story text-sm text-gold">{basepath}</p> : null}
+              <PixelBtn className="h-14 text-sm shine-go" onClick={go} disabled={!filmWarm} ariaLabel={goLabel({ practice, stage })}>
+                {goLabel({ practice, stage })}
+              </PixelBtn>
+            </div>
+          ) : null}
+
+          {snap.phase === "racing" ? (
+            <p className="min-h-10 text-center font-story text-sm text-cream/90" aria-live="polite">
+              {caption ?? ""}
+            </p>
+          ) : null}
+
+          {snap.phase === "pa-card" && snap.card ? (
+            <div className="flex flex-col gap-2" data-race-card={snap.card.beat}>
+              <p className="text-center font-story text-2xl font-extrabold text-cream">{snap.card.line}</p>
+              {basepath ? <p className="text-center font-story text-sm text-gold">{basepath}</p> : null}
+              {snap.card.verdict ? <p className="text-center font-story text-sm text-cream/75">{snap.card.verdict}</p> : null}
+              <PixelBtn variant="ghost" className="h-11" onClick={() => race.next()}>
+                {RACE_COPY.next}
+              </PixelBtn>
+            </div>
+          ) : null}
+
+          {snap.phase === "done" ? (
+            <div className="flex flex-col gap-2" data-race-done={game.kind}>
+              <p className="text-center font-display text-[10px] uppercase tracking-widest text-grass-2">{exhibition ? "Under the lanterns" : "Her day"}</p>
+              <p className="text-center font-story text-xl font-extrabold text-cream">
+                {dateHeadline({
+                  exhibition,
+                  practice,
+                  pgMet: game.pgMet,
+                  verb: who.pgVerb,
+                  banner: game.banner,
+                  cardLine: snap.card?.line ?? null,
+                  pgId: game.pgId,
+                })}
+              </p>
+              {basepath && !countDate ? <p className="text-center font-story text-sm text-gold">{basepath}</p> : null}
+              <p className="text-center font-story text-sm text-cream/85">{exhibition ? RACE_COPY.exhibitionClose(exhibitionArmName(game)) : plateRead(run, game)}</p>
+              {boxLine(game) ? <p className="text-center font-story text-xs text-muted">{boxLine(game)}</p> : null}
+              {exhibition ? (
+                <>
+                  <PixelBtn className="h-12" onClick={() => onReplay?.()}>
+                    {RACE_COPY.again}
+                  </PixelBtn>
+                  <PixelBtn variant="ghost" className="h-11" onClick={() => onChangeMatchup?.()}>
+                    {RACE_COPY.otherMatchup}
+                  </PixelBtn>
+                  <PixelBtn variant="ghost" className="h-11" onClick={leave}>
+                    {RACE_COPY.title}
+                  </PixelBtn>
+                </>
+              ) : (
+                <PixelBtn className="h-12" onClick={leave}>
+                  {leaveLabel({ practice })}
+                </PixelBtn>
+              )}
+            </div>
+          ) : null}
+        </section>
+      </div>
     </main>
   );
 }
