@@ -6,8 +6,8 @@
  * anyone on the field is she/her.
  *
  * Who faces whom follows rivals.ts: a hitter lead meets the arm on the mound
- * (opposingArm), a pitcher lead meets the bat in the three-hole
- * (pitcherRivalBat). Kira closes the late innings of the Stretch and the
+ * (opposingArm), a pitcher lead meets the cast bat in her lineup
+ * (pitcherRivalBat: Aoi leads off, Miki hits third). Kira closes the late innings of the Stretch and the
  * Series, so she waits by the bullpen door in those scenes.
  */
 import type { Beat, StoryScene } from "./story.ts";

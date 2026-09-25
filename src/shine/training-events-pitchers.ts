@@ -138,7 +138,7 @@ const REINA: TrainingEvent[] = [
         reply: [
           reina("Forever isn't a number."),
           reina("…Keep it anyway, Coach.", "elated"),
-          nar("She hears herself say it. She goes very still, then throws the next one harder than she needs to."),
+          nar("She hears herself say it. She goes very still, then throws the last one of the morning harder than she needs to."),
         ],
         effect: { mood: 1, energy: 10 },
       },
@@ -433,7 +433,7 @@ const SOL: TrainingEvent[] = [
         label: "Go stand by the door with Kira.",
         reply: [
           sol("Good. Stand there. Don't look at the bag.", "neutral"),
-          nar("From the mound, Sol watches you get there. Her next fastball is the hardest of the day, and Kira cheers it like it was hers."),
+          nar("From the mound, Sol watches you get there. Her next fastball is the hardest of the day, and Kira cheers it like it was hers. Then Sol comes over, sits on the step by the door, and doesn't throw again."),
         ],
         effect: { mood: 1, energy: 10 },
       },
@@ -744,7 +744,7 @@ const KIRA: TrainingEvent[] = [
       nar("The gutter over the bullpen door overflowed in the storm. Kira's bag was right under it, where it always is."),
       nar("Now everything she owns is laid out on the pen bench to dry. Two shirts, a toothbrush, a hoodie from her third school, and the tin, open."),
       kira("Partner. Don't look at the shirts. Look at the transfers. The transfers are the emergency.", "crushed"),
-      nar("Nine of them, in route order down the bench. The water got in at the hinge, at the back of the tin, and the back is where Stars Park goes. The ink has run into a blue cloud."),
+      nar("Nine of them and your half, in route order down the bench. Your half is dry. The water got in at the hinge, at the back of the tin, and the back is where Stars Park goes. The ink has run into a blue cloud."),
       kira("The hole's fine, though. Mom punched it. The hole's the important part.", "neutral"),
       kira("Here's the deal. If I leave them out, they dry. If I leave them out, they're here all night without me. I've never left anything anywhere.", "focused"),
     ],
@@ -753,7 +753,7 @@ const KIRA: TrainingEvent[] = [
         label: "Leave them on the bench overnight.",
         reply: [
           kira("Overnight. Okay. I'm going home with an empty tin. It's so light. It's wrong.", "neutral"),
-          nar("She texts you at 1:40 a.m. to ask if the pen roof leaks. At six she's at the door before the groundskeeper, and all nine are there, flat and dry, in route order."),
+          nar("She texts you at 1:40 a.m. to ask if the pen roof leaks. At six she's at the door before the groundskeeper, and all nine are there, and your half, flat and dry, in route order."),
           kira("They stayed, Partner. I slept about an hour. Don't tell Reina, she'll want the exact number.", "elated"),
         ],
         effect: { mood: 1, energy: -10 },
@@ -762,7 +762,7 @@ const KIRA: TrainingEvent[] = [
         label: "Pack them back up. Damp is fine.",
         reply: [
           kira("Damp is fine. Damp is fine. Route order, though. I'm not an animal.", "focused"),
-          nar("She packs the bag the way she does every night, tin on top, and throws thirty with it zipped at her feet where she can see it. Every one goes where she's looking."),
+          nar("She packs the bag the way she does every night, tin on top, and sets it at her feet. Thirty pitches. Every one hits the glove, and she never once looks down."),
         ],
         effect: { stat: { key: "control", delta: 1 } },
       },

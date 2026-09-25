@@ -446,4 +446,28 @@ describe("the ending says why", () => {
     assert.equal(b, "B");
     assert.match(endingWhy(run, b, false, false), /A asks for the Diamond Finale/);
   });
+
+  it("a B with the Finale won says what the three years were short of", async () => {
+    const { endingRank, endingWhy, endingQuote } = await import("./ending.ts");
+    const { newRun } = await import("./run.ts");
+    const run = newRun("aoi");
+    run.pgMisses = 1;
+    run.fans = 52;
+    run.pgResults[6] = "met";
+    assert.equal(endingRank(run, true, true), "B");
+    assert.equal(endingWhy(run, "B", true, true), "52 fans, one goal missed. She won the Finale. A also asks for 60 fans across the three years.");
+    assert.doesNotMatch(endingQuote(run, "B"), /one game short/, "a won Finale isn't a game short");
+  });
+
+  it("never-quit names the Finale she played, not one she missed", async () => {
+    const { endingWhy, endingQuote } = await import("./ending.ts");
+    const { newRun } = await import("./run.ts");
+    const run = newRun("miki");
+    run.fans = 64;
+    run.pgResults[6] = "missed";
+    const why = endingWhy(run, "never-quit", true, false);
+    assert.match(why, /^64 fans\. She played the Finale/);
+    assert.doesNotMatch(why, /no Finale/);
+    assert.doesNotMatch(endingQuote(run, "never-quit"), /brought a second cowbell/, "the second cowbell came in Year 1");
+  });
 });

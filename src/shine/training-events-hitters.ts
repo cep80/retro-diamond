@@ -123,6 +123,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
         reply: [
           { who: "aoi", text: "Allowed. Okay. …That one went foul too. Coach, I'm having such a good time.", mood: "elated" },
           { who: "narration", text: "Reina says \"Ha.\" Then she looks away, as if it didn't happen." },
+          { who: "narration", text: "Ten minutes are up. Aoi spends the rest of the hour on the bullpen bench with her helmet in her lap, not writing anything down." },
         ],
         effect: { mood: 1, energy: 10 },
       },
@@ -741,7 +742,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
         reply: [
           { who: "narration", text: "She takes the turn at second a half-step wider than she used to. It looks slower. She's faster home." },
           { who: "yuki", text: "Huh. Wider is faster. That's rude.", mood: "focused" },
-          { who: "yuki", text: "Again. Time me again. Stopwatch, this is the best day of the week.", mood: "elated" },
+          { who: "yuki", text: "Again. Wider. Start it before I'm back, Stopwatch, I'm already going.", mood: "elated" },
         ],
         effect: { stat: { key: "speed", delta: 1 }, mood: 1, energy: -10 },
       },

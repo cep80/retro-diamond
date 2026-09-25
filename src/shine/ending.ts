@@ -108,11 +108,23 @@ export function endingWhy(run: TraineeRun, rank: EndingRank, finalePlayed: boole
   const misses = run.pgMisses === 0 ? "every goal met" : run.pgMisses === 1 ? "one goal missed" : `${run.pgMisses} goals missed`;
   if (rank === "S") return `${fans}, ${misses}, the Finale won. Nothing above this.`;
   if (rank === "A") return `${fans}, ${misses}, the Finale won. S asks for every goal and ${RANK_FANS.S} fans.`;
-  if (rank === "never-quit") return `${fans} and no Finale. Section 4 stayed anyway.`;
-  if (rank === "B" && finalePlayed)
-    return finalePg
-      ? `${fans}, ${misses}, the Finale won. A asks for one miss at most and ${RANK_FANS.A} fans.`
-      : `${fans}. She played the Finale and missed its goal. A asks for that goal.`;
+  if (rank === "never-quit") {
+    // Miki always plays the Finale (finaleUnlocked); this rank is the one where she never grew all the way into it.
+    if (!finalePlayed) return `${fans}, short of the hitter the Academy asks for. Section 4 stayed anyway.`;
+    const finale = finalePg ? "She won the Finale" : "She played the Finale";
+    return `${fans}. ${finale} without growing all the way into it, and Section 4 stayed anyway.`;
+  }
+  if (rank === "B" && finalePlayed) {
+    if (!finalePg) return `${fans}. She played the Finale and missed its goal. A asks for that goal.`;
+    // Won the Finale and still B: the three years around it fell short. Say which part.
+    const short = [
+      run.pgMisses > 1 ? "one miss at most" : null,
+      run.fans < RANK_FANS.A ? `${RANK_FANS.A} fans` : null,
+    ].filter(Boolean).join(" and ");
+    return short
+      ? `${fans}, ${misses}. She won the Finale. A also asks for ${short} across the three years.`
+      : `${fans}, ${misses}, the Finale won. A asks for one miss at most and ${RANK_FANS.A} fans.`;
+  }
   if (rank === "B") return `${fans}. A asks for the Diamond Finale.`;
   if (rank === "C") return `${fans}. B asks for ${RANK_FANS.B}.`;
   if (careerClosesEarly(run)) return `The Academy path closed early. ${fans}.`;
@@ -127,12 +139,13 @@ function closingDateLabel(run: TraineeRun): string | null {
 
 export function endingQuote(run: TraineeRun, rank: EndingRank) {
   const who = sheet(run.characterId);
-  if (rank === "never-quit") return "Section 4 brought a second cowbell. They ring both for her anyway.";
+  if (rank === "never-quit") return "Section 4 kept ringing both cowbells after the Finale. Nobody told them to stop.";
   if (rank === "S") return `${who.endings.show} 胴上げ. Legend.`;
   if (rank === "A") return who.endings.show;
   if (rank === "B") {
     const finale = officialFor(run.characterId, 60);
     if (run.pgResults[6] === "met" && finale?.pgId === "k-side") return "Diamond Finale. She struck out the side.";
+    if (run.pgResults[6] === "met") return "She won the Diamond Finale. The Show asked for more than one night.";
     if (run.pgResults[6] !== "pending") return "She played the Diamond Finale. The Show stayed one game short.";
     return who.endings.dugout;
   }

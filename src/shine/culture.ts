@@ -222,7 +222,7 @@ const RECAP_BLEND = [
   "The booth calls it a fight, not a result.",
   "Rain on the cowbell. Still going.",
   "The bell says what the scoreboard won't.",
-  "Somebody in section 4 brought a second cowbell.",
+  "Section 4 rang both cowbells, a little out of time with each other.",
 ];
 
 const RECAP_US = [

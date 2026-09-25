@@ -208,10 +208,15 @@ export function rivalPlayer(id: RivalArmId, year: number): Ballplayer {
   };
 }
 
-/** The lineup a pitcher works through: academy bats with a cast hitter in the three-hole. */
+/** Where the cast hitter bats in the order a pitcher faces (0-based, of six). Aoi leads off; anyone else hits third. */
+export function rivalBatSlot(id: CharacterId): number {
+  return pitcherRivalBat(id) === "aoi" ? 0 : 2;
+}
+
+/** The lineup a pitcher works through: academy bats with the cast hitter in her slot (rivalBatSlot). */
 export function rivalLineup(run: Pick<TraineeRun, "characterId" | "year">, index: number): Ballplayer {
   const slot = index % 6;
-  if (slot !== 2) return academyBatter(index);
+  if (slot !== rivalBatSlot(run.characterId)) return academyBatter(index);
   const cast = pitcherRivalBat(run.characterId);
   const who = sheet(cast);
   const scale = yearScale(run.year);

@@ -11,6 +11,7 @@ import {
   recordHitterTell,
   recordPitcherTell,
   rivalAdaptation,
+  rivalBatSlot,
   rivalLineup,
   rivalPlayer,
   rivalProfile,
@@ -106,10 +107,18 @@ describe("rivals", () => {
     assert.equal(late.lateArm, "kira");
   });
 
-  it("puts the cast hitter in the three-hole of the pitcher's lineup", () => {
+  it("bats Miki third against Reina, and Aoi leadoff against Sol and Kira", () => {
     const third = rivalLineup({ characterId: "reina", year: 2 }, 2);
     assert.equal(third.id, "rival-bat-miki");
     assert.notEqual(rivalLineup({ characterId: "reina", year: 2 }, 0).id, "rival-bat-miki");
+    assert.equal(rivalBatSlot("reina"), 2);
+    for (const id of ["sol", "kira"] as const) {
+      assert.equal(rivalBatSlot(id), 0);
+      assert.equal(rivalLineup({ characterId: id, year: 2 }, 0).id, "rival-bat-aoi");
+      assert.equal(rivalLineup({ characterId: id, year: 2 }, 6).id, "rival-bat-aoi", "she leads off again the next time through");
+      assert.notEqual(rivalLineup({ characterId: id, year: 2 }, 2).id, "rival-bat-aoi");
+      assert.equal(rivalLineup({ characterId: id, year: 2 }, 2).id, "academy-bat-2", "the three-hole goes back to the academy bat");
+    }
   });
 });
 

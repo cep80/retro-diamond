@@ -36,7 +36,7 @@ import {
 } from "./oracle.ts";
 import { gaussianFrom, statSigma } from "./duel.ts";
 import type { FieldBeat, GameKind } from "./featured-game.ts";
-import { hitterAdaptation, pitcherRivalBat, recordPitcherTell, rivalLineup } from "./rivals.ts";
+import { hitterAdaptation, pitcherRivalBat, recordPitcherTell, rivalBatSlot, rivalLineup } from "./rivals.ts";
 import { EMPTY_TELLS, type Tells, type TraineeRun } from "./types.ts";
 
 export const ACE_ACT1_BATTERS = 6;
@@ -85,7 +85,7 @@ export interface PitchingGame {
   spurtFired: boolean;
   events: PlateEvent[];
   tells: Tells;
-  /** The cast hitter in the three-hole, and what she has read from the pitcher's book. */
+  /** The cast hitter in her slot (rivalBatSlot), and what she has read from the pitcher's book. */
   rivalBat: string;
   rivalLine: string | null;
   callback: string | null;
@@ -583,8 +583,8 @@ export function resolveDelivery(
 
   const inZone = locInZone(loc);
   const baseBatter = batterFor(run, game);
-  // The cast hitter in the three-hole applies what she has read from the book; it is always the line she was announced with.
-  const castSlot = game.battersFaced % 6 === 2;
+  // The cast hitter in her slot (Aoi leads off, anyone else bats third) applies what she has read from the book; it is always the line she was announced with.
+  const castSlot = game.battersFaced % 6 === rivalBatSlot(run.characterId);
   const read = castSlot ? hitterAdaptation(game.tells, game.rivalBat) : null;
   const batter = read?.sitFastball && first && type === "fastball" ? { ...baseBatter, contact: Math.min(20, baseBatter.contact + 3) } : baseBatter;
   const rawSwing = cpuSwing(batter, { type, loc }, game.count, r);

@@ -208,7 +208,7 @@ const FINALE_EVE: Record<CharacterId, StoryScene> = {
       { who: "coach", text: "That's leave-me-alone." },
       { who: "sol", text: "Yeah. Stay anyway.", mood: "neutral" },
       { who: "narration", text: "She turns her glove over. The ballpoint grip inside has been traced so many times it's cut into the leather." },
-      { who: "sol", text: "Luz is closing the truck tomorrow. Row one. She says it's for the churros in the press box. She's lying.", mood: "neutral" },
+      { who: "sol", text: "Luz is closing the truck again tomorrow. Row one. She says the churros last time were a one-off. She's bringing two bags.", mood: "neutral" },
       { who: "sol", text: "Fuentes put down two fingers today. I didn't shake her off.", mood: "elated" },
       { who: "sol", text: "First pitch is the changeup, Jefe. Luz is in row one. I want her to see her pitch get somebody out.", mood: "focused" },
     ],
