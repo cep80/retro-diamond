@@ -98,7 +98,10 @@ function Title() {
   const [endYear, setEndYear] = useState(false);
   // Tap to start: the tap is the gesture that lets the sound play at all.
   const [started, setStarted] = useState(false);
-  const girl: CharacterId = run?.characterId ?? "aoi";
+  // The title belongs to whoever is next: her if a year is running, else the girl the
+  // Clubhouse hook names (Select opens on her too), else Aoi for a first-time player.
+  const lastCard = clubhouse.at(-1)?.characterId;
+  const girl: CharacterId = run?.characterId ?? (lastCard ? nextGirlId(lastCard) : "aoi");
   const who = sheet(girl);
 
   useEffect(() => {
@@ -134,7 +137,12 @@ function Title() {
 
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(girl) }}>
-      <img src="/bg/diamond-shine-hero.png" alt="" className={`absolute inset-0 size-full object-cover object-[78%_28%] ${started ? "" : "shine-title-breathe"}`} />
+      {/* The key art is Aoi; anyone else stands in her own painted still, so her line never sits under another girl's face. */}
+      <img
+        src={girl === "aoi" ? "/bg/diamond-shine-hero.png" : careerFilmSrc(girl)}
+        alt=""
+        className={`absolute inset-0 size-full object-cover ${girl === "aoi" ? "object-[78%_28%]" : "object-[50%_20%]"} ${started ? "" : "shine-title-breathe"}`}
+      />
       <div className="shine-title-wash absolute inset-0" />
       {started ? (
         <div className="shine-title-corner">
@@ -165,7 +173,7 @@ function Title() {
                 <span aria-hidden>→</span>
               </PixelBtn>
             ) : (
-              // Aoi's line above already says "the top", so the door doesn't repeat it.
+              // Her line above says who she is; the door says what the year is.
               <PixelBtn className="min-h-14 justify-between px-5 py-2.5 text-sm" onClick={go(openSelect)}>
                 <span className="flex flex-col items-start gap-1 text-left">
                   Begin her year
@@ -358,28 +366,28 @@ function Shop() {
  */
 const MEET: Record<CharacterId, { line: string; lore: string }> = {
   aoi: {
-    line: "I just want to be standing on first. Every time, if you can get me there.",
+    line: "I run out every ground ball. Even the easy outs. Mom says I don't have to. …I do.",
     lore: "Koi Park's lead-off. Her mom runs the okonomiyaki shop by the gate.",
   },
   reina: {
-    line: "Tell me when my arm starts to drop. I can't see it. You can.",
+    line: "I put every pitch where I say it'll go. When I miss, I want to know by how much.",
     lore: "Koi Park's ace. She has never once walked a batter.",
   },
   miki: {
-    line: "You're the new one. Cool. Everyone who coached me quit around week eleven.",
-    lore: "North Field. Two melon pans in her bag, always. In case.",
+    line: "I hit it foul until the pitcher gives up. I'm annoying like that. Coaches think so too. So. Hi.",
+    lore: "North Field's toughest out. Two melon pan in her bag, always. In case.",
   },
   sol: {
-    line: "A hundred and one. Everybody who watches me says one word, and it's ‘fastball.’",
-    lore: "The Dusters' ace. Her big sister taught her three more pitches. She won't throw them.",
+    line: "I throw hard, Jefe. People clap. That's the whole story. Don't ask about the rest.",
+    lore: "The Dusters' ace. Her big sister taught her three more pitches. She won't throw them where anyone can see.",
   },
   kira: {
-    line: "Partner! Here's the deal. The ninth is mine. Get me there with a lead.",
-    lore: "Stars Park's closer. Her bag stays packed by the bullpen door.",
+    line: "Ha! Sorry. I laugh first, it saves time. I'm the last inning. Three outs and I'm out the door.",
+    lore: "Stars Park's closer. Two taps on the bullpen door, then the ninth. Gone by the last bus.",
   },
   yuki: {
-    line: "Already stretched. Already ran the bags. You can come, if you keep up.",
-    lore: "The Palms' base stealer. She's gone before anyone says go.",
+    line: "Everybody says wait. Wait for the pitch, wait for the sign, wait for— no. I don't wait.",
+    lore: "The Palms' base stealer. First one at the park, every single morning.",
   },
 };
 
@@ -928,7 +936,7 @@ function YearEnd() {
               {still.frame}
             </p>
             <p className="mt-1 max-w-md font-ui text-xs text-cream/70" data-ending-why>
-              {rankLabel} · {still.why}
+              {still.why}
             </p>
             {pages ? (
               <>

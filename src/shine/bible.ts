@@ -82,7 +82,7 @@ const RAW_BIBLE: RawSheet[] = [
     curtainCall: "お立ち台. She's already looking.",
     endings: {
       miss2: "The Academy path closed. She still ran it.",
-      lantern: "Lanterns stay lit for the ones who didn't make the Show.",
+      lantern: "Lanterns stay lit for the ones who didn't make the top.",
       dugout: "She watched from the dugout, scorebook open, pencil going.",
       show: "お立ち台. She does not look at the camera until you nod.",
     },
@@ -123,7 +123,7 @@ const RAW_BIBLE: RawSheet[] = [
     endings: {
       miss2: "The Academy path closed. The ball is still in her pocket.",
       lantern: "The mound waited. She did not take the ball with her.",
-      dugout: "She watched the eighth from the tunnel. Sequence unfinished.",
+      dugout: "She watched the eighth from the tunnel, counting every pitch.",
       show: "She takes the ball with her. The mound is the stage.",
     },
     stats: { contact: 4, speed: 5, eye: 8, power: 3, guts: 8, wit: 8, stuff: 8, control: 10, stamina: 11 },
@@ -163,8 +163,8 @@ const RAW_BIBLE: RawSheet[] = [
     endings: {
       miss2: "The Academy path closed. The cowbell still found her.",
       lantern: "Lanterns stay lit. She fouled until the lights did.",
-      dugout: "US dugout. They cheer for the fight, not the box score.",
-      show: "US dugout. The cowbell does not wait for a win.",
+      dugout: "They cheered for every foul she fought off. The cowbell never let up.",
+      show: "The cowbell starts before the last out lands. She looks for you first.",
     },
     stats: { contact: 5, speed: 6, eye: 6, power: 3, guts: 9, wit: 5, stuff: 3, control: 5, stamina: 8 },
     potential: 14,
@@ -203,8 +203,8 @@ const RAW_BIBLE: RawSheet[] = [
     endings: {
       miss2: "The Academy path closed. Sol ices the arm like there's a game tomorrow.",
       lantern: "Heat without the eighth. She walked off anyway.",
-      dugout: "Dugout. She does not smile in the still.",
-      show: "Dugout. She does not smile in the still.",
+      dugout: "She watched from the dugout, glove still on, counting the pitches she'd have thrown.",
+      show: "She finds Luz in row one and holds up four fingers.",
     },
     stats: { contact: 4, speed: 5, eye: 7, power: 4, guts: 9, wit: 7, stuff: 9, control: 9, stamina: 12 },
     potential: 18,
@@ -243,8 +243,8 @@ const RAW_BIBLE: RawSheet[] = [
     endings: {
       miss2: "The Academy path closed. The bullpen door stayed shut.",
       lantern: "Fireworks Friday without the ninth. She still pointed at the door.",
-      dugout: "Stars. She watched the ninth from the pen.",
-      show: "Stars. She points at the bullpen door, not the sky.",
+      dugout: "She watched the ninth from the bullpen door, one hand on the frame.",
+      show: "She points at the bullpen door, not the sky.",
     },
     stats: { contact: 3, speed: 6, eye: 7, power: 3, guts: 10, wit: 6, stuff: 9, control: 12, stamina: 7 },
     potential: 16,
@@ -283,8 +283,8 @@ const RAW_BIBLE: RawSheet[] = [
     endings: {
       miss2: "The Academy path closed. She still took second.",
       lantern: "Lanterns stay lit. The steal was the lesson anyway.",
-      dugout: "Dugout. Dirt on the white pants is the still.",
-      show: "Dugout. Dirt on the white pants is the still.",
+      dugout: "She watched from the dugout, one knee bouncing the whole time.",
+      show: "Dirt from her collar to her knees. The team has to chase her down to celebrate.",
     },
     stats: { contact: 6, speed: 9, eye: 6, power: 4, guts: 6, wit: 5, stuff: 3, control: 4, stamina: 9 },
     potential: 16,

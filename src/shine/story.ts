@@ -264,11 +264,11 @@ export const FINALE_LINES: Record<CharacterId, string> = {
  * has to follow it: no scoring shorthand, nothing that spoils her year.
  */
 export const TITLE_LINES: Record<CharacterId, string> = {
-  aoi: "Coach? You came. …Okay. Three years. Get me to the top.",
-  reina: "You came. Good. Watch every pitch, and tell me the truth.",
+  aoi: "Coach? Oh, good, you're here. I sharpened my pencil. Let's go get something worth writing down.",
+  reina: "You're four minutes late. I counted. Sit where I can see you.",
   miki: "Oh. You came back. …Cool. That's cool.",
-  sol: "How am I? Ninety-six. That means good, Jefe.",
-  kira: "Partner! Here's the deal. Stay three years, and I'll make them worth it.",
+  sol: "Ándale, Jefe. My sister saved you an elote. Extra chili. Eat it before I do.",
+  kira: "Partner! You made the last bus. Give me your transfer, I keep them. Ha, long story.",
   yuki: "Already warmed up. Already waiting. You're slow, Stopwatch.",
 };
 

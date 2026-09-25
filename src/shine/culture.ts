@@ -42,8 +42,8 @@ export function endingRankLabel(rank: EndingRank) {
   if (rank === "never-quit") return "Never Quit ◆";
   if (rank === "S") return "S — Legend";
   if (rank === "A") return "A — Diamond";
-  if (rank === "B") return "B — Rough";
-  if (rank === "D") return "D — Quiet Graduate";
+  if (rank === "B") return "B — Finale Night";
+  if (rank === "D") return "D — Quiet Ending";
   return "C — Lantern";
 }
 

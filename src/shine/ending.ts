@@ -109,12 +109,12 @@ export function endingRank(run: TraineeRun, finalePlayed: boolean, finalePg: boo
  * What S or A asks for that this career didn't have, read off the same rules
  * as endingRank. Doing everything on the list gives that rank (tested over a
  * grid), so the ending never promises the wrong thing. pgMisses counts big
- * dates lost (a goal saved by its smaller goal isn't one), so it's worded that way.
+ * games lost (a goal saved by its smaller goal isn't one), so it's worded that way.
  */
 export function rankGap(run: TraineeRun, target: "S" | "A", finalePlayed: boolean, finalePg: boolean): string[] {
   const gap: string[] = [];
-  if (!(finalePlayed && finalePg)) gap.push("the Finale won");
-  if (target === "S" ? run.pgMisses > 0 : run.pgMisses > 1) gap.push(target === "S" ? "no big date lost" : "one big date lost at most");
+  if (!(finalePlayed && finalePg)) gap.push("a Finale win");
+  if (target === "S" ? run.pgMisses > 0 : run.pgMisses > 1) gap.push(target === "S" ? "every big game held" : "no more than one big game lost");
   const need = target === "S" ? RANK_FANS.S : RANK_FANS.A;
   if (run.fans < need) gap.push(`${need} fans`);
   return gap;
@@ -124,30 +124,30 @@ function listed(items: string[]): string {
   return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }
 
-function datesLost(run: TraineeRun): string {
-  return run.pgMisses === 0 ? "no big date lost" : run.pgMisses === 1 ? "one big date lost" : `${run.pgMisses} big dates lost`;
+function gamesLost(run: TraineeRun): string {
+  return run.pgMisses === 0 ? "every big game held" : run.pgMisses === 1 ? "one big game got away" : `${run.pgMisses} big games got away`;
 }
 
 /**
  * Why she finished where she did, in one plain line, and what the next rank
- * up asks for. The rank is fair math; this is what lets the player see it.
+ * up needs. The rank is fair math; this is what lets the player see it.
  */
 export function endingWhy(run: TraineeRun, rank: EndingRank, finalePlayed: boolean, finalePg: boolean): string {
   const fans = `${run.fans} fans`;
-  const lost = datesLost(run);
-  if (rank === "S") return `${fans}, ${lost}, the Finale won. Nothing above this.`;
-  if (rank === "A") return `${fans}, ${lost}, the Finale won. S asks for ${listed(rankGap(run, "S", finalePlayed, finalePg))}.`;
+  const lost = gamesLost(run);
+  if (rank === "S") return `${fans}, ${lost}, and she won the Finale. There's nothing above this.`;
+  if (rank === "A") return `${fans}, ${lost}, and she won the Finale. S needs ${listed(rankGap(run, "S", finalePlayed, finalePg))}.`;
   if (rank === "never-quit") {
     // Miki always plays the Finale (finaleUnlocked); this rank is the one where she never grew all the way into it.
     const finale = finalePg ? "She won the Finale" : "She played the Finale";
-    return `${fans}. ${finale} without growing all the way into it, and Section 4 stayed anyway. A asks for ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
+    return `${fans}. ${finale} before she'd grown all the way into it, and Section 4 stayed anyway. A needs ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
   }
   if (rank === "B") {
-    const finale = !finalePlayed ? "" : finalePg ? " She won the Finale." : " She played the Finale and missed its goal.";
-    return `${fans}, ${lost}.${finale} A asks for ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
+    const finale = !finalePlayed ? "" : finalePg ? " She won the Finale." : " She played the Finale and came up short.";
+    return `${fans}, ${lost}.${finale} A needs ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
   }
-  if (rank === "C") return `The Academy path closed early. ${fans}. B asks for the Diamond Finale.`;
-  return `The Academy path closed early. ${fans}. C asks for ${RANK_FANS.C} fans.`;
+  if (rank === "C") return `Her Academy days ended early. ${fans}. B needs her to reach the Diamond Finale.`;
+  return `Her Academy days ended early. ${fans}. C needs ${RANK_FANS.C} fans.`;
 }
 
 function closingDateLabel(run: TraineeRun): string | null {
@@ -159,24 +159,24 @@ function closingDateLabel(run: TraineeRun): string | null {
 export function endingQuote(run: TraineeRun, rank: EndingRank) {
   const who = sheet(run.characterId);
   if (rank === "never-quit") return "Section 4 kept ringing both cowbells after the Finale. Nobody told them to stop.";
-  if (rank === "S") return `${who.endings.show} 胴上げ. Legend.`;
-  if (rank === "A") return who.endings.show;
+  // The chip already says S or A, and the frame line carries the 胴上げ; the quote is hers alone.
+  if (rank === "S" || rank === "A") return who.endings.show;
   if (rank === "B") {
     const finale = officialFor(run.characterId, 60);
     if (run.pgResults[6] === "met" && finale?.pgId === "k-side") return "Diamond Finale. She struck out the side.";
-    if (run.pgResults[6] === "met") return "She won the Diamond Finale. The Show asked for more than one night.";
-    // "One game short" only when winning the Finale is all that stood between her and A.
+    if (run.pgResults[6] === "met") return "She won the Diamond Finale. The top of the Academy takes more than one night.";
+    // "One win away" only when winning the Finale is all that stood between her and A.
     if (run.pgResults[6] !== "pending")
       return rankGap(run, "A", true, true).length === 0
-        ? "She played the Diamond Finale. The Show stayed one game short."
-        : "She played the Diamond Finale. The Show asked for more than that.";
+        ? "She played the Diamond Finale. The top stayed one win away."
+        : "She played the Diamond Finale. The top asked for more than that.";
     return who.endings.dugout;
   }
   if (rank === "D") {
     if (run.characterId === "yuki") return yearStillLine("yuki", run.turn, run.pgResults, run.definingPa);
     const date = closingDateLabel(run);
     const rest = who.endings.miss2.replace(/^The Academy path closed\. ?/, "");
-    return date ? `${date} closed the Academy path. ${rest}` : who.endings.miss2;
+    return date ? `${date} was her last big game. ${rest}` : who.endings.miss2;
   }
   return who.endings.lantern;
 }
@@ -466,20 +466,15 @@ export function careerStill(run: TraineeRun): CareerStill {
   const mentor = mentorTurn(run);
   const pitcher = isPitcherStyle(sheet(run.characterId).style);
   const coach = pitcher ? "Bullpen Coach" : "Cage Coach";
-  const place = pitcher ? "rubber" : "tunnel";
-  const mentorLine =
-    mentor != null
-      ? `${coach} stayed late. The ${place} remembered.`
-      : `The ${place} stayed empty. ${coach} never got the late night.`;
-  let frame = "Lanterns stay lit.";
-  if (rank === "S" || rank === "A") frame = "胴上げ.";
+  const mentorLine = mentor != null ? `${coach} stayed late. She kept what they found.` : `${coach} never got a late night with her.`;
+  // Each line on the results screen says something the others don't: the quote is her, the
+  // frame is the moment, the why line is the numbers.
+  let frame = "A crowd stayed for her.";
+  if (rank === "S") frame = "胴上げ. Up she goes, and up again.";
+  else if (rank === "A") frame = "胴上げ. Up she goes.";
   else if (rank === "never-quit") frame = "The bell is still going.";
-  else if (rank === "B") frame = pitcher ? "She stood the rubber anyway." : "She walked off anyway.";
-  else if (rank === "D") {
-    const date = closingDateLabel(run);
-    const rest = pitcher ? "She still took the ball." : "The bat stays up.";
-    frame = date ? `${date} closed the Academy path. ${rest}` : `The Academy path closed. ${rest}`;
-  }
+  else if (rank === "B") frame = "Three years, all the way to the Finale.";
+  else if (rank === "D") frame = pitcher ? "She still took the ball." : "The bat stays up.";
   return {
     rank,
     quote: endingQuote(run, rank),

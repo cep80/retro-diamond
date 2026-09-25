@@ -140,7 +140,7 @@ const ENDINGS: Record<CharacterId, Scenes> = {
         { who: "narration", text: "The truck has a new hand-painted board next to the menu: ELOTE, EXTRA CHILI. AND A CHANGEUP, ON REQUEST." },
         { who: "sol", text: "She painted it last night. I told her it's false advertising. She doesn't have a fastball.", mood: "elated" },
         { who: "narration", text: "Luz leans out the window and hands you an elote. Extra chili. She taps the inside of Sol's glove, where the grip is drawn in ballpoint." },
-        { who: "sol", text: "Four pitches, Jefe. I threw all of them at the top of the Academy. You gave me a reason every time.", mood: "focused" },
+        { who: "sol", text: "All four, Jefe. All the way to the top. You gave me a reason every time. Out loud.", mood: "focused" },
         { who: "sol", text: "Some of them were bad reasons. I threw them anyway.", mood: "neutral" },
         { who: "coach", text: "How are you?" },
         { who: "sol", text: "Ciento uno, Jefe. That's not on the scale. I'm putting it on.", mood: "elated" },
