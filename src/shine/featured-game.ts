@@ -664,7 +664,9 @@ function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedT
   game.live = null;
   game.paPitches = 0;
   armLastSpurt(game);
-  const arm = armForInning(run, game.kind, game.inning);
+  // An exhibition's picked arm pitches the whole game (dealPitch honours it too); only a
+  // career date brings someone in from the pen.
+  const arm = game.encounter?.arm ?? armForInning(run, game.kind, game.inning);
   const armChanged = arm !== game.arm;
   if (armChanged) {
     game.arm = arm;

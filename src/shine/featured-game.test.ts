@@ -21,6 +21,18 @@ function setBases(game: FeaturedGame, bases: Bases) {
 }
 
 describe("featured game", () => {
+  it("keeps an exhibition's picked arm on the mound between at-bats", () => {
+    const run = newAoiRun();
+    const game = startFeaturedGame(run, "lantern-classic", { arm: "kira", appearances: 3, neutral: true });
+    assert.equal(game.arm, "kira");
+    const ball = { type: "fastball" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const };
+    // Four balls ends the first at-bat; the next one starts with the same arm, not a reliever.
+    for (let i = 0; i < 4 && game.paIndex === 1; i++) resolveTake(run, game, ball);
+    assert.equal(game.paIndex, 2, "the walk ended the first at-bat");
+    assert.equal(game.arm, "kira");
+    assert.doesNotMatch(game.banner ?? "", /comes in from the pen/);
+  });
+
   it("starts Academy Gate with two PAs and Lead sit", () => {
     const run = newAoiRun();
     run.turn = 5;
