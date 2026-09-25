@@ -15,7 +15,7 @@ function sim(girl: CharacterId, kind: "first-light" | "lantern-classic", games: 
     const sched = new VirtualScheduler();
     const run = newRun(girl);
     run.rngSeed = `sim-${girl}-${kind}-${arm}-${g}`;
-    if (peak) { run.turn = 50; for (const k of Object.keys(run.stats) as (keyof typeof run.stats)[]) run.stats[k] = Math.min(run.potential, run.stats[k] + 8); }
+    if (peak) { run.turn = 50; run.year = 3; for (const k of Object.keys(run.stats) as (keyof typeof run.stats)[]) run.stats[k] = Math.min(run.potential, run.stats[k] + 8); }
     const c = new RaceController({ run, kind, encounter: { ...EXHIBITION_ENCOUNTER, arm }, scheduler: sched, uniqueStings: false, duel: true });
     c.onCue((q: RaceCue) => {
       if (q.t === "pa-card") { pas++; tally[q.beat] = (tally[q.beat] ?? 0) + 1; }
