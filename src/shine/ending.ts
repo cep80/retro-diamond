@@ -85,18 +85,24 @@ export function postgameLeaveLabel(run: TraineeRun, finale: boolean) {
   return finale || careerClosesEarly(run) ? "The year" : "Back to the complex";
 }
 
-/** The fan counts each rank asks for. endingRank and endingWhy both read these. */
-export const RANK_FANS = { S: 80, A: 60, B: 40, C: 20, neverQuit: 60 } as const;
+/**
+ * The fan counts each rank asks for. endingRank and endingWhy both read these.
+ * neverQuit is A's bar on purpose: never-quit is A-level devotion without the A-level year.
+ */
+export const RANK_FANS = { S: 80, A: 60, C: 20, neverQuit: 60 } as const;
 
+/**
+ * A career ends one of two ways: it closes early at the second big date lost
+ * (C with a crowd behind her, D without), or it plays the Diamond Finale (B at
+ * least). S and A are checked on their own numbers first, so never-quit only
+ * ever replaces what would be a B for Miki; it never blocks an earned S or A.
+ */
 export function endingRank(run: TraineeRun, finalePlayed: boolean, finalePg: boolean): EndingRank {
-  if (isMikiPath(run) && run.fans >= RANK_FANS.neverQuit && !finaleFloorMet(run)) return "never-quit";
-  if (careerClosesEarly(run)) return "D";
+  if (careerClosesEarly(run)) return run.fans >= RANK_FANS.C ? "C" : "D";
   if (finalePlayed && finalePg && run.pgMisses === 0 && run.fans >= RANK_FANS.S) return "S";
   if (finalePlayed && finalePg && run.pgMisses <= 1 && run.fans >= RANK_FANS.A) return "A";
-  if (finalePlayed) return "B";
-  if (run.fans >= RANK_FANS.B) return "B";
-  if (run.fans >= RANK_FANS.C) return "C";
-  return "D";
+  if (isMikiPath(run) && run.fans >= RANK_FANS.neverQuit && !finaleFloorMet(run)) return "never-quit";
+  return "B";
 }
 
 /**
@@ -111,8 +117,6 @@ export function rankGap(run: TraineeRun, target: "S" | "A", finalePlayed: boolea
   if (target === "S" ? run.pgMisses > 0 : run.pgMisses > 1) gap.push(target === "S" ? "no big date lost" : "one big date lost at most");
   const need = target === "S" ? RANK_FANS.S : RANK_FANS.A;
   if (run.fans < need) gap.push(`${need} fans`);
-  // Miki with 60 fans ranks never-quit until she grows into her game; the top ranks ask for that too.
-  if (isMikiPath(run) && !finaleFloorMet(run)) gap.push("her game grown all the way (Wit, and two of Contact, Speed and Eye)");
   return gap;
 }
 
@@ -142,9 +146,8 @@ export function endingWhy(run: TraineeRun, rank: EndingRank, finalePlayed: boole
     const finale = !finalePlayed ? "" : finalePg ? " She won the Finale." : " She played the Finale and missed its goal.";
     return `${fans}, ${lost}.${finale} A asks for ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
   }
-  if (rank === "C") return `${fans}. B asks for ${RANK_FANS.B} fans or the Diamond Finale.`;
-  if (careerClosesEarly(run)) return `The Academy path closed early. ${fans}.`;
-  return `${fans}. C asks for ${RANK_FANS.C}.`;
+  if (rank === "C") return `The Academy path closed early. ${fans}. B asks for the Diamond Finale.`;
+  return `The Academy path closed early. ${fans}. C asks for ${RANK_FANS.C} fans.`;
 }
 
 function closingDateLabel(run: TraineeRun): string | null {

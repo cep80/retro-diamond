@@ -733,6 +733,7 @@ function Complex() {
 function Postgame() {
   const run = useShine((s) => s.run)!;
   const dismissPostgame = useShine((s) => s.dismissPostgame);
+  const bumpView = useShine((s) => s.bumpView);
   const lastLine = useShine((s) => s.lastLine);
   const openTitle = useShine((s) => s.openTitle);
   const openSettings = useShine((s) => s.openSettings);
@@ -788,7 +789,14 @@ function Postgame() {
               </p>
             ))}
             {canSkipCurtain ? (
-              <PixelBtn className="mt-6 h-12" onClick={() => setCurtain(false)}>
+              <PixelBtn
+                className="mt-6 h-12"
+                onClick={() => {
+                  // "Back to the complex" takes this spot; re-arm the guard so a double tap can't skip the read.
+                  bumpView();
+                  setCurtain(false);
+                }}
+              >
                 Hold the still
               </PixelBtn>
             ) : (
@@ -859,6 +867,7 @@ function YearEnd() {
   const run = useShine((s) => s.run)!;
   const who = sheet(run.characterId);
   const finishCareer = useShine((s) => s.finishCareer);
+  const bumpView = useShine((s) => s.bumpView);
   const dismissYearEnd = useShine((s) => s.dismissYearEnd);
   const openTitle = useShine((s) => s.openTitle);
   const openSettings = useShine((s) => s.openSettings);
@@ -936,6 +945,8 @@ function YearEnd() {
                 className="mt-6 h-12"
                 onClick={() => {
                   if (card.ending === "never-quit") sfxCowbell();
+                  // "Clubhouse" (which ends the career) lands exactly here; a double tap must not skip the scrapbook.
+                  bumpView();
                   setPages(true);
                 }}
               >
@@ -1342,14 +1353,28 @@ export function ShineApp() {
 
   // When the view changes under a thumb (a scene's "To the park" becoming the plate's sit
   // grid, a choice becoming the work screen), the second tap of a double-tap must not land
-  // on the new screen. Swallow input for a beat after every change of view.
-  const viewKey = [screen, run?.turn ?? 0, run?.arcsHeard?.length ?? 0, run?.finaleEveHeard ? 1 : 0, establishing ? 1 : 0].join("|");
+  // on the new screen. Swallow input for a beat after every change of view: a new screen, a
+  // turn, a story beat heard, an overlay closing, or a screen swapping its own buttons (viewNonce).
+  const viewNonce = useShine((s) => s.viewNonce);
+  const viewKey = [screen, run?.turn ?? 0, run?.arcsHeard?.length ?? 0, run?.finaleEveHeard ? 1 : 0, establishing ? 1 : 0, overlay ?? "", viewNonce].join("|");
   const [inputGuard, setInputGuard] = useState(false);
   useEffect(() => {
     setInputGuard(true);
     const t = window.setTimeout(() => setInputGuard(false), 350);
     return () => window.clearTimeout(t);
   }, [viewKey]);
+  // The guard's overlay only stops pointers; Enter/Space would still press Go or a focused button.
+  useEffect(() => {
+    if (!inputGuard) return;
+    const swallow = (e: KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("keydown", swallow, true);
+    return () => window.removeEventListener("keydown", swallow, true);
+  }, [inputGuard]);
 
   let view: ReactNode;
   const turnType = run ? turnMeta(run.turn).type : null;

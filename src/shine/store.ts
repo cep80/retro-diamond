@@ -56,6 +56,8 @@ export interface ShineState {
   skipOnboarding: boolean;
   muted: boolean;
   storyCard: boolean;
+  /** Bumped when a screen swaps its own buttons in place (not saved); re-arms the input guard. */
+  viewNonce: number;
   settings: ShineSettings;
   liveGame: LiveGame | null;
   /** Rolling backups taken at turn boundaries; newest first, capped at 3. */
@@ -101,6 +103,7 @@ export interface ShineState {
   dismissEstablishing: () => void;
   dismissCalendarPeek: () => void;
   dismissStoryCard: () => void;
+  bumpView: () => void;
   hearFinaleEve: () => void;
   hearArc: (key: string) => void;
   /** A training event's choice: apply its effect and mark the event heard, together. */
@@ -146,6 +149,7 @@ export const useShine = create<ShineState>()(
       skipOnboarding: false,
       muted: false,
       storyCard: false,
+      viewNonce: 0,
       settings: DEFAULT_SETTINGS,
       liveGame: null,
       backups: [],
@@ -417,7 +421,8 @@ export const useShine = create<ShineState>()(
       dismissLooksLock: () => set({ looksLock: false }),
       dismissEstablishing: () => set({ establishing: false }),
       dismissCalendarPeek: () => set({ calendarPeek: false }),
-      dismissStoryCard: () => set({ storyCard: false }),
+      dismissStoryCard: () => set((s) => ({ storyCard: false, viewNonce: s.viewNonce + 1 })),
+      bumpView: () => set((s) => ({ viewNonce: s.viewNonce + 1 })),
       hearArc: (key) => {
         const { run } = get();
         if (!run || run.arcsHeard?.includes(key)) return;

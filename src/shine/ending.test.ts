@@ -447,13 +447,34 @@ describe("the ending says why", () => {
     assert.match(endingWhy(run, b, false, false), /A asks for the Finale won and 60 fans\.$/);
   });
 
+  it("ranks by the table: closed early is C or D, the Finale is B or better, and never-quit never blocks an earned S or A", async () => {
+    const { endingRank } = await import("./ending.ts");
+    const { newRun } = await import("./run.ts");
+    const aoi = newRun("aoi");
+    aoi.pgMisses = 2;
+    aoi.fans = 35;
+    assert.equal(endingRank(aoi, false, false), "C", "closed early with a crowd behind her");
+    aoi.fans = 10;
+    assert.equal(endingRank(aoi, false, false), "D");
+    aoi.pgMisses = 1;
+    aoi.fans = 0;
+    assert.equal(endingRank(aoi, true, false), "B", "reaching the Finale is the floor for B, whatever the fans");
+    const miki = newRun("miki");
+    miki.fans = 100;
+    miki.pgMisses = 0;
+    assert.equal(endingRank(miki, true, true), "S", "a clean Finale on 100 fans is S even short of her floor");
+    assert.equal(endingRank(miki, true, false), "never-quit", "the same Miki losing the Finale is never-quit, not B");
+    miki.fans = 30;
+    assert.equal(endingRank(miki, true, false), "B");
+  });
+
   it("doing everything the line asks for gives the rank it names, across the whole grid", async () => {
-    const { endingRank, rankGap, isMikiPath, finaleFloorMet } = await import("./ending.ts");
+    const { endingRank, rankGap } = await import("./ending.ts");
     const { newRun } = await import("./run.ts");
     const ORDER = ["D", "C", "B", "never-quit", "A", "S"] as const;
     for (const id of ["aoi", "miki", "sol"] as const) {
-      for (const fans of [0, 45, 59, 60, 79, 80, 100]) {
-        for (const misses of [0, 1]) {
+      for (const fans of [0, 19, 20, 45, 59, 60, 79, 80, 100]) {
+        for (const misses of [0, 1, 2]) {
           for (const [played, won] of [[true, true], [true, false], [false, false]] as const) {
             for (const floor of [false, true]) {
               const run = newRun(id);
@@ -469,12 +490,10 @@ describe("the ending says why", () => {
                 lifted.stats = { ...run.stats };
                 lifted.fans = gap.some((g) => g.endsWith(" fans")) ? (target === "S" ? 80 : 60) : run.fans;
                 lifted.pgMisses = gap.includes("no big date lost") ? 0 : gap.includes("one big date lost at most") ? 1 : run.pgMisses;
-                if (gap.some((g) => g.startsWith("her game grown"))) for (const k of Object.keys(lifted.stats) as (keyof typeof lifted.stats)[]) lifted.stats[k] = 16;
                 const finaleWon = gap.includes("the Finale won") ? true : won;
                 const got = endingRank(lifted, finaleWon || played, finaleWon);
                 const why = `${id} fans=${fans} misses=${misses} played=${played} won=${won} floor=${floor} → ${rank}, ask for ${target}: ${gap.join(" | ")} → ${got}`;
                 assert.ok(ORDER.indexOf(got) >= ORDER.indexOf(target), why);
-                if (isMikiPath(run) && !finaleFloorMet(run)) assert.ok(gap.some((g) => g.startsWith("her game grown")), why);
               }
             }
           }
