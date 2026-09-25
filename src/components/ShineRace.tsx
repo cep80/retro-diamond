@@ -13,7 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { PixelBtn } from "@/components/pixel-btn";
 import { ActionStage, hrMomentUp } from "@/components/action/ActionStage";
 import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
-import { PauseButton, PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
+import { PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
 import { ShineMute } from "@/components/ShineMute";
 import { exhibitionAudioCue, type ExhibitionAudioIo } from "@/components/exhibition/audio-cues";
 import { basepathRead, boxLine, dateCloseBeat, dateHeadline, goLabel, leaveLabel, pickPrompt, RACE_COPY, raceCaption, runningClose, scorePhrase, showSitGrid, situationParts } from "@/components/race-ui";
@@ -27,7 +27,7 @@ import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMoo
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { crowdStem } from "@/shine/culture.ts";
-import { EMPTY_BASES, type Bases } from "@/shine/events.ts";
+import { settleBug, type BugState } from "@/components/race-bug";
 import { type EncounterConfig, type FeaturedGame, type GameKind } from "@/shine/featured-game.ts";
 import type { PlateCue } from "@/shine/plate-controller.ts";
 import { RaceController, type RaceCue } from "@/shine/race-controller.ts";
@@ -46,17 +46,6 @@ const ARMS = BIBLE.filter((c) => isPitcherStyle(c.style));
 interface Matchup {
   batter: CharacterId;
   arm: CharacterId;
-}
-
-/** What the scorebug shows; `score` is the raw run difference (null when the kind has no score). */
-interface BugState {
-  inning: string | null;
-  score: number | null;
-  atBat: string;
-  count: { balls: number; strikes: number };
-  outs: number;
-  bases: Bases;
-  self: 1 | 2 | 3 | null;
 }
 
 /** `?batter=miki&pitcher=kira` skips the pick (captures, read tests). */
@@ -90,23 +79,6 @@ function cellKey(c: Cell) {
   return `${c.row}-${c.col}`;
 }
 
-/** The bug at the end of her at-bat: her runs on the board, her out on the lamps, a home run's bases cleared. */
-function settleBug(held: BugState, game: FeaturedGame, pa: number, homer: boolean): BugState {
-  let rbi = 0;
-  let out = false;
-  for (const e of game.events) {
-    if (e.t === "rbi" && e.pa === pa) rbi += e.runs;
-    if (e.t === "paComplete" && e.pa === pa) out = !e.reached;
-  }
-  return {
-    ...held,
-    score: held.score === null ? null : held.score + rbi,
-    outs: out ? Math.min(2, held.outs + 1) : held.outs,
-    bases: homer ? EMPTY_BASES : held.bases,
-    self: homer ? null : held.self,
-  };
-}
-
 /** Career / weekly door. Pitchers still take the mound. */
 export function ShinePlate() {
   const career = useShine((s) => s.run);
@@ -129,16 +101,35 @@ export function ShinePlate() {
   );
 }
 
+/**
+ * The exhibition swaps its own screens (pick → race → end card → pick) under one
+ * store screen, so each swap re-arms the app's input guard itself: the second tap
+ * of a double tap must not land on the new screen's button.
+ */
+function swapView() {
+  useShine.getState().bumpView();
+}
+
 /** The exhibition: any hitter against any arm, three plate appearances, in memory only. */
 export function ShineExhibition() {
   const [matchup, setMatchup] = useState<Matchup | null>(matchupFromUrl);
   const [last, setLast] = useState<Matchup>({ batter: "aoi", arm: "reina" });
-  if (!matchup) return <ExhibitionPick initial={last} onPlay={setMatchup} />;
+  if (!matchup)
+    return (
+      <ExhibitionPick
+        initial={last}
+        onPlay={(m) => {
+          swapView();
+          setMatchup(m);
+        }}
+      />
+    );
   return (
     <ExhibitionGame
       key={`${matchup.batter}-${matchup.arm}`}
       matchup={matchup}
       onChange={() => {
+        swapView();
         setLast(matchup);
         setMatchup(null);
       }}
@@ -164,7 +155,10 @@ function ExhibitionGame({ matchup, onChange }: { matchup: Matchup; onChange: () 
       run={run}
       kind="lantern-classic"
       encounter={encounter}
-      onReplay={() => setAttempt((n) => n + 1)}
+      onReplay={() => {
+        swapView();
+        setAttempt((n) => n + 1);
+      }}
       onChangeMatchup={onChange}
     />
   );
@@ -315,6 +309,26 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const goPa = useRef<number | null>(null);
   const heldBug = useRef<BugState | null>(null);
 
+  // The film's clock: performance.now() with every pause cut out. The stamp, the
+  // home run and the money clip run on it, so Time holds the moment where it
+  // stood and resume picks it up there instead of after it has run out.
+  const pauseClock = useRef<{ cut: number; since: number | null }>({ cut: 0, since: null });
+  const clock = useCallback(() => {
+    const c = pauseClock.current;
+    return (c.since ?? performance.now()) - c.cut;
+  }, []);
+  useEffect(() => {
+    const c = pauseClock.current;
+    if (race.plate.getSnapshot().paused && c.since === null) c.since = performance.now();
+    return race.onPlateCueRaw((cue: PlateCue) => {
+      if (cue.t === "paused" && c.since === null) c.since = performance.now();
+      if (cue.t === "resumed" && c.since !== null) {
+        c.cut += performance.now() - c.since;
+        c.since = null;
+      }
+    });
+  }, [race]);
+
   // Go waits for her stills so the 120 ms cut-in never draws an empty frame.
   // A slow network gets FILM_WARM_CAP_MS, then Go opens anyway.
   const [filmWarm, setFilmWarm] = useState(false);
@@ -363,7 +377,6 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       sfxRelease,
       schedule: (fn, ms) => window.setTimeout(fn, ms),
     };
-    const stampTimers: number[] = [];
     const offPlate = race.onPlateCueRaw((cue: PlateCue) => {
       exhibitionAudioCue(cue, race.plate.getSnapshot().game, io);
       if (cue.t === "prepare") {
@@ -376,7 +389,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         }
       }
       if (cue.t === "resolved") {
-        const now = performance.now();
+        const now = clock();
         setActionCue({
           tappedAtU: cue.swung ? decisionU.current : null,
           resolvedAtMs: now,
@@ -389,14 +402,6 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         const last = g.game.lastPitches.at(-1);
         if (last) setGhost(locCell(last.loc));
         trackEvent("pa_pitch", { beat: cue.beat, swung: cue.swung, call: g.call, arm: g.game.arm, kind: g.game.kind });
-        // The stamp's slam gets its own hit, on the frame it lands.
-        const stamp = resultStamp(cue.beat, cue.swung);
-        if (stamp) stampTimers.push(window.setTimeout(() => sfxStamp(stamp.tone), STAMP_DELAY_MS));
-        // A home run's roar rolls on: it swells again when the stamp lands, and once more as her name comes up.
-        if (cue.beat === "hr") {
-          stampTimers.push(window.setTimeout(sfxCrowdBurst, STAMP_DELAY_MS));
-          stampTimers.push(window.setTimeout(sfxCrowdBurst, STAMP_DELAY_MS + 900));
-        }
       }
     });
     const offRace = race.onCue((cue: RaceCue) => {
@@ -415,12 +420,55 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     });
     return () => {
       offPlate();
-      for (const t of stampTimers) window.clearTimeout(t);
       offRace();
       stopCrowd();
       if (game.kind !== "practice" && game.kind !== "finale") stopMusic();
     };
-  }, [race, run.characterId, game.arm, parkId, kind]);
+  }, [race, run.characterId, game.arm, parkId, kind, clock]);
+
+  // The stamp's sounds, due on the film clock: a pause holds them with the
+  // picture and resume re-arms what is left of each wait. Their own
+  // subscription, so the next at-bat's change of arm (dealt on the same
+  // resolve) can't cancel the at-bat that just ended.
+  useEffect(() => {
+    const timers: { fn: () => void; at: number; id: number | null }[] = [];
+    const arm = (t: (typeof timers)[number]) => {
+      t.id = window.setTimeout(() => {
+        timers.splice(timers.indexOf(t), 1);
+        t.fn();
+      }, Math.max(0, t.at - clock()));
+    };
+    const later = (fn: () => void, ms: number) => {
+      const t: (typeof timers)[number] = { fn, at: clock() + ms, id: null };
+      timers.push(t);
+      if (!race.plate.getSnapshot().paused) arm(t);
+    };
+    const off = race.onPlateCueRaw((cue: PlateCue) => {
+      if (cue.t === "paused") {
+        for (const t of timers) {
+          if (t.id !== null) window.clearTimeout(t.id);
+          t.id = null;
+        }
+      }
+      if (cue.t === "resumed") {
+        for (const t of timers) if (t.id === null) arm(t);
+      }
+      if (cue.t === "resolved") {
+        // The stamp's slam gets its own hit, on the frame it lands.
+        const stamp = resultStamp(cue.beat, cue.swung);
+        if (stamp) later(() => sfxStamp(stamp.tone), STAMP_DELAY_MS);
+        // A home run's roar rolls on: it swells again when the stamp lands, and once more as her name comes up.
+        if (cue.beat === "hr") {
+          later(sfxCrowdBurst, STAMP_DELAY_MS);
+          later(sfxCrowdBurst, STAMP_DELAY_MS + 900);
+        }
+      }
+    });
+    return () => {
+      off();
+      for (const t of timers) if (t.id !== null) window.clearTimeout(t.id);
+    };
+  }, [race, clock]);
 
   // Flight clock and reaction clock: the stage redraws on ours. Keeps
   // ticking through the money hold so a clip that outlives the reaction
@@ -436,26 +484,26 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     setStampTick(true);
     let raf = 0;
     const tick = () => {
-      const n = performance.now();
+      const n = clock();
       setNowMs(n);
       if (n < end) raf = requestAnimationFrame(tick);
       else setStampTick(false);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [actionCue.resolvedAtMs]);
+  }, [actionCue.resolvedAtMs, actionCue.beat, clock]);
   useEffect(() => {
     if (stage !== "flight" && stage !== "field" && stage !== "reaction" && !clipMayShow) return;
     let raf = 0;
     const tick = () => {
-      const now = performance.now();
-      if (stage === "flight") setU(race.plate.progress(now));
-      setNowMs(now);
+      // The plate's flight has its own pause-aware clock; the film reads ours.
+      if (stage === "flight") setU(race.plate.progress(performance.now()));
+      setNowMs(clock());
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [stage, race, clipMayShow]);
+  }, [stage, race, clipMayShow, clock]);
 
   // Pause: the settings overlay, a hidden tab, or a lost window.
   useEffect(() => {
@@ -485,13 +533,32 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     race.go();
   }, [race]);
 
-  // Keys: Enter / Space go. The hand and cards are a later expansion.
+  // Back in the box: the dialog leaves and the sit grid or Go is under the thumb
+  // again, so the resume re-arms the input guard like any other swap of view.
+  const resumeRace = useCallback(() => {
+    useShine.getState().bumpView();
+    race.resume();
+  }, [race]);
+
+  // Keys: the pause key (Settings › Keys, Escape always) calls and ends Time;
+  // Enter / Space go. The hand and cards are a later expansion.
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       if (ev.repeat) return;
       const tag = (ev.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
+      // Settings over the race owns the keyboard (Escape there closes it or binds a key).
+      const { overlay: over, settings: st } = useShine.getState();
+      if (over) return;
       const s = race.getSnapshot();
+      if (ev.code === st.keys.pause || ev.code === "Escape") {
+        ev.preventDefault();
+        if (s.plate.paused) resumeRace();
+        else race.pause("user");
+        return;
+      }
+      // Paused, the dialog's own buttons take Enter / Space.
+      if (s.plate.paused) return;
       if (ev.code === "Enter" || ev.code === "Space") {
         ev.preventDefault();
         if (s.phase === "pick" && filmWarmRef.current) go();
@@ -500,7 +567,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [race, go]);
+  }, [race, go, resumeRace]);
 
   // ?debug=1 hooks for the browser probes.
   useEffect(() => {
@@ -590,7 +657,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     u,
     tappedAtU: actionCue.tappedAtU,
     resolvedAtMs: running || takeMiss ? null : contactHeld || foulHeld ? 0 : actionCue.resolvedAtMs,
-    nowMs: contactHeld ? 0 : foulHeld ? CONTACT_HOLD_MS : stage === "field" || stage === "reaction" || clipMayShow || stampTick ? nowMs : performance.now(),
+    nowMs: contactHeld ? 0 : foulHeld ? CONTACT_HOLD_MS : stage === "field" || stage === "reaction" || clipMayShow || stampTick ? nowMs : clock(),
     reduced,
   };
   const twoStrikeHold = (() => {
@@ -609,8 +676,9 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     pgMet: exhibition ? game.hits + game.walks > 0 : weekly ? game.reached : game.pgMet,
   });
   // The game deals the next at-bat (inning, count, runners) the instant a PA's
-  // last pitch resolves. The bug holds the at-bat that just ended, with her runs
-  // and her out on it, until the card clears and the next Go starts the new one.
+  // last pitch resolves. The bug holds the at-bat that just ended, with its
+  // events replayed on it (her base, the runners, the runs, her out), until the
+  // card clears and the next Go starts the new one.
   // Count and bases are copied: the resolvers mutate them in place.
   const liveBug: BugState | null = parts
     ? {
@@ -625,7 +693,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     : null;
   const endedPa = goPa.current !== null && (game.done || game.paIndex !== goPa.current) ? goPa.current : null;
   if (endedPa === null) heldBug.current = liveBug;
-  const bug = endedPa !== null && heldBug.current ? settleBug(heldBug.current, game, endedPa, actionCue.beat === "hr") : liveBug;
+  const bug = endedPa !== null && heldBug.current ? settleBug(heldBug.current, game.events, endedPa) : liveBug;
   const hrUp = hrMomentUp(actionView);
 
   return (
@@ -635,18 +703,21 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       data-race-phase={snap.phase}
       data-pa-film="hybrid-e"
       data-hr={hrUp ? "" : undefined}
+      data-paused={paused ? "" : undefined}
       style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}
     >
       {paused ? (
         <PauseOverlay
           reason={plate.pauseReason}
-          onResume={() => race.resume()}
+          onResume={resumeRace}
           onSettings={openSettings}
           onTitle={() => {
             stopCrowd();
             stopMusic();
             openTitle();
           }}
+          // Only the career attempt is saved (between at-bats); an exhibition or the weekly look is not.
+          titleLabel={mode === "career" ? PAUSE_TITLE_SAVED : RACE_COPY.title}
         />
       ) : null}
 
@@ -664,6 +735,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           twoStrikeHold={twoStrikeHold}
           prepareMs={reduced ? RACE_PACE.prepareMsReduced : RACE_PACE.prepareMs}
           heroMood={heroMood}
+          clock={clock}
+          paused={paused}
           fallback={
             <div className="absolute inset-0 overflow-hidden" aria-busy={manifestSettled ? undefined : "true"}>
               {manifestSettled ? (
@@ -706,6 +779,12 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
             <PauseButton onPause={() => race.pause("user")} />
           </div>
         </header>
+        {/* The home run takes the HUD away, but not Time: a faded glyph over the bars, where the HUD's was. */}
+        {hrUp ? (
+          <div className="shine-hr-time">
+            <PauseButton onPause={() => race.pause("user")} />
+          </div>
+        ) : null}
 
         {/* Over the bottom of the film: the pick, the caption, the card. */}
         <section className="shine-race-coach" aria-label="The Coach">

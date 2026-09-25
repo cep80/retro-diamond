@@ -27,7 +27,8 @@ export function ShineMute() {
     <button
       type="button"
       className="shine-mute"
-      aria-label={muted ? "Unmute" : "Mute"}
+      // A toggle keeps one name; aria-pressed says whether it's on ("Mute, pressed" = muted).
+      aria-label="Mute"
       aria-pressed={muted}
       data-muted={muted ? "true" : undefined}
       onClick={() => {

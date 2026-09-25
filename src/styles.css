@@ -1210,6 +1210,32 @@
     opacity 200ms ease,
     visibility 0s 200ms;
 }
+/* All but Time: its glyph stays over the bars, faded, where the HUD's was, so
+   the moment can still be held on purpose. */
+.shine-hr-time {
+  position: absolute;
+  top: max(env(safe-area-inset-top), 10px);
+  right: 12px;
+  z-index: 61;
+  opacity: 0.5;
+  transition: opacity 160ms ease;
+}
+.shine-hr-time:focus-within {
+  opacity: 1;
+}
+@media (hover: hover) {
+  .shine-hr-time:hover {
+    opacity: 1;
+  }
+}
+/* Time holds the picture: every film layer (the push-in, the cut-in and its
+   lines, the stamp, the home run's rays, streamers and bars) stops on its frame
+   with the race's clock, and runs on from there on resume. */
+.shine-race[data-paused] .shine-stage-bleed *,
+.shine-race[data-paused] .shine-stage-bleed *::before,
+.shine-race[data-paused] .shine-stage-bleed *::after {
+  animation-play-state: paused;
+}
 /* Time: a 36 px round icon, the twin of the mute speaker beside it. */
 .shine-hud-btn {
   display: inline-grid;
@@ -2491,6 +2517,11 @@
 }
 /* The quiet way out of a year, in the story face rather than a tracked caps link. */
 .shine-title-end {
+  /* A thumb-sized target: the text is small, the tap area isn't. */
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  padding: 0 0.25rem;
   font-family: var(--font-story);
   font-size: 0.78rem;
   font-weight: 700;

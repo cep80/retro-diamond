@@ -77,8 +77,17 @@ export interface ActionStageProps {
   fallback?: ReactNode;
   /** Fill the parent edge to edge (the race) instead of a 3:4 card (the mound). */
   bleed?: boolean;
+  /**
+   * The clock `view.resolvedAtMs` and `view.nowMs` are read on. The race passes
+   * one with its pauses cut out; default performance.now().
+   */
+  clock?: () => number;
+  /** Time is called: the money clip holds its frame (the CSS layers pause on the race's data-paused). */
+  paused?: boolean;
   className?: string;
 }
+
+const wallClock = () => performance.now();
 
 const missingReported = new Set<string>();
 const HR_COLORS = ["var(--color-gold)", "var(--color-coral)", "var(--color-cream)", "var(--color-grass-2)", "var(--shine-accent, var(--color-gold))"];
@@ -190,26 +199,39 @@ function MoneyClip({
   nowMs,
   onDone,
   poster,
+  clock,
+  paused,
 }: {
   clip: ActionClip;
   resolvedAtMs: number;
   nowMs: number;
   onDone: () => void;
   poster: string | undefined;
+  clock: () => number;
+  paused: boolean;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
+  const clockRef = useRef(clock);
+  clockRef.current = clock;
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
+    // Time holds the frame; resume seeks back onto the (paused) clock and plays on.
+    if (paused) {
+      v.pause();
+      return;
+    }
     let cancelled = false;
     // Seek so the marker frame is on screen at the resolve cue; a late start
     // seeks forward, never shows the marker late (spec §1.2).
     const start = () => {
       if (cancelled) return;
-      v.currentTime = clipSeekS(clip, resolvedAtMs, performance.now());
+      v.currentTime = clipSeekS(clip, resolvedAtMs, clockRef.current());
       v.play().catch(() => {
+        // A pause or unmount interrupting play() is not a missing clip.
+        if (cancelled) return;
         reportMissing("clip", clip.url);
         doneRef.current();
       });
@@ -221,7 +243,7 @@ function MoneyClip({
       doneRef.current();
     };
     v.addEventListener("error", onError);
-    const end = window.setTimeout(() => doneRef.current(), Math.max(0, clipEndsAtMs(clip, resolvedAtMs) - performance.now()));
+    const end = window.setTimeout(() => doneRef.current(), Math.max(0, clipEndsAtMs(clip, resolvedAtMs) - clockRef.current()));
     return () => {
       cancelled = true;
       window.clearTimeout(end);
@@ -229,7 +251,7 @@ function MoneyClip({
       v.removeEventListener("error", onError);
       v.pause();
     };
-  }, [clip, resolvedAtMs]);
+  }, [clip, resolvedAtMs, paused]);
   if (nowMs >= clipEndsAtMs(clip, resolvedAtMs)) return null;
   return (
     <video
@@ -264,6 +286,8 @@ export function ActionStage({
   children,
   fallback,
   bleed = false,
+  clock = wallClock,
+  paused = false,
   className,
 }: ActionStageProps) {
   const batter = manifest?.girls[batterId];
@@ -374,6 +398,8 @@ export function ActionStage({
               nowMs={view.nowMs}
               poster={underClip?.url ?? money.clip.poster}
               onDone={() => setClipDone(resolvedKey)}
+              clock={clock}
+              paused={paused}
             />
           ) : null}
           {heldPoster ? (

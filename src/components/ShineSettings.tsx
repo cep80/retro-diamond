@@ -64,7 +64,7 @@ export function ShineSettings() {
 
   return (
     // Settings opens as a fixed overlay, so it scrolls itself; otherwise Done sits below a short phone.
-    <main className="relative h-dvh overflow-y-auto overscroll-contain bg-ink text-cream">
+    <main className="relative h-dvh overflow-y-auto overscroll-contain bg-ink text-cream" data-listening={listening ? "true" : undefined}>
       <div className="title-wash fixed inset-0" />
       <div className="relative z-10 mx-auto max-w-3xl px-4 py-8 sm:px-8">
         <div className="flex items-center justify-between gap-3">
@@ -265,7 +265,8 @@ export function ShineHelp() {
       <div className="relative z-10 mx-auto max-w-3xl px-4 py-8 sm:px-8">
         <div className="flex items-center justify-between gap-3">
           <p className="episode-chip w-fit">How it works</p>
-          <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={closeOverlay}>
+          {/* How it works opens from Settings, so Back goes back there; Done closes both. */}
+          <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openSettings}>
             Back
           </PixelBtn>
         </div>
@@ -280,9 +281,6 @@ export function ShineHelp() {
         <div className="mt-6 flex gap-3 pb-[env(safe-area-inset-bottom)]">
           <PixelBtn className="h-12" onClick={closeOverlay}>
             Done
-          </PixelBtn>
-          <PixelBtn variant="ghost" className="h-12" onClick={openSettings}>
-            Settings
           </PixelBtn>
         </div>
       </div>

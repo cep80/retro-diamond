@@ -85,6 +85,9 @@ function TitleIconButton({ icon, label, count = 0, onClick }: { icon: TitleIcon;
   );
 }
 
+/** Set once the player taps to start; the title skips the gate for the rest of the session. */
+let titleStarted = false;
+
 function Title() {
   const run = useShine((s) => s.run);
   const clubhouse = useShine((s) => s.clubhouse);
@@ -96,8 +99,9 @@ function Title() {
   const openSettings = useShine((s) => s.openSettings);
   const nextHook = sparkGapLine(clubhouse);
   const [endYear, setEndYear] = useState(false);
-  // Tap to start: the tap is the gesture that lets the sound play at all.
-  const [started, setStarted] = useState(false);
+  // Tap to start: the tap is the gesture that lets the sound play at all. Once per session;
+  // coming back from the Shop or the Clubhouse goes straight to the menu, no second sting.
+  const [started, setStarted] = useState(() => titleStarted);
   // The title belongs to whoever is next: her if a year is running, else the girl the
   // Clubhouse hook names (Select opens on her too), else Aoi for a first-time player.
   const lastCard = clubhouse.at(-1)?.characterId;
@@ -106,6 +110,7 @@ function Title() {
 
   useEffect(() => {
     warmActionExhibition();
+    if (titleStarted) startMusic("title");
     return () => stopMusic();
   }, []);
 
@@ -114,6 +119,7 @@ function Title() {
     unlockAudio();
     sfxTitleSting();
     startMusic("title");
+    titleStarted = true;
     setStarted(true);
   };
 
@@ -201,7 +207,15 @@ function Title() {
                   This year ends here. Start a new one?
                 </button>
               ) : (
-                <button type="button" className="shine-title-end" onClick={() => setEndYear(true)}>
+                <button
+                  type="button"
+                  className="shine-title-end"
+                  onClick={() => {
+                    // The confirm step lands in the same spot: re-arm the guard so a double tap can't skip it.
+                    useShine.getState().bumpView();
+                    setEndYear(true);
+                  }}
+                >
                   New Rookie year
                 </button>
               )
@@ -1272,9 +1286,65 @@ const RIVAL_CHIP: Record<RivalKind, string> = {
   series: "Skyline Series · before the game",
 };
 
+const FOCUSABLE = "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
+
+/**
+ * Settings and How it works as real dialogs: focus moves in when they open and back
+ * where it was when they close, Tab stays inside, and Escape closes them (unless
+ * Settings is waiting for a key to rebind, which wants that Escape).
+ */
+function OverlayDialog({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    ref.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    // On the window, not the dialog: a click on empty dialog space drops focus to the body,
+    // and Escape and Tab still have to work from there.
+    const onKey = (e: KeyboardEvent) => {
+      const root = ref.current;
+      if (!root) return;
+      if (e.key === "Escape") {
+        if (root.querySelector("[data-listening]")) return;
+        e.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (items.length === 0) return;
+      const first = items[0]!;
+      const last = items.at(-1)!;
+      const inside = document.activeElement instanceof Node && root.contains(document.activeElement);
+      if (!inside) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      before?.focus();
+    };
+  }, []);
+  return (
+    <div ref={ref} className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label={label}>
+      {children}
+    </div>
+  );
+}
+
 export function ShineApp() {
   const screen = useShine((s) => s.screen);
   const overlay = useShine((s) => s.overlay);
+  const closeOverlay = useShine((s) => s.closeOverlay);
   const hydrated = useShine((s) => s.hydrated);
   const setHydrated = useShine((s) => s.setHydrated);
   const openExhibition = useShine((s) => s.openExhibition);
@@ -1443,16 +1513,16 @@ export function ShineApp() {
       data-reduced-motion={settings.reducedMotion ? "true" : undefined}
     >
       {view}
-      {inputGuard ? <div className="fixed inset-0 z-[70]" data-input-guard aria-hidden /> : null}
+      {inputGuard ? <div className="fixed inset-0 z-[90]" data-input-guard aria-hidden /> : null}
       {overlay === "settings" ? (
-        <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="Settings">
+        <OverlayDialog label="Settings" onClose={closeOverlay}>
           <ShineSettings />
-        </div>
+        </OverlayDialog>
       ) : null}
       {overlay === "help" ? (
-        <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="How it works">
+        <OverlayDialog label="How it works" onClose={closeOverlay}>
           <ShineHelp />
-        </div>
+        </OverlayDialog>
       ) : null}
     </div>
   );

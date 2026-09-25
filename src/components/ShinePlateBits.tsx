@@ -102,18 +102,24 @@ export function PauseButton({ onPause }: { onPause: () => void }) {
   );
 }
 
+/** The pause dialog's way out on a screen whose attempt is saved (the career plate and mound). */
+export const PAUSE_TITLE_SAVED = "Title · the attempt is saved";
+
 export function PauseOverlay({
   reason,
   onResume,
   onSettings,
   onTitle,
   resumeLabel = "Back in the box",
+  titleLabel = PAUSE_TITLE_SAVED,
 }: {
   reason: PauseReason;
   onResume: () => void;
   onSettings: () => void;
   onTitle: () => void;
   resumeLabel?: string;
+  /** Promise a save only where there is one: plain "Title" for the exhibition and the weekly look. */
+  titleLabel?: string;
 }) {
   return (
     // Fixed above the home-run layer (z 60): a pause mid-moment still reads.
@@ -123,7 +129,7 @@ export function PauseOverlay({
         <p className="mt-2 font-display text-xl font-bold">{reason === "hidden" ? "She stepped out." : "Paused."}</p>
         <p className="mt-1 font-ui text-sm text-cream/75">
           {reason === "hidden"
-            ? "The tab lost focus, so the pitch is held. Nothing is charged against her until you step back in."
+            ? "She called time. The pitch waits for you."
             : "The count and the runners hold. The pitch, if one was in the air, waits."}
         </p>
         <div className="mt-4 flex flex-col gap-2">
@@ -134,7 +140,7 @@ export function PauseOverlay({
             Settings
           </PixelBtn>
           <PixelBtn variant="ghost" className="h-11" onClick={onTitle}>
-            Title · the attempt is saved
+            {titleLabel}
           </PixelBtn>
         </div>
       </div>

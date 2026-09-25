@@ -245,10 +245,15 @@ export function ShineMound() {
   const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   onKeyRef.current = (e: KeyboardEvent) => {
     if (e.repeat) return;
+    // Settings is open on top (maybe rebinding this very key): the mound stays paused under it.
+    if (overlay) return;
     if (e.code === settings.keys.pause || e.code === "Escape") {
       e.preventDefault();
-      if (paused) resume();
-      else pause("user");
+      if (paused) {
+        // Back in the box: the throw button returns under the thumb, so re-arm the input guard.
+        useShine.getState().bumpView();
+        resume();
+      } else pause("user");
       return;
     }
     if (paused) return;
@@ -464,7 +469,10 @@ export function ShineMound() {
       {paused ? (
         <PauseOverlay
           reason={pauseReason}
-          onResume={resume}
+          onResume={() => {
+            useShine.getState().bumpView();
+            resume();
+          }}
           onSettings={openSettings}
           onTitle={() => {
             stopCrowd();
