@@ -437,14 +437,50 @@ describe("the ending says why", () => {
     run.fans = 70;
     const a = endingRank(run, true, true);
     assert.equal(a, "A");
-    assert.match(endingWhy(run, a, true, true), /70 fans, one goal missed, the Finale won\. S asks for every goal and 80 fans\./);
+    assert.equal(endingWhy(run, a, true, true), "70 fans, one big date lost, the Finale won. S asks for no big date lost and 80 fans.");
     run.pgMisses = 0;
     run.fans = RANK_FANS.S;
     assert.equal(endingRank(run, true, true), "S", "doing what A's line asked for makes it S");
     run.fans = 45;
     const b = endingRank(run, false, false);
     assert.equal(b, "B");
-    assert.match(endingWhy(run, b, false, false), /A asks for the Diamond Finale/);
+    assert.match(endingWhy(run, b, false, false), /A asks for the Finale won and 60 fans\.$/);
+  });
+
+  it("doing everything the line asks for gives the rank it names, across the whole grid", async () => {
+    const { endingRank, rankGap, isMikiPath, finaleFloorMet } = await import("./ending.ts");
+    const { newRun } = await import("./run.ts");
+    const ORDER = ["D", "C", "B", "never-quit", "A", "S"] as const;
+    for (const id of ["aoi", "miki", "sol"] as const) {
+      for (const fans of [0, 45, 59, 60, 79, 80, 100]) {
+        for (const misses of [0, 1]) {
+          for (const [played, won] of [[true, true], [true, false], [false, false]] as const) {
+            for (const floor of [false, true]) {
+              const run = newRun(id);
+              run.fans = fans;
+              run.pgMisses = misses;
+              if (floor) for (const k of Object.keys(run.stats) as (keyof typeof run.stats)[]) run.stats[k] = 16;
+              const rank = endingRank(run, played, won);
+              for (const target of ["S", "A"] as const) {
+                if (ORDER.indexOf(rank) >= ORDER.indexOf(target)) continue;
+                const gap = rankGap(run, target, played, won);
+                // Grant exactly what the gap names, and nothing else.
+                const lifted = newRun(id);
+                lifted.stats = { ...run.stats };
+                lifted.fans = gap.some((g) => g.endsWith(" fans")) ? (target === "S" ? 80 : 60) : run.fans;
+                lifted.pgMisses = gap.includes("no big date lost") ? 0 : gap.includes("one big date lost at most") ? 1 : run.pgMisses;
+                if (gap.some((g) => g.startsWith("her game grown"))) for (const k of Object.keys(lifted.stats) as (keyof typeof lifted.stats)[]) lifted.stats[k] = 16;
+                const finaleWon = gap.includes("the Finale won") ? true : won;
+                const got = endingRank(lifted, finaleWon || played, finaleWon);
+                const why = `${id} fans=${fans} misses=${misses} played=${played} won=${won} floor=${floor} → ${rank}, ask for ${target}: ${gap.join(" | ")} → ${got}`;
+                assert.ok(ORDER.indexOf(got) >= ORDER.indexOf(target), why);
+                if (isMikiPath(run) && !finaleFloorMet(run)) assert.ok(gap.some((g) => g.startsWith("her game grown")), why);
+              }
+            }
+          }
+        }
+      }
+    }
   });
 
   it("a B with the Finale won says what the three years were short of", async () => {
@@ -455,8 +491,22 @@ describe("the ending says why", () => {
     run.fans = 52;
     run.pgResults[6] = "met";
     assert.equal(endingRank(run, true, true), "B");
-    assert.equal(endingWhy(run, "B", true, true), "52 fans, one goal missed. She won the Finale. A also asks for 60 fans across the three years.");
+    assert.equal(endingWhy(run, "B", true, true), "52 fans, one big date lost. She won the Finale. A asks for 60 fans.");
     assert.doesNotMatch(endingQuote(run, "B"), /one game short/, "a won Finale isn't a game short");
+  });
+
+  it("a lost Finale is 'one game short' only when the win was all A asked for", async () => {
+    const { endingRank, endingWhy, endingQuote } = await import("./ending.ts");
+    const { newRun } = await import("./run.ts");
+    const run = newRun("aoi");
+    run.pgMisses = 1;
+    run.fans = 45;
+    run.pgResults[6] = "missed";
+    assert.equal(endingRank(run, true, false), "B");
+    assert.equal(endingWhy(run, "B", true, false), "45 fans, one big date lost. She played the Finale and missed its goal. A asks for the Finale won and 60 fans.");
+    assert.doesNotMatch(endingQuote(run, "B"), /one game short/);
+    run.fans = 70;
+    assert.match(endingQuote(run, "B"), /one game short/);
   });
 
   it("never-quit names the Finale she played, not one she missed", async () => {
