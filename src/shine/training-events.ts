@@ -93,6 +93,14 @@ export function applyEventChoice(run: TraineeRun, effect: EventEffect): void {
   if (e.stat) run.stats[e.stat.key] += e.stat.delta;
 }
 
+/**
+ * The chip over an event. The place carries its own time ("a warm night, the
+ * curb still hot"), so the chip must not claim "Morning" over a night scene.
+ */
+export function eventChip(place: string): string {
+  return /\bnight\b(?! classic)|evening|dusk|sunset|p\.m\.|after dark|last bus|after close/i.test(place) ? "After hours" : "Before work";
+}
+
 const STAT_NAME: Record<TraineeStatKey, string> = {
   contact: "Contact",
   speed: "Speed",

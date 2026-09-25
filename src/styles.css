@@ -4,6 +4,30 @@
 @import "@fontsource/chakra-petch/700.css";
 @import "tailwindcss";
 
+/* The story face: rounded and warm for everything she says. Latin only, vendored (OFL,
+   public/fonts/m-plus-rounded-1c); kana fall through to --font-jp. */
+@font-face {
+  font-family: "M PLUS Rounded 1c";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("/fonts/m-plus-rounded-1c/m-plus-rounded-1c-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "M PLUS Rounded 1c";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("/fonts/m-plus-rounded-1c/m-plus-rounded-1c-latin-700-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "M PLUS Rounded 1c";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 800;
+  src: url("/fonts/m-plus-rounded-1c/m-plus-rounded-1c-latin-800-normal.woff2") format("woff2");
+}
+
 @theme {
   --color-ink: #081127;
   --color-ink-2: #0d1934;
@@ -25,6 +49,10 @@
   /* Chakra Petch has no kana: every Japanese label falls through to the best JP face on the device, the same one everywhere on that device. */
   --font-display: "Chakra Petch", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
   --font-ui: "Chakra Petch", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+  /* One JP stack everywhere, so a device draws every kana in the same face. */
+  --font-jp: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", sans-serif;
+  /* Scenes, choices and nameplates; Chakra Petch stays on the scorebug and numbers. */
+  --font-story: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Meiryo", "Noto Sans JP", ui-rounded, system-ui, sans-serif;
   --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -843,7 +871,7 @@
   --stamp: var(--color-grass-2);
 }
 .shine-stamp-jp {
-  font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans JP", var(--font-display);
+  font-family: var(--font-jp), var(--font-display);
   font-weight: 900;
   font-size: clamp(2.6rem, 15vw, 4.4rem);
   line-height: 1;
@@ -993,40 +1021,92 @@
   }
 }
 
-/* JRPG scene: her still fills the frame, a text box sits along the bottom. */
-/* The scene is full-bleed: her still fills the screen behind the page, and
-   the box sits low, where the eye lands after her face. */
+/* JRPG scene, a visual novel stage. One full-screen layer: the place, blurred to
+   light; her bust in front of it; a top row (chip, place, Skip); and the box
+   pinned to the bottom, full-bleed. Choices and results appear just above the
+   box, so the box never moves under a thumb tapping through the lines. */
 .shine-scene {
-  position: relative;
+  position: fixed;
+  inset: 0;
+  z-index: 10;
   display: flex;
-  flex: 1;
   flex-direction: column;
-  justify-content: flex-end;
+  overflow: hidden;
+  background: var(--color-ink);
+}
+.shine-scene-top,
+.shine-scene-actions,
+.shine-scene-box {
+  position: relative;
+  z-index: 1;
+}
+/* Actions come after the box in the DOM (Tab goes line → choices) but draw above it. */
+.shine-scene-spacer {
+  order: 1;
+}
+.shine-scene-actions {
+  order: 2;
+}
+.shine-scene-box {
+  order: 3;
+  z-index: 2;
+}
+.shine-scene-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: calc(0.9rem + env(safe-area-inset-top)) 1rem 0;
+}
+.shine-scene-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+.shine-scene-spacer {
+  flex: 1;
+}
+.shine-scene-actions {
+  display: flex;
   width: 100%;
-  min-height: min(62dvh, 36rem);
+  max-width: 46rem;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0 auto;
+  padding: 0 0.85rem 0.85rem;
 }
 /* The place, blurred to light and weather; the plates are pixel parks and the busts are painted. */
 .shine-scene-plate {
-  position: fixed;
+  position: absolute;
   inset: -2rem;
-  z-index: -1;
   width: calc(100% + 4rem);
+  max-width: none;
   height: calc(100% + 4rem);
   object-fit: cover;
   filter: blur(16px) brightness(0.42) saturate(0.8);
 }
-/* Her bust stands in front of the place, feet out of frame, face above the box. */
+/* Her bust stands in front of the place: face at about a quarter of the screen, waist under the box. */
 .shine-scene-bust {
-  position: fixed;
-  bottom: 0;
+  position: absolute;
+  bottom: 14dvh;
   left: 50%;
-  z-index: -1;
-  height: min(78dvh, 56rem);
+  height: 76dvh;
   width: auto;
   max-width: none;
   translate: -50% 0;
-  transition: filter 260ms ease-out;
+  transition:
+    filter 260ms ease-out,
+    scale 260ms ease-out,
+    translate 260ms ease-out;
   animation: shine-scene-bust 260ms ease-out both;
+}
+/* Short phones: the bust starts below the place pill instead of under it. */
+@media (max-height: 720px) {
+  .shine-scene-bust {
+    height: 70dvh;
+  }
 }
 @keyframes shine-scene-bust {
   0% {
@@ -1039,81 +1119,91 @@
   }
 }
 .shine-scene-shade {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    linear-gradient(0deg, rgb(8 17 39 / 0.96) 0%, rgb(8 17 39 / 0.6) 34%, transparent 60%),
-    linear-gradient(180deg, rgb(8 17 39 / 0.55) 0%, transparent 16%);
-}
-.shine-scene-place {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 5rem;
-  width: fit-content;
-  line-height: 1.5;
-  padding: 0.3rem 0.75rem;
-  border-radius: 999px;
-  background: rgb(8 17 39 / 0.78);
-  font-family: var(--font-display);
-  font-size: 0.68rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  inset: 0;
+  background:
+    linear-gradient(0deg, rgb(8 17 39 / 0.9) 0%, rgb(8 17 39 / 0.35) 30%, transparent 48%),
+    linear-gradient(180deg, rgb(8 17 39 / 0.6) 0%, transparent 18%);
+}
+/* Where we are, in Title Case; the weather sits under it, softer. */
+.shine-scene-place {
+  display: flex;
+  max-width: 100%;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 0.8rem;
+  background: rgb(8 17 39 / 0.72);
+  font-family: var(--font-story);
+  line-height: 1.35;
+  animation: shine-outcome-card 320ms ease-out both;
+}
+.shine-scene-where {
+  font-size: 0.85rem;
+  font-weight: 800;
   color: var(--color-gold);
 }
+.shine-scene-when {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(245 248 255 / 0.72);
+}
 .shine-scene-skip {
-  position: absolute;
-  top: 0;
-  right: 0;
-  padding: 0.3rem 0.75rem;
+  flex: none;
+  padding: 0.35rem 0.85rem;
   border: 1px solid rgb(255 255 255 / 0.25);
   border-radius: 999px;
   background: rgb(8 17 39 / 0.6);
-  font-family: var(--font-display);
-  font-size: 0.66rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-family: var(--font-story);
+  font-size: 0.75rem;
+  font-weight: 700;
   color: var(--color-cream);
 }
+/* The box: pinned to the bottom, full-bleed on a phone, text starting at the top so it never jumps. */
 .shine-scene-box {
-  position: relative;
-  display: block;
-  min-height: 8.5rem;
-  padding: 1.5rem 1.2rem 1.1rem;
-  border: 1px solid rgb(255 255 255 / 0.14);
+  display: flex;
+  width: 100%;
+  max-width: 46rem;
+  /* Five lines fit without the box growing mid-line on a 667 px phone. */
+  min-height: max(24dvh, calc(3rem + 2px + 5 * 1.7 * 1.0625rem + env(safe-area-inset-bottom)));
+  flex-direction: column;
+  justify-content: flex-start;
+  margin: 0 auto;
+  padding: 1.75rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
+  border: 0;
   border-top: 2px solid var(--shine-accent, var(--color-gold));
-  border-radius: 0.9rem;
-  background: rgb(8 17 39 / 0.9);
+  border-radius: 20px 20px 0 0;
+  background: rgb(8 17 39 / 0.93);
   color: var(--color-cream);
   text-align: left;
-  box-shadow: 0 18px 40px rgb(0 0 0 / 0.55);
+  box-shadow: 0 -12px 40px rgb(0 0 0 / 0.45);
   backdrop-filter: blur(6px);
 }
 .shine-scene-box.is-narration {
   border-top-color: rgb(255 255 255 / 0.22);
 }
-/* When the Coach speaks, the frame turns to you: her still steps back a little. */
+/* When the Coach speaks, the frame turns to you: she listens, a half step back. */
 .shine-scene[data-speaker="coach"] .shine-scene-bust {
-  filter: brightness(0.62) saturate(0.85);
+  filter: brightness(0.8);
+  scale: 0.98;
+  translate: -50% 4px;
 }
 .shine-scene-box.is-coach {
   border-top-color: var(--color-grass-2);
 }
 .shine-scene-name {
   position: absolute;
-  top: -0.8rem;
+  top: -0.85rem;
   left: 1rem;
   display: inline-flex;
   align-items: baseline;
   gap: 0.45rem;
-  padding: 0.25rem 0.85rem;
+  padding: 0.28rem 0.9rem;
   border-radius: 999px;
   background: var(--shine-accent, var(--color-coral));
-  font-family: var(--font-display);
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-family: var(--font-story);
+  font-size: 0.85rem;
+  font-weight: 800;
   color: var(--color-ink);
 }
 .shine-scene-box.is-coach .shine-scene-name {
@@ -1122,18 +1212,116 @@
   background: var(--color-grass-2);
 }
 .shine-scene-name .shine-kana {
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   opacity: 0.75;
 }
 .shine-scene-text {
   display: block;
-  font-family: var(--font-ui);
-  font-size: 1rem;
-  line-height: 1.6;
+  font-family: var(--font-story);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.7;
 }
 .shine-scene-box.is-narration .shine-scene-text {
-  font-style: italic;
-  color: rgb(245 248 255 / 0.92);
+  color: #cdd7ee;
+}
+/* The Coach's choices: cream ribbons with her colour down the side, sliding in one after the other. */
+.shine-choice {
+  display: flex;
+  width: 100%;
+  min-height: 3.1rem;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-left: 6px solid var(--shine-accent, var(--color-gold));
+  border-radius: 14px;
+  background: linear-gradient(#fffaf0, #efe4cf);
+  box-shadow: 0 3px 0 rgb(0 0 0 / 0.35);
+  color: #1b2440;
+  font-family: var(--font-story);
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: left;
+  animation: shine-choice-in 260ms ease-out calc(var(--i, 0) * 60ms) both;
+}
+.shine-choice::before {
+  content: "▶";
+  flex: none;
+  font-size: 0.7rem;
+  color: var(--shine-accent, var(--color-coral));
+}
+.shine-choice:hover:not(:disabled) {
+  background: linear-gradient(#fff, #f5ecda);
+}
+.shine-choice:active:not(:disabled) {
+  translate: 0 2px;
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.35);
+}
+.shine-choice:disabled {
+  cursor: default;
+}
+@keyframes shine-choice-in {
+  from {
+    opacity: 0;
+    translate: 24px 0;
+  }
+}
+/* What a choice did: the gains float up in a column on her jersey (not her face), then settle into chips. */
+.shine-gain-floats {
+  position: fixed;
+  top: 44dvh;
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  translate: -50% 0;
+  pointer-events: none;
+}
+.shine-gain-float {
+  font-family: var(--font-story);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--color-gold);
+  -webkit-text-stroke: 2px var(--color-ink);
+  paint-order: stroke fill;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: shine-gain-float 900ms ease-out calc(var(--i, 0) * 150ms) both;
+}
+@keyframes shine-gain-float {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-24px) scale(1);
+  }
+}
+.shine-gain-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  background: var(--color-gold);
+  font-family: var(--font-story);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--color-ink);
+  animation: shine-outcome-card 240ms ease-out calc(700ms + var(--i, 0) * 150ms) both;
+}
+/* A cost is shown plainly, not celebrated. */
+.shine-gain-chip.is-cost {
+  background: rgb(255 255 255 / 0.14);
+  color: var(--color-cream);
 }
 .shine-scene-next {
   position: absolute;
@@ -1279,8 +1467,14 @@
   .shine-stamp {
     animation: none;
   }
-  .shine-scene-bust {
+  .shine-scene-bust,
+  .shine-scene-place,
+  .shine-choice,
+  .shine-gain-chip {
     animation: none;
+  }
+  .shine-gain-floats {
+    display: none;
   }
   .shine-hr,
   .shine-hr-rays,
@@ -1322,7 +1516,14 @@
 .shine-root[data-reduced-motion="true"] *::after {
   animation-duration: 1ms !important;
   animation-iteration-count: 1 !important;
+  animation-delay: 0s !important;
   transition-duration: 1ms !important;
+}
+.shine-root[data-reduced-motion="true"] :is(.shine-scene-bust, .shine-scene-place, .shine-choice, .shine-gain-chip) {
+  animation: none;
+}
+.shine-root[data-reduced-motion="true"] .shine-gain-floats {
+  display: none;
 }
 
 .shine-energy-bar {
@@ -1435,7 +1636,7 @@
   box-shadow: inset 0 0 0 2px rgb(255 160 64 / 0.9);
 }
 
-.lantern-season img[src^="/bg/park"] {
+.lantern-season img[src^="/bg/park"]:not(.shine-scene-plate) {
   filter: sepia(0.32) saturate(1.25) hue-rotate(-12deg);
 }
 
@@ -1451,7 +1652,7 @@
   filter: saturate(0.88) brightness(0.78) contrast(1.08);
 }
 
-.broadcast-filter img[src^="/bg/park"] {
+.broadcast-filter img[src^="/bg/park"]:not(.shine-scene-plate) {
   filter: contrast(1.1) saturate(0.82) hue-rotate(-12deg);
 }
 
@@ -1465,7 +1666,7 @@
   filter: contrast(1.1) saturate(0.82) hue-rotate(-12deg);
 }
 
-.lantern-season.broadcast-filter img[src^="/bg/park"] {
+.lantern-season.broadcast-filter img[src^="/bg/park"]:not(.shine-scene-plate) {
   filter: sepia(0.22) saturate(0.95) contrast(1.08) hue-rotate(-14deg);
 }
 
@@ -1492,7 +1693,7 @@
 
 /* Pretty Derby of baseball: the girl is the UI. Stats, stations, speech. */
 .shine-kana {
-  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  font-family: var(--font-jp);
   font-weight: 700;
   letter-spacing: 0.06em;
 }
@@ -1548,7 +1749,7 @@
 .shine-stat-kana {
   grid-column: 1;
   grid-row: 1;
-  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  font-family: var(--font-jp);
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -1656,7 +1857,7 @@
   position: absolute;
   top: -1.2rem;
   right: -0.8rem;
-  font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", "Yu Gothic", sans-serif;
+  font-family: var(--font-jp);
   font-size: 1.55rem;
   font-weight: 800;
   letter-spacing: 0.04em;

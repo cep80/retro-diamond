@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
 import { ShineMute } from "@/components/ShineMute";
-import { careerMuteAppliesToScreen, setMasterMuted, setMix, sfxCowbell, sfxSelect, sfxTitleSting, startEnding, startMusic, stopMusic, unlockAudio } from "@/shine/audio.ts";
+import { careerMuteAppliesToScreen, setMasterMuted, setMix, sfxCowbell, sfxGain, sfxSelect, sfxTitleSting, startEnding, startMusic, stopMusic, unlockAudio } from "@/shine/audio.ts";
 import { ShineHelp, ShineSettings } from "@/components/ShineSettings";
 import { nextNamedBeat, nextDateLine, turnMeta, dateLabel, daysAwayLabel, yearOf, PLATE_TURNS } from "@/shine/calendar.ts";
 import { BIBLE, careerFilmSrc, endingClipSrc, endingFilmSrc, isPitcherStyle, parkSrc, sceneFilmSrc, sheet, yearStillLine } from "@/shine/bible.ts";
@@ -20,7 +20,7 @@ import { MOOD_LABELS, moodLevel } from "@/shine/training.ts";
 import { useShine } from "@/shine/store.ts";
 import { finaleEveScene, promiseScene, TITLE_LINES, type SceneLike } from "@/shine/story.ts";
 import { lowPointScene, rivalIntro, RIVAL_KINDS, type RivalKind } from "@/shine/story-arcs.ts";
-import { cappedEffect, effectChips, eventDue, eventKey, type EventChoice, type TrainingEvent } from "@/shine/training-events.ts";
+import { cappedEffect, effectChips, eventChip, eventDue, eventKey, type EventChoice, type TrainingEvent } from "@/shine/training-events.ts";
 import { EVENT_LIBRARY } from "@/shine/training-events-library.ts";
 import { endingChip, endingScene, endingTier } from "@/shine/story-endings.ts";
 
@@ -984,23 +984,26 @@ function Establishing() {
 
   // Her promise, one line at a time. The year starts when she's said it.
   return (
-    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
-      <div className="title-wash absolute inset-0" />
-      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-3 py-6 sm:px-6">
-        <p className="episode-chip w-fit">First Day</p>
-        <ScenePlayer scene={promiseScene(run.characterId)} reduced={reduced} onDone={() => setHeard(true)} />
-        {heard ? (
-          <PixelBtn
-            className="h-12"
-            onClick={() => {
-              stopMusic();
-              dismissEstablishing();
-            }}
-          >
-            Morning
-          </PixelBtn>
-        ) : null}
-      </div>
+    <main className="min-h-dvh bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
+      <ScenePlayer
+        scene={promiseScene(run.characterId)}
+        reduced={reduced}
+        onDone={() => setHeard(true)}
+        chip="First Day"
+        actions={
+          heard ? (
+            <PixelBtn
+              className="h-12"
+              onClick={() => {
+                stopMusic();
+                dismissEstablishing();
+              }}
+            >
+              Morning
+            </PixelBtn>
+          ) : null
+        }
+      />
     </main>
   );
 }
@@ -1016,17 +1019,21 @@ function StoryScreen({ scene, chip, cta, onDone }: { scene: SceneLike; chip: str
   const reduced = useShine((s) => s.settings.reducedMotion);
   const [heard, setHeard] = useState(false);
   return (
-    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
-      <div className="title-wash absolute inset-0" />
-      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-3 py-6 sm:px-6">
-        <p className="episode-chip w-fit">{chip}</p>
-        <ScenePlayer key={`${scene.id}-${scene.girl}-${scene.place}`} scene={scene} reduced={reduced} onDone={() => setHeard(true)} />
-        {heard ? (
-          <PixelBtn className="h-12" onClick={onDone}>
-            {cta}
-          </PixelBtn>
-        ) : null}
-      </div>
+    <main className="min-h-dvh bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
+      <ScenePlayer
+        key={`${scene.id}-${scene.girl}-${scene.place}`}
+        scene={scene}
+        reduced={reduced}
+        onDone={() => setHeard(true)}
+        chip={chip}
+        actions={
+          heard ? (
+            <PixelBtn className="h-12" onClick={onDone}>
+              {cta}
+            </PixelBtn>
+          ) : null
+        }
+      />
     </main>
   );
 }
@@ -1053,54 +1060,80 @@ function EventScreen({ event }: { event: TrainingEvent }) {
     const t = window.setTimeout(() => setArmed(true), 600);
     return () => window.clearTimeout(t);
   }, [heard]);
-  // Keyboard focus follows the scene when the choice buttons go away.
+  // Keyboard focus follows the scene when the choice buttons go away, but only for a pick made
+  // just now: after a reload the box would get a focus ring nobody asked for.
+  const pickedHere = useRef(false);
   useEffect(() => {
-    if (choice) document.querySelector<HTMLButtonElement>(".shine-scene-box")?.focus();
+    if (choice && pickedHere.current) document.querySelector<HTMLButtonElement>(".shine-scene-box")?.focus();
   }, [choice]);
   const key = eventKey(event);
+  // What landed, split: gains float up in gold with a chime; costs are shown plainly.
+  const landed = choice ? cappedEffect(run, choice.effect) : {};
+  const ups = effectChips({ mood: (landed.mood ?? 0) > 0 ? landed.mood : undefined, energy: (landed.energy ?? 0) > 0 ? landed.energy : undefined, stat: landed.stat });
+  const costs = effectChips({ mood: (landed.mood ?? 0) < 0 ? landed.mood : undefined, energy: (landed.energy ?? 0) < 0 ? landed.energy : undefined });
+  useEffect(() => {
+    if (replied && ups.length > 0) sfxGain();
+  }, [replied]);
   const scene = choice
     ? { id: `${key}-reply-${event.choices.indexOf(choice)}`, girl: event.girl, place: event.place, beats: choice.reply }
     : { id: key, girl: event.girl, place: event.place, beats: event.beats };
-  return (
-    <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
-      <div className="title-wash absolute inset-0" />
-      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col gap-4 px-3 py-6 sm:px-6">
-        <p className="episode-chip w-fit">{dateLabel(turnMeta(run.turn), sheet(run.characterId).style)} · before work</p>
-        <ScenePlayer key={scene.id} scene={scene} reduced={reduced} onDone={() => (choice ? setReplied(true) : setHeard(true))} />
-        {/* The bottom is reserved from the first line, so the box never moves and a tap meant for it can't land on a choice. */}
-        <div className="flex min-h-[8.25rem] flex-col justify-end gap-2">
-          {heard && !choice
-            ? event.choices.map((c, i) => (
-                <PixelBtn
-                  key={c.label}
-                  variant="ghost"
-                  className="min-h-12 px-4 py-2 text-left normal-case"
-                  disabled={!armed}
-                  onClick={() => {
-                    pickEvent(eventKey(event), i as 0 | 1);
-                    setChoice(c);
-                  }}
-                >
-                  {c.label}
-                </PixelBtn>
-              ))
-            : null}
-          {choice && replied ? (
-            <>
-              <div className="flex flex-wrap gap-2">
-                {effectChips(cappedEffect(run, choice.effect)).map((chip) => (
-                  <span key={chip} className="episode-chip">
-                    {chip}
-                  </span>
-                ))}
-              </div>
-              <PixelBtn className="h-12" onClick={() => resolveEvent(key, choice.effect)}>
-                To work
-              </PixelBtn>
-            </>
-          ) : null}
+  const actions =
+    heard && !choice ? (
+      event.choices.map((c, i) => (
+        <button
+          key={c.label}
+          type="button"
+          className="shine-choice"
+          style={{ ["--i" as string]: i }}
+          disabled={!armed}
+          onClick={() => {
+            pickedHere.current = true;
+            pickEvent(eventKey(event), i as 0 | 1);
+            setChoice(c);
+          }}
+        >
+          {c.label}
+        </button>
+      ))
+    ) : choice && replied ? (
+      <>
+        {reduced || ups.length === 0 ? null : (
+          <div className="shine-gain-floats" aria-hidden>
+            {ups.map((g, i) => (
+              <span key={g} className="shine-gain-float" style={{ ["--i" as string]: i }}>
+                {g}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {ups.map((g, i) => (
+            <span key={g} className="shine-gain-chip" style={{ ["--i" as string]: i }}>
+              {g}
+            </span>
+          ))}
+          {costs.map((g, i) => (
+            <span key={g} className="shine-gain-chip is-cost" style={{ ["--i" as string]: ups.length + i }}>
+              {g}
+            </span>
+          ))}
         </div>
-      </div>
+        <PixelBtn className="h-12" onClick={() => resolveEvent(key, choice.effect)}>
+          To work
+        </PixelBtn>
+      </>
+    ) : null;
+  return (
+    <main className="min-h-dvh bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}>
+      <ScenePlayer
+        key={scene.id}
+        scene={scene}
+        reduced={reduced}
+        onDone={() => (choice ? setReplied(true) : setHeard(true))}
+        chip={eventChip(event.place)}
+        actions={actions}
+        establish={!choice}
+      />
     </main>
   );
 }
@@ -1199,6 +1232,17 @@ export function ShineApp() {
     setMix({ music: settings.music, sfx: settings.sfx, crowd: settings.crowd });
   }, [hydrated, settings.music, settings.sfx, settings.crowd]);
 
+  // When the view changes under a thumb (a scene's "To the park" becoming the plate's sit
+  // grid, a choice becoming the work screen), the second tap of a double-tap must not land
+  // on the new screen. Swallow input for a beat after every change of view.
+  const viewKey = [screen, run?.turn ?? 0, run?.arcsHeard?.length ?? 0, run?.finaleEveHeard ? 1 : 0, establishing ? 1 : 0].join("|");
+  const [inputGuard, setInputGuard] = useState(false);
+  useEffect(() => {
+    setInputGuard(true);
+    const t = window.setTimeout(() => setInputGuard(false), 350);
+    return () => window.clearTimeout(t);
+  }, [viewKey]);
+
   let view: ReactNode;
   const turnType = run ? turnMeta(run.turn).type : null;
   const resuming = Boolean(run && liveGame && liveGame.runId === run.id && liveGame.turn === run.turn);
@@ -1258,6 +1302,7 @@ export function ShineApp() {
       data-reduced-motion={settings.reducedMotion ? "true" : undefined}
     >
       {view}
+      {inputGuard ? <div className="fixed inset-0 z-[70]" data-input-guard aria-hidden /> : null}
       {overlay === "settings" ? (
         <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true" aria-label="Settings">
           <ShineSettings />

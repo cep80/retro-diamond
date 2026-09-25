@@ -252,6 +252,19 @@ export function sfxBlip() {
   tone(880, 0.06, "square", 0.05);
 }
 
+/** Moving to the next line of a scene: a soft tick, not a chiptune beep under painted art. */
+export function sfxTick() {
+  if (!enabled.sfx) return;
+  tone(1320, 0.03, "sine", 0.03);
+}
+
+/** A choice paid off: two rising notes as the gain floats up. */
+export function sfxGain() {
+  if (!enabled.sfx || !ctx || !sfx) return;
+  tone(880, 0.12, "sine", 0.045);
+  window.setTimeout(() => tone(1320, 0.18, "sine", 0.045), 110);
+}
+
 /** One letter of a spoken line: a soft, short blip at the speaker's pitch. */
 export function sfxVoice(freq: number) {
   if (!enabled.sfx) return;
