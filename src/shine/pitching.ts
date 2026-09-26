@@ -590,7 +590,9 @@ export function resolveDelivery(
   const rawSwing = cpuSwing(batter, { type, loc }, game.count, r);
   const swing = read?.takeTwoStrike && game.count.strikes === 2 && !inZone ? { ...rawSwing, swing: false } : rawSwing;
   push(game.events, { t: "pitch", pa: game.battersFaced, n: game.pitchCount, type, inZone });
-  game.tells = recordPitcherTell(game.tells, { first, inZone, twoStrikes: game.count.strikes === 2, type });
+  // She only learns from the pitches she saw: the book on this pitcher fills on her at-bats,
+  // so pitching the other five in the zone doesn't hand her a read.
+  if (castSlot) game.tells = recordPitcherTell(game.tells, { first, inZone, twoStrikes: game.count.strikes === 2, type });
   if (release < 0.3 && kick < 0.3) noteCallback(run, game, "control");
   if (type !== "fastball" && release < 0.3) noteCallback(run, game, "stuff");
 
