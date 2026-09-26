@@ -67,6 +67,16 @@ Today her pack is Aoi in a red cap: same pose, same uniform, long ponytail, lant
 
 Paint the horse-head logo out of Reina's cap on her select-card and action stills.
 
+## 6. From the milestone review (2026-09-26)
+
+- **A hit and an out look the same (major).** Both play over the same follow-through still (back view, ponytail swinging), so the film can't tell you which happened. For each hitter (aoi, miki, yuki), make:
+  - `run.webp`: sprinting out of the box toward first, bat just dropped. Used for single and double.
+  - `out.webp`: watching the catch, or shoulders dropping as she jogs back. Used for in-play outs.
+  - When they land, add `run` and `out` to BATTER_POSES and the manifest, and map single/double → run and outs → out in `settledBatterPose` (src/shine/action-art.ts).
+- **One kit per girl, everywhere (major).** Aoi's number and trim change between her reaction bust (navy "1", red collar) and her swing and home-run stills (pink "1", navy and pink trim). Sol's changes between busts too. Regenerate the off-model stills and busts against one kit reference sheet per girl (jersey, number colour, trim, pants).
+- **One venue per at-bat (minor).** Within a single pitch, Kira's wind-up is in a big stadium, Aoi's swing is in a lantern park, and her reaction is in a tree-lined park. Paint the pitcher's wind-up plate for each park on the same backdrop as the batter stills.
+- **Place plates (minor).** The scene card names "The Dusters' Dorm, a windowsill of coffee cans", but the backdrop is a blurred field. That's the 12 plates in §2.
+
 ## Also still open from earlier
 
 - Generated action stills for the stranger read test: HR and walk still fail (see `design/diamond-shine-action-art-handoff-2026-09-18.md`).

@@ -120,3 +120,37 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
 - **Check-in 6 (gameplay programmer):** the batting-order change is sound. Fixed: the ending explanation now comes from one shared rankGap, with a grid test proving that doing what the line asks gives that rank (`71c863c`). The input guard now covers in-place button swaps (a double tap on The scrapbook could end the career unseen), closing Settings, and Enter/Space (`c72f793`). Still open: the cast hitter's scouting read (+3 contact on a first-pitch fastball) is never shown before it's used.
 - **Check-in 7 (game designer), rank table:** a career closes early as C (20+ fans) or D, or plays the Finale for B or better. S and A are checked first, so Miki's never-quit only replaces a B. Rank C is reachable for the first time. Miki's own short ending can never play, because her path never closes; it stays as harmless content.
 - **Race and menus v2 `c263066`:** the full-screen exhibition and home run, the title line on the art with new lines for all six, the icon footer and mute button, Settings holding How it works (and scrolling), and a character select with her bust and a sticky confirm. Built by two parallel builders in the main checkout; worktree isolation fails from this session path. The creative director's milestone verification is running.
+- **Check-in 8 (narrative director), title / meet / rank copy `d545476`:**
+  - The top-rank quotes were art notes ("Dugout. She does not smile in the still."). They're her now.
+  - Five of six meet lines lifted the promise; they're rewritten.
+  - Aoi's, Reina's, Sol's and Kira's title lines are new.
+  - After a career, the title shows the next girl in her own still.
+  - Rank copy talks like the game: big games held, a Finale win, 'Finale Night', 'Quiet Ending'.
+- **Milestone review (creative director + interaction + code, adversarially verified):** the verdict puts scenes at ~65%, race view at ~50% and menus at ~65% of the way to Uma. The home run is 'the best frame in the build'. The rest is art: hit and out share a still, the kit drifts, the venue changes mid-pitch, and there are no place plates (art brief §6).
+  - 12 interaction fixes:
+    - the guard sits above the dialogs and re-arms on every exhibition swap
+    - a pause freezes the home run
+    - the pause key works while batting
+    - Settings and Help are real dialogs
+    - the held scorebug shows her on base
+    - the title keeps its tap for the whole session
+    - a 44 px New Rookie year
+    - a fixed mute name
+  - 13 creative director fixes:
+    - diamond bases and a readable scorebug
+    - bold speed lines kept in the column
+    - a desktop home-run backdrop
+    - a slate アウト stamp and a tappable at-bat card
+    - no call chip on the film
+    - Settings as a panel
+    - round back chevrons
+    - the select bust clears the face strip
+    - the desktop title art whole
+    - Sol's busts re-keyed
+  - 4 code fixes:
+    - the mound keeps an in-card home-run stamp
+    - skins don't un-blur select
+    - persist v7 re-mints a pending card under the new rank table
+    - dead title CSS removed
+  - Also fixed: the exhibition's picked pitcher stays on the mound between at-bats (it flipped to the inning's arm for a moment).
+- **Open:** the plate spec still says 'Stage pill during field/reaction' (line 58), but the call chip was dropped from the race film; update the spec. The mound still uses its card layout.
