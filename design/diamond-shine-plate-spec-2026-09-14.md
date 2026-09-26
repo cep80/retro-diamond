@@ -55,7 +55,7 @@ The plate is a film, not an instrument panel. Shipped in `ShineRace` / `race-ui.
 | Hold | After a swing, the follow / contact / settled still stays until the next wind-up. Idle does not snap to a bust. |
 | Header | One chip, one situation line, count bulbs, Mute/Pause. Scout is opt-in. |
 | Onboarding | One ghost line (`RACE_COPY.firstPick`). No card, no Skip. |
-| Outcome | Stage pill during field/reaction; one caption under the frame; PA card after. `cardVerdict` drops a sentence the line already said. |
+| Outcome | The race film has no stage pill (2026-09-26: it flickered and repeated the caption); one caption under the frame carries the call, a stamp marks at-bat enders (hits, walks, strikeouts, home runs, and a slate アウト for in-play outs), then the at-bat card, one tappable panel. `cardVerdict` drops a sentence the line or stamp already said. The mound's card layout keeps its pill. |
 | Approach | **None.** No Contact/Power/Bunt picker. |
 | Duel | **Off for 1.0** (2026-09-22). One pick per at-bat: sit, then Go. `RaceController` defaults `duel: false`; `DuelPanel`, calls and cards are parked code, not shipped. Reopening it is a design call, not a bug fix. |
 | Leave | Pause has Title. |
