@@ -154,3 +154,12 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
     - dead title CSS removed
   - Also fixed: the exhibition's picked pitcher stays on the mound between at-bats (it flipped to the inning's arm for a moment).
 - **Open:** the plate spec still says 'Stage pill during field/reaction' (line 58), but the call chip was dropped from the race film; update the spec. The mound still uses its card layout.
+- **Check-in 9 (gameplay programmer), 8 findings, all fixed:**
+  - Blocker: the end-of-date stamp froze. A closing hit stayed up, and a closing home run hid 'Leave the park'.
+  - Major: the save re-mint missed the Clubhouse wall's copy.
+  - Minors: one Escape could close Settings and resume the game; an out's card could overlap its stamp; the pause key could be bound to Enter, Space or Tab; dialog focus edge cases; 60 fps redraws while paused; exhibition follow-up sounds ignored pause.
+- **Check-in 10 (game designer):**
+  - The shop passes the M6 cosmetics-only audit: nothing sold touches play, there's no gacha, and the copy is honest. Before real payments exist, claims need server-verified receipts; today claimSku is client-only.
+  - Scouting read: it now reads where the glove sat, which the player controls, and is shown before it's used; its book fills only on her own at-bats.
+  - Strikeout balance: the arm's Stuff above 10 widens the hitter's timing error (0.55 per point, cap 3x). Simulated: Year 1 unchanged (K 11–14%), Year 2 mid-career vs Sol K 16–22%, trained Year 3 vs Sol K 6–14% (was 0–0.3%), peak HR 4–6% (was 9–11%).
+- **Open:** the mound's full-bleed layout; server-side receipt verification before any real purchase; the art brief (a user step).
