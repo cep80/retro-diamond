@@ -31,7 +31,7 @@ STEMS = {
 MOODS = ["neutral", "focused", "elated", "crushed"]
 BAKED_BACKDROP = {("kira", "neutral"), ("yuki", "neutral")}
 BG_MAX = 8  # the backdrop is pure black; hair and glove shadows sit around 11-20, so they stay
-POCKET_MIN_PX = 700  # an enclosed pure-black pocket this big (hands on hips) is backdrop too
+POCKET_MIN_PX = 40  # an enclosed pure-black pocket this big is backdrop too (hands on hips, gaps between Sol's curls); pupils and dark hair aren't pure black
 POCKET_MEDIAN_MAX = 3
 EDGE_MAX = 60  # pixels this dark within two of the backdrop fade out (anti-aliased edges)
 
