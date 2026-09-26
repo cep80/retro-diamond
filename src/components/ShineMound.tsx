@@ -48,7 +48,7 @@ import {
   type PitchingGame,
 } from "@/shine/pitching.ts";
 import { RACE_PACE } from "@/shine/race.ts";
-import { pitcherRivalBat } from "@/shine/rivals.ts";
+import { hitterAdaptation, pitcherRivalBat, rivalBatSlot } from "@/shine/rivals.ts";
 import { useShine } from "@/shine/store.ts";
 import { uniqueName, uniqueShouldFire } from "@/shine/unique.ts";
 import type { GameKind } from "@/shine/featured-game.ts";
@@ -461,6 +461,19 @@ export function ShineMound() {
     : null;
   const closeRead = game.done ? moundRead(game) : null;
   const middle = game.done ? middleRead(game.simLog) : null;
+  // Her rival's read on this pitcher, said out loud before it's used: the first-strike read
+  // at 0-0, the two-strike read at two strikes. Both are about where the glove sits, so the
+  // Coach can answer them.
+  const castUp = game.kind !== "practice" && !game.done && game.battersFaced % 6 === rivalBatSlot(run.characterId);
+  const castRead = castUp ? hitterAdaptation(game.tells, game.rivalBat) : null;
+  const readLine =
+    !castRead || !picking
+      ? null
+      : game.count.balls === 0 && game.count.strikes === 0
+        ? castRead.firstLine
+        : game.count.strikes === 2
+          ? castRead.twoStrikeLine
+          : null;
 
   return (
     <main className={`relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream ${swell ? "shine-ouen-swell" : ""}`} data-stage={stage} data-mound-race="1">
@@ -571,6 +584,11 @@ export function ShineMound() {
             </p>
             {closeRead && closeRead !== closeLine ? (
               <p className="text-center font-ui text-sm text-cream/80">{closeRead}</p>
+            ) : null}
+            {readLine ? (
+              <p className="text-center font-ui text-sm text-gold" data-mound-read>
+                {readLine}
+              </p>
             ) : null}
             {middle ? <p className="text-center font-ui text-sm text-cream/80">{middle}</p> : null}
             {savedChip ? <p className="text-center shine-saved-chip text-[10px] uppercase tracking-widest text-grass-2">Saved</p> : null}

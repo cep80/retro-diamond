@@ -93,8 +93,18 @@ describe("rivals", () => {
     assert.equal(t.chaseTakes, 0);
     let p = EMPTY_TELLS;
     for (let i = 0; i < 4; i++) p = recordPitcherTell(p, { first: true, twoStrikes: false, type: "fastball", inZone: true });
-    assert.equal(hitterAdaptation(p, "Miki").sitFastball, true);
-    assert.ok(hitterAdaptation(p, "Miki").line?.includes("Miki"));
+    assert.equal(hitterAdaptation(p, "Miki").sitFirstStrike, true);
+    assert.ok(hitterAdaptation(p, "Miki").firstLine?.includes("Miki"));
+  });
+
+  it("reads where the glove sat, not the pitch type the game chose, so the Coach can beat it", () => {
+    let p = EMPTY_TELLS;
+    // Every first pitch is a fastball (the game's choice), but she starts them off the plate.
+    for (let i = 0; i < 6; i++) p = recordPitcherTell(p, { first: true, twoStrikes: false, type: "fastball", inZone: false });
+    assert.equal(hitterAdaptation(p, "Aoi").sitFirstStrike, false, "an all-fastball start doesn't give the read away");
+    for (let i = 0; i < 14; i++) p = recordPitcherTell(p, { first: true, twoStrikes: false, type: "fastball", inZone: true });
+    assert.equal(hitterAdaptation(p, "Aoi").sitFirstStrike, true, "starting in the zone does");
+    assert.equal(hitterAdaptation(p, "Aoi").line, hitterAdaptation(p, "Aoi").firstLine);
   });
 
   it("scouting report carries the card's tells and the player's own book", () => {

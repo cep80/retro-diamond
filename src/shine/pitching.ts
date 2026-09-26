@@ -586,7 +586,7 @@ export function resolveDelivery(
   // The cast hitter in her slot (Aoi leads off, anyone else bats third) applies what she has read from the book; it is always the line she was announced with.
   const castSlot = game.battersFaced % 6 === rivalBatSlot(run.characterId);
   const read = castSlot ? hitterAdaptation(game.tells, game.rivalBat) : null;
-  const batter = read?.sitFastball && first && type === "fastball" ? { ...baseBatter, contact: Math.min(20, baseBatter.contact + 3) } : baseBatter;
+  const batter = read?.sitFirstStrike && first && inZone ? { ...baseBatter, contact: Math.min(20, baseBatter.contact + 3) } : baseBatter;
   const rawSwing = cpuSwing(batter, { type, loc }, game.count, r);
   const swing = read?.takeTwoStrike && game.count.strikes === 2 && !inZone ? { ...rawSwing, swing: false } : rawSwing;
   push(game.events, { t: "pitch", pa: game.battersFaced, n: game.pitchCount, type, inZone });

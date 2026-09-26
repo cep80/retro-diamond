@@ -454,6 +454,8 @@ export function recordPitcherTell(tells: Tells, ev: { first: boolean; twoStrikes
   if (ev.first) {
     if (ev.type === "fastball") next.fpFastballs += 1;
     else next.fpSecondaries += 1;
+    if (ev.inZone) next.fpZone = (next.fpZone ?? 0) + 1;
+    else next.fpOff = (next.fpOff ?? 0) + 1;
   }
   if (ev.twoStrikes) {
     if (ev.inZone) next.twoStrikeZone += 1;
@@ -462,16 +464,23 @@ export function recordPitcherTell(tells: Tells, ev: { first: boolean; twoStrikes
   return next;
 }
 
-/** What a rival hitter has learned from the pitcher's book. */
-export function hitterAdaptation(tells: Tells, batterName: string): { sitFastball: boolean; takeTwoStrike: boolean; line: string | null } {
-  const fpN = tells.fpFastballs + tells.fpSecondaries;
+/**
+ * What a rival hitter has learned from the pitcher's book. Both reads are about
+ * where the glove sat, which the Coach chooses, so each one can be beaten: start
+ * her off the plate, or come back into the zone with two strikes. The game picks
+ * the pitch type, so a read built on type would be a penalty nobody could answer.
+ */
+export function hitterAdaptation(
+  tells: Tells,
+  batterName: string,
+): { sitFirstStrike: boolean; takeTwoStrike: boolean; line: string | null; firstLine: string | null; twoStrikeLine: string | null } {
+  const fpN = (tells.fpZone ?? 0) + (tells.fpOff ?? 0);
   const tsN = tells.twoStrikeOff + tells.twoStrikeZone;
-  const sitFastball = fpN >= ADAPT_MIN_SAMPLES && tells.fpFastballs / fpN >= 0.7;
+  const sitFirstStrike = fpN >= ADAPT_MIN_SAMPLES && (tells.fpZone ?? 0) / fpN >= 0.7;
   const takeTwoStrike = tsN >= ADAPT_MIN_SAMPLES && tells.twoStrikeOff / tsN >= 0.7;
-  let line: string | null = null;
-  if (sitFastball) line = `${batterName} has seen you start with heat. Sitting on it first pitch.`;
-  else if (takeTwoStrike) line = `${batterName} knows you go off the plate with two strikes. Not chasing.`;
-  return { sitFastball, takeTwoStrike, line };
+  const firstLine = sitFirstStrike ? `${batterName} has seen you start in the zone. She's sitting on the first strike.` : null;
+  const twoStrikeLine = takeTwoStrike ? `${batterName} knows you go off the plate with two strikes. She won't chase.` : null;
+  return { sitFirstStrike, takeTwoStrike, line: firstLine ?? twoStrikeLine, firstLine, twoStrikeLine };
 }
 
 export function rivalPortraitId(arm: RivalArmId): CharacterId | null {

@@ -150,6 +150,9 @@ export interface Tells {
   /** Pitcher tells: what she starts hitters with, and where she goes with two strikes. */
   fpFastballs: number;
   fpSecondaries: number;
+  /** Where her first pitch went. The Coach sits the glove, so this one is the player's to change. */
+  fpZone: number;
+  fpOff: number;
   twoStrikeOff: number;
   twoStrikeZone: number;
 }
@@ -164,6 +167,8 @@ export const EMPTY_TELLS: Tells = {
   earlySwings: 0,
   fpFastballs: 0,
   fpSecondaries: 0,
+  fpZone: 0,
+  fpOff: 0,
   twoStrikeOff: 0,
   twoStrikeZone: 0,
 };
