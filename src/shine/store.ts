@@ -164,9 +164,12 @@ export const useShine = create<ShineState>()(
         if (!b) return;
         const run = patchRun(structuredClone(b.run));
         if (!run) return;
+        // Settings closes with the restore: the player lands on the restored screen, not on a
+        // dialog floating over a game that just changed underneath it.
         set({
           run,
           screen: screenFor(run),
+          overlay: null,
           liveGame: null,
           lastLine: `Restored: ${b.label}.`,
           backups: backups.filter((_, i) => i !== index),

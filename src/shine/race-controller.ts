@@ -11,7 +11,7 @@
  */
 import type { Cell } from "./core/zone.ts";
 import { hashId, makeRng } from "./core/rng.ts";
-import { resultStamp } from "./action-art.ts";
+import { resultStamp, STAMP_DELAY_MS, stampHoldMs } from "./action-art.ts";
 import { sheet } from "./bible.ts";
 import type { CoachCardId, DuelCall } from "./duel.ts";
 import { featuredLi, fieldBeatFor, type EncounterConfig, type FeaturedGame, type FieldBeat, type GameKind, type SwingKind } from "./featured-game.ts";
@@ -94,6 +94,9 @@ export class RaceController {
   private pendingFireAt = 0;
   /** Ms left on the pending wait while the plate is paused; null when it is running. */
   private pendingRemaining: number | null = null;
+  /** When the last pitch resolved (its stamp's clock), moved on by any pause, and when a pause began. */
+  private resolvedAt: number | null = null;
+  private pausedAt: number | null = null;
   private readonly sched: PlateScheduler;
   private readonly reduced: boolean;
   private readonly pace: typeof RACE_PACE;
@@ -284,6 +287,13 @@ export class RaceController {
   }
 
   private onPlateCue(cue: PlateCue) {
+    if (cue.t === "resolved") this.resolvedAt = this.sched.now();
+    if (cue.t === "paused") this.pausedAt = this.sched.now();
+    if (cue.t === "resumed" && this.pausedAt !== null) {
+      // The stamp's film clock stood still through the pause; so does the card's wait for it.
+      if (this.resolvedAt !== null) this.resolvedAt += this.sched.now() - this.pausedAt;
+      this.pausedAt = null;
+    }
     if (cue.t === "flight") {
       if (this.phase !== "racing") return;
       this.decide();
@@ -311,7 +321,12 @@ export class RaceController {
                 ? this.pace.moneyHoldMsReduced
                 : this.pace.moneyHoldMs
               : 0;
-        this.later("card", () => this.closePa(game), hold);
+        // Whatever the beat, the card never lands on a stamp still standing (an out's アウト
+        // outlasted the plate's short reaction beat): wait out the rest of it.
+        const stamped = resultStamp(beat, true) !== null;
+        const sinceResolve = this.resolvedAt === null ? Infinity : this.sched.now() - this.resolvedAt;
+        const stampLeft = stamped ? Math.max(0, STAMP_DELAY_MS + stampHoldMs(beat) - sinceResolve) : 0;
+        this.later("card", () => this.closePa(game), Math.max(hold, stampLeft));
         return;
       }
       this.later("pitch", () => this.plate.startPitch(), this.between());

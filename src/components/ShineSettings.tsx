@@ -76,6 +76,8 @@ export function ShineSettings() {
         setListening(null);
         return;
       }
+      // Enter and Space are Go, and Tab moves focus: a binding there would shadow them. Keep waiting.
+      if (e.code === "Enter" || e.code === "NumpadEnter" || e.code === "Space" || e.code === "Tab") return;
       setSettings({ keys: { ...settings.keys, [listening]: e.code } });
       setListening(null);
     };

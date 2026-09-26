@@ -1279,12 +1279,16 @@ function OverlayDialog({ label, onClose, children }: { label: string; onClose: (
       if (!root) return;
       if (e.key === "Escape") {
         if (root.querySelector("[data-listening]")) return;
+        // Capture phase + stop: this Escape closes the dialog and nothing else. Without it the
+        // race or mound underneath (listening on the window too) would also read it and resume.
         e.preventDefault();
+        e.stopPropagation();
         onCloseRef.current();
         return;
       }
       if (e.key !== "Tab") return;
-      const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE));
+      // Only what can actually take focus: the Keys section is hidden on touch phones.
+      const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null);
       if (items.length === 0) return;
       const first = items[0]!;
       const last = items.at(-1)!;
@@ -1300,10 +1304,11 @@ function OverlayDialog({ label, onClose, children }: { label: string; onClose: (
         first.focus();
       }
     };
-    window.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
     return () => {
-      window.removeEventListener("keydown", onKey);
-      before?.focus();
+      window.removeEventListener("keydown", onKey, true);
+      // A backup restore can swap the screen underneath; don't hand focus to a button that's gone.
+      if (before?.isConnected) before.focus();
     };
   }, []);
   return (

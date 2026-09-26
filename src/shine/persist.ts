@@ -161,7 +161,9 @@ export function migratePersisted(persisted: unknown, version: number) {
     screen: screen === "plate" && !live ? ("title" as ShineScreen) : screen,
     lastLine: p.lastLine ?? null,
     clubhouse: (version < 4 ? [] : (p.clubhouse ?? [])).map((c) => ({
-      ...c,
+      // The pending card was pushed to the wall the moment the career closed, under the same
+      // id: if it was re-minted, the wall's copy takes the new rank too (keeping its place).
+      ...(run?.clubhouseCard && c.id === run.clubhouseCard.id ? { ...run.clubhouseCard, runNumber: c.runNumber } : c),
       keepsake: c.keepsake ?? null,
       altLook: c.altLook ?? c.fans >= 100,
       peakStats: c.peakStats,

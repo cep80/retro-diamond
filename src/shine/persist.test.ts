@@ -6,18 +6,23 @@ import { newAoiRun } from "./run.ts";
 import { DEFAULT_KEYS, EMPTY_TELLS, type TraineeRun } from "./types.ts";
 
 describe("persist", () => {
-  it("re-mints a card waiting on its Winning Live when the rank table changed, and leaves the wall alone", async () => {
+  it("re-mints a card waiting on its Winning Live when the rank table changed, on the wall too, and leaves older careers alone", async () => {
     const { mintClubhouseCard } = await import("./ending.ts");
     const run = newAoiRun();
     run.pgMisses = 2;
     run.fans = 25;
     // Minted under the old table, where a two-miss close was always D.
     run.clubhouseCard = { ...mintClubhouseCard(run), id: "card-old", ending: "D" };
-    const wallCard = { ...run.clubhouseCard, id: "card-wall" };
-    const out = migratePersisted({ run, clubhouse: [wallCard] }, 6);
+    // The career's own card is already on the wall (closeCareer pushes it under the same id);
+    // an older finished career sits beside it.
+    const ownOnWall = { ...run.clubhouseCard, runNumber: 3 };
+    const older = { ...run.clubhouseCard, id: "card-older", runNumber: 1 };
+    const out = migratePersisted({ run, clubhouse: [older, ownOnWall] }, 6);
     assert.equal(out.run?.clubhouseCard?.ending, "C", "a two-miss close with 25 fans is C now");
     assert.equal(out.run?.clubhouseCard?.id, "card-old", "same card, re-minted");
-    assert.equal(out.clubhouse[0]?.ending, "D", "finished cards keep the rank they were given");
+    assert.equal(out.clubhouse[1]?.ending, "C", "the wall's copy of this career's card agrees");
+    assert.equal(out.clubhouse[1]?.runNumber, 3, "and keeps its place on the wall");
+    assert.equal(out.clubhouse[0]?.ending, "D", "finished cards from earlier careers keep the rank they were given");
     const again = migratePersisted({ run: out.run }, 7);
     assert.equal(again.run?.clubhouseCard?.ending, "C", "a current save is left as it is");
   });

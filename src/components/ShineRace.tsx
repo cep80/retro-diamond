@@ -22,7 +22,7 @@ import type { Cell } from "@/shine/core/zone.ts";
 import { locCell } from "@/shine/core/zone.ts";
 import { track as trackEvent } from "@/lib/telemetry.ts";
 import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
-import { CONTACT_HOLD_MS, resultStamp, STAMP_DELAY_MS, stampHoldMs } from "@/shine/action-art.ts";
+import { CONTACT_HOLD_MS, HR_STAMP_HOLD_MS, resultStamp, STAMP_DELAY_MS, stampHoldMs } from "@/shine/action-art.ts";
 import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
@@ -368,6 +368,9 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     if (game.kind !== "practice" && game.kind !== "finale") {
       startWalkUp(run.characterId, useShine.getState().ownedCosmetics.includes("walk-up-alt"));
     }
+    // The cue sounds' short follow-ups (the score sting, the crowd coming back up): cleared on
+    // leaving the park, and dropped if a pause lands before they're due.
+    const scheduled = new Set<number>();
     const io: ExhibitionAudioIo = {
       startWalkUp: () => startWalkUp(run.characterId, useShine.getState().ownedCosmetics.includes("walk-up-alt")),
       sfxSelect,
@@ -375,7 +378,14 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       duckCrowd,
       setCrowdLevel,
       sfxRelease,
-      schedule: (fn, ms) => window.setTimeout(fn, ms),
+      schedule: (fn, ms) => {
+        const id = window.setTimeout(() => {
+          scheduled.delete(id);
+          if (!race.plate.getSnapshot().paused) fn();
+        }, ms);
+        scheduled.add(id);
+        return id;
+      },
     };
     const offPlate = race.onPlateCueRaw((cue: PlateCue) => {
       exhibitionAudioCue(cue, race.plate.getSnapshot().game, io);
@@ -421,6 +431,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     return () => {
       offPlate();
       offRace();
+      for (const id of scheduled) window.clearTimeout(id);
       stopCrowd();
       if (game.kind !== "practice" && game.kind !== "finale") stopMusic();
     };
@@ -475,13 +486,16 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // ticking through the money hold so a clip that outlives the reaction
   // beat still ends on time.
   const clipMayShow = actionCue.resolvedAtMs !== null && snap.phase === "racing" && stage === "idle";
-  // The stamp holds stampHoldMs past its landing; keep the clock running
-  // through it even after the card phase, or it freezes on screen.
+  // The stamp holds past its landing; keep the clock running through it even after the card
+  // phase, or it freezes on screen. Run it for the longest stamp (a home run's), not the last
+  // pitch's: at the end of a date the film shows the date's closing beat, which can be a hit
+  // or a home run from earlier, and its stamp has to be able to finish and clear.
   const [stampTick, setStampTick] = useState(false);
+  const pausedNow = snap.plate.paused;
   useEffect(() => {
     const at = actionCue.resolvedAtMs;
-    if (at === null) return;
-    const end = at + STAMP_DELAY_MS + stampHoldMs(actionCue.beat);
+    if (at === null || pausedNow) return;
+    const end = at + STAMP_DELAY_MS + Math.max(stampHoldMs(actionCue.beat), HR_STAMP_HOLD_MS);
     setStampTick(true);
     let raf = 0;
     const tick = () => {
@@ -492,8 +506,10 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [actionCue.resolvedAtMs, actionCue.beat, clock]);
+  }, [actionCue.resolvedAtMs, actionCue.beat, clock, pausedNow]);
   useEffect(() => {
+    // Paused: the film clock is frozen, so there's nothing to redraw at 60 fps.
+    if (pausedNow) return;
     if (stage !== "flight" && stage !== "field" && stage !== "reaction" && !clipMayShow) return;
     let raf = 0;
     const tick = () => {
@@ -504,7 +520,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [stage, race, clipMayShow, clock]);
+  }, [stage, race, clipMayShow, clock, pausedNow]);
 
   // Pause: the settings overlay, a hidden tab, or a lost window.
   useEffect(() => {
