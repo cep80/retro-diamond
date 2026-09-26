@@ -454,9 +454,10 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         for (const t of timers) if (t.id === null) arm(t);
       }
       if (cue.t === "resolved") {
-        // The stamp's slam gets its own hit, on the frame it lands.
-        const stamp = resultStamp(cue.beat, cue.swung);
-        if (stamp) later(() => sfxStamp(stamp.tone), STAMP_DELAY_MS);
+        // The stamp's slam gets its own hit, on the frame it lands. The out's
+        // slate stamp is set down, not slammed: the play's own sounds carry it.
+        const tone = resultStamp(cue.beat, cue.swung)?.tone;
+        if (tone && tone !== "slate") later(() => sfxStamp(tone), STAMP_DELAY_MS);
         // A home run's roar rolls on: it swells again when the stamp lands, and once more as her name comes up.
         if (cue.beat === "hr") {
           later(sfxCrowdBurst, STAMP_DELAY_MS);
@@ -760,19 +761,23 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
                 outs={bug.outs}
                 bases={bug.bases}
                 self={bug.self}
+                // The exhibition's name rides the bug's foot instead of floating over her cap.
+                tag={exhibition ? RACE_COPY.exhibitionChip : undefined}
               />
             ) : null}
-            <p className="shine-race-tag">
-              {exhibition ? RACE_COPY.exhibitionChip : dateLabel(turnMeta(run.turn), who.style)}
-              {ask ? (
-                <>
-                  {" · "}
-                  <b>
-                    {who.pgVerb} · {speakGoal(ask.verb)}
-                  </b>
-                </>
-              ) : null}
-            </p>
+            {exhibition && bug && snap.phase !== "done" ? null : (
+              <p className="shine-race-tag">
+                {exhibition ? RACE_COPY.exhibitionChip : dateLabel(turnMeta(run.turn), who.style)}
+                {ask ? (
+                  <>
+                    {" · "}
+                    <b>
+                      {who.pgVerb} · {speakGoal(ask.verb)}
+                    </b>
+                  </>
+                ) : null}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-1.5">
             <ShineMute />
@@ -810,14 +815,25 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           ) : null}
 
           {snap.phase === "pa-card" && snap.card ? (
-            <div className="flex flex-col gap-2" data-race-card={snap.card.beat}>
-              <p className="text-center font-story text-2xl font-extrabold text-cream">{snap.card.line}</p>
-              {basepath ? <p className="text-center font-story text-sm text-gold">{basepath}</p> : null}
-              {snap.card.verdict ? <p className="text-center font-story text-sm text-cream/75">{snap.card.verdict}</p> : null}
-              <PixelBtn variant="ghost" className="h-11" onClick={() => race.next()}>
+            // The card is the way on: a tap anywhere on it moves to the next at-bat,
+            // and Next sits in its corner, edged in the stamp's colour.
+            <button
+              type="button"
+              className="shine-atbat-card"
+              data-race-card={snap.card.beat}
+              data-tone={resultStamp(snap.card.beat, true)?.tone ?? "slate"}
+              onClick={() => race.next()}
+            >
+              <span className="shine-atbat-line">{snap.card.line}</span>
+              {basepath ? <span className="shine-atbat-path">{basepath}</span> : null}
+              {snap.card.verdict ? <span className="shine-atbat-verdict">{snap.card.verdict}</span> : null}
+              <span className="shine-atbat-next">
                 {RACE_COPY.next}
-              </PixelBtn>
-            </div>
+                <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M4.5 2.5 8 6l-3.5 3.5" />
+                </svg>
+              </span>
+            </button>
           ) : null}
 
           {snap.phase === "done" ? (

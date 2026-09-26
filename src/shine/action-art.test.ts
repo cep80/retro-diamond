@@ -427,13 +427,27 @@ describe("action art: result stamp", () => {
     assert.equal(resultStamp("k", true)?.jp, "三振");
     assert.equal(resultStamp("k", false)?.jp, "見逃し三振", "a called K reads as caught looking");
     assert.equal(resultStamp("walk", false)?.en, "Ball four");
-    for (const quiet of ["foul", "foul-tip", "ball", "take-strike", "miss", "grounder-out", "fly-out"] as const) {
+    for (const quiet of ["foul", "foul-tip", "ball", "take-strike", "miss"] as const) {
       assert.equal(resultStamp(quiet, true), null, quiet);
     }
     assert.equal(resultStamp(null, false), null);
     assert.equal(stampVisible(STAMP_DELAY_MS - 1), false, "the picture speaks first");
     assert.equal(stampVisible(STAMP_DELAY_MS), true);
     assert.equal(stampVisible(STAMP_DELAY_MS + STAMP_HOLD_MS), false, "gone before the next pick");
+  });
+
+  it("gives an out in play the small slate stamp, held shorter than a hit's", async () => {
+    const { resultStamp, stampHoldMs, stampVisible, STAMP_DELAY_MS, STAMP_HOLD_MS, OUT_STAMP_HOLD_MS } = await import("./action-art.ts");
+    for (const out of ["grounder-out", "fly-out", "bunt-out"] as const) {
+      assert.deepEqual(resultStamp(out, true), { jp: "アウト", en: "Out", tone: "slate" }, out);
+      assert.equal(stampHoldMs(out), OUT_STAMP_HOLD_MS, out);
+    }
+    assert.ok(OUT_STAMP_HOLD_MS < STAMP_HOLD_MS, "an out steps aside sooner than a hit");
+    assert.notEqual(resultStamp("sac-fly", true)?.tone, "slate", "a sac fly scores: it keeps its own stamp");
+    assert.notEqual(resultStamp("k", true)?.tone, "slate", "a strikeout keeps its coral stamp");
+    const late = STAMP_DELAY_MS + OUT_STAMP_HOLD_MS + 50;
+    assert.equal(stampVisible(late, "grounder-out"), false, "the out stamp has cleared");
+    assert.equal(stampVisible(late, "single"), true, "a hit's is still up");
   });
 });
 

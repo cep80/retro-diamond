@@ -762,19 +762,40 @@
   }
 }
 
-/* Radial, from her, clear in the middle: a burst per cut that fades, not rain. */
+/* Focus lines, Uma's kind: a few bold wedges aimed at her, one every 12°, 3–4.5°
+   wide, their weight varied by a second set offset over them (bright, faint,
+   middling, faint, faint in each 60°). The mask, an ellipse out to the far
+   sides, keeps her face and body clear, softens them over her cap and runs
+   them hard to the side and bottom edges. One burst, held through the swing
+   (SPEED_LINES_MS), clipped to the film's column by the bleed stage. */
 .shine-speed-lines {
-  background-image: repeating-conic-gradient(from 0deg at 50% 45%, transparent 0 3deg, rgb(255 255 255 / 0.5) 3deg 3.6deg);
-  -webkit-mask-image: radial-gradient(circle at 50% 45%, transparent 0 35%, #000 70%);
-  mask-image: radial-gradient(circle at 50% 45%, transparent 0 35%, #000 70%);
+  background-image:
+    repeating-conic-gradient(
+      from 0deg at 50% 45%,
+      transparent 0 8deg,
+      rgb(255 255 255 / 0.5) 8deg 12.5deg,
+      transparent 12.5deg 33deg,
+      rgb(255 255 255 / 0.28) 33deg 36deg,
+      transparent 36deg 60deg
+    ),
+    repeating-conic-gradient(from 0deg at 50% 45%, transparent 0 9deg, rgb(255 255 255 / 0.4) 9deg 12deg);
+  -webkit-mask-image: radial-gradient(ellipse farthest-side at 50% 45%, transparent 0 60%, #000 100%);
+  mask-image: radial-gradient(ellipse farthest-side at 50% 45%, transparent 0 60%, #000 100%);
   mix-blend-mode: screen;
-  animation: shine-speed-lines 180ms ease-out both;
+  animation: shine-speed-lines 380ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
 @keyframes shine-speed-lines {
   0% {
+    opacity: 0;
+    scale: 1.12;
+  }
+  12% {
     opacity: 1;
-    scale: 1.06;
+  }
+  65% {
+    opacity: 0.9;
+    scale: 1.02;
   }
   100% {
     opacity: 0;
@@ -823,12 +844,95 @@
   letter-spacing: 0.16em;
 }
 
-.shine-pa-card {
+/* The at-bat card: one panel edged in its stamp's colour. A tap anywhere on it
+   moves on; Next is its corner, not a form button hung under it. */
+.shine-atbat-card {
+  --card-tone: #8fa2c2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.8rem 1rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--card-tone) 45%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgb(20 35 68 / 0.88), rgb(8 17 39 / 0.94));
+  box-shadow:
+    inset 0 3px 0 var(--card-tone),
+    0 10px 26px rgb(0 0 0 / 0.4);
+  color: var(--color-cream);
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
   animation: shine-outcome-card 260ms ease-out both;
+  transition:
+    transform 120ms ease,
+    border-color 160ms ease;
+}
+.shine-atbat-card[data-tone="gold"] {
+  --card-tone: var(--color-gold);
+}
+.shine-atbat-card[data-tone="teal"] {
+  --card-tone: var(--color-grass-2);
+}
+.shine-atbat-card[data-tone="coral"] {
+  --card-tone: var(--color-coral);
+}
+@media (hover: hover) {
+  .shine-atbat-card:hover {
+    border-color: var(--card-tone);
+  }
+}
+.shine-atbat-card:active {
+  transform: scale(0.985);
+}
+.shine-atbat-card:focus-visible {
+  outline: 2px solid var(--shine-accent, var(--color-gold));
+  outline-offset: 3px;
+}
+.shine-atbat-line {
+  font-family: var(--font-story);
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+.shine-atbat-path,
+.shine-atbat-verdict {
+  font-family: var(--font-story);
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+.shine-atbat-path {
+  color: var(--color-gold);
+}
+.shine-atbat-verdict {
+  color: rgb(245 248 255 / 0.75);
+}
+.shine-atbat-next {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 26px;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--card-tone);
+}
+.shine-atbat-next svg {
+  animation: shine-atbat-nudge 1.1s ease-in-out infinite;
+}
+@keyframes shine-atbat-nudge {
+  50% {
+    translate: 3px 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .shine-pa-card {
+  .shine-atbat-card,
+  .shine-atbat-next svg {
     animation: none;
   }
 }
@@ -869,6 +973,31 @@
 }
 .shine-stamp-teal {
   --stamp: var(--color-grass-2);
+}
+/* An out in play: the small stamp. Slate, two-thirds the size, set down with a
+   short settle instead of the slam, and no glow (stampHoldMs holds it 900 ms). */
+.shine-stamp-slate {
+  --stamp: #8fa2c2;
+  animation: shine-stamp-set 280ms cubic-bezier(0.2, 1.2, 0.4, 1) both;
+  filter: drop-shadow(0 4px 0 rgba(8, 17, 39, 0.8));
+}
+.shine-stamp-slate .shine-stamp-jp {
+  font-size: clamp(1.9rem, 10vw, 2.9rem);
+  -webkit-text-stroke-width: 2.5px;
+  color: #e4eaf6;
+}
+.shine-stamp-slate .shine-stamp-en {
+  font-size: clamp(0.68rem, 2.9vw, 0.82rem);
+}
+@keyframes shine-stamp-set {
+  0% {
+    transform: rotate(-8deg) scale(1.3);
+    opacity: 0;
+  }
+  100% {
+    transform: rotate(-8deg) scale(1);
+    opacity: 1;
+  }
 }
 .shine-stamp-jp {
   font-family: var(--font-jp), var(--font-display);
@@ -960,6 +1089,51 @@
   animation:
     shine-hr-rays-grow 360ms ease-out both,
     shine-hr-rays-turn 9s linear infinite;
+}
+/* Wide screens: the rays and streamers cover the window, the film only its
+   column. Her still, blurred and dimmed, fills the flanks under them, so the
+   rays turn over a picture instead of flat ink. It is fixed and drawn before
+   the film, so the film covers it; a phone's film is the whole screen. */
+.shine-hr-backdrop {
+  display: none;
+}
+@media (min-width: 640px) {
+  .shine-hr-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    background: var(--color-ink);
+    animation:
+      shine-hr-rays-in 360ms ease-out both,
+      shine-hr-out 240ms ease-in calc(var(--hr-hold, 2600ms) - 240ms) forwards;
+  }
+  .shine-hr-backdrop::before {
+    content: "";
+    position: absolute;
+    inset: -48px;
+    background: var(--hr-backdrop) center 30% / cover no-repeat;
+    filter: blur(24px) brightness(0.8) saturate(1.35);
+  }
+  /* A shadow hugging the film's column (its half-width is the race screen's:
+     min(50%, 37.5dvh, 360px)) so the column still reads as the picture, and a
+     vignette at the window's edges. */
+  .shine-hr-backdrop::after {
+    --col-half: min(50vw, 37.5dvh, 360px);
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(
+        90deg,
+        transparent calc(50% - var(--col-half) - 120px),
+        rgb(8 17 39 / 0.6) calc(50% - var(--col-half)),
+        rgb(8 17 39 / 0.6) calc(50% + var(--col-half)),
+        transparent calc(50% + var(--col-half) + 120px)
+      ),
+      radial-gradient(ellipse at 50% 45%, transparent 50%, rgb(8 17 39 / 0.6));
+  }
 }
 .shine-hr-bar {
   position: absolute;
@@ -1264,6 +1438,12 @@
   transform: scale(0.94);
 }
 
+/* The race's stage clips its own layers (the focus lines' zoom) to the film's
+   column. The home run's fixed layers still cover the window: nothing between
+   them and the viewport has a transform, so this clip doesn't reach them. */
+.shine-stage-bleed {
+  overflow: hidden;
+}
 /* The picture layer. Its 3:4 cover box fills the frame like object-fit cover;
    the stills, the ball and the clip ride it, so they stay on her as painted. */
 .shine-film {
@@ -1280,6 +1460,15 @@
   height: max(100cqh, 133.334cqw);
   translate: -50% -50%;
 }
+/* The HUD band (the scorebug's foot sits at ~78 px) would sit on her cap: the
+   pitcher's in the Go frame, hers in the cut-in. The stills are painted with
+   the cap near the top edge, so the picture drops by the band on every screen
+   (a short phone was worst, but a 390 × 844 phone and the desktop column cover
+   Kira's cap too); the ink it leaves above reads as the broadcast bar under
+   the bug, and the 48 px it loses at the foot sit under the Coach's scrim. */
+.shine-stage-bleed .shine-film-cover {
+  translate: -50% calc(-50% + 48px);
+}
 /* Full bleed: the sit grid is sized to the screen, not the crop, and sits
    between the HUD and Go. */
 .shine-film-grid {
@@ -1289,9 +1478,6 @@
   width: min(76cqw, (100cqh - 320px) * 0.75);
   aspect-ratio: 3 / 4;
   translate: -50% -50%;
-}
-.shine-film-chip {
-  bottom: calc(max(env(safe-area-inset-bottom), 14px) + 3.25rem);
 }
 .shine-stage-bleed .shine-letterbox {
   height: 10dvh;
@@ -1614,10 +1800,11 @@
   }
 }
 
-/* Broadcast scorebug: one plate, cells split by thin gold rules. */
+/* Broadcast scorebug: one plate, cells split by thin gold rules, and the game's
+   name (the exhibition) on a band along its foot. */
 .shine-scorebug {
   display: inline-flex;
-  align-items: stretch;
+  flex-direction: column;
   overflow: hidden;
   border: 1px solid rgb(255 209 102 / 0.35);
   border-radius: 10px;
@@ -1626,14 +1813,30 @@
   font-family: var(--font-display);
   color: var(--color-cream);
 }
+.shine-bug-cells {
+  display: flex;
+  align-items: stretch;
+}
 .shine-bug-cell {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.3rem 0.6rem;
+  padding: 0.25rem 0.6rem;
 }
 .shine-bug-cell + .shine-bug-cell {
   border-left: 1px solid rgb(255 209 102 / 0.22);
+}
+.shine-bug-tag {
+  display: block;
+  padding: 0.12rem 0.6rem 0.16rem;
+  border-top: 1px solid rgb(255 209 102 / 0.22);
+  background: rgb(120 234 220 / 0.08);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--color-grass-2);
 }
 .shine-bug-inning {
   flex-direction: column;
@@ -1648,7 +1851,7 @@
   color: var(--color-gold);
 }
 .shine-bug-inning span {
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--color-cream);
@@ -1656,7 +1859,7 @@
 .shine-bug-count {
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 3px;
 }
 .shine-bug-row {
   display: flex;
@@ -1664,16 +1867,17 @@
   gap: 3px;
 }
 .shine-bug-row em {
-  width: 0.8rem;
+  width: 0.85rem;
   font-style: normal;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
   font-weight: 700;
+  line-height: 1;
   color: var(--color-muted);
 }
 .shine-bug-lamp {
   display: block;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
   background: rgb(255 255 255 / 0.14);
 }
@@ -1690,11 +1894,20 @@
   box-shadow: 0 0 6px var(--color-coral);
 }
 .shine-bug-atbat {
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--color-cream);
   white-space: nowrap;
+}
+/* A 320 px phone: tighter cells so AT-BAT keeps its line beside the mute and Time. */
+@media (max-width: 360px) {
+  .shine-bug-cell {
+    padding-inline: 0.35rem;
+  }
+  .shine-bug-atbat {
+    letter-spacing: 0.08em;
+  }
 }
 
 /* Letterbox on the swing cut-in: the frame goes cinema for her swing. */
@@ -1756,6 +1969,7 @@
   .shine-hr-moment,
   .shine-hr-rays,
   .shine-hr-rays::before,
+  .shine-hr-backdrop,
   .shine-hr-bar,
   .shine-hr-kana,
   .shine-stamp-hr .shine-stamp-en,
@@ -1917,7 +2131,7 @@
   box-shadow: inset 0 0 0 2px rgb(255 160 64 / 0.9);
 }
 
-.lantern-season img[src^="/bg/park"]:not(.shine-scene-plate) {
+.lantern-season img[src^="/bg/park"]:not(.shine-scene-plate, .shine-pick-plate) {
   filter: sepia(0.32) saturate(1.25) hue-rotate(-12deg);
 }
 
@@ -1933,7 +2147,7 @@
   filter: saturate(0.88) brightness(0.78) contrast(1.08);
 }
 
-.broadcast-filter img[src^="/bg/park"]:not(.shine-scene-plate) {
+.broadcast-filter img[src^="/bg/park"]:not(.shine-scene-plate, .shine-pick-plate) {
   filter: contrast(1.1) saturate(0.82) hue-rotate(-12deg);
 }
 
@@ -1947,7 +2161,7 @@
   filter: contrast(1.1) saturate(0.82) hue-rotate(-12deg);
 }
 
-.lantern-season.broadcast-filter img[src^="/bg/park"]:not(.shine-scene-plate) {
+.lantern-season.broadcast-filter img[src^="/bg/park"]:not(.shine-scene-plate, .shine-pick-plate) {
   filter: sepia(0.22) saturate(0.95) contrast(1.08) hue-rotate(-14deg);
 }
 
@@ -2252,50 +2466,6 @@
 .shine-title-menu-in {
   animation: shine-stage-in 420ms ease-out both;
 }
-.shine-title-voice {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.55rem 0.8rem 0.55rem 0.55rem;
-  border-radius: 1rem;
-  background: rgb(245 248 255 / 0.93);
-  color: var(--color-ink);
-  box-shadow: 0 10px 26px rgb(8 17 39 / 0.35);
-}
-.shine-title-voice img {
-  width: 3.2rem;
-  height: 3.2rem;
-  flex-shrink: 0;
-  border-radius: 0.7rem;
-  object-fit: cover;
-  object-position: 50% 18%;
-  border: 2px solid var(--shine-accent, var(--color-coral));
-}
-.shine-title-voice p {
-  font-family: var(--font-ui);
-  font-size: 0.88rem;
-  line-height: 1.45;
-}
-.shine-title-voice .shine-kana {
-  display: block;
-  font-size: 0.66rem;
-  color: rgb(8 17 39 / 0.55);
-}
-.shine-title-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 1rem;
-  padding-top: 0.25rem;
-}
-.shine-title-row button,
-.shine-title-end {
-  font-family: var(--font-display);
-  font-size: 0.68rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgb(245 248 255 / 0.75);
-}
-.shine-title-row button:hover,
 .shine-title-end:hover {
   color: var(--color-gold);
 }
@@ -2511,9 +2681,10 @@
 }
 .shine-title-door-label {
   font-family: var(--font-story);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1;
+  white-space: nowrap;
 }
 /* The quiet way out of a year, in the story face rather than a tracked caps link. */
 .shine-title-end {
@@ -2610,11 +2781,16 @@
   object-fit: cover;
   filter: blur(14px) brightness(0.45) saturate(0.85);
 }
+/* Her bottom edge sits 12dvh up. Her top is 16dvh, or the bottom of the face strip when that
+   is lower (a short phone), so her cap never slides under a name. The strip is the top row
+   (padding and the 36 px back button), the grid's padding, one square tile and its name. */
 .shine-pick-bust {
+  --pick-strip: calc(env(safe-area-inset-top) + 1.5rem + 36px + (min(100vw, 30rem) - 4rem) / 6 + 1.3rem);
+  --bust-top: max(16dvh, var(--pick-strip));
   position: absolute;
-  bottom: 12dvh;
+  top: var(--bust-top);
   left: 50%;
-  height: 72dvh;
+  height: calc(88dvh - var(--bust-top));
   width: auto;
   max-width: none;
   translate: -50% 0;
@@ -2639,10 +2815,11 @@
   position: relative;
   z-index: 1;
 }
+/* The way back first, then the question: one 36 px round button, no text link. */
 .shine-pick-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.75rem;
   padding: calc(0.75rem + env(safe-area-inset-top)) 1rem 0;
 }
@@ -2697,8 +2874,9 @@
   right: 0.25rem;
   bottom: 0.1rem;
   font-family: var(--font-display);
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   font-weight: 700;
+  line-height: 1.2;
   color: #fff;
   text-shadow: 0 1px 3px #000;
 }
@@ -2870,8 +3048,9 @@
   .shine-pick-face-name {
     font-size: 0.8rem;
   }
+  /* The faces sit to the left here, clear of her: top 12dvh, bottom 8dvh. */
   .shine-pick-bust {
-    bottom: 8dvh;
+    --bust-top: 12dvh;
     height: 80dvh;
   }
 }
@@ -2880,5 +3059,327 @@
   .shine-pick-line,
   .shine-pick-sheet {
     animation: none;
+  }
+}
+
+/* Menus polish: round header buttons (back, settings), the twins of the mute speaker. */
+.shine-round-btn {
+  position: relative;
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 0.22);
+  border-radius: 999px;
+  background: rgb(8 17 39 / 0.7);
+  color: var(--color-cream);
+  transition:
+    border-color 160ms ease,
+    transform 120ms ease;
+}
+/* The circle is 36 px; the thumb gets 44. */
+.shine-round-btn::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
+}
+@media (hover: hover) {
+  .shine-round-btn:hover {
+    border-color: var(--color-gold);
+  }
+}
+.shine-round-btn:active {
+  transform: scale(0.94);
+}
+.shine-round-btn:focus-visible {
+  outline: 2px solid var(--shine-accent, var(--color-gold));
+  outline-offset: 2px;
+}
+
+/* Title art: a phone crops the portrait to fill the screen. A wide screen shows it whole at
+   the right, never upscaled, over a blurred copy of itself. */
+.shine-title-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 20%;
+}
+.shine-title-art[data-art="key"] {
+  object-position: 78% 28%;
+}
+.shine-title-fill {
+  display: none;
+}
+@media (min-width: 1024px) and (orientation: landscape) {
+  .shine-title-fill {
+    position: absolute;
+    inset: -3rem;
+    display: block;
+    width: calc(100% + 6rem);
+    max-width: none;
+    height: calc(100% + 6rem);
+    object-fit: cover;
+    object-position: 70% 30%;
+    filter: blur(36px) brightness(0.5) saturate(1.15);
+  }
+  .shine-title-art {
+    left: auto;
+    width: auto;
+    max-width: 60%;
+    object-fit: contain;
+    object-position: right center;
+    transform-origin: right center;
+    /* Her left edge melts into the fill instead of a hard seam. */
+    mask-image: linear-gradient(90deg, transparent, #000 18%);
+  }
+}
+
+/* Settings: a game menu, not a form. The story face for words, Chakra Petch only for numbers. */
+.shine-set {
+  color-scheme: dark;
+}
+.shine-set-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.shine-set-title {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-story);
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.15;
+  text-shadow: 0 2px 8px #000c;
+}
+.shine-set-kana {
+  font-family: var(--font-jp);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--shine-accent, var(--color-gold));
+}
+.shine-set-card {
+  padding: 1rem;
+  border: 1px solid rgb(72 101 143 / 0.75);
+  border-radius: 1.1rem;
+  background: rgb(20 35 68 / 0.9);
+}
+.shine-set-h {
+  font-family: var(--font-story);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--shine-accent, var(--color-gold));
+}
+.shine-set-label {
+  font-family: var(--font-story);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-cream);
+}
+.shine-set-note {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--font-story);
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: rgb(245 248 255 / 0.66);
+}
+.shine-set-body {
+  font-family: var(--font-story);
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.6;
+  color: rgb(245 248 255 / 0.85);
+  text-wrap: pretty;
+}
+.shine-set-num {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.shine-set-pct {
+  font-size: 0.85rem;
+  color: rgb(245 248 255 / 0.7);
+}
+.shine-set-range {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  accent-color: var(--shine-accent, var(--color-gold));
+}
+/* Reduced motion: the whole row is the target; the switch is a real checkbox drawn as a pill. */
+.shine-set-toggle {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 0.9rem;
+  background: rgb(8 17 39 / 0.45);
+  cursor: pointer;
+}
+.shine-switch {
+  position: relative;
+  flex: none;
+  width: 50px;
+  height: 30px;
+  margin: 0;
+  border: 1px solid rgb(255 255 255 / 0.25);
+  border-radius: 999px;
+  background: rgb(8 17 39 / 0.9);
+  appearance: none;
+  cursor: pointer;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+.shine-switch::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgb(245 248 255 / 0.8);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+  transition:
+    translate 180ms ease,
+    background-color 180ms ease;
+}
+.shine-switch:checked {
+  border-color: transparent;
+  background: var(--shine-accent, var(--color-gold));
+}
+.shine-switch:checked::before {
+  background: var(--color-ink);
+  translate: 20px 0;
+}
+.shine-switch:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+/* Text size: three segments, each showing the size it sets. Real radios underneath. */
+.shine-seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 0.95rem;
+  background: rgb(8 17 39 / 0.6);
+}
+.shine-seg-opt {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+.shine-seg-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.shine-seg-face {
+  display: flex;
+  min-height: 3.25rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  border-radius: 0.75rem;
+  color: rgb(245 248 255 / 0.72);
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+/* One box for every sample, so the three names share a line. */
+.shine-seg-aa {
+  display: flex;
+  height: 1.4rem;
+  align-items: flex-end;
+  font-family: var(--font-story);
+  font-weight: 800;
+  line-height: 1;
+}
+.shine-seg-name {
+  font-family: var(--font-story);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.shine-seg-input:checked + .shine-seg-face {
+  background: var(--shine-accent, var(--color-gold));
+  color: var(--color-ink);
+  box-shadow: 0 3px 0 rgb(0 0 0 / 0.28);
+}
+.shine-seg-input:focus-visible + .shine-seg-face {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+@media (hover: hover) {
+  .shine-seg-opt:hover .shine-seg-input:not(:checked) + .shine-seg-face {
+    background: rgb(255 255 255 / 0.08);
+    color: #fff;
+  }
+}
+.shine-set-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 0.8rem;
+  background: rgb(8 17 39 / 0.35);
+}
+.shine-set-link {
+  min-height: 2rem;
+  padding: 0 0.25rem;
+  font-family: var(--font-story);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgb(245 248 255 / 0.7);
+}
+@media (hover: hover) {
+  .shine-set-link:hover {
+    color: #fff;
+  }
+}
+.shine-set-keycap {
+  flex: none;
+  min-width: 3rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgb(255 255 255 / 0.25);
+  border-bottom-width: 3px;
+  border-radius: 0.55rem;
+  background: rgb(8 17 39 / 0.8);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-cream);
+}
+.shine-set-keycap[data-on="true"] {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+  font-family: var(--font-story);
+  text-transform: none;
+}
+/* A touch-only phone has no keys to rebind. */
+@media (hover: none) and (pointer: coarse) {
+  .shine-set-keys {
+    display: none;
   }
 }

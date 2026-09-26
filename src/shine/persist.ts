@@ -3,6 +3,7 @@
  * Every field added to `TraineeRun` gets a default here; every persisted screen
  * is vetted here; the live attempt only survives when it matches the run.
  */
+import { endingRank, mintClubhouseCard } from "./ending.ts";
 import type { FeaturedGame } from "./featured-game.ts";
 import type { PitchingGame } from "./pitching.ts";
 import {
@@ -16,7 +17,8 @@ import {
   type TraineeRun,
 } from "./types.ts";
 
-export const SHINE_PERSIST_VERSION = 6;
+/** 7: the rank table changed (closed early is C or D; never-quit only replaces a B). */
+export const SHINE_PERSIST_VERSION = 7;
 export const BACKUP_CAP = 3;
 
 export type LiveGame =
@@ -132,9 +134,23 @@ export function pushBackup(backups: RunBackup[], run: TraineeRun | null, label: 
   return next.slice(0, BACKUP_CAP);
 }
 
+/**
+ * A career waiting on its Winning Live was minted under the rank table of its day. When
+ * the table changes, re-mint that one pending card so the chip, quote and why line agree.
+ * Finished cards on the Clubhouse wall keep the rank they were given.
+ */
+export function remintPendingCard(run: TraineeRun | null): TraineeRun | null {
+  const card = run?.clubhouseCard;
+  if (!run || !card) return run;
+  const rank = endingRank(run, run.pgResults[6] !== "pending", run.pgResults[6] === "met");
+  if (rank === card.ending) return run;
+  return { ...run, clubhouseCard: { ...mintClubhouseCard(run), id: card.id, runNumber: card.runNumber } };
+}
+
 export function migratePersisted(persisted: unknown, version: number) {
   const p = (persisted ?? {}) as PersistedShine;
-  const run = patchRun(p.run ?? null);
+  const patched = patchRun(p.run ?? null);
+  const run = version < 7 ? remintPendingCard(patched) : patched;
   const live = liveMatches(p.liveGame, run);
   const screen =
     p.screen && p.screen !== "weekly" && p.screen !== "wall" && p.screen !== "settings" && p.screen !== "help" && p.screen !== "exhibition"

@@ -109,6 +109,12 @@ const HR_STREAMERS = Array.from({ length: 40 }, (_, i) => ({
 /** The HR layers fade out on the stamp's own clock instead of vanishing in one frame. */
 const HR_HOLD_VAR = { ["--hr-hold" as string]: `${HR_STAMP_HOLD_MS}ms` } as React.CSSProperties;
 
+/**
+ * The swing's focus lines hold this long from the resolve: one burst across
+ * the whole cut-in (a whiff's is only 240 ms), so they read as speed, not flicker.
+ */
+const SPEED_LINES_MS = 380;
+
 /** True while the home run owns the screen; the race fades its HUD for it. */
 export function hrMomentUp(view: Pick<ActionView, "beat" | "resolvedAtMs" | "nowMs">): boolean {
   if (view.beat !== "hr" || view.resolvedAtMs === null) return false;
@@ -320,14 +326,22 @@ export function ActionStage({
   const sinceResolve = view.resolvedAtMs === null ? -1 : view.nowMs - view.resolvedAtMs;
   const cutIdx = picture.cutIn && sinceResolve >= 0 ? cutInFrame(picture.cutIn, sinceResolve, view.reduced) : -1;
   const cutPose = cutIdx >= 0 && picture.cutIn ? picture.cutIn[cutIdx] : null;
+  const speedLines = !view.reduced && !quietCard && Boolean(picture.cutIn) && sinceResolve >= 0 && sinceResolve < SPEED_LINES_MS;
   const underClip = money?.role === "batter" ? stillFor(batter, picture.batter) : money ? stillFor(pitcher, picture.pitcher) : null;
-  const showCard = !quietCard && picture.card && view.stage !== "idle" && view.stage !== "situation";
+  // The per-pitch call chip belongs to the card layout (the mound). On the race's
+  // bleed film the caption under her carries the call, once, with no chip over it.
+  const showCard = !bleed && !quietCard && picture.card && view.stage !== "idle" && view.stage !== "situation";
   const stamp = quietCard ? null : resultStamp(view.beat, view.swung);
   const stampUp = Boolean(stamp) && sinceResolve >= 0 && stampVisible(sinceResolve, view.beat);
-  const hr = view.beat === "hr" && stampUp;
+  // The full-screen home run is the race's (bleed). The mound's card sits inside a stacked
+  // section the Coach panel paints over, so there it's the plain in-card stamp.
+  const hr = bleed && view.beat === "hr" && stampUp;
+  // On a wide screen the home run's rays and streamers run past the film's
+  // column: her still, blurred and dimmed, fills the flanks under them.
+  const hrBackdrop = hr && bleed ? (stillFor(batter, "celebrate")?.url ?? portraitSrc(batterId, "elated")) : null;
   // Her still pushes in behind the home run and stays in until the next pitch
   // cuts away, so the zoom never snaps back on screen.
-  const hrZoom = !quietCard && !view.reduced && view.beat === "hr" && sinceResolve >= STAMP_DELAY_MS;
+  const hrZoom = bleed && !quietCard && !view.reduced && view.beat === "hr" && sinceResolve >= STAMP_DELAY_MS;
   // One white frame the instant the ball meets the bat (no dissolves: a hard cut and a flash).
   const flash = !view.reduced && view.beat !== null && ballLeavesBat(view.beat) && view.swung && sinceResolve >= 0 && sinceResolve < 90;
   const resolvedKey = view.resolvedAtMs ?? 0;
@@ -350,6 +364,15 @@ export function ActionStage({
       data-pa-angle={picture.angle}
       data-pa-family={picture.family ?? ""}
     >
+      {/* Fixed, and before the film so the film paints over it: only the flanks show it (min-width 640px). */}
+      {hrBackdrop ? (
+        <div
+          key={`hr-back-${resolvedKey}`}
+          className={`shine-hr-backdrop ${view.reduced ? "shine-hr-still" : ""}`}
+          style={{ ...HR_HOLD_VAR, ["--hr-backdrop" as string]: `url("${hrBackdrop}")` }}
+          aria-hidden
+        />
+      ) : null}
       {/* The picture: a 3:4 box that covers the frame, so the ball and the clip stay on her as painted. */}
       <div className="shine-film">
         <div className={`shine-film-cover ${hrZoom ? "shine-hr-zoom" : ""}`}>
@@ -415,9 +438,9 @@ export function ActionStage({
         </div>
         {children ? <div className={bleed ? "shine-film-grid" : "absolute inset-[12%]"}>{children}</div> : null}
       </div>
-      {/* One radial burst per cut, fading, so a swing reads as speed and never as rain. */}
-      {cutPose && !view.reduced && !quietCard ? (
-        <div key={`lines-${resolvedKey}-${cutIdx}`} className="shine-speed-lines pointer-events-none absolute inset-0" data-action-cut-in={cutIdx} aria-hidden />
+      {/* One burst of focus lines per swing, held across the cut-in, so it reads as speed and never as rain. */}
+      {speedLines ? (
+        <div key={`lines-${resolvedKey}`} className="shine-speed-lines pointer-events-none absolute inset-0" data-action-cut-in={cutIdx} aria-hidden />
       ) : null}
       {cutPose && !quietCard ? (
         <>
@@ -486,7 +509,7 @@ export function ActionStage({
       {flash ? <div key={`flash-${resolvedKey}`} className="shine-contact-flash pointer-events-none absolute inset-0" aria-hidden /> : null}
       {/* A stamped beat's stamp is its card: say it once. */}
       {showCard && !stamp ? (
-        <div className={`pointer-events-none absolute inset-x-0 flex justify-center ${bleed ? "shine-film-chip" : "bottom-3"}`}>
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
           <p className="shine-outcome-card rounded-full border border-white/25 bg-ink/85 px-3 py-1 font-display text-xs uppercase tracking-widest text-cream" data-action-card={view.beat ?? ""}>
             {picture.card}
           </p>

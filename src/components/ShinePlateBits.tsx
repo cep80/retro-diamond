@@ -149,9 +149,11 @@ export function PauseOverlay({
 }
 
 export function BasesDiamond({ bases, self }: { bases: Bases; self: 1 | 2 | 3 | null }) {
+  // One turn only: the inline transform places and rotates each bag. A Tailwind
+  // rotate-45 on top of it (the `rotate` property) turned them 90°, back to squares.
   const sq = (on: boolean, mine: boolean, style: React.CSSProperties) => (
     <span
-      className={`absolute size-2.5 rotate-45 border ${on ? (mine ? "border-gold bg-gold" : "border-cream bg-cream") : "border-cream/40 bg-transparent"}`}
+      className={`absolute size-2.5 border ${on ? (mine ? "border-gold bg-gold" : "border-cream bg-cream") : "border-cream/40 bg-transparent"}`}
       style={style}
     />
   );
@@ -167,6 +169,8 @@ export function BasesDiamond({ bases, self }: { bases: Bases; self: 1 | 2 | 3 | 
 /**
  * The broadcast scorebug: inning and score, the count with its letters, the
  * outs, the bases. It floats in the top corner of the film, above her head.
+ * `tag` names the game on a band along the bug's foot (the exhibition), so no
+ * loose label floats over her cap.
  */
 export function Scorebug({
   inning,
@@ -176,6 +180,7 @@ export function Scorebug({
   outs,
   bases,
   self,
+  tag,
 }: {
   inning: string | null;
   score: string | null;
@@ -184,35 +189,44 @@ export function Scorebug({
   outs: number;
   bases: Bases;
   self: 1 | 2 | 3 | null;
+  tag?: string;
 }) {
   const lamps = (n: number, of: number, on: string) =>
     Array.from({ length: of }, (_, i) => <i key={i} className={`shine-bug-lamp ${i < n ? on : ""}`} />);
   return (
-    <div className="shine-scorebug" aria-label={`${inning ? `${inning} inning, ` : ""}${score ? `${score}. ` : ""}${count.balls} and ${count.strikes}, ${outs} out. ${atBat}.`}>
-      {inning ? (
-        <span className="shine-bug-cell shine-bug-inning">
-          <b>{inning}</b>
-          {score ? <span>{score}</span> : null}
+    <div className="shine-scorebug" aria-label={`${tag ? `${tag}. ` : ""}${inning ? `${inning} inning, ` : ""}${score ? `${score}. ` : ""}${count.balls} and ${count.strikes}, ${outs} out. ${atBat}.`}>
+      <span className="shine-bug-cells">
+        {inning ? (
+          <span className="shine-bug-cell shine-bug-inning">
+            <b>{inning}</b>
+            {score ? <span>{score}</span> : null}
+          </span>
+        ) : null}
+        <span className="shine-bug-cell shine-bug-count" aria-hidden>
+          <span className="shine-bug-row">
+            <em>B</em>
+            {lamps(count.balls, 3, "is-ball")}
+          </span>
+          <span className="shine-bug-row">
+            <em>S</em>
+            {lamps(count.strikes, 2, "is-strike")}
+          </span>
+          <span className="shine-bug-row">
+            <em>O</em>
+            {lamps(outs, 2, "is-out")}
+          </span>
+        </span>
+        <span className="shine-bug-cell" aria-hidden>
+          <BasesDiamond bases={bases} self={self} />
+        </span>
+        {/* "1 of 3" stays together: a narrow bug wraps it as AT-BAT / 1 OF 3, never 1 OF / 3. */}
+        <span className="shine-bug-cell shine-bug-atbat">{atBat.replace(/(\d+) of (\d+)/, "$1 of $2")}</span>
+      </span>
+      {tag ? (
+        <span className="shine-bug-tag" aria-hidden>
+          {tag}
         </span>
       ) : null}
-      <span className="shine-bug-cell shine-bug-count" aria-hidden>
-        <span className="shine-bug-row">
-          <em>B</em>
-          {lamps(count.balls, 3, "is-ball")}
-        </span>
-        <span className="shine-bug-row">
-          <em>S</em>
-          {lamps(count.strikes, 2, "is-strike")}
-        </span>
-        <span className="shine-bug-row">
-          <em>O</em>
-          {lamps(outs, 2, "is-out")}
-        </span>
-      </span>
-      <span className="shine-bug-cell" aria-hidden>
-        <BasesDiamond bases={bases} self={self} />
-      </span>
-      <span className="shine-bug-cell shine-bug-atbat">{atBat}</span>
     </div>
   );
 }

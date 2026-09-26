@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
 import { ShineMute } from "@/components/ShineMute";
+import { ROUND_ICON_PATHS, ShineBack, ShineRoundBtn } from "@/components/ShineRoundBtn";
 import { careerMuteAppliesToScreen, setMasterMuted, setMix, sfxCowbell, sfxGain, sfxSelect, sfxTitleSting, startEnding, startMusic, stopMusic, unlockAudio } from "@/shine/audio.ts";
 import { ShineHelp, ShineSettings } from "@/components/ShineSettings";
 import { nextNamedBeat, nextDateLine, turnMeta, dateLabel, daysAwayLabel, yearOf, PLATE_TURNS } from "@/shine/calendar.ts";
@@ -55,14 +56,8 @@ const TITLE_ICON_PATHS: Record<TitleIcon, ReactNode> = {
       <path d="M9 8.5V7a3 3 0 0 1 6 0v1.5" />
     </>
   ),
-  // Mixing sliders: most of what Settings holds is the sound.
-  settings: (
-    <>
-      <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
-      <circle cx="15" cy="7" r="2" />
-      <circle cx="9" cy="17" r="2" />
-    </>
-  ),
+  // The same sliders as the round Settings button in every header.
+  settings: ROUND_ICON_PATHS.settings,
 };
 
 function TitleIconButton({ icon, label, count = 0, onClick }: { icon: TitleIcon; label: string; count?: number; onClick: () => void }) {
@@ -107,6 +102,8 @@ function Title() {
   const lastCard = clubhouse.at(-1)?.characterId;
   const girl: CharacterId = run?.characterId ?? (lastCard ? nextGirlId(lastCard) : "aoi");
   const who = sheet(girl);
+  // The key art is Aoi; anyone else stands in her own painted still, so her line never sits under another girl's face.
+  const art = girl === "aoi" ? "/bg/diamond-shine-hero.png" : careerFilmSrc(girl);
 
   useEffect(() => {
     warmActionExhibition();
@@ -143,12 +140,9 @@ function Title() {
 
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(girl) }}>
-      {/* The key art is Aoi; anyone else stands in her own painted still, so her line never sits under another girl's face. */}
-      <img
-        src={girl === "aoi" ? "/bg/diamond-shine-hero.png" : careerFilmSrc(girl)}
-        alt=""
-        className={`absolute inset-0 size-full object-cover ${girl === "aoi" ? "object-[78%_28%]" : "object-[50%_20%]"} ${started ? "" : "shine-title-breathe"}`}
-      />
+      {/* On a wide screen the portrait art stands whole at the right; this blurred copy fills the rest. Phones never show it. */}
+      <img src={art} alt="" className="shine-title-fill" aria-hidden />
+      <img src={art} alt="" className={`shine-title-art ${started ? "" : "shine-title-breathe"}`} data-art={girl === "aoi" ? "key" : "still"} />
       <div className="shine-title-wash absolute inset-0" />
       {started ? (
         <div className="shine-title-corner">
@@ -243,7 +237,10 @@ function Wall() {
       <img src="/bg/park-koi.jpg" alt="" className="absolute inset-0 size-full object-cover" />
       <div className="shine-stage-wash absolute inset-0" />
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
-        <p className="episode-chip w-fit">ダイヤシャイン</p>
+        <div className="flex items-center gap-3">
+          <ShineBack onClick={openTitle} />
+          <p className="episode-chip w-fit">ダイヤシャイン</p>
+        </div>
         <h1 className="mt-4 font-display text-2xl font-bold">Clubhouse</h1>
         <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">
           Every girl you coach to the end gets a card on the wall. What she learned stays with her. Everything else starts over. None of it is for sale.
@@ -307,8 +304,8 @@ function Wall() {
             })}
           </div>
         )}
-        <div className="mt-8 flex flex-wrap gap-3">
-          {clubhouse.length > 0 ? (
+        {clubhouse.length > 0 ? (
+          <div className="mt-8 flex flex-wrap gap-3">
             <PixelBtn
               className="h-12"
               onClick={() => {
@@ -318,11 +315,8 @@ function Wall() {
             >
               Coach the next her
             </PixelBtn>
-          ) : null}
-          <PixelBtn variant="ghost" className="h-12" onClick={openTitle}>
-            Title
-          </PixelBtn>
-        </div>
+          </div>
+        ) : null}
       </div>
     </main>
   );
@@ -337,7 +331,10 @@ function Shop() {
     <main className="relative min-h-dvh overflow-hidden bg-ink text-cream">
       <div className="title-wash absolute inset-0" />
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
-        <p className="episode-chip w-fit">ダイヤシャイン</p>
+        <div className="flex items-center gap-3">
+          <ShineBack onClick={openTitle} />
+          <p className="episode-chip w-fit">ダイヤシャイン</p>
+        </div>
         <h1 className="mt-4 font-display text-2xl font-bold">Shop</h1>
         <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">
           Looks only. The prices are the list. This preview does not charge. No banners. No pull rates. Her years, her games, and the Clubhouse are never for sale.
@@ -366,9 +363,6 @@ function Shop() {
         {note ? <p className="mt-4 font-ui text-sm text-grass-2">{note}</p> : null}
         <p className="mt-6 font-display text-[10px] uppercase tracking-widest text-gold">Never sold</p>
         <p className="mt-2 font-ui text-sm text-cream/80">{NEVER_SOLD.join(" · ")}</p>
-        <PixelBtn className="mt-6 h-12" onClick={openTitle}>
-          Title
-        </PixelBtn>
       </div>
     </main>
   );
@@ -460,10 +454,8 @@ function Select() {
         <div className="shine-pick-shade" />
       </div>
       <div className="shine-pick-top">
+        <ShineBack onClick={openTitle} />
         <h1 className="shine-pick-ask">Who will you coach?</h1>
-        <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
-          Title
-        </PixelBtn>
       </div>
       <div className="shine-pick-grid" role="group" aria-label="The girls">
         {BIBLE.map((c) => {
@@ -791,12 +783,8 @@ function Postgame() {
             <p className="font-display text-[10px] uppercase tracking-widest text-gold">Curtain Call</p>
             <div className="flex items-center gap-2">
               <ShineMute />
-              <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openSettings} ariaLabel="Settings">
-                Settings
-              </PixelBtn>
-              <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
-                Title
-              </PixelBtn>
+              <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
+              <ShineBack onClick={openTitle} />
             </div>
           </div>
           <div className="mt-auto px-4 pb-8 sm:px-8">
@@ -839,12 +827,8 @@ function Postgame() {
           <p className="episode-chip w-fit">{last ? dateLabel(turnMeta(last.turn), who.style) : "The game"}</p>
           <div className="flex items-center gap-2">
             <ShineMute />
-            <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openSettings} ariaLabel="Settings">
-              Settings
-            </PixelBtn>
-            <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
-              Title
-            </PixelBtn>
+            <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
+            <ShineBack onClick={openTitle} />
           </div>
         </div>
         <div className="mt-auto max-w-md pb-2">
@@ -932,12 +916,8 @@ function YearEnd() {
             <p className="font-display text-[10px] uppercase tracking-widest text-gold">Winning Live</p>
             <div className="flex items-center gap-2">
               <ShineMute />
-              <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openSettings} ariaLabel="Settings">
-                Settings
-              </PixelBtn>
-              <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
-                Title
-              </PixelBtn>
+              <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
+              <ShineBack onClick={openTitle} />
             </div>
           </div>
           <div className="mt-auto px-4 pb-8 sm:px-8">
@@ -990,12 +970,8 @@ function YearEnd() {
           <p className="episode-chip w-fit">Year-End</p>
           <div className="flex items-center gap-2">
             <ShineMute />
-            <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openSettings} ariaLabel="Settings">
-              Settings
-            </PixelBtn>
-            <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
-              Title
-            </PixelBtn>
+            <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
+            <ShineBack onClick={openTitle} />
           </div>
         </div>
         <div className="mt-auto px-4 pb-8 sm:px-8">
@@ -1097,12 +1073,8 @@ function Shell({ runTurn, label, children }: { runTurn: number; label: string; c
           </p>
           <div className="flex items-center gap-2">
             <ShineMute />
-            <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openSettings} ariaLabel="Settings">
-              Settings
-            </PixelBtn>
-            <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
-              Title
-            </PixelBtn>
+            <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
+            <ShineBack onClick={openTitle} />
           </div>
         </div>
         <div className="mt-6">{children}</div>

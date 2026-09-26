@@ -53,15 +53,19 @@ export function resultReadout(opts: { beat: FieldBeat; twoStrikeHold: boolean })
 
 /**
  * The result stamp: the verdict slams in big and bilingual after the
- * picture has already said it (Uma's race-finish stamp). Only the beats
- * that end an at-bat on her side get one; fouls, balls and called strikes
- * stay quiet so the stamp keeps its weight.
+ * picture has already said it (Uma's race-finish stamp). The beats that end
+ * an at-bat get one; fouls, balls and called strikes stay quiet so the stamp
+ * keeps its weight. An out in play gets the small one: slate, set down
+ * rather than slammed, and gone sooner, so the at-bat still ends on a stamp
+ * without the out shouting like a hit.
  */
 export interface ResultStamp {
   jp: string;
   en: string;
-  tone: "gold" | "coral" | "teal";
+  tone: "gold" | "coral" | "teal" | "slate";
 }
+
+const OUT_STAMP: ResultStamp = { jp: "アウト", en: "Out", tone: "slate" };
 
 const STAMPS: Partial<Record<FieldBeat, ResultStamp>> = {
   hr: { jp: "ホームラン", en: "Home run", tone: "gold" },
@@ -70,6 +74,9 @@ const STAMPS: Partial<Record<FieldBeat, ResultStamp>> = {
   walk: { jp: "フォアボール", en: "Ball four", tone: "teal" },
   "sac-fly": { jp: "犠牲フライ", en: "Sac fly", tone: "teal" },
   "bunt-down": { jp: "送りバント", en: "Bunt down", tone: "teal" },
+  "grounder-out": OUT_STAMP,
+  "fly-out": OUT_STAMP,
+  "bunt-out": OUT_STAMP,
 };
 
 export function resultStamp(beat: FieldBeat | null, swung: boolean): ResultStamp | null {
@@ -83,9 +90,13 @@ export const STAMP_DELAY_MS = 360;
 export const STAMP_HOLD_MS = 1500;
 /** A home run is its own moment: the stamp stays up while the park goes off. */
 export const HR_STAMP_HOLD_MS = 2600;
+/** An out in play says it and steps aside: the card is right behind it. */
+export const OUT_STAMP_HOLD_MS = 900;
 
 export function stampHoldMs(beat: FieldBeat | null): number {
-  return beat === "hr" ? HR_STAMP_HOLD_MS : STAMP_HOLD_MS;
+  if (beat === "hr") return HR_STAMP_HOLD_MS;
+  if (beat === "grounder-out" || beat === "fly-out" || beat === "bunt-out") return OUT_STAMP_HOLD_MS;
+  return STAMP_HOLD_MS;
 }
 
 export function stampVisible(sinceResolveMs: number, beat: FieldBeat | null = null): boolean {

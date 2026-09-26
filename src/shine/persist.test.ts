@@ -6,6 +6,22 @@ import { newAoiRun } from "./run.ts";
 import { DEFAULT_KEYS, EMPTY_TELLS, type TraineeRun } from "./types.ts";
 
 describe("persist", () => {
+  it("re-mints a card waiting on its Winning Live when the rank table changed, and leaves the wall alone", async () => {
+    const { mintClubhouseCard } = await import("./ending.ts");
+    const run = newAoiRun();
+    run.pgMisses = 2;
+    run.fans = 25;
+    // Minted under the old table, where a two-miss close was always D.
+    run.clubhouseCard = { ...mintClubhouseCard(run), id: "card-old", ending: "D" };
+    const wallCard = { ...run.clubhouseCard, id: "card-wall" };
+    const out = migratePersisted({ run, clubhouse: [wallCard] }, 6);
+    assert.equal(out.run?.clubhouseCard?.ending, "C", "a two-miss close with 25 fans is C now");
+    assert.equal(out.run?.clubhouseCard?.id, "card-old", "same card, re-minted");
+    assert.equal(out.clubhouse[0]?.ending, "D", "finished cards keep the rank they were given");
+    const again = migratePersisted({ run: out.run }, 7);
+    assert.equal(again.run?.clubhouseCard?.ending, "C", "a current save is left as it is");
+  });
+
   it("fills every new run field on an old save", () => {
     const old = newAoiRun() as Partial<TraineeRun>;
     delete old.memories;

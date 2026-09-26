@@ -1,6 +1,6 @@
 import type { CSSProperties, Dispatch, SetStateAction } from "react";
-import { PixelBtn } from "@/components/pixel-btn";
 import { ShineMute } from "@/components/ShineMute";
+import { ShineBack, ShineRoundBtn } from "@/components/ShineRoundBtn";
 import { dateLabel, daysAwayLabel, type CalendarBeat } from "@/shine/calendar.ts";
 import { officialFor, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
@@ -81,12 +81,8 @@ export function ShineComplexWork({
             </div>
             <div className="ml-auto flex items-center gap-2">
               <ShineMute />
-              <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openSettings} ariaLabel="Settings">
-                Settings
-              </PixelBtn>
-              <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={openTitle}>
-                Title
-              </PixelBtn>
+              <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
+              <ShineBack onClick={openTitle} />
             </div>
           </div>
         </div>
