@@ -10,7 +10,7 @@
  * decision, so the harness and the browser agree.
  */
 import { locCell, locInZone, type Cell, type Loc } from "./core/zone.ts";
-import { cellDistance, gaussianFrom, satRight, sitFamily, statSigma, type CoachCardId, type DuelCall, type PitchFamily } from "./duel.ts";
+import { cellDistance, gaussianFrom, satRight, sitFamily, statSigma, stuffSigmaBite, type CoachCardId, type DuelCall, type PitchFamily } from "./duel.ts";
 import type { SwingKind } from "./featured-game.ts";
 import type { StyleId, TraineeStats } from "./types.ts";
 
@@ -64,7 +64,7 @@ export interface SwingContext {
   stats: TraineeStats;
   style: StyleId;
   count: { balls: number; strikes: number };
-  pitch: { loc: Loc; speed: number; family: PitchFamily };
+  pitch: { loc: Loc; speed: number; family: PitchFamily; stuff?: number };
   pick: Pick<RacePick, "sit" | "call">;
   /** Practice: she swings at everything, contact only. */
   practice?: boolean;
@@ -139,6 +139,8 @@ export function timingSigma(ctx: SwingContext, power: boolean): number {
   if (power) sigma *= POWER_SIGMA;
   if (ctx.guts) sigma *= 1 - 0.15 * (Math.max(1, Math.min(20, ctx.stats.guts)) / 20);
   if (ctx.practice) sigma *= 0.6;
+  // A better arm is harder to time, however good her hands have become.
+  else sigma *= stuffSigmaBite(ctx.pitch.stuff);
   return sigma;
 }
 

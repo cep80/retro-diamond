@@ -374,7 +374,7 @@ export class RaceController {
         stats: this.run.stats,
         style: who.style,
         count: game.count,
-        pitch: { loc: pitch.loc, speed: pitch.speed, family: pitch.family },
+        pitch: { loc: pitch.loc, speed: pitch.speed, family: pitch.family, stuff: pitch.stuff },
         pick: { sit: snap.aim, call: snap.call },
         practice: game.kind === "practice",
         guts,

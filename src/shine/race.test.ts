@@ -18,6 +18,16 @@ function ctx(over: Partial<SwingContext> = {}): SwingContext {
   };
 }
 
+describe("race: a better arm is harder to time", () => {
+  it("Year 1 arms don't bite, so the first year and every exhibition play as before; the top arms grow teeth by year", async () => {
+    const { rivalPlayer } = await import("./rivals.ts");
+    const { stuffSigmaBite } = await import("./duel.ts");
+    for (const id of ["academy", "reina", "sol", "kira"] as const) assert.equal(stuffSigmaBite(rivalPlayer(id, 1).stuff), 1, `${id} Year 1`);
+    assert.ok(stuffSigmaBite(rivalPlayer("sol", 3).stuff) > stuffSigmaBite(rivalPlayer("sol", 2).stuff));
+    assert.equal(stuffSigmaBite(undefined), 1, "a pitch without an arm (practice) is untouched");
+  });
+});
+
 describe("race: her swing decision", () => {
   it("a Take call never swings", () => {
     const c = ctx({ pick: { sit: { row: 1, col: 1 }, call: "take" } });

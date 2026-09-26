@@ -109,6 +109,8 @@ export interface LivePitch {
   recognizeAt: number;
   /** Duel: fastball is hard, everything else soft. */
   family: PitchFamily;
+  /** The arm's Stuff: a better arm makes her timing harder, not just the pitch faster. */
+  stuff?: number;
 }
 
 /** Optional isolated-encounter configuration. Career callers never pass one. */
@@ -406,6 +408,7 @@ export function dealPitch(run: TraineeRun, game: FeaturedGame): LivePitch {
     speed,
     recognizeAt: recognitionU(run.stats.eye, Math.max(0, DECEPTION[shaped.type] - fight), run.stats.wit, run.carry),
     family: pitchFamily(shaped.type),
+    stuff: pitcher.stuff,
   };
   game.live = pitch;
   game.lastPitches = [...game.lastPitches, { type: pitch.type, loc: pitch.loc }].slice(-3);

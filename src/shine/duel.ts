@@ -35,6 +35,14 @@ export const TAP_WEIGHT = 0.3;
 export const STAT_SIGMA_BASE = 0.14;
 export const STAT_SIGMA_PER = 0.006;
 export const STAT_SIGMA_MIN = 0.02;
+/**
+ * The arm's Stuff widens her timing error above a floor (Year 1 arms sit at or under it,
+ * so the first year plays as before). Without this a trained hitter's error shrinks while
+ * the best arms barely move, and a peak Year 3 hitter almost never struck out.
+ */
+export const STUFF_SIGMA_FLOOR = 10;
+export const STUFF_SIGMA_PER = 0.55;
+export const STUFF_SIGMA_CAP = 3;
 export const FIGHT_METER_WINDOW = 0.12;
 export const FIGHT_METER_MAX = 3;
 export const HOT_CELL_WIT = 8;
@@ -120,6 +128,13 @@ export function callMods(ctx: CallContext): CallMods {
 /** Timing sigma for her share of the tap, in seconds, from Contact. */
 export function statSigma(contact: number): number {
   return Math.max(STAT_SIGMA_MIN, Math.min(STAT_SIGMA_BASE, STAT_SIGMA_BASE - STAT_SIGMA_PER * contact));
+}
+
+/** How much the arm's Stuff widens her timing error: 1 at or under the floor. */
+export function stuffSigmaBite(stuff: number | undefined): number {
+  if (stuff === undefined) return 1;
+  const s = Math.max(1, Math.min(20, stuff));
+  return Math.min(STUFF_SIGMA_CAP, 1 + Math.max(0, s - STUFF_SIGMA_FLOOR) * STUFF_SIGMA_PER);
 }
 
 /** Blend the player's timing error with her stat-driven one (70/30 by default). */
