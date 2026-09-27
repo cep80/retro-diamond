@@ -99,7 +99,7 @@ function postGate(id: CharacterId, met: boolean, m: CoachMemory | null, wm: Retu
       return [
         met ? "She saw her pitches. Fought the count until it gave. Section 4 rang the bell the whole way to the bus." : "The count didn't give. She's still in the box in her head.",
         quote ?? "\"You stayed after.\" She's surprised, and covering it. \"Okay.\"",
-        wm === "strained" ? "\"Week eleven's coming. Just so you know I'm counting too.\"" : "\"Week eleven's coming.\" She almost smiles. \"I'm not counting anymore, Coach.\"",
+        wm === "strained" ? "\"Week eleven's coming. Just so you know I'm counting too.\"" : "\"Week eleven's coming.\" She almost smiles. \"Still counting. I'd like to be wrong, though.\"",
       ];
     case "sol":
       return [
@@ -117,7 +117,7 @@ function postGate(id: CharacterId, met: boolean, m: CoachMemory | null, wm: Retu
       return [
         met ? "Four pitches seen, and she was already on the move when the fourth came in." : "She went early. Everyone saw it. She'd do it again.",
         quote ?? "\"You didn't hold me.\" \"You had the read.\" \"I had the read.\"",
-        wm === "strained" ? "\"Tired legs don't steal. Remember that before the Classic.\"" : "\"Next time watch the catcher's knees, not mine. You'll see it before I do.\"",
+        wm === "strained" ? "\"I'm not tired. Already stretched. Stop looking at the leg, Stopwatch.\"" : "\"Next time watch the catcher's knees, not mine. You'll see it before I do.\"",
       ];
   }
 }
@@ -271,7 +271,7 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
       return [
         open,
         quote ?? "\"You stopped holding me in May. That's when it started working.\"",
-        wm === "strained" ? "\"Legs need days. I told you that in the spring.\"" : "\"Next year, watch the catcher's knees.\"",
+        wm === "strained" ? "\"Legs are fine. Already iced them.\" A beat. \"You ran me a lot, Stopwatch.\"" : "\"Next year, watch the catcher's knees.\"",
       ];
     }
   }
@@ -294,7 +294,7 @@ function quoteMemory(m: CoachMemory): string {
     case "first-light":
       return `"First Light." She keeps that one somewhere.`;
     case "keepsake":
-      return `She still has it. She doesn't show you. You know.`;
+      return `She pats her pocket, where she keeps it. She doesn't take it out.`;
     case "rival":
       return `"${m.note}" She says it flat. It's not flat.`;
     default:

@@ -90,8 +90,8 @@ describe("culture presentation", () => {
     assert.equal(shouldCurtainCall("gate", true), false);
     assert.equal(curtainSkin(datePark("night-classic", "koi")), "dugout");
     assert.equal(curtainSkin(datePark("lantern-classic", "stars")), "otachidai");
-    const sol = "Dugout. She does not smile in the still.";
-    assert.equal(curtainCallLine(sol, curtainSkin(datePark("lantern-classic", "dusters"))), "お立ち台. She does not smile in the still.");
+    const sol = "Dugout. Someone asks how she feels. She says ninety-seven.";
+    assert.equal(curtainCallLine(sol, curtainSkin(datePark("lantern-classic", "dusters"))), "お立ち台. Someone asks how she feels. She says ninety-seven.");
     assert.equal(curtainCallLine(sol, curtainSkin(datePark("night-classic", "dusters"))), sol);
     const aoi = "お立ち台. She's already looking.";
     assert.equal(curtainCallLine(aoi, curtainSkin(datePark("lantern-classic", "koi"))), aoi);

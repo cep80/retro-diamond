@@ -15,7 +15,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
     place: "Koi Park cage · a drizzle nobody asked for",
     beats: [
       { who: "narration", text: "The machine is on its fourth bucket. Aoi's forearms are shaking, and every ball she hits goes to the left side, on the ground." },
-      { who: "aoi", text: "Um, sorry. That's a 6-4-3. That one too. That one was a 6-4-3 and it hurt my feelings.", mood: "focused" },
+      { who: "aoi", text: "That's a 6-4-3. That one too. That one was a 6-4-3 and it hurt my feelings.", mood: "focused" },
       { who: "narration", text: "She's writing them down with the pencil stub between buckets. The page is all sixes and fours and threes." },
       { who: "coach", text: "How many buckets were you planning on?" },
       { who: "aoi", text: "Until one goes up the middle. I'm fine. My hands are just a little loud.", mood: "neutral" },
@@ -50,7 +50,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
       { who: "narration", text: "Aoi, at the counter, laughs so hard she drops her chopsticks." },
       { who: "aoi", text: "She does it every Thursday. It gets me every Thursday.", mood: "elated" },
       { who: "narration", text: "Her scorebook is open next to the bonito. She's keeping score of the lunch line. Table three is batting .400 on refills." },
-      { who: "aoi", text: "Practice is at two. I could stay and help her through the rush, or go early and hit. I can't tell which one is the right thing.", mood: "neutral" },
+      { who: "aoi", text: "Practice is at two. If I stay, that's a sacrifice. If I go, that's a sacrifice too. I don't know how to score it.", mood: "neutral" },
       { who: "narration", text: "Haruko slides a plate in front of you without asking. Extra bonito." },
     ],
     choices: [
@@ -114,7 +114,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
       { who: "narration", text: "Ball one. Ball two. Reina's jaw sets. Ball three is a quarter-inch off the black, and Aoi doesn't move." },
       { who: "narration", text: "The next one comes in so hard the catcher says \"ow.\" Aoi fouls it straight back, and she's grinning." },
       { who: "reina", text: "Why are you smiling.", mood: "focused" },
-      { who: "aoi", text: "Um, sorry. I'm not. …I am. Sorry. It's fun. Is it allowed to be fun?", mood: "neutral" },
+      { who: "aoi", text: "I'm not. …I am. Sorry. It's fun. Is it allowed to be fun?", mood: "neutral" },
       { who: "narration", text: "Reina doesn't answer. She's waiting to throw. Aoi looks over at you." },
     ],
     choices: [
@@ -177,7 +177,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
     beats: [
       { who: "narration", text: "Rain delay against the Palms. The wind keeps lifting the tarp. Aoi's scorebook slides off the bench and lands open on Yuki's cleat." },
       { who: "yuki", text: "What's this. Why is there a star. There's a star next to every… those are mine. Those are my steals.", mood: "focused" },
-      { who: "aoi", text: "Um. Sorry. Those are decorative.", mood: "crushed" },
+      { who: "aoi", text: "Those are… scoring marks. Official ones. I made them up.", mood: "crushed" },
       { who: "yuki", text: "You star my steals? Since when? This one's from April. April, Aoi.", mood: "elated" },
       { who: "narration", text: "Aoi looks at you. Her ears have gone the color of strawberry shaved ice." },
     ],

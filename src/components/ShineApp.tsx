@@ -390,7 +390,7 @@ const MEET: Record<CharacterId, { line: string; lore: string }> = {
     lore: "The Dusters' ace. Her big sister taught her three more pitches. She won't throw them where anyone can see.",
   },
   kira: {
-    line: "Ha! Sorry. I laugh first, it saves time. I'm the last inning. Three outs and I'm out the door.",
+    line: "Here's the deal, Partner. You get me a lead, I get you three outs. Then I'm out the door. Deal?",
     lore: "Stars Park's closer. Two taps on the bullpen door, then the ninth. Gone by the last bus.",
   },
   yuki: {

@@ -80,7 +80,7 @@ const RETIRED_REACH = "She was on. The goal she came for stayed open.";
 const RETIRED_K = "She struck out. The sit never found the pitch.";
 
 export function yearVoice(year: 1 | 2 | 3) {
-  if (year === 2) return "Last year's coach took a job in Osaka. The new one shows up with donuts.";
+  if (year === 2) return "Last year's Cage Coach took a job in Osaka. The new one shows up with donuts.";
   if (year === 3) return "The Stretch is next.";
   return "The year is open.";
 }
@@ -182,7 +182,7 @@ export const VERSES: Record<CharacterId, [string, string, string]> = {
     "They start it at the warning track. Sol.",
   ],
   kira: [
-    "Closer entrance. The ninth is the only inning.",
+    "Two taps of her glove. The whole section taps back.",
     "Stars point at the bullpen door, not the sky.",
     "They start it the second the bullpen door opens.",
   ],
@@ -215,11 +215,11 @@ const RECAP_JP = [
 const RECAP_BLEND = [
   "Cowbell in the 7th. North does not wait.",
   "North Field. Nobody claps, but the bell never stops.",
-  "They sing anyway. That is the point.",
+  "They sing anyway. Neither mail carrier knows the second verse.",
   "Inning turns. The bell does not.",
   "North Field keeps the losing crowd.",
   "She heard the bell before the pitch.",
-  "The booth calls it a fight, not a result.",
+  "The radio booth has run out of ways to say 'fouled back.'",
   "Rain on the cowbell. Still going.",
   "The bell says what the scoreboard won't.",
   "Section 4 rang both cowbells, a little out of time with each other.",

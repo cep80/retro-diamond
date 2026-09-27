@@ -12,7 +12,7 @@ import type { CharacterId, StationId, TraineeRun, TraineeStatKey } from "./types
 
 /** Fresh and in a good mood: she says so herself, in her own voice. */
 const READY_LINE: Record<CharacterId, string> = {
-  aoi: "\"Um, sorry. I'm good. What are we doing today?\"",
+  aoi: "\"I'm good, Coach. Pencil's out. What do you see today?\"",
   reina: "\"Again. Tell me what we're fixing.\"",
   miki: "\"Cool. The heater's actually working today. So. What's the plan?\"",
   sol: "\"Ninety-six. What are we throwing, Jefe?\"",

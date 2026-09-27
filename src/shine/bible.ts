@@ -82,7 +82,7 @@ const RAW_BIBLE: RawSheet[] = [
     curtainCall: "お立ち台. She's already looking.",
     endings: {
       miss2: "The Academy path closed. She still ran it.",
-      lantern: "Lanterns stay lit for the ones who didn't make the top.",
+      lantern: "Koi kept the lanterns lit until she'd written down the last pitch.",
       dugout: "She watched from the dugout, scorebook open, pencil going.",
       show: "お立ち台. She does not look at the camera until you nod.",
     },
@@ -119,7 +119,7 @@ const RAW_BIBLE: RawSheet[] = [
     },
     unique: "Perfect Sequence.",
     walkUp: "Cold Count",
-    curtainCall: "She takes the ball with her. The mound is the stage.",
+    curtainCall: "She takes the ball with her. A hundred and eight stitches. She checks.",
     endings: {
       miss2: "The Academy path closed. The ball is still in her pocket.",
       lantern: "The mound waited. She did not take the ball with her.",
@@ -159,7 +159,7 @@ const RAW_BIBLE: RawSheet[] = [
     },
     unique: "Cowbell Single. Never Quit (◆).",
     walkUp: "Cowbell",
-    curtainCall: "US dugout. The cowbell does not wait for a win.",
+    curtainCall: "Dugout. Section 4 rings both cowbells. She looks at her shoes, not the stands.",
     endings: {
       miss2: "The Academy path closed. The cowbell still found her.",
       lantern: "Lanterns stay lit. She fouled until the lights did.",
@@ -199,7 +199,7 @@ const RAW_BIBLE: RawSheet[] = [
     },
     unique: "The Gulf wind.",
     walkUp: "Red Mesa",
-    curtainCall: "Dugout. She does not smile in the still.",
+    curtainCall: "Dugout. Someone asks how she feels. She says ninety-seven.",
     endings: {
       miss2: "The Academy path closed. Sol ices the arm like there's a game tomorrow.",
       lantern: "Heat without the eighth. She walked off anyway.",
@@ -242,7 +242,7 @@ const RAW_BIBLE: RawSheet[] = [
     curtainCall: "Stars. She points at the bullpen door, not the sky.",
     endings: {
       miss2: "The Academy path closed. The bullpen door stayed shut.",
-      lantern: "Fireworks Friday without the ninth. She still pointed at the door.",
+      lantern: "She unpacked the bag. It's folded flat in a drawer at Stars Park.",
       dugout: "She watched the ninth from the bullpen door, one hand on the frame.",
       show: "She points at the bullpen door, not the sky.",
     },
@@ -279,10 +279,10 @@ const RAW_BIBLE: RawSheet[] = [
     },
     unique: "First-to-third green light.",
     walkUp: "Palm steal",
-    curtainCall: "Dugout. Dirt on the white pants is the still.",
+    curtainCall: "Dugout. She won't stand still until somebody reads her the stopwatch.",
     endings: {
       miss2: "The Academy path closed. She still took second.",
-      lantern: "Lanterns stay lit. The steal was the lesson anyway.",
+      lantern: "She ate a strawberry shaved ice slowly, for once. You timed it.",
       dugout: "She watched from the dugout, one knee bouncing the whole time.",
       show: "Dirt from her collar to her knees. The team has to chase her down to celebrate.",
     },
