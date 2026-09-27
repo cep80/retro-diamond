@@ -130,7 +130,9 @@ const RAW_BIBLE: RawSheet[] = [
     potential: 18,
     official: [
       { turn: 5, verb: "Record 3 outs", sgVerb: "Record 1 out", resultsPg: false },
-      { turn: 18, verb: "Strike out 3", sgVerb: "Throw a curve for a strike", resultsPg: false },
+      // First Light is a rookie's debut: two punchouts, not three (simulated at a Day-18 rookie's
+      // Stuff, about 80% met instead of 50%), with her curve as the smaller ask.
+      { turn: 18, verb: "Strike out 2", sgVerb: "Throw a curve for a strike", resultsPg: false },
       { turn: 28, verb: "Pitch 5+ innings, ≤3 ER", sgVerb: "Escape a jam", resultsPg: false },
       { turn: 33, verb: "Consecutive strikeouts", sgVerb: "Strike out 2", resultsPg: false },
       { turn: 50, verb: "Escape a bases-loaded jam", sgVerb: "Strike out 3", resultsPg: false },
@@ -210,7 +212,8 @@ const RAW_BIBLE: RawSheet[] = [
     potential: 18,
     official: [
       { turn: 5, verb: "Record 3 outs", sgVerb: "Record 1 out", resultsPg: false },
-      { turn: 18, verb: "Strike out 3", sgVerb: "Strike out 2", resultsPg: false },
+      // First Light is a rookie's debut: two punchouts (about 80% met at Day 18), and she walks nobody.
+      { turn: 18, verb: "Strike out 2", sgVerb: "Walk nobody", resultsPg: false },
       { turn: 28, verb: "Pitch 5+ innings, ≤3 ER", sgVerb: "Escape a jam", resultsPg: false },
       { turn: 33, verb: "Consecutive strikeouts", sgVerb: "Strike out 2", resultsPg: false },
       { turn: 50, verb: "Escape a jam", sgVerb: "Strike out 3", resultsPg: false },
@@ -311,6 +314,8 @@ export function sheet(id: CharacterId) {
 
 const ONE_PUNCHOUT = "One punchout. She needed three.";
 const TWO_PUNCHOUTS = "Two punchouts. She needed three.";
+/** First Light asks for two now; saves from the three-punchout ask keep the lines above. */
+const ONE_OF_TWO = "One punchout. She needed two.";
 const NO_PUNCHOUTS = "The outs are in. The punchouts weren't.";
 /** Saves from before the 2026-09-22 copy pass carry the old wording. */
 const RETIRED_PUNCHOUTS: Record<string, string> = {
@@ -321,14 +326,14 @@ const RETIRED_PUNCHOUTS: Record<string, string> = {
 /** The First Light card, when the date already said how many punchouts came. */
 export function lightCardFrom(line: string | null | undefined): string | null {
   if (line && RETIRED_PUNCHOUTS[line]) return RETIRED_PUNCHOUTS[line]!;
-  if (line === ONE_PUNCHOUT || line === TWO_PUNCHOUTS || line === NO_PUNCHOUTS) return line;
+  if (line === ONE_PUNCHOUT || line === TWO_PUNCHOUTS || line === ONE_OF_TWO || line === NO_PUNCHOUTS) return line;
   return null;
 }
 
 /** A First Light miss keeps the punchouts she actually got. */
 export function firstLightStill(card?: string | null): string {
   if (card && RETIRED_PUNCHOUTS[card]) return RETIRED_PUNCHOUTS[card]!;
-  if (card === ONE_PUNCHOUT || card === TWO_PUNCHOUTS) return card;
+  if (card === ONE_PUNCHOUT || card === TWO_PUNCHOUTS || card === ONE_OF_TWO) return card;
   return "The punchouts weren't there.";
 }
 
@@ -390,9 +395,9 @@ export function yearStillLine(
   if (id === "reina" && turn <= 20) {
     const gate = results[0] === "met";
     const light = results[1] === "met";
-    if (gate && light) return "The Gate. Three outs. First Light. Three punchouts.";
+    if (gate && light) return "The Gate. Three outs. First Light. The punchouts came.";
     if (gate) return `The Gate. Three outs. First Light. ${firstLightStill(lightCard)}`;
-    if (light) return "The Gate didn't hold. First Light. Three punchouts.";
+    if (light) return "The Gate didn't hold. First Light. The punchouts came.";
     return "The Gate and First Light. She came up short in both.";
   }
   if (id === "reina" && turn <= 40) {
@@ -406,9 +411,9 @@ export function yearStillLine(
   if (id === "sol" && turn <= 20) {
     const gate = results[0] === "met";
     const light = results[1] === "met";
-    if (gate && light) return "The Gate. Three outs. First Light. Three punchouts.";
+    if (gate && light) return "The Gate. Three outs. First Light. The punchouts came.";
     if (gate) return `The Gate. Three outs. First Light. ${firstLightStill(lightCard)}`;
-    if (light) return "The Gate didn't hold. First Light. Three punchouts.";
+    if (light) return "The Gate didn't hold. First Light. The punchouts came.";
     return "The Gate and First Light. She came up short in both.";
   }
   if (id === "sol" && turn <= 40) {

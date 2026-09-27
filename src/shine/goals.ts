@@ -37,6 +37,7 @@ export type HitterSgId =
 
 export type PitcherPgId =
   | "outs-3"
+  | "k-2"
   | "k-3"
   | "innings-5"
   | "quality-start"
@@ -348,6 +349,8 @@ export function evalPitcherPg(id: PitcherPgId, g: PitcherGoalView): boolean {
   switch (id) {
     case "outs-3":
       return g.outsRecorded >= 3 && !g.blown;
+    case "k-2":
+      return g.strikeouts >= 2;
     case "k-3":
       return g.strikeouts >= 3;
     case "innings-5":
@@ -421,6 +424,7 @@ const HITTER_PG = new Set<GoalId>([
 const HITTER_SG = new Set<GoalId>(["see-4", "see-3", "see-2-one-pa", "see-3-one-pa", "outfield-ball", "full-count", "reach", "draw-walk"]);
 const PITCHER_PG = new Set<GoalId>([
   "outs-3",
+  "k-2",
   "k-3",
   "innings-5",
   "quality-start",

@@ -136,13 +136,22 @@ describe("Ace / Closer mound", () => {
     assert.ok(holds < 16);
   });
 
-  it("First Light opens on three punchouts", () => {
-    const run = newRun("sol");
-    run.turn = 18;
-    const game = startPitchingGame(run, "first-light");
-    assert.equal(game.pgId, "k-3");
-    assert.equal(game.banner, "Three punchouts.");
-    assert.doesNotMatch(game.banner, /one time through/i);
+  it("First Light, a rookie's debut, opens on two punchouts", () => {
+    for (const id of ["sol", "reina"] as const) {
+      const run = newRun(id);
+      run.turn = 18;
+      const game = startPitchingGame(run, "first-light");
+      assert.equal(game.pgId, "k-2");
+      assert.equal(game.banner, "Two punchouts.");
+      assert.doesNotMatch(game.banner, /one time through/i);
+    }
+    // Sol's smaller ask is walking nobody; Reina's is her curve.
+    const sol = newRun("sol");
+    sol.turn = 18;
+    assert.equal(startPitchingGame(sol, "first-light").sgId, "walk-nobody");
+    const reina = newRun("reina");
+    reina.turn = 18;
+    assert.equal(startPitchingGame(reina, "first-light").sgId, "curve-strike");
   });
 
   it("Night Classic sits consecutive punchouts and does not invent the rest of the start", () => {

@@ -183,6 +183,7 @@ function secondNeed(id: GoalId | null, pitcher: boolean): TraineeStatKey | null 
     case "steal-late":
     case "steal-risp":
       return "eye";
+    case "k-2":
     case "k-3":
     case "k-side":
       return "control";

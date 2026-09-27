@@ -468,7 +468,11 @@ export function moundRead(game: {
   if (game.kind === "practice") return "Three looks. The glove is real.";
   if (game.pgMet) {
     if (game.kind === "gate") return "Three outs. The Gate opened.";
-    if (game.pgId === "k-3") return "Three punchouts.";
+    // The punchouts she got, which can be more than the ask.
+    if (game.pgId === "k-2" || game.pgId === "k-3") {
+      const k = Math.max(game.pgId === "k-2" ? 2 : 3, game.strikeouts ?? 0);
+      return `${capital(countWord(k))} punchouts.`;
+    }
     if (game.pgId === "k-consecutive") return "Two punchouts, back to back.";
     if (game.pgId === "hold-one-run") return "The lead held.";
     if (game.pgId === "k-side") return "She struck out the side.";
@@ -481,6 +485,7 @@ export function moundRead(game: {
     if (game.pgId === "escape-loaded-jam") return "Bases loaded. The inning ended.";
     return "She got what she came for.";
   }
+  if (game.pgId === "k-2" && (game.strikeouts ?? 0) === 1) return "One punchout. She needed two.";
   if (game.pgId === "k-3") {
     const k = game.strikeouts ?? 0;
     if (k === 1) return "One punchout. She needed three.";

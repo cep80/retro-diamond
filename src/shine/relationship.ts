@@ -202,7 +202,7 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
         rookie && gateHeld && !lightHeld
           ? `The Gate held. First Light didn't. ${firstLightStill(run.lightCard)}`
           : rookie && !gateHeld && lightHeld
-            ? "The Gate didn't hold. First Light. Three punchouts."
+            ? "The Gate didn't hold. First Light. The punchouts came."
             : rookie && !gateHeld
               ? "She threw the Gate and First Light, and the punchouts weren't there for either."
               : classic && !rookie && lanternHeld && !nightHeld

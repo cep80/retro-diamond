@@ -52,6 +52,10 @@ describe("race sitelines", () => {
     assert.equal(moundRead({ kind: "gate", pgMet: false }), "The Gate still opens.");
     assert.equal(moundRead({ kind: "first-light", pgMet: false, outsRecorded: 5, strikeouts: 0 }), "The outs are in. The punchouts weren't.");
     assert.equal(moundRead({ kind: "first-light", pgMet: true, pgId: "k-3", strikeouts: 3 }), "Three punchouts.");
+    // First Light asks for two now; the read counts what she actually got.
+    assert.equal(moundRead({ kind: "first-light", pgMet: true, pgId: "k-2", strikeouts: 2 }), "Two punchouts.");
+    assert.equal(moundRead({ kind: "first-light", pgMet: true, pgId: "k-2", strikeouts: 4 }), "Four punchouts.");
+    assert.equal(moundRead({ kind: "first-light", pgMet: false, pgId: "k-2", strikeouts: 1, outsRecorded: 6 }), "One punchout. She needed two.");
     assert.equal(moundRead({ kind: "night-classic", pgMet: true, pgId: "k-consecutive", maxKStreak: 2 }), "Two punchouts, back to back.");
     assert.equal(moundRead({ kind: "night-classic", pgMet: false, pgId: "k-consecutive", maxKStreak: 1 }), "One punchout. She needed two in a row.");
     assert.equal(moundRead({ kind: "night-classic", pgMet: false, pgId: "k-consecutive", maxKStreak: 0 }), "The punchouts didn't come back to back.");
