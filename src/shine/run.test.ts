@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { CAREER_CALENDAR, ROOKIE_CALENDAR, calendarPeekLine, clubhouseOpen, dateLabel, nextDateLine, nextNamedBeat, nextOfficial, turnMeta } from "./calendar.ts";
 import {
   applyGameResult,
+  coachWarningTone,
   leavePostgame,
   newAoiRun,
   newRun,
@@ -145,7 +146,10 @@ describe("Aoi Rookie calendar", () => {
     applyGameResult(run, "first-light", false, true, false, false);
     assert.equal(run.pgMisses, 0);
     assert.equal(run.pgResults[1], "missed");
-    assert.match(run.coachWarning ?? "", /smaller one held/);
+    // The relief line names the smaller ask and reads as good news.
+    assert.match(run.coachWarning ?? "", /The smaller ask held: /);
+    assert.equal(coachWarningTone(run.coachWarning ?? ""), "relief");
+    assert.doesNotMatch(run.coachWarning ?? "", /\bgoal\b/i);
   });
 
   it("awards fans on REACH / PG / SG / HR", () => {

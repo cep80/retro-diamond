@@ -149,13 +149,18 @@ describe("culture presentation", () => {
       yearVoice(2),
     );
     assert.equal(
-      morningSpeech("She was on. It still got away.", 2, "palms"),
+      morningSpeech("She was on. The goal she came for stayed open.", 2, "palms"),
       "She reached once. She needed two.",
     );
     assert.equal(
       morningSpeech("She struck out. The sit never found the pitch.", 3, "palms"),
       "She put the ball in play. She never got on.",
     );
+    // A pitcher's rotating mentor is the Bullpen Coach.
+    assert.match(yearVoice(2, true), /Bullpen Coach/);
+    assert.doesNotMatch(yearVoice(2, true), /Cage/);
+    assert.match(yearVoice(2), /Cage Coach/);
+    assert.equal(morningSpeech("She's moving to the Palms organization. A new voice arrives.", 2, "palms", true), yearVoice(2, true));
     assert.match(yearVoice(3), /The Stretch is next/);
     assert.doesNotMatch(yearVoice(3), /legs are fresh/);
     assert.doesNotMatch(yearVoice(3), /Energy|BP/);

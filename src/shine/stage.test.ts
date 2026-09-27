@@ -72,7 +72,13 @@ describe("style sit and miss read", () => {
     game.struckOut = true;
     game.struckOut = false;
     game.pgMet = true;
-    assert.equal(plateRead(run, game), "She got what she came for.");
+    assert.equal(plateRead(run, game), "A hit with runners on.");
+    // A met reach says what she did, so the headline isn't just her verb.
+    game.pgId = "reach-once";
+    assert.equal(plateRead(run, game), "Two hits. She kept reaching.");
+    game.hits = 1;
+    assert.equal(plateRead(run, game), "She reached on a hit.");
+    game.hits = 2;
     game.pgId = "see-3-one-pa";
     game.kind = "gate";
     game.maxPaPitches = 3;

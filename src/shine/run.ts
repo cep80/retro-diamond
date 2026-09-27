@@ -1,7 +1,16 @@
 import { hashId, makeRng, uid } from "./core/rng.ts";
 import { PLATE_TURNS, turnMeta, yearOf } from "./calendar.ts";
 import { memoryLine } from "./relationship.ts";
-import { isPitcherStyle, sheet } from "./bible.ts";
+import { isPitcherStyle, officialFor, sheet } from "./bible.ts";
+import { speakGoal } from "./goals.ts";
+
+/** The postgame's relief line after a miss the smaller ask saved. The screen colours it as good news. */
+export const SMALLER_ASK_HELD = "The smaller ask held";
+
+/** A coach line is relief (the smaller ask held) or a warning (a miss that counts). */
+export function coachWarningTone(line: string): "relief" | "warning" {
+  return line.includes(SMALLER_ASK_HELD) ? "relief" : "warning";
+}
 import { awardGameSparks, awardStatSparks, awardTrainingSpark, careerClosesEarly, finaleUnlocked, inheritSparks, isMikiPath, mintClubhouseCard } from "./ending.ts";
 import { addHighlight, definingPaFrom, gameHighlight, keepsakeHighlight, rivalHighlight, type GameRecord } from "./scrapbook.ts";
 import {
@@ -321,7 +330,8 @@ export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensi
     run.failStreak = { stat: null, count: 0 };
   }
   if (run.lastBreakthrough) {
-    remember(run, { kind: "breakthrough", turn: run.turn, note: `Cage Coach stayed late, and her ${run.lastBreakthrough} jumped.`, warm: true });
+    const coach = isPitcherStyle(sheet(run.characterId).style) ? "Bullpen Coach" : "Cage Coach";
+    remember(run, { kind: "breakthrough", turn: run.turn, note: `${coach} stayed late, and her ${run.lastBreakthrough} jumped.`, warm: true });
   }
   run.lastWork = { stat, turn: run.turn, from: before, to: run.stats[stat], outcome };
 
@@ -488,7 +498,12 @@ export function applyGameResult(
     run.coachWarning = null;
   } else if (official) {
     if (sgMet) {
-      run.coachWarning = "She didn't get what she came for, but the smaller one held. She's still in it.";
+      // Name the smaller ask, since nothing else on the screen does. It's good news, so it reads as relief.
+      const sg = officialFor(run.characterId, run.turn)?.sgVerb;
+      const ask = sg ? speakGoal(sg) : null;
+      run.coachWarning = ask
+        ? `She didn't get what she came for. ${SMALLER_ASK_HELD}: ${ask[0]!.toLowerCase()}${ask.slice(1)}. She's still in it.`
+        : `She didn't get what she came for. ${SMALLER_ASK_HELD}. She's still in it.`;
     } else {
       run.pgMisses += 1;
       applyMood(run, pgMissMoodDrop(run.stats.guts));

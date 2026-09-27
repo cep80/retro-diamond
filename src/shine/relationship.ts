@@ -85,7 +85,7 @@ function postGate(id: CharacterId, met: boolean, m: CoachMemory | null, wm: Retu
   switch (id) {
     case "aoi":
       return [
-        met ? "She reached. She's not smiling about it; she's replaying the pitch she took." : "She didn't reach. She's replaying the pitch she swung at.",
+        met ? "She reached. She's already writing it in the book, and she's smiling at the page." : "She didn't reach. She's replaying the pitch she swung at.",
         quote ?? "\"You didn't say anything in the dugout. That was right.\"",
         wm === "strained" ? "\"I know you were pushing. I'll tell you when it's too much.\"" : "\"Same thing tomorrow. The work, I mean. Not the game.\"",
       ];
@@ -286,7 +286,7 @@ function quoteMemory(m: CoachMemory): string {
     case "first-fail":
       return `"The first day it didn't land. You didn't change the plan." She nods. "Good."`;
     case "breakthrough":
-      return `"Cage Coach's thing. That was your idea to keep going." She won't say thanks. This is it.`;
+      return `"Staying late with the coach. That was your idea to keep going." She won't say thanks. This is it.`;
     case "catch":
       return `"Parking lot. Catch. You didn't say anything." Which is the point.`;
     case "gate":

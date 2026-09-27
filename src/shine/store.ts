@@ -418,7 +418,7 @@ export const useShine = create<ShineState>()(
         if (!run || turnMeta(run.turn).type !== "year-start") return;
         const next = structuredClone(run);
         resolveYearStart(next);
-        set({ run: next, screen: screenFor(next), lastLine: yearVoice(next.year) });
+        set({ run: next, screen: screenFor(next), lastLine: yearVoice(next.year, isPitcherStyle(sheet(next.characterId).style)) });
       },
       dismissEyeCard: () => set({ eyeCard: false, skipOnboarding: true }),
       dismissLooksLock: () => set({ looksLock: false }),

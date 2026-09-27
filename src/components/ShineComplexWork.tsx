@@ -2,14 +2,16 @@ import type { CSSProperties, Dispatch, SetStateAction } from "react";
 import { ShineMute } from "@/components/ShineMute";
 import { ShineBack, ShineRoundBtn } from "@/components/ShineRoundBtn";
 import { dateLabel, daysAwayLabel, type CalendarBeat } from "@/shine/calendar.ts";
-import { officialFor, sheet } from "@/shine/bible.ts";
+import { isPitcherStyle, officialFor, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { morningSpeech } from "@/shine/culture.ts";
 import { liveStationIds, workLocked } from "@/shine/store.ts";
 import type { StationId, TraineeRun } from "@/shine/types.ts";
 
+// Her main training leads: the Cage for a hitter, the Bullpen for a pitcher (each only shows for one).
 export const STATIONS: { id: StationId; label: string; kana: string; color: string }[] = [
   { id: "cage", label: "Cage", kana: "ケージ", color: "#ff718f" },
+  { id: "side", label: "Bullpen", kana: "ブルペン", color: "#7ad7ff" },
   { id: "poles", label: "Poles", kana: "ポール", color: "#78eadc" },
   { id: "looks", label: "Live looks", kana: "見極め", color: "#7ad7ff" },
   { id: "bp", label: "On-field BP", kana: "打撃", color: "#ffd166" },
@@ -18,7 +20,6 @@ export const STATIONS: { id: StationId; label: string; kana: string; color: stri
   { id: "off-day", label: "Off day", kana: "休養", color: "#ffd166" },
   { id: "treatment", label: "Trainer's room", kana: "治療", color: "#c4d4e0" },
   { id: "clubhouse", label: "Clubhouse", kana: "キャッチ", color: "#ffd166" },
-  { id: "side", label: "Bullpen", kana: "ブルペン", color: "#7ad7ff" },
   { id: "hitch", label: "Hitch", kana: "ヒッチ", color: "#ffd166" },
 ];
 
@@ -57,11 +58,13 @@ export function ShineComplexWork({
   const ask = officialFor(run.characterId, next.turn);
   const firstMorning = run.turn === 1;
   const empty = workLocked(run);
+  const stations = STATIONS.filter((s) => liveStationIds(run).includes(s.id));
   return (
     <main className="shine-stage">
       <img src="/bg/skyline-complex.png" alt="" className="absolute inset-0 size-full object-cover" />
       <div className="shine-stage-wash absolute inset-0" />
-      <div className="relative z-10 flex min-h-dvh flex-col">
+      {/* Exactly one screen tall: her portrait takes what the tiles leave, so every tile stays above the fold. */}
+      <div className="relative z-10 flex h-dvh flex-col">
         <div className="px-3 pt-3 sm:px-5">
           <div className="shine-hud">
             <p className="episode-chip w-fit">
@@ -92,20 +95,21 @@ export function ShineComplexWork({
             <img
               src={art}
               alt=""
-              className={`shine-hero-stand h-[min(52dvh,28rem)] w-auto object-contain object-bottom sm:h-[min(64dvh,36rem)] ${run.altLook ? "shine-alt-look" : ""}`}
+              className={`shine-hero-stand min-h-0 w-full flex-1 object-contain object-bottom max-h-[min(52dvh,28rem)] sm:max-h-[min(64dvh,36rem)] ${run.altLook ? "shine-alt-look" : ""}`}
             />
           ) : null}
           <div className="shine-speech relative z-[2] mb-2 max-w-md -mt-6">
             <p className="shine-kana text-[11px] text-ink/50">
               #{who.number} {who.jp}
             </p>
-            <p className="mt-1 font-ui text-sm leading-relaxed">{morningSpeech(lastLine, run.year, who.parkId)}</p>
+            <p className="mt-1 font-ui text-sm leading-relaxed">{morningSpeech(lastLine, run.year, who.parkId, isPitcherStyle(who.style))}</p>
           </div>
         </div>
 
         <div className="relative z-10 px-3 pb-4 sm:px-5">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {STATIONS.filter((s) => liveStationIds(run).includes(s.id)).map((s) => {
+          {/* Five tiles (a low day opens the Trainer's room) go three across, so there's never a third row. */}
+          <div className={`grid gap-2 sm:grid-cols-3 ${stations.length > 4 ? "grid-cols-3" : "grid-cols-2"}`}>
+            {stations.map((s) => {
               const shut = empty && s.id !== "treatment";
               return (
                 <button

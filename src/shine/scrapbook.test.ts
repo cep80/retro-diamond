@@ -70,8 +70,10 @@ describe("scrapbook replay", () => {
     assert.equal(scrapbookLine("sol", "Diamond Finale COMMAND vs the Academy arm."), "Diamond Finale COMMAND.");
     assert.equal(
       scrapbookLine("sol", "The goal she came for slipped vs the Academy arm. The smaller one held."),
-      "The goal she came for slipped. The smaller one held.",
+      "It got away from her. The smaller ask held.",
     );
+    // An old hitter page is said the new way too.
+    assert.equal(scrapbookLine("aoi", "The goal she came for slipped vs Kira."), "It got away from her vs Kira.");
   });
 
   it("keeps a hitter page against the Academy arm", () => {

@@ -75,12 +75,15 @@ export function workMorningLine(parkId: string) {
 }
 
 /** Story, not a gacha. Mentor C rotates at year-start. She does not change parks. */
+// The RETIRED_* lines are never shown: they match lines old saves still hold, word for word,
+// so the speech can say the new line instead. Don't edit them.
 const RETIRED_YEAR_VOICE = "She's moving to the Palms organization. A new voice arrives.";
-const RETIRED_REACH = "She was on. It still got away.";
+const RETIRED_REACH = "She was on. The goal she came for stayed open.";
 const RETIRED_K = "She struck out. The sit never found the pitch.";
 
-export function yearVoice(year: 1 | 2 | 3) {
-  if (year === 2) return "Last year's Cage Coach took a job in Osaka. The new one shows up with donuts.";
+/** The year-start line. A pitcher's rotating mentor is the Bullpen Coach, a hitter's the Cage Coach. */
+export function yearVoice(year: 1 | 2 | 3, pitcher = false) {
+  if (year === 2) return `Last year's ${pitcher ? "Bullpen" : "Cage"} Coach took a job in Osaka. The new one shows up with donuts.`;
   if (year === 3) return "The Stretch is next.";
   return "The year is open.";
 }
@@ -101,9 +104,9 @@ export function fanLetter(run: { characterId: CharacterId; highlights?: { kind: 
 }
 
 /** Campus speech. A saved year-start line from before the coach rewrite still speaks the new one. */
-export function morningSpeech(lastLine: string | null, year: 1 | 2 | 3, parkId: string) {
+export function morningSpeech(lastLine: string | null, year: 1 | 2 | 3, parkId: string, pitcher = false) {
   if (!lastLine) return workMorningLine(parkId);
-  if (lastLine === RETIRED_YEAR_VOICE) return yearVoice(year);
+  if (lastLine === RETIRED_YEAR_VOICE) return yearVoice(year, pitcher);
   return dateSpeech(lastLine);
 }
 

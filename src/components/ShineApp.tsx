@@ -13,7 +13,7 @@ import { kitAccent } from "@/shine/stage.ts";
 import { cheerLines, curtainCallLine, curtainCaption, curtainFilmSrc, curtainSkin, datePark, dateSpeech, endingRankLabel, fanLetter, recapLine, shouldCurtainCall, yearVoice } from "@/shine/culture.ts";
 import { ShineComplexWork } from "./ShineComplexWork";
 import { careerStill, cardAltLook, cardBanner, cardGold, nextGirlId, nextGirlName, parentEligible, pickInheritSparks, postgameLeaveLabel, seriesFinaleLine, sparkEffectLine, sparkGapLine, yearFoldLine } from "@/shine/ending.ts";
-import { PG_INDEX } from "@/shine/run.ts";
+import { coachWarningTone, PG_INDEX } from "@/shine/run.ts";
 import { ShineExhibition, ShinePlate } from "./ShineRace";
 import { loadActionManifest, warmActionExhibition } from "./action/action-manifest";
 import { filmReady, type ActionManifest } from "@/shine/action-art.ts";
@@ -234,7 +234,7 @@ function Wall() {
   const liveQuote = run?.clubhouseCard ? careerStill(run).quote : null;
   return (
     <main className="shine-stage text-cream">
-      <img src="/bg/park-koi.jpg" alt="" className="absolute inset-0 size-full object-cover" />
+      <img src="/bg/park-koi.jpg" alt="" className="shine-scene-plate" />
       <div className="shine-stage-wash absolute inset-0" />
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
         <div className="flex items-center gap-3">
@@ -701,7 +701,7 @@ function Complex() {
               ? "Senior year. The Stretch is coming."
               : "The year is open."}
         </p>
-        <p className="mt-3 font-ui text-sm text-gold">{yearVoice(run.year)}</p>
+        <p className="mt-3 font-ui text-sm text-gold">{yearVoice(run.year, isPitcherStyle(who.style))}</p>
         <PixelBtn className="mt-6 h-12" onClick={finishYearStart}>
           Morning
         </PixelBtn>
@@ -856,7 +856,9 @@ function Postgame() {
           {last?.type === "finale" && !met ? (
             <p className="mt-3 font-ui text-sm text-cream/70">Losing the Finale doesn&apos;t take anything away from her.</p>
           ) : null}
-          {run.coachWarning && last?.type !== "finale" ? <p className="mt-4 font-ui text-sm text-coral">{run.coachWarning}</p> : null}
+          {run.coachWarning && last?.type !== "finale" ? (
+            <p className={`mt-4 font-ui text-sm ${coachWarningTone(run.coachWarning) === "relief" ? "text-gold" : "text-coral"}`}>{run.coachWarning}</p>
+          ) : null}
           <p className="mt-4 font-ui text-sm text-cream/80">
             {yearFoldLine(run, dateLabel(turnMeta(run.turn), who.style), nextDateLine(run.turn, last?.type))}
           </p>
@@ -1061,7 +1063,8 @@ function Shell({ runTurn, label, children }: { runTurn: number; label: string; c
   const style = run ? sheet(run.characterId).style : "lead";
   return (
     <main className="relative min-h-dvh overflow-hidden bg-ink text-cream">
-      <img src={park} alt="" className="absolute inset-0 size-full object-cover" />
+      {/* The park blurred to light, as the scenes show a place: the pixel ballpark never shows sharp. */}
+      <img src={park} alt="" className="shine-scene-plate" />
       <div className="shine-stage-wash absolute inset-0" />
       <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
         <div className="flex items-center justify-between gap-3">

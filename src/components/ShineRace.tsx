@@ -634,9 +634,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // beat still ends on time.
   const clipMayShow = actionCue.resolvedAtMs !== null && snap.phase === "racing" && stage === "idle";
   // The stamp holds past its landing; keep the clock running through it even after the card
-  // phase, or it freezes on screen. Run it for the longest stamp (a home run's), not the last
-  // pitch's: at the end of a date the film shows the date's closing beat, which can be a hit
-  // or a home run from earlier, and its stamp has to be able to finish and clear.
+  // phase, or it freezes on screen. Run it for the longest stamp (a home run's), so whatever
+  // the last pitch stamped can finish and clear. (A closing beat swapped in at done plays no stamp.)
   const [stampTick, setStampTick] = useState(false);
   const pausedNow = snap.plate.paused;
   useEffect(() => {
@@ -838,7 +837,12 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const flags: StingFlags = { spurt: game.lastSpurt };
   const holdFilm = snap.phase !== "pick" || snap.watching;
   const lastBeat = holdFilm ? (plate.beat ?? actionCue.beat) : null;
-  const beat = running ? "walk" : dateCloseBeat(game, lastBeat);
+  // The date's closing beat (an earlier home run, hit or walk) takes the film only once the
+  // done panel is up: the last pitch plays as itself first, with its own stamp.
+  const closing = snap.phase === "done" ? dateCloseBeat(game, lastBeat) : lastBeat;
+  const beat = running ? "walk" : closing;
+  // A swapped-in beat is her settled still, not a replay: no stamp, no takeover over the finish.
+  const swapped = snap.phase === "done" && closing !== lastBeat;
   const takeMiss =
     countDate && !game.pgMet && (game.pgId === "foul-two-strike" || game.pgId === "contact-breaking");
   const foulHeld = countDate && beat === "foul" && game.pgId === "foul-two-strike";
@@ -852,7 +856,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     call: practice ? null : plate.call,
     u,
     tappedAtU: actionCue.tappedAtU,
-    resolvedAtMs: running || takeMiss ? null : contactHeld || foulHeld ? 0 : actionCue.resolvedAtMs,
+    resolvedAtMs: running || takeMiss ? null : contactHeld || foulHeld ? 0 : swapped ? null : actionCue.resolvedAtMs,
     nowMs: contactHeld ? 0 : foulHeld ? CONTACT_HOLD_MS : stage === "field" || stage === "reaction" || clipMayShow || stampTick ? nowMs : clock(),
     reduced,
   };

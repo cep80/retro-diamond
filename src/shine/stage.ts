@@ -87,9 +87,17 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
     if (game.pgId === "score-from-first-single") return "She scored from first on a single.";
     if (game.pgId === "score-no-hit") return "She scored without a hit.";
     if (game.pgId === "reach-twice") return "She reached twice.";
+    if (game.pgId === "hit-risp") return "A hit with runners on.";
+    if (game.pgId === "hit-late") return "A hit, and a late one.";
+    if (game.pgId === "rbi") return "A run scored on her ball.";
+    if (game.pgId === "quality-abs-3") return "Three balls in play, all hard.";
     if (game.kind === "gate") return "The Gate opened.";
     if (game.hr) return "She watched it go.";
     if (game.walks > 0 && game.hits === 0) return "Ball four was enough.";
+    // Say what she did: the headline shows this line under the 達成 stamp, not her verb again.
+    if (game.hits >= 3) return "Three hits. She kept reaching.";
+    if (game.hits === 2) return "Two hits. She kept reaching.";
+    if (game.hits === 1) return "She reached on a hit.";
     return "She got what she came for.";
   }
   if (game.pgId === "see-3-one-pa") {

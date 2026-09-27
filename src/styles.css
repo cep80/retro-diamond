@@ -1768,6 +1768,8 @@
 }
 .shine-choice::before {
   content: "▶";
+  /* Decorative: empty alt text, so a screen reader reads the choice, not the arrow. */
+  content: "▶" / "";
   flex: none;
   font-size: 0.7rem;
   color: var(--shine-accent, var(--color-coral));

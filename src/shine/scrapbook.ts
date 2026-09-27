@@ -33,13 +33,17 @@ export function gameHighlight(run: TraineeRun, kind: string, pgMet: boolean, sgM
   if (record?.summary) line = `${record.summary}${vs}.`;
   else if (pgMet && proof) line = `She got what she came for${vs}. ${proof}`;
   else if (pgMet) line = `She got what she came for${vs}.`;
-  else if (sgMet) line = `The goal she came for slipped${vs}. The smaller one held.`;
-  else line = `The goal she came for slipped${vs}.`;
+  else if (sgMet) line = `It got away from her${vs}. The smaller ask held.`;
+  else line = `It got away from her${vs}.`;
   return { turn: run.turn, label, line, kind: "game" };
 }
 
-/** Pitcher years used to mint the hitter keepsake. The page says what she actually kept. */
+/**
+ * A saved page, said the way the game says it now. Pages from before the copy pass named
+ * "the goal"; pitcher years used to mint the hitter keepsake. The page says what she actually kept.
+ */
 export function scrapbookLine(id: CharacterId, line: string): string {
+  line = line.replace("The goal she came for slipped", "It got away from her").replace("The smaller one held.", "The smaller ask held.");
   if (!isPitcherStyle(sheet(id).style)) return line;
   line = line.replaceAll(" vs the Academy arm", "");
   if (line === "The first-hit ball, kept." || line === "She kept the first-hit ball.") return "The last-out ball, kept.";
