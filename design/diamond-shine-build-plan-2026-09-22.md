@@ -234,4 +234,12 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
     - "Kira comes set."
     - broadcast present tense
     - "Batting leadoff"
-- **Open:** server-side receipt verification before any real purchase; the art brief (a user step); the M1 `MoundController` extraction.
+- **M1 done: `MoundController`.** The mound date's state machine, waits, pause and saves live in `src/shine/mound-controller.ts`, with 21 tests on a virtual clock. ShineMound is its view. Seeded before/after runs of every mound script match line for line.
+- **Check-in 15 (gameplay programmer + regression playtest):** no regressions. Fixed:
+  - a reload over the done panel reopened the date one pitch early (older than the extraction); the finishing landing now saves once
+  - `destroy()` is terminal
+- **Open:**
+  - a production deploy (needs the user's go-ahead)
+  - the stranger playtest (M6, a user step)
+  - server-side receipt verification before any real purchase
+  - the art brief (a user step)
