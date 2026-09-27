@@ -199,4 +199,39 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
     - 375×667: the grid ends at 465 and the lines start at 473.
     - 1280×800: the grid starts at 248, below her chin.
     - Miki's read shows mid-date at 0-0 and 0-2.
-- **Open:** server-side receipt verification before any real purchase; the art brief (a user step). The M1 `MoundController` extraction is still open. The creative director's milestone look at the mound and race together is next.
+- **Check-in 13 (game designer + creative director milestone):**
+  - **Game designer.** The walk rule ships as is: simulated at 400 dates per goal, no goal moved more than 2 points with a centred glove. Two older engine bugs are fixed:
+    - Kira's Finale support goal asked her to strand inherited runners on a date that gives her none. It's now "Record 3 outs", like the aces'.
+    - A third out with runners on re-stranded inherited runners after one had already scored, lifting her Night Classic by about 7 points.
+  - **Creative director:** the race is about 45% of the way to Uma, the mound about 30%.
+    - 19 code findings, C1–C18.
+    - 6 art findings, now in art brief §5–§7: pitcher reaction stills, the batter from the mound, Kira's set reframed, slide and score stills, Sol's cap badge and the cleat marks, and Reina's release venue.
+- **Broadcast pass (C1–C18)** in one commit, built in two phases (parts, then wiring), then playtested and code-reviewed:
+  - **Stamps:** read from her side on the mound. A home run against her is drained, not celebrated.
+  - **Finish:** a 達成 / 未達成 stamp, what she did, a strip of each at-bat or batter, the scorebug held at her last inning, and her mood bust on the mound.
+  - **Broadcast chrome:** a skill banner and a last-spurt banner; nameplates and a VS card; a card after each batter on the mound; a pitch readout (km/h in the race).
+  - **Play and polish:**
+    - the ball lands mid-zone
+    - a run scored gets its own 得点 stamp
+    - the race's home run reads gold
+    - the desktop column sits on a blurred park
+    - the date's tag moves into the scorebug
+    - one gold action colour
+- **Check-in 14 (playtest + gameplay programmer + narrative director on the pass), all fixed:**
+  - **Input guard:** it re-arms when the done panel swaps in. Checked at 150 and 250 ms double taps on the last card.
+  - **Layout:**
+    - long goals wrap in the bug
+    - the VS card keeps Aoi's face
+    - the bust ends above the done panel
+    - the skill band clears at the release
+  - **Honest scorebug:** it never says "Final" on a date that ends mid-game, and each pitch has one name.
+  - **Copy:**
+    - no "goal" on screen ("It got away from her.")
+    - バントヒット, not 送りバント, for a bunt single
+    - 2失点 and 未達成
+    - headlines say what she did
+    - the exhibition line is the day's moment, not a tally
+    - "Kira comes set."
+    - broadcast present tense
+    - "Batting leadoff"
+- **Open:** server-side receipt verification before any real purchase; the art brief (a user step); the M1 `MoundController` extraction.
