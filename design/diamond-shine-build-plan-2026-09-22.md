@@ -238,7 +238,22 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
 - **Check-in 15 (gameplay programmer + regression playtest):** no regressions. Fixed:
   - a reload over the done panel reopened the date one pitch early (older than the extraction); the finishing landing now saves once
   - `destroy()` is terminal
+- **M1 complete: the year smoke test.** `scripts/year-smoke.mjs` plays a whole Rookie year through real taps for any girl. It is seeded and replayable, and it samples the film frame by frame from Go to the done panel. All six girls reach Year 2 clean, in about 2–4 minutes with scenes skipped.
+- **Check-in 16 (smoke runs, every defect reproduced by a skeptic), all fixed:**
+  - **Last pitch mislabelled.** On a date she had already won, the last pitch was dressed as the day's earlier big moment: an out with a home run's confetti, or a strike three stamped BASE HIT. It happened in about 8 of 37 Gate runs. The closing beat now takes the film only at the done panel, as a still with no stamp.
+  - **Training tiles below the fold.** Reina's Bullpen tile (her main training) could sit entirely below a 390×844 screen, and 375×667 cut even four tiles. The work screen is now one screen tall: the portrait shrinks, five tiles go three across, and her main training leads. Checked at 390×844, 375×667 and 360×640.
+  - **Copy and polish:**
+    - pitchers hear about the Bullpen Coach
+    - Aoi's met-Gate line matches her grin
+    - the smaller ask is named when it saves a date, in gold
+    - a met reach says what she did
+    - the simple screens blur the park
+    - choices don't read their arrow aloud
+    - scrapbook pages stop saying "goal"
+  - **Smoke script:** asset errors now fail a run, and the Clubhouse stays out of the training rotation so the five-tile screen gets exercised.
+  - **Caught in my own check-in 14 fix:** a saved-line matcher (RETIRED_REACH) had been reworded, which broke the old-save migration. It's restored word for word.
 - **Open:**
+  - the game designer's Rookie-year difficulty review (running)
   - a production deploy (needs the user's go-ahead)
   - the stranger playtest (M6, a user step)
   - server-side receipt verification before any real purchase
