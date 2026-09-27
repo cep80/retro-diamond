@@ -163,3 +163,40 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
   - Scouting read: it now reads where the glove sat, which the player controls, and is shown before it's used; its book fills only on her own at-bats.
   - Strikeout balance: the arm's Stuff above 10 widens the hitter's timing error (0.55 per point, cap 3x). Simulated: Year 1 unchanged (K 11–14%), Year 2 mid-career vs Sol K 16–22%, trained Year 3 vs Sol K 6–14% (was 0–0.3%), peak HR 4–6% (was 9–11%).
 - **Open:** the mound's full-bleed layout; server-side receipt verification before any real purchase; the art brief (a user step).
+
+**2026-09-26**
+- **Stall:** three workflow agents sat about 2 hours on unanswered permission prompts (a `cd … && for` count loop and a `node -e` one-liner). All three were stopped. Every agent brief now carries a tool-rules block: Bash only for `node <file>`, tsc, npm test and git diff; read-only reviewers get no Bash.
+- **Check-in 11 (narrative director), M2 pass 4, adversarially verified. 40 fixes in two commits.**
+  - Voice and slop (21):
+    - Curtain calls lost their art notes. Miki's "US dugout" label was printing on the お立ち台 screen.
+    - The C-rank quotes became moments instead of morals.
+    - Kira's first verse and meet line are hers.
+    - "Um, sorry" is back inside its cap.
+    - Miki and Yuki stopped spending Year 2 lines in Year 1.
+    - The Year 2 start names the Cage Coach, so the player isn't replaced.
+  - Repetition and lore (19):
+    - The Finale card no longer repeats the curtain call it follows (Reina, Kira, Aoi, Yuki).
+    - Miki's never-quit quote is her own act.
+    - The Stretch plates name the park it's played in.
+    - Year 2 events don't claim a perfect game or a run the date may not have given.
+    - Sol throws no changeup in Year 1.
+    - Yuki's box stays a secret.
+    - Kira hands the Coach the transfer.
+  - Refuted and kept: the B Finale line, Sol's "Number One", Kira's last-beat tics, Reina's scarf, Sol's "Ninety-seven. Don't write that down."
+- **Mound full-bleed + check-in 12 (gameplay programmer + adversarial playtest):** the mound now reads like the race. Fixed in the same commit:
+  - **Engine:** a walk forces a run only with the bases loaded. A walk with a runner on first was scoring, and could blow a strand-inherited save.
+  - **Layout:**
+    - The glove grid gives up height at its foot, so the Coach's lines never cover a cell.
+    - On desktop the grid starts below her chin, in the race too.
+    - The verses sing during the throw.
+    - The done panel sits over her own still, not the hitter's celebration.
+  - **Behaviour:**
+    - The rival's read shows before every one of her pitches.
+    - Enter and Space press a focused button.
+    - One live region carries the closing line.
+    - Two tests were tightened.
+  - **Verified headless:**
+    - 375×667: the grid ends at 465 and the lines start at 473.
+    - 1280×800: the grid starts at 248, below her chin.
+    - Miki's read shows mid-date at 0-0 and 0-2.
+- **Open:** server-side receipt verification before any real purchase; the art brief (a user step). The M1 `MoundController` extraction is still open. The creative director's milestone look at the mound and race together is next.
