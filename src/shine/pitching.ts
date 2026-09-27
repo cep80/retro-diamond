@@ -337,7 +337,8 @@ function retireInning(game: PitchingGame, how: "k" | "in-play" = "in-play") {
   game.inningsOuts += 1;
   push(game.events, { t: "pitcherOut", how, outs: game.outs });
   if (game.outs >= 3) {
-    if (game.runners > 0 && game.inherited > 0) game.inheritedStranded = true;
+    // inheritedStranded starts true with inherited runners aboard and only ever falls:
+    // a third out with runners on can't take back a run that already scored.
     if (game.runners >= 2) game.escapedJam = true;
     if (game.runners >= 3) game.escapedLoadedJam = true;
     game.outs = 0;

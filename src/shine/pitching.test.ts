@@ -204,6 +204,38 @@ describe("Ace / Closer mound", () => {
     }
   });
 
+  it("gives Kira's Finale a support goal she can reach (no inherited runners to strand)", () => {
+    const run = newRun("kira");
+    run.turn = 60;
+    const game = startPitchingGame(run, "finale");
+    assert.equal(game.inherited, 0);
+    assert.equal(game.sgId, "outs-3");
+  });
+
+  it("a third out with runners on doesn't un-score an inherited runner", () => {
+    // The case that matters: a run already broke the strand, then an inning ends with runners on.
+    let thirdOutWithRunners = 0;
+    for (let s = 0; s < 400; s++) {
+      const run = newRun("kira");
+      run.turn = 33;
+      run.rngSeed = `strand-${s}`;
+      const game = startPitchingGame(run, "night-classic");
+      for (let i = 0; i < 80 && !game.done; i++) {
+        const sit = { row: 1 as const, col: 1 as const };
+        const pitch = decidePitch(run, game);
+        const d = decideDelivery(run, game, pitch, sit);
+        const scoredBefore = !game.inheritedStranded;
+        const onBefore = game.runners;
+        const eventsBefore = game.events.length;
+        resolveDelivery(run, game, pitch, sit, d.kickT, d.releaseT);
+        if (!scoredBefore) continue;
+        assert.equal(game.inheritedStranded, false, `seed ${s}: a broken strand stays broken`);
+        if (onBefore > 0 && game.events.slice(eventsBefore).some((e) => e.t === "inning")) thirdOutWithRunners += 1;
+      }
+    }
+    assert.ok(thirdOutWithRunners > 0, "a third out with runners on after the strand broke");
+  });
+
   it("The Stretch opens a four-out save with two outs in the eighth", () => {
     const run = newRun("kira");
     run.turn = 50;

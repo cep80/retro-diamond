@@ -255,7 +255,7 @@ const RAW_BIBLE: RawSheet[] = [
       { turn: 33, verb: "Enter with inherited runners and strand", sgVerb: "Strand inherited runners", resultsPg: false },
       { turn: 50, verb: "Four-out save", sgVerb: "Record 3 outs", resultsPg: false },
       { turn: 55, verb: "Clean ninth", sgVerb: "Strike out 2", resultsPg: false },
-      { turn: 60, verb: "Strike out the side", sgVerb: "Strand inherited runners", resultsPg: false },
+      { turn: 60, verb: "Strike out the side", sgVerb: "Record 3 outs", resultsPg: false },
     ],
   },
   {
