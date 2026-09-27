@@ -577,6 +577,9 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       // Paused, the dialog's own buttons take Enter / Space.
       if (s.plate.paused) return;
       if (ev.code === "Enter" || ev.code === "Space") {
+        // A focused button (Mute, Time, a sit cell, the card) takes its own key.
+        const t = ev.target instanceof Element ? ev.target : null;
+        if (t?.closest("button, a, input, select, textarea, [role=button]")) return;
         ev.preventDefault();
         if (s.phase === "pick" && filmWarmRef.current) go();
         else if (s.phase === "pa-card") race.next();

@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { deliveryWindows, windowMiss } from "./core/zone.ts";
 import { traineePitcher } from "./actors.ts";
 import { newRun } from "./run.ts";
-import { ACE_ACT1_BATTERS, completeAct2, decideDelivery, decidePitch, DELIVERY_DUR, enterSeventh, maybeLastSpurtCloser, moundBeatFor, pitchingWindows, resolveDelivery, resolveMiddle, startPitchingGame, stuffWhiff } from "./pitching.ts";
+import { ACE_ACT1_BATTERS, completeAct2, decideDelivery, decidePitch, DELIVERY_DUR, enterSeventh, lastPitchSwung, maybeLastSpurtCloser, moundBeatFor, pitchingWindows, resolveDelivery, resolveMiddle, startPitchingGame, stuffWhiff } from "./pitching.ts";
 
 describe("Ace / Closer mound", () => {
   it("starts Reina Gate as Ace Act 1 needing 3 outs", () => {
@@ -356,5 +356,83 @@ describe("Ace / Closer mound", () => {
     const base = deliveryWindows(traineePitcher(run, true, game.consecutiveInnings).control, DELIVERY_DUR);
     assert.ok(w.kick.half > base.kick.half);
     assert.ok(w.release.half > base.release.half);
+  });
+
+  it("tells a swinging strikeout from a called one, for the stamp", () => {
+    let swinging = 0;
+    let looking = 0;
+    for (let s = 0; s < 60 && (swinging === 0 || looking === 0); s++) {
+      const run = newRun("sol");
+      run.turn = 5;
+      run.rngSeed = `k-stamp-${s}`;
+      const game = startPitchingGame(run, "gate");
+      assert.equal(lastPitchSwung(game), false);
+      for (let i = 0; i < 80 && !game.done; i++) {
+        const sit = { row: (i % 3) as 0 | 1 | 2, col: 1 as const };
+        const pitch = decidePitch(run, game);
+        const d = decideDelivery(run, game, pitch, sit);
+        resolveDelivery(run, game, pitch, sit, d.kickT, d.releaseT);
+        if (moundBeatFor(game) !== "k") continue;
+        // The strike three itself: a whiff on a swing, a called strike on a take.
+        const pitchAt = game.events.map((e) => e.t).lastIndexOf("pitch");
+        const last = game.events.slice(pitchAt + 1);
+        if (lastPitchSwung(game)) {
+          swinging += 1;
+          assert.ok(last.some((e) => e.t === "contact" && e.tier === "miss"));
+        } else {
+          looking += 1;
+          assert.ok(last.some((e) => e.t === "take" && e.strike));
+        }
+      }
+    }
+    assert.ok(swinging > 0, "a swinging strikeout");
+    assert.ok(looking > 0, "a called strikeout");
+  });
+
+  it("a walk forces a run only with the bases loaded", () => {
+    const cases = [
+      { runners: 1, inherited: 1, runs: 0, bases: 2 },
+      { runners: 2, inherited: 2, runs: 0, bases: 3 },
+      { runners: 3, inherited: 0, runs: 1, bases: 3 },
+      { runners: 3, inherited: 3, runs: 1, bases: 3 },
+    ];
+    for (const c of cases) {
+      let walked = false;
+      for (let s = 0; s < 400 && !walked; s++) {
+        const run = newRun("kira");
+        run.turn = 33;
+        run.rngSeed = `walk-${c.runners}-${c.inherited}-${s}`;
+        const game = startPitchingGame(run, "night-classic");
+        game.runners = c.runners;
+        game.inherited = c.inherited;
+        game.inheritedStranded = c.inherited > 0;
+        game.scoreDiff = 2;
+        game.count = { balls: 3, strikes: 0 };
+        const sit = { row: 0 as const, col: 0 as const };
+        const pitch = decidePitch(run, game);
+        const d = decideDelivery(run, game, pitch, sit);
+        resolveDelivery(run, game, pitch, sit, d.kickT, d.releaseT);
+        if (!game.events.some((e) => e.t === "pitcherWalk")) continue;
+        walked = true;
+        const at = `${c.runners} on, ${c.inherited} inherited`;
+        assert.equal(game.scoreDiff, 2 - c.runs, at);
+        assert.equal(game.runners, c.bases, at);
+        assert.equal(game.events.filter((e) => e.t === "pitcherRun").length, c.runs, at);
+        assert.equal(game.inheritedStranded, c.inherited > 0 && c.runs === 0, at);
+        assert.equal(game.blown, false, at);
+      }
+      assert.ok(walked, `a ball four with ${c.runners} on`);
+    }
+  });
+
+  it("reads the last pitch only: a take after a swing is a take", () => {
+    const game = { events: [] as ReturnType<typeof startPitchingGame>["events"] };
+    game.events.push({ t: "pitch", pa: 0, n: 1, type: "fastball", inZone: true });
+    game.events.push({ t: "swing", pa: 0, kind: "contact", timingErr: 0.2 });
+    game.events.push({ t: "contact", pa: 0, tier: "miss", quality: 0 });
+    assert.equal(lastPitchSwung(game), true);
+    game.events.push({ t: "pitch", pa: 0, n: 2, type: "fastball", inZone: true });
+    game.events.push({ t: "take", pa: 0, strike: true });
+    assert.equal(lastPitchSwung(game), false);
   });
 });

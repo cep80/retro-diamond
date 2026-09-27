@@ -616,10 +616,13 @@ export function resolveDelivery(
     if (game.count.balls >= 4) {
       game.walks += 1;
       game.kStreak = 0;
+      // A walk forces a run home only when the bases were already full. The lead
+      // runner is the oldest one, so an inherited runner is the one who scores.
+      const forced = game.runners >= 3;
       game.runners = Math.min(3, game.runners + 1);
       push(game.events, { t: "pitcherWalk", outs: game.outs });
-      if (game.inherited > 0 && game.runners > game.inherited) {
-        game.inheritedStranded = false;
+      if (forced) {
+        if (game.inherited > 0) game.inheritedStranded = false;
         game.earnedRuns += 1;
         game.scoreDiff -= 1;
         push(game.events, { t: "pitcherRun", runs: 1, earned: true });
@@ -715,6 +718,17 @@ export function moundBeatFor(game: PitchingGame): MoundBeat {
   const take = after.find((e) => e.t === "take");
   if (take && take.t === "take") return take.strike ? "take-strike" : "ball";
   return "none";
+}
+
+/** Whether the batter swung at the last pitch: a strikeout's stamp says swinging or looking. */
+export function lastPitchSwung(game: Pick<PitchingGame, "events">): boolean {
+  const ev = game.events;
+  for (let i = ev.length - 1; i >= 0; i--) {
+    const e = ev[i]!;
+    if (e.t === "swing") return true;
+    if (e.t === "pitch") return false;
+  }
+  return false;
 }
 
 export function maybePitchLastSpurt(game: PitchingGame) {

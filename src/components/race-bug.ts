@@ -1,10 +1,13 @@
 /**
  * The race scorebug's held state. The game deals the next at-bat the instant a
  * plate appearance's last pitch resolves; the bug holds the one that just
- * ended until the card clears. Kept out of the .tsx so the node test runner
- * covers it.
+ * ended until the card clears. The mound's bug (moundBug, settleMoundBug) does
+ * the same from the pitcher's side. Kept out of the .tsx so the node test
+ * runner covers it.
  */
 import type { Bases, PlateEvent } from "../shine/events.ts";
+import type { PitchingGame } from "../shine/pitching.ts";
+import { inningLabel } from "./race-ui.ts";
 
 /** What the scorebug shows; `score` is the raw run difference (null when the kind has no score). */
 export interface BugState {
@@ -84,5 +87,85 @@ export function settleBug(held: BugState, events: readonly PlateEvent[], pa: num
     outs,
     bases,
     self,
+  };
+}
+
+/** The mound keeps a runner count, not bases: they fill from first, the way a force fills them. */
+function basesFor(runners: number): Bases {
+  return { first: runners >= 1, second: runners >= 2, third: runners >= 3 };
+}
+
+/** The bullpen date is three looks (pitching.ts ends it on the third pitch). */
+const BULLPEN_LOOKS = 3;
+
+/**
+ * The mound's scorebug, from the pitcher's side: her team's score, the count
+ * she has on the batter, the outs she has, the runners on against her, and who
+ * is in the box. `score` is her team's run difference.
+ */
+export function moundBug(game: Pick<PitchingGame, "kind" | "inning" | "scoreDiff" | "count" | "outs" | "runners" | "batterName" | "pitchCount">): BugState {
+  if (game.kind === "practice") {
+    return {
+      inning: null,
+      score: null,
+      atBat: `Bullpen · ${Math.min(BULLPEN_LOOKS, game.pitchCount + 1)} of ${BULLPEN_LOOKS}`,
+      count: { balls: 0, strikes: 0 },
+      outs: 0,
+      bases: basesFor(0),
+      self: null,
+    };
+  }
+  return {
+    inning: inningLabel(game.inning),
+    score: game.scoreDiff,
+    atBat: `vs ${game.batterName}`,
+    count: { ...game.count },
+    outs: game.outs,
+    bases: basesFor(game.runners),
+    self: null,
+  };
+}
+
+/**
+ * The mound's bug after a pitch: the bug as it stood at the wind-up with that
+ * pitch's events replayed on it. The game deals the next batter (a fresh
+ * count, and after the third out an empty inning) the instant the pitch that
+ * ends a plate appearance resolves; the bug holds the one that just ended —
+ * the strike, the out on the lamps, the runner aboard, the runs on the board —
+ * until the next wind-up.
+ */
+export function settleMoundBug(held: BugState, events: readonly PlateEvent[]): BugState {
+  // The bullpen keeps no count.
+  if (held.inning === null) return held;
+  let i = events.length - 1;
+  while (i >= 0 && events[i]!.t !== "pitch") i--;
+  if (i < 0) return held;
+  let { balls, strikes } = held.count;
+  let outs = held.outs;
+  let runners = Number(held.bases.first) + Number(held.bases.second) + Number(held.bases.third);
+  let runs = 0;
+  for (const e of events.slice(i + 1)) {
+    if (e.t === "take") {
+      if (e.strike) strikes += 1;
+      else balls += 1;
+    } else if (e.t === "contact") {
+      if (e.tier === "miss") strikes += 1;
+      else if (e.tier === "hr") runners = 0;
+      else if (e.tier === "hit") runners = Math.min(3, runners + 1);
+    } else if (e.t === "pitcherWalk") {
+      runners = Math.min(3, runners + 1);
+    } else if (e.t === "pitcherOut") {
+      outs = Math.min(2, outs + 1);
+    } else if (e.t === "pitcherRun") {
+      runs += e.runs;
+    }
+  }
+  return {
+    ...held,
+    // The lamps hold three balls and two strikes: ball four and strike three read off the stamp.
+    count: { balls: Math.min(3, balls), strikes: Math.min(2, strikes) },
+    outs,
+    bases: basesFor(runners),
+    score: held.score === null ? null : held.score - runs,
   };
 }

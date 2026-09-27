@@ -9,10 +9,10 @@
  * money-beat clip, the outcome card. Missing art degrades one layer at a
  * time; with no manifest the `fallback` renders.
  *
- * `bleed` fills the parent edge to edge (the race): the 3:4 picture covers
- * it like object-fit cover and every layer that belongs to the picture (the
- * still, the ball, the clip) rides that cover box. A home run leaves the
- * frame entirely: it is a fixed full-screen layer in either layout.
+ * `bleed` fills the parent edge to edge (the race and the mound): the 3:4
+ * picture covers it like object-fit cover and every layer that belongs to the
+ * picture (the still, the ball, the clip) rides that cover box. A home run
+ * leaves the frame entirely: on bleed it is a fixed full-screen layer.
  *
  * The component never reads the controller. The parent feeds `ActionView`
  * and re-renders on its own clocks (flight u, the reaction rAF).
@@ -49,9 +49,17 @@ import type { RivalArmId } from "@/shine/rivals.ts";
 import type { CharacterId } from "@/shine/types.ts";
 import { portraitSrc, sheet, type PortraitMood } from "@/shine/bible.ts";
 
+/** The name on the home run's plate: kana and number for the cast, the name alone for an academy bat. */
+export interface HrNameplate {
+  name: string;
+  jp: string | null;
+  number: number | null;
+}
+
 export interface ActionStageProps {
   view: ActionView;
-  batterId: CharacterId;
+  /** "academy" is an unnamed academy bat (the mound's lineup): no plate, no clip of hers. */
+  batterId: CharacterId | "academy";
   armId: RivalArmId;
   manifest: ActionManifest | null;
   pitch: LivePitch | null;
@@ -75,8 +83,10 @@ export interface ActionStageProps {
   children?: ReactNode;
   /** Drawn instead of the stage when there is no art at all. */
   fallback?: ReactNode;
-  /** Fill the parent edge to edge (the race) instead of a 3:4 card (the mound). */
+  /** Fill the parent edge to edge (the race, the mound) instead of a 3:4 card. */
   bleed?: boolean;
+  /** Who the home run's nameplate names. Default: the batter's sheet. */
+  hrBy?: HrNameplate;
   /**
    * The clock `view.resolvedAtMs` and `view.nowMs` are read on. The race passes
    * one with its pauses cut out; default performance.now().
@@ -292,11 +302,12 @@ export function ActionStage({
   children,
   fallback,
   bleed = false,
+  hrBy,
   clock = wallClock,
   paused = false,
   className,
 }: ActionStageProps) {
-  const batter = manifest?.girls[batterId];
+  const batter = batterId === "academy" ? undefined : manifest?.girls[batterId];
   const pitcher = armId === "academy" ? undefined : manifest?.girls[armId];
   const picture = useMemo(() => pictureFor(view, flags, twoStrikeHold), [view, flags, twoStrikeHold]);
   const focus = focusProp ?? focusFor(view, Boolean(pitcher));
@@ -333,12 +344,21 @@ export function ActionStage({
   const showCard = !bleed && !quietCard && picture.card && view.stage !== "idle" && view.stage !== "situation";
   const stamp = quietCard ? null : resultStamp(view.beat, view.swung);
   const stampUp = Boolean(stamp) && sinceResolve >= 0 && stampVisible(sinceResolve, view.beat);
-  // The full-screen home run is the race's (bleed). The mound's card sits inside a stacked
-  // section the Coach panel paints over, so there it's the plain in-card stamp.
+  // The full-screen home run needs the bleed layout (the race, the mound): its fixed layers
+  // sit in the page's stacking order, over the HUD. A card layout keeps the plain in-card stamp.
   const hr = bleed && view.beat === "hr" && stampUp;
   // On a wide screen the home run's rays and streamers run past the film's
-  // column: her still, blurred and dimmed, fills the flanks under them.
-  const hrBackdrop = hr && bleed ? (stillFor(batter, "celebrate")?.url ?? portraitSrc(batterId, "elated")) : null;
+  // column: the still in the frame, blurred and dimmed, fills the flanks under
+  // them. The race's frame is the batter's celebration; the mound's is the
+  // pitcher who gave it up.
+  const hrBackdrop = !hr
+    ? null
+    : focus === "pitcher" && armId !== "academy"
+      ? (stillFor(pitcher, picture.pitcher)?.url ?? portraitSrc(armId, "crushed"))
+      : batterId !== "academy"
+        ? (stillFor(batter, "celebrate")?.url ?? portraitSrc(batterId, "elated"))
+        : null;
+  const hrName: HrNameplate | null = hrBy ?? (batterId === "academy" ? null : { name: sheet(batterId).name, jp: sheet(batterId).jp, number: sheet(batterId).number });
   // Her still pushes in behind the home run and stays in until the next pitch
   // cuts away, so the zoom never snaps back on screen.
   const hrZoom = bleed && !quietCard && !view.reduced && view.beat === "hr" && sinceResolve >= STAMP_DELAY_MS;
@@ -492,9 +512,17 @@ export function ActionStage({
                 </span>
                 <span className="shine-stamp-en">{stamp.en}</span>
               </div>
-              <p className="shine-hr-name">
-                <span className="shine-kana">{sheet(batterId).jp}</span> {sheet(batterId).name} · #{sheet(batterId).number}
-              </p>
+              {hrName ? (
+                <p className="shine-hr-name">
+                  {hrName.jp ? (
+                    <>
+                      <span className="shine-kana">{hrName.jp}</span>{" "}
+                    </>
+                  ) : null}
+                  {hrName.name}
+                  {hrName.number !== null ? ` · #${hrName.number}` : null}
+                </p>
+              ) : null}
             </div>
           </div>
         </>

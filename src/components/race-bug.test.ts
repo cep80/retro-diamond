@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { PlateEvent } from "../shine/events.ts";
-import { settleBug, type BugState } from "./race-bug.ts";
+import { moundBug, settleBug, settleMoundBug, type BugState } from "./race-bug.ts";
 
 function bug(over: Partial<BugState> = {}): BugState {
   return {
@@ -111,5 +111,110 @@ describe("the held scorebug", () => {
     assert.equal(out.self, 2);
     assert.equal(out.bases.second, true);
     assert.equal(out.score, null);
+  });
+});
+
+describe("the mound's scorebug", () => {
+  const live = {
+    kind: "gate" as const,
+    inning: 9,
+    scoreDiff: 1,
+    count: { balls: 1, strikes: 2 },
+    outs: 1,
+    runners: 2,
+    batterName: "Nishi",
+    pitchCount: 7,
+  };
+
+  it("reads the game from her side: her lead, the count, the runners filling from first, the batter", () => {
+    const b = moundBug(live);
+    assert.equal(b.inning, "9th");
+    assert.equal(b.score, 1);
+    assert.equal(b.atBat, "vs Nishi");
+    assert.deepEqual(b.count, { balls: 1, strikes: 2 });
+    assert.deepEqual(b.bases, { first: true, second: true, third: false });
+    assert.equal(b.self, null);
+    // A copy: the engine counts in place.
+    assert.notEqual(b.count, live.count);
+  });
+
+  it("counts the bullpen's looks and keeps no count there", () => {
+    const b = moundBug({ ...live, kind: "practice", pitchCount: 1 });
+    assert.equal(b.inning, null);
+    assert.equal(b.score, null);
+    assert.equal(b.atBat, "Bullpen · 2 of 3");
+    assert.equal(moundBug({ ...live, kind: "practice", pitchCount: 3 }).atBat, "Bullpen · 3 of 3");
+    const held = settleMoundBug(b, [{ t: "pitch", pa: 0, n: 2, type: "fastball", inZone: true }, { t: "take", pa: 0, strike: true }]);
+    assert.deepEqual(held.count, { balls: 0, strikes: 0 });
+  });
+
+  it("holds a strikeout on the batter it ended: strike two still lit, the out on the lamps", () => {
+    const events: PlateEvent[] = [
+      { t: "pitch", pa: 3, n: 7, type: "slider", inZone: false },
+      { t: "swing", pa: 3, kind: "contact", timingErr: 0.4 },
+      { t: "contact", pa: 3, tier: "miss", quality: 0 },
+      { t: "pitcherOut", how: "k", outs: 2 },
+    ];
+    const out = settleMoundBug(moundBug(live), events);
+    assert.deepEqual(out.count, { balls: 1, strikes: 2 });
+    assert.equal(out.outs, 2);
+    assert.equal(out.atBat, "vs Nishi");
+    assert.deepEqual(out.bases, { first: true, second: true, third: false });
+  });
+
+  it("caps the third out at two lamps and keeps the stranded runners on", () => {
+    const events: PlateEvent[] = [
+      { t: "pitch", pa: 4, n: 9, type: "fastball", inZone: true },
+      { t: "swing", pa: 4, kind: "contact", timingErr: 0.1 },
+      { t: "contact", pa: 4, tier: "out", quality: 0.3 },
+      { t: "pitcherOut", how: "in-play", outs: 3 },
+      { t: "inning", inning: 8 },
+    ];
+    // The seventh, not the ninth: every inning from the ninth on is labelled "9th".
+    const out = settleMoundBug(moundBug({ ...live, inning: 7, outs: 2 }), events);
+    assert.equal(out.outs, 2);
+    assert.equal(out.inning, "7th");
+    assert.deepEqual(out.bases, { first: true, second: true, third: false });
+  });
+
+  it("forces a walk on, and puts a run on the board against her", () => {
+    const walk: PlateEvent[] = [
+      { t: "pitch", pa: 2, n: 5, type: "curve", inZone: false },
+      { t: "take", pa: 2, strike: false },
+      { t: "pitcherWalk", outs: 1 },
+      { t: "pitcherRun", runs: 1, earned: true },
+    ];
+    const out = settleMoundBug(moundBug({ ...live, runners: 3, count: { balls: 3, strikes: 1 } }), walk);
+    assert.deepEqual(out.count, { balls: 3, strikes: 1 });
+    assert.deepEqual(out.bases, { first: true, second: true, third: true });
+    assert.equal(out.score, 0);
+  });
+
+  it("clears the bases on a home run and counts every run", () => {
+    const hr: PlateEvent[] = [
+      { t: "pitch", pa: 5, n: 11, type: "fastball", inZone: true },
+      { t: "swing", pa: 5, kind: "contact", timingErr: 0 },
+      { t: "contact", pa: 5, tier: "hr", quality: 1 },
+      { t: "pitcherRun", runs: 3, earned: true },
+    ];
+    const out = settleMoundBug(moundBug(live), hr);
+    assert.deepEqual(out.bases, { first: false, second: false, third: false });
+    assert.equal(out.score, -2);
+  });
+
+  it("puts the hitter aboard on a single and moves the count only on a pitch that stays in the at-bat", () => {
+    const single: PlateEvent[] = [
+      { t: "pitch", pa: 1, n: 3, type: "fastball", inZone: true },
+      { t: "swing", pa: 1, kind: "contact", timingErr: 0.05 },
+      { t: "contact", pa: 1, tier: "hit", quality: 0.7 },
+    ];
+    const aboard = settleMoundBug(moundBug({ ...live, runners: 0 }), single);
+    assert.deepEqual(aboard.bases, { first: true, second: false, third: false });
+    assert.deepEqual(aboard.count, { balls: 1, strikes: 2 });
+    const ball: PlateEvent[] = [
+      { t: "pitch", pa: 1, n: 4, type: "fastball", inZone: false },
+      { t: "take", pa: 1, strike: false },
+    ];
+    assert.deepEqual(settleMoundBug(moundBug(live), ball).count, { balls: 2, strikes: 2 });
   });
 });

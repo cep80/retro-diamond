@@ -1376,6 +1376,41 @@
   margin-inline: auto;
   pointer-events: auto;
 }
+/* The mound's Coach lines (the rival's read, the callback, the caption) never
+   take a tap meant for the glove grid: only Go takes one. The grid is sized to
+   stay clear of them (--coach-h, .shine-film-grid). */
+.shine-race-coach > .shine-mound-lines {
+  pointer-events: none;
+}
+.shine-mound-lines > button:not(:disabled) {
+  pointer-events: auto;
+}
+/* The mound's "Saved" blink sits in the scrim's empty top, so nothing under it shifts. */
+.shine-race-coach > .shine-mound-saved {
+  position: absolute;
+  inset: 1.4rem 0 auto;
+  pointer-events: none;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-grass-2);
+}
+/* Two strikes in a jp park, on the mound: the 応援団's swell warms the top of the film. */
+.shine-race-ouen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    linear-gradient(180deg, rgb(255 180 94 / 0.16), rgb(48 18 28 / 0.12) 42%, transparent 70%),
+    linear-gradient(90deg, transparent 0%, rgb(255 113 143 / 0.08) 50%, transparent 100%);
+  transition: opacity 400ms ease;
+}
+.shine-race-ouen.is-on {
+  opacity: 1;
+}
 /* The home run owns the screen: the HUD and the caption step out of its way. */
 .shine-race[data-hr] :is(.shine-race-hud, .shine-race-coach) {
   opacity: 0;
@@ -1470,14 +1505,25 @@
   translate: -50% calc(-50% + 48px);
 }
 /* Full bleed: the sit grid is sized to the screen, not the crop, and sits
-   between the HUD and Go. */
+   between the HUD and Go. Its top edge stays under her chin. When the Coach
+   stacks more than two lines (the mound measures them into --coach-h), the grid
+   gives up height at its foot, never its top, so no line lies over a cell. */
 .shine-film-grid {
+  --grid-h0: min(76cqw * 4 / 3, 100cqh - 320px);
+  --grid-top: calc(52cqh - var(--grid-h0) / 2);
   position: absolute;
   left: 50%;
-  top: 52%;
-  width: min(76cqw, (100cqh - 320px) * 0.75);
+  top: var(--grid-top);
+  height: max(160px, min(var(--grid-h0), 100cqh - var(--coach-h, 0px) - 8px - var(--grid-top)));
   aspect-ratio: 3 / 4;
-  translate: -50% -50%;
+  translate: -50% 0;
+}
+/* The wide 3:4 column shows her bigger, so the grid starts lower, below her chin. */
+@media (min-width: 640px) {
+  .shine-film-grid {
+    --grid-h0: min(76cqw * 4 / 3, 100cqh - 392px);
+    --grid-top: calc(52cqh + 36px - var(--grid-h0) / 2);
+  }
 }
 .shine-stage-bleed .shine-letterbox {
   height: 10dvh;

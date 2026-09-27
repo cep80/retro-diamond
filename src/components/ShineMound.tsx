@@ -3,14 +3,21 @@
 /**
  * The mound race: sit the glove, press Go, watch her throw the date.
  * She picks every pitch. Kick and release come from her sheet. No timing input.
+ *
+ * Drawn like the race view (ShineRace): her painted still edge to edge on a
+ * phone and a centred 3:4 column on ink on a wide screen, the scorebug, mute
+ * and Time floating over it, and the Coach's lines, the glove grid, Go and the
+ * done panel over a dark gradient at the foot. A home run against her takes
+ * the whole screen, as the race's does.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
-import { dateHeadline, leaveLabel, middleRead, moundRead, moundSituation } from "@/components/race-ui";
-import { ActionStage } from "@/components/action/ActionStage";
+import { dateHeadline, leaveLabel, middleRead, moundRead, RACE_COPY, scorePhrase } from "@/components/race-ui";
+import { moundBug, settleMoundBug, type BugState } from "@/components/race-bug";
+import { ActionStage, hrMomentUp, type HrNameplate } from "@/components/action/ActionStage";
 import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
 import { ShineMute } from "@/components/ShineMute";
-import { PauseButton, PauseOverlay, SitZone, usePlatePause } from "@/components/ShinePlateBits";
+import { PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone, usePlatePause } from "@/components/ShinePlateBits";
 import {
   duckCrowd,
   setCrowdLevel,
@@ -19,6 +26,7 @@ import {
   sfxCrowdBurst,
   sfxRelease,
   sfxSelect,
+  sfxStamp,
   startWalkUp,
   stopCrowd,
   stopMusic,
@@ -28,16 +36,17 @@ import type { Cell } from "@/shine/core/zone.ts";
 import type { PitchType } from "@/shine/core/zone.ts";
 import { moundBeatSpec, PREPARE_MS_REDUCED, type Stage } from "@/shine/beats.ts";
 import { cheerLines, crowdStem, ouenSwell } from "@/shine/culture.ts";
-import { featuredParkId, parkSkyClass } from "@/shine/stage.ts";
+import { featuredParkId, kitAccent, parkSkyClass } from "@/shine/stage.ts";
 import { parkSrc, portraitMood, portraitSrc, officialFor, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { gutsActive, leverageIndex } from "@/shine/oracle.ts";
-import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
+import { HR_STAMP_HOLD_MS, resultStamp, STAMP_DELAY_MS, stampHoldMs, type ActionManifest, type ActionView, type StingFlags } from "@/shine/action-art.ts";
 import {
   decideDelivery,
   decidePitch,
   DELIVERY_DUR,
+  lastPitchSwung,
   maybePitchLastSpurt,
   moundBeatFor,
   moundFieldBeat,
@@ -50,6 +59,7 @@ import {
 import { RACE_PACE } from "@/shine/race.ts";
 import { hitterAdaptation, pitcherRivalBat, rivalBatSlot } from "@/shine/rivals.ts";
 import { useShine } from "@/shine/store.ts";
+import type { CharacterId, TraineeRun } from "@/shine/types.ts";
 import { uniqueName, uniqueShouldFire } from "@/shine/unique.ts";
 import type { GameKind } from "@/shine/featured-game.ts";
 import { SuspendableTimers } from "@/shine/suspendable.ts";
@@ -64,6 +74,29 @@ function kindFor(turn: number): GameKind {
   if (t === "series") return "series";
   if (t === "finale") return "finale";
   return "first-light";
+}
+
+/** Who is in the box: the cast hitter in her slot (rivalBatSlot), else an unnamed academy bat. */
+interface InTheBox {
+  id: CharacterId | "academy";
+  plate: HrNameplate;
+}
+
+function batterInBox(run: TraineeRun, game: PitchingGame): InTheBox {
+  // The bullpen faces the lineup's first bat (pitching.ts batterFor).
+  const index = game.kind === "practice" ? 0 : game.battersFaced;
+  if (index % 6 === rivalBatSlot(run.characterId)) {
+    const id = pitcherRivalBat(run.characterId);
+    const s = sheet(id);
+    return { id, plate: { name: s.name, jp: s.jp, number: s.number } };
+  }
+  return { id: "academy", plate: { name: game.batterName, jp: null, number: null } };
+}
+
+/** The beat the film holds from the pitch landing to the next wind-up, with whether it was swung at. */
+interface FilmBeat {
+  beat: MoundBeat;
+  swung: boolean;
 }
 
 export function ShineMound() {
@@ -82,7 +115,12 @@ export function ShineMound() {
   const [type, setType] = useState<PitchType>("fastball");
   const [stage, setStage] = useState<Stage>("idle");
   const [u, setU] = useState(0);
+  // The caption's beat: its label reads until the beat is over, then the engine's banner.
   const [beat, setBeat] = useState<MoundBeat | null>(null);
+  // The film's beat: the picture and its stamp hold it until the next wind-up.
+  const [film, setFilm] = useState<FilmBeat | null>(null);
+  // The date is over and its last stamp is down: the done panel is up.
+  const [closed, setClosed] = useState(false);
   const [crowdHold, setCrowdHold] = useState(false);
   const [sting, setSting] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
@@ -101,11 +139,24 @@ export function ShineMound() {
   const gameRef = useRef<PitchingGame | null>(null);
   const pitchRef = useRef<PitchType>("fastball");
   const resolvedAtRef = useRef<number | null>(null);
+  const filmRef = useRef<FilmBeat | null>(null);
+  filmRef.current = film;
+  // The bug and the batter as they stood at the wind-up: the pitch that ends a plate
+  // appearance deals the next batter at once, and the result belongs to the one it ended.
+  const atThrow = useRef<{ bug: BugState; by: InTheBox } | null>(null);
   const watching = useRef(false);
   const nextArm = useRef(false);
   const pausedRef = useRef(false);
   const throwRef = useRef<() => void>(() => {});
   gameRef.current = game;
+
+  // The film's clock: performance.now() with every pause cut out. The stamp, the home run
+  // and the money clip run on it, so Time holds the moment where it stood (as the race's does).
+  const pauseClock = useRef<{ cut: number; since: number | null }>({ cut: 0, since: null });
+  const clock = useCallback(() => {
+    const c = pauseClock.current;
+    return (c.since ?? performance.now()) - c.cut;
+  }, []);
 
   const later = useCallback((fn: () => void, ms: number) => timers.set(fn, ms), [timers]);
 
@@ -140,10 +191,14 @@ export function ShineMound() {
     setRestored(Boolean(saved));
     watching.current = false;
     nextArm.current = false;
+    atThrow.current = null;
+    resolvedAtRef.current = null;
     setStage("idle");
     setCrowdHold(false);
     setSting(null);
     setBeat(null);
+    setFilm(null);
+    setClosed(false);
     setU(0);
     pending.current = null;
     setType("fastball");
@@ -176,9 +231,16 @@ export function ShineMound() {
     onFreeze: () => {
       timers.suspend();
       duckCrowd(false);
+      const c = pauseClock.current;
+      if (c.since === null) c.since = performance.now();
     },
     onResume: () => {
       if (stageRef.current === "flight") flightStart.current = performance.now() - u * flightMs();
+      const c = pauseClock.current;
+      if (c.since !== null) {
+        c.cut += performance.now() - c.since;
+        c.since = null;
+      }
       timers.resume();
       return true;
     },
@@ -201,7 +263,7 @@ export function ShineMound() {
     const loop = () => {
       const uu = (performance.now() - flightStart.current) / flightMs();
       setU(uu);
-      setNowMs(performance.now());
+      setNowMs(clock());
       if (uu >= 1.08) {
         const next = { ...game };
         const pitch = pitchRef.current;
@@ -217,17 +279,24 @@ export function ShineMound() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, paused]);
 
+  // The reaction clock: the stage redraws on it through the beat, its stamp and the wait for
+  // the next wind-up. Paused, the film clock is frozen, so there's nothing to redraw. A
+  // finished date stops once its last stamp (a home run's is the longest) is down.
+  const doneNow = Boolean(game?.done);
   useEffect(() => {
-    if (stage === "field" || stage === "reaction" || (stage === "idle" && resolvedAtRef.current !== null)) {
-      let id = 0;
-      const tick = () => {
-        setNowMs(performance.now());
-        id = requestAnimationFrame(tick);
-      };
-      id = requestAnimationFrame(tick);
-      return () => cancelAnimationFrame(id);
-    }
-  }, [stage]);
+    if (paused) return;
+    const at = resolvedAtRef.current;
+    if (!(stage === "field" || stage === "reaction" || (stage === "idle" && at !== null))) return;
+    const end = doneNow && at !== null ? at + STAMP_DELAY_MS + HR_STAMP_HOLD_MS : Infinity;
+    let id = 0;
+    const tick = () => {
+      const n = clock();
+      setNowMs(n);
+      if (n < end) id = requestAnimationFrame(tick);
+    };
+    id = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(id);
+  }, [stage, paused, doneNow, clock]);
 
   useEffect(() => {
     if (!game?.done || game.kind !== "finale" || !game.pgMet) return;
@@ -258,6 +327,9 @@ export function ShineMound() {
     }
     if (paused) return;
     if (e.code === "Enter" || e.code === "Space") {
+      // A focused button (Leave, Mute, Time, a glove cell) takes its own key.
+      const t = e.target instanceof Element ? e.target : null;
+      if (t?.closest("button, a, input, select, textarea, [role=button]")) return;
       e.preventDefault();
       throwIt();
     }
@@ -277,10 +349,13 @@ export function ShineMound() {
       },
       setSit: (c: Cell) => setAim(c),
       setType: (t: PitchType) => setType(t),
-      snapshot: () => ({ stage: stageRef.current, game: gameRef.current, aim, type, beat }),
+      snapshot: () => ({ stage: stageRef.current, game: gameRef.current, aim, type, beat, film: filmRef.current, closed }),
       forceBeat: (b: MoundBeat) => {
         setBeat(b);
-        const now = performance.now();
+        const f = { beat: b, swung: b === "miss" || b === "hit" || b === "hr" || b === "out" };
+        filmRef.current = f;
+        setFilm(f);
+        const now = clock();
         resolvedAtRef.current = now;
         setNowMs(now);
         setStage("reaction");
@@ -291,9 +366,29 @@ export function ShineMound() {
     };
   });
 
+  // The Coach can stack more lines than the race's two (a restored line, the callback, the
+  // rival's read). The glove grid gives up height at its foot to stay clear of them, so it
+  // needs their height: --coach-h, measured from the lines' top to the screen's foot.
+  const coachObserver = useRef<ResizeObserver | null>(null);
+  const coachRef = useCallback((el: HTMLElement | null) => {
+    coachObserver.current?.disconnect();
+    coachObserver.current = null;
+    const screen = el?.parentElement;
+    if (!el || !screen || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const top = (el.lastElementChild ?? el).getBoundingClientRect().top;
+      screen.style.setProperty("--coach-h", `${Math.max(0, Math.round(screen.getBoundingClientRect().bottom - top))}px`);
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    coachObserver.current = ro;
+  }, []);
+
   if (!run || !game) return null;
   const who = sheet(run.characterId);
-  const ask = game.kind === "practice" ? null : officialFor(run.characterId, run.turn);
+  const practice = game.kind === "practice";
+  const ask = practice ? null : officialFor(run.characterId, run.turn);
   const parkId = featuredParkId({ kind: game.kind, homePark: who.parkId });
   const park = parkSrc(parkId);
   const li = leverageIndex(game.scoreDiff, game.inning, game.outs, game.runners >= 2, game.count);
@@ -310,21 +405,25 @@ export function ShineMound() {
   const verses = cheerLines(run.characterId, run.fans);
   const swell = ouenSwell(parkId, game.count.strikes) && (stage === "prepare" || stage === "flight" || stage === "idle");
   const picking = stage === "idle" || stage === "dead" || stage === "situation";
+  const doneUp = game.done && (closed || picking);
   const holdFilm = !picking;
-  const fieldBeat = holdFilm ? moundFieldBeat(beat ?? "none") : null;
+  const fieldBeat = holdFilm && film ? moundFieldBeat(film.beat) : null;
   const flags: StingFlags = { spurt: game.lastSpurt };
   const actionView: ActionView = {
     stage,
     beat: fieldBeat,
-    swung: holdFilm && (beat === "miss" || beat === "hit" || beat === "hr" || beat === "out"),
+    swung: holdFilm && film ? film.swung : false,
     swingKind: holdFilm ? "contact" : null,
     call: null,
     u,
     tappedAtU: null,
-    resolvedAtMs: resolvedAtRef.current,
-    nowMs: stage === "field" || stage === "reaction" || resolvedAtRef.current !== null ? nowMs : performance.now(),
+    // Under the done panel the film lets go of the last pitch: the frame is her still for
+    // the beat, not a hitter's held celebration under "Her day".
+    resolvedAtMs: doneUp ? null : resolvedAtRef.current,
+    nowMs: doneUp ? clock() : stage === "field" || stage === "reaction" || resolvedAtRef.current !== null ? nowMs : clock(),
     reduced,
   };
+  const hrUp = hrMomentUp(actionView);
 
   if (crowdHold) {
     return (
@@ -335,18 +434,37 @@ export function ShineMound() {
     );
   }
 
+  /** What is left of the film's stamp, on the film clock (0 when there is none). */
+  function stampLeftMs(): number {
+    const at = resolvedAtRef.current;
+    const f = filmRef.current;
+    if (at === null || !f || gameRef.current?.kind === "practice") return 0;
+    const fb = moundFieldBeat(f.beat);
+    if (!resultStamp(fb, f.swung)) return 0;
+    return Math.max(0, at + STAMP_DELAY_MS + stampHoldMs(fb) - clock());
+  }
+
   function land(next: PitchingGame) {
     const b = moundBeatFor(next);
     const s = moundBeatSpec(b, reduced);
+    const f: FilmBeat = { beat: b, swung: lastPitchSwung(next) };
     pending.current = null;
-    resolvedAtRef.current = performance.now();
+    resolvedAtRef.current = clock();
     setNowMs(resolvedAtRef.current);
     setU(0);
     setBeat(b);
+    filmRef.current = f;
+    setFilm(f);
     setGhost(aim);
     setGame({ ...next });
     duckCrowd(false);
-    if (next.kind !== "practice") sfxRelease(s.cue);
+    if (next.kind !== "practice") {
+      sfxRelease(s.cue);
+      // The stamp's slam lands with the stamp, on the pause-aware timers. The out's slate
+      // stamp is set down, not slammed: the play's own sound carries it.
+      const tone = resultStamp(moundFieldBeat(b), f.swung)?.tone;
+      if (tone && tone !== "slate") later(() => sfxStamp(tone), STAMP_DELAY_MS);
+    }
     if (s.fieldMs > 0) {
       setStage("field");
       later(() => setStage("reaction"), s.fieldMs);
@@ -362,11 +480,14 @@ export function ShineMound() {
     if (g?.done) {
       watching.current = false;
       setStage("reaction");
+      // The done panel waits out a stamp still standing.
+      later(() => setClosed(true), stampLeftMs());
       return;
     }
     if (watching.current) {
+      // The caption goes back to the banner; the film holds the beat, and its stamp, until the next wind-up.
       setBeat(null);
-      const wait = reduced ? RACE_PACE.betweenPitchMsReduced : RACE_PACE.betweenPitchMs;
+      const wait = Math.max(reduced ? RACE_PACE.betweenPitchMsReduced : RACE_PACE.betweenPitchMs, stampLeftMs());
       later(() => {
         if (!watching.current) return;
         const live = gameRef.current;
@@ -381,6 +502,8 @@ export function ShineMound() {
       return;
     }
     setBeat(null);
+    filmRef.current = null;
+    setFilm(null);
     setStage("idle");
   }
 
@@ -390,12 +513,15 @@ export function ShineMound() {
     const s = stageRef.current;
     if (s !== "idle" && s !== "dead" && s !== "situation") return;
     watching.current = true;
+    atThrow.current = { bug: moundBug(live), by: batterInBox(run, live) };
     const pitch = decidePitch(run, live);
     pitchRef.current = pitch;
     setType(pitch);
     pending.current = decideDelivery(run, live, pitch, aim);
     setU(0);
     setBeat(null);
+    filmRef.current = null;
+    setFilm(null);
     resolvedAtRef.current = null;
     setStage("prepare");
     sfxSelect();
@@ -444,14 +570,23 @@ export function ShineMound() {
     });
   }
 
+  function resumeMound() {
+    // Back on the rubber: the grid and Go return under the thumb, so re-arm the input guard.
+    useShine.getState().bumpView();
+    resume();
+  }
+
   throwRef.current = throwIt;
 
   const showingBeat = stage === "field" || stage === "reaction";
-  const batterId = pitcherRivalBat(run.characterId);
+  // From the pitch landing to the next wind-up, the bug and the batter are the ones at the wind-up.
+  const held = film ? atThrow.current : null;
+  const bug = held ? settleMoundBug(held.bug, game.events) : moundBug(game);
+  const inBox = held ? held.by : batterInBox(run, game);
   const closeLine = game.done
     ? dateHeadline({
         exhibition: false,
-        practice: game.kind === "practice",
+        practice,
         pgMet: game.pgMet,
         verb: who.pgVerb,
         banner: game.banner,
@@ -464,28 +599,36 @@ export function ShineMound() {
   // Her rival's read on this pitcher, said out loud before it's used: the first-strike read
   // at 0-0, the two-strike read at two strikes. Both are about where the glove sits, so the
   // Coach can answer them.
-  const castUp = game.kind !== "practice" && !game.done && game.battersFaced % 6 === rivalBatSlot(run.characterId);
+  const castUp = !practice && !game.done && game.battersFaced % 6 === rivalBatSlot(run.characterId);
   const castRead = castUp ? hitterAdaptation(game.tells, game.rivalBat) : null;
+  // Watching throws every pitch after Go, so the gap before a pitch is also the wait after
+  // the last one (the beat cleared, the game already on the next count) and her wind-up.
+  const beforePitch = picking || stage === "prepare" || (stage === "reaction" && beat === null && !game.done);
   const readLine =
-    !castRead || !picking
+    !castRead || !beforePitch
       ? null
       : game.count.balls === 0 && game.count.strikes === 0
         ? castRead.firstLine
         : game.count.strikes === 2
           ? castRead.twoStrikeLine
           : null;
+  const caption =
+    stage === "prepare" ? "Set." : stage === "flight" ? "" : practice ? game.banner : showingBeat && spec ? spec.label : game.banner;
+  const goLabel = stage === "dead" ? "Back on the rubber" : RACE_COPY.go;
 
   return (
-    <main className={`relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream ${swell ? "shine-ouen-swell" : ""}`} data-stage={stage} data-mound-race="1">
-      <img src={park} alt="" className={`absolute inset-0 size-full object-cover object-[center_70%] opacity-60 ${parkSkyClass(parkId)}`} />
-      <div className={`absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-ink/40 ${swell ? "shine-ouen-wash" : ""}`} />
+    <main
+      className={`shine-race text-cream ${swell ? "shine-ouen-swell" : ""}`}
+      data-stage={stage}
+      data-mound-race="1"
+      data-hr={hrUp ? "" : undefined}
+      data-paused={paused ? "" : undefined}
+      style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}
+    >
       {paused ? (
         <PauseOverlay
           reason={pauseReason}
-          onResume={() => {
-            useShine.getState().bumpView();
-            resume();
-          }}
+          onResume={resumeMound}
           onSettings={openSettings}
           onTitle={() => {
             stopCrowd();
@@ -493,123 +636,138 @@ export function ShineMound() {
             openTitle();
           }}
           resumeLabel="Back on the rubber"
+          // The bullpen date is never saved; every other mound date is, between pitches.
+          titleLabel={practice ? RACE_COPY.title : PAUSE_TITLE_SAVED}
         />
       ) : null}
 
-      <header className="relative z-10 flex items-center justify-between gap-2 px-3 pt-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="rounded-full border border-white/20 bg-ink/70 px-2.5 py-1 font-display text-[10px] uppercase tracking-widest text-grass-2">
-            {dateLabel(turnMeta(run.turn), who.style)}
-          </span>
-          {moundSituation(game) ? (
-            <span className="truncate font-ui text-[11px] text-cream/70">{moundSituation(game)}</span>
-          ) : null}
-          {ask ? <span className="truncate font-ui text-[11px] text-gold">{who.pgVerb} · {speakGoal(ask.verb)}</span> : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <ShineMute />
-          <PauseButton onPause={() => pause("user")} />
-        </div>
-      </header>
+      <div className="shine-race-screen">
+        {/* The film, edge to edge: her wind-up, her release, the pitch landing. */}
+        <ActionStage
+          bleed
+          view={actionView}
+          batterId={inBox.id}
+          hrBy={inBox.plate}
+          armId={run.characterId}
+          manifest={manifest}
+          pitch={null}
+          focus="pitcher"
+          recognized={null}
+          quietCard={practice}
+          flags={flags}
+          prepareMs={reduced ? PREPARE_MS_REDUCED : RACE_PACE.prepareMs}
+          heroMood={mood}
+          clock={clock}
+          paused={paused}
+          fallback={
+            <div className="absolute inset-0 overflow-hidden">
+              <img src={portraitSrc(run.characterId, "focused")} alt="" className="absolute inset-0 size-full object-cover shine-mound-close" aria-hidden />
+            </div>
+          }
+        >
+          {picking && !game.done ? <SitZone aim={aim} onSit={setAim} ghost={ghost} label="Glove" /> : null}
+        </ActionStage>
+        {/* Two strikes in a jp park: the 応援団's swell warms the film. */}
+        <div className={`shine-race-ouen ${swell ? "is-on" : ""}`} aria-hidden />
 
-      <section className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-3 py-2" aria-label="The mound">
-        <div className="relative h-full max-h-[62dvh] w-full max-w-sm">
-          <ActionStage
-            view={actionView}
-            batterId={batterId}
-            armId={run.characterId}
-            manifest={manifest}
-            pitch={null}
-            focus="pitcher"
-            recognized={null}
-            quietCard={game.kind === "practice" || game.done}
-            flags={flags}
-            prepareMs={reduced ? PREPARE_MS_REDUCED : RACE_PACE.prepareMs}
-            heroMood={mood}
-            className="!h-auto !w-full"
-            fallback={
-              <div className="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-ink/35">
-                <img src={portraitSrc(run.characterId, "focused")} alt="" className="absolute inset-0 size-full object-cover shine-mound-close" aria-hidden />
-              </div>
-            }
-          >
-            {picking && !game.done ? <SitZone aim={aim} onSit={setAim} ghost={ghost} label="Glove" /> : null}
-          </ActionStage>
-        </div>
-      </section>
-
-      <section className="relative z-10 mx-auto w-full max-w-sm px-3 pb-[max(env(safe-area-inset-bottom),12px)]" aria-label="The Coach">
-        {restored && picking ? (
-          <p className="mb-2 rounded-xl border border-grass-2/50 bg-ink/80 px-4 py-2 font-ui text-sm text-cream/85">
-            Picked up where she left it. Inning {game.inning}, {game.outs} out, {game.count.balls}-{game.count.strikes}.
-          </p>
-        ) : null}
-        {sting && stage === "prepare" ? (
-          <p className="shine-unique-sting mb-2 rounded-xl border border-gold/50 bg-ink/80 px-4 py-2 font-display text-sm font-bold text-gold">{sting}</p>
-        ) : null}
-        {maybePitchLastSpurt(game) ? (
-          <p className="shine-spurt mb-2 rounded-xl border border-coral/60 bg-ink/80 px-4 py-2 font-display text-sm font-bold text-coral">
-            This is the one she trained for.
-          </p>
-        ) : null}
-        {game.callback && picking ? (
-          <p className="mb-2 rounded-xl border border-gold/50 bg-ink/85 px-4 py-2 font-ui text-sm text-gold">
-            <span className="font-display text-[10px] uppercase tracking-widest text-gold/80">We worked on that · </span>
-            {game.callback}
-          </p>
-        ) : null}
-        {verses.length && picking ? (
-          <ul className="mb-2 space-y-0.5">
-            {verses.map((v, i) => (
-              <li key={i} className="font-ui text-xs text-gold/80">
-                {v}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-
-        <div className="flex flex-col gap-2">
-            <p className="text-center font-display text-lg font-bold" aria-live="polite">
-              {stage === "prepare"
-                ? "Set."
-                : stage === "flight"
-                  ? ""
-                  : game.done
-                    ? closeLine
-                    : game.kind === "practice"
-                      ? game.banner
-                      : showingBeat && spec
-                        ? spec.label
-                        : game.banner}
+        {/* The HUD floats on the film: the scorebug and the date's tag, then sound and time. */}
+        <header className="shine-race-hud">
+          <div className="min-w-0">
+            {!doneUp ? (
+              <Scorebug
+                inning={bug.inning}
+                score={bug.score === null ? null : scorePhrase(bug.score)}
+                atBat={bug.atBat}
+                count={bug.count}
+                outs={bug.outs}
+                bases={bug.bases}
+                self={null}
+              />
+            ) : null}
+            <p className="shine-race-tag">
+              {dateLabel(turnMeta(run.turn), who.style)}
+              {ask ? (
+                <>
+                  {" · "}
+                  <b>
+                    {who.pgVerb} · {speakGoal(ask.verb)}
+                  </b>
+                </>
+              ) : null}
             </p>
-            {closeRead && closeRead !== closeLine ? (
-              <p className="text-center font-ui text-sm text-cream/80">{closeRead}</p>
-            ) : null}
-            {readLine ? (
-              <p className="text-center font-ui text-sm text-gold" data-mound-read>
-                {readLine}
-              </p>
-            ) : null}
-            {middle ? <p className="text-center font-ui text-sm text-cream/80">{middle}</p> : null}
-            {savedChip ? <p className="text-center shine-saved-chip text-[10px] uppercase tracking-widest text-grass-2">Saved</p> : null}
-
-            {picking && !game.done ? (
-              <PixelBtn className="h-14" onClick={throwIt}>
-                {stage === "dead" ? "Back on the rubber" : "Go"}
-              </PixelBtn>
-            ) : null}
-            {showingBeat && !game.done ? (
-              <PixelBtn className="h-14" disabled>
-                {stage === "field" ? "…" : game.banner}
-              </PixelBtn>
-            ) : null}
-            {game.done && (picking || showingBeat) && !crowdHold ? (
-              <PixelBtn className="h-14" onClick={leave}>
-                {leaveLabel({ practice: game.kind === "practice" })}
-              </PixelBtn>
-            ) : null}
           </div>
-      </section>
+          <div className="flex items-center gap-1.5">
+            <ShineMute />
+            <PauseButton onPause={() => pause("user")} />
+          </div>
+        </header>
+        {/* The home run takes the HUD away, but not Time: a faded glyph over the bars, where the HUD's was. */}
+        {hrUp ? (
+          <div className="shine-hr-time">
+            <PauseButton onPause={() => pause("user")} />
+          </div>
+        ) : null}
+
+        {/* Over the foot of the film: the Coach's lines, Go, the caption, the done panel. */}
+        <section ref={coachRef} className="shine-race-coach" aria-label="The Coach">
+          {/* One live region for the whole date, so the closing line is heard when the panel swaps in. */}
+          <p className="sr-only" aria-live="polite">
+            {doneUp ? closeLine : caption}
+          </p>
+          {savedChip ? <p className="shine-saved-chip shine-mound-saved">Saved</p> : null}
+          {doneUp ? (
+            <div className="flex flex-col gap-2" data-mound-done={game.kind}>
+              <p className="text-center font-display text-[10px] uppercase tracking-widest text-grass-2">Her day</p>
+              <p className="text-center font-story text-xl font-extrabold text-cream">{closeLine}</p>
+              {closeRead && closeRead !== closeLine ? <p className="text-center font-story text-sm text-cream/85">{closeRead}</p> : null}
+              {middle ? <p className="text-center font-story text-sm text-cream/80">{middle}</p> : null}
+              <PixelBtn className="h-12" onClick={leave}>
+                {leaveLabel({ practice })}
+              </PixelBtn>
+            </div>
+          ) : (
+            // The lines let taps through to the glove grid under them; only Go takes a tap.
+            <div className="shine-mound-lines flex flex-col gap-2">
+              {restored && picking ? (
+                <p className="text-center font-story text-sm text-grass-2">
+                  Picked up where she left it. Inning {game.inning}, {game.outs} out, {game.count.balls}-{game.count.strikes}.
+                </p>
+              ) : null}
+              {sting && stage === "prepare" ? <p className="shine-unique-sting text-center font-display text-sm font-bold text-gold">{sting}</p> : null}
+              {maybePitchLastSpurt(game) ? (
+                <p className="shine-spurt text-center font-display text-sm font-bold text-coral">This is the one she trained for.</p>
+              ) : null}
+              {game.callback && picking ? (
+                <p className="text-center font-story text-sm text-gold">
+                  <span className="font-display text-[10px] uppercase tracking-widest text-gold/80">We worked on that · </span>
+                  {game.callback}
+                </p>
+              ) : null}
+              {/* The section sings while she throws; at the aim the grid needs the room. */}
+              {verses.length && !picking && !game.done ? (
+                <ul className="space-y-0.5 text-center">
+                  {verses.map((v, i) => (
+                    <li key={i} className="font-ui text-xs text-gold/80">
+                      {v}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {readLine ? (
+                <p className="text-center font-story text-sm text-gold" data-mound-read>
+                  {readLine}
+                </p>
+              ) : null}
+              <p className="min-h-10 text-center font-story text-sm text-cream/90">{caption}</p>
+              {picking && !game.done ? (
+                <PixelBtn className="shine-go h-14 text-sm" onClick={throwIt} ariaLabel={goLabel}>
+                  {goLabel}
+                </PixelBtn>
+              ) : null}
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   );
 }
