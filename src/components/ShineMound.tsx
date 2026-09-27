@@ -9,26 +9,21 @@
  * and Time floating over it, and the Coach's lines, the glove grid, Go and the
  * done panel over a dark gradient at the foot. A home run against her takes
  * the whole screen, as the race's does.
+ *
+ * The date itself (the stages, watch mode, the waits, Time, the chrome's
+ * timings, when to save) is MoundController's; this is its view. It draws the
+ * snapshot, turns the cues into sounds, and makes the store calls.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type MutableRefObject } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
 import { dateHeadline, genericRead, leaveLabel, middleRead, moundDayChips, moundRead, RACE_COPY, scorePhrase } from "@/components/race-ui";
-import { moundBug, settleMoundBug, type BugState } from "@/components/race-bug";
-import { ActionStage, hrMomentUp, type HrNameplate } from "@/components/action/ActionStage";
+import { moundBug, settleMoundBug } from "@/components/race-bug";
+import { ActionStage, hrMomentUp } from "@/components/action/ActionStage";
 import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
-import { CHROME_MS, LowerThird, SkillBanner, VsSplash, type VsSide } from "@/components/DateChrome";
-import {
-  MOUND_CARD_MS,
-  MOUND_SPURT,
-  moundCaption,
-  moundCard,
-  moundOrderLine,
-  moundPaEnd,
-  moundPitchReadout,
-  type MoundCard,
-} from "@/components/mound-chrome";
+import { LowerThird, SkillBanner, VsSplash } from "@/components/DateChrome";
+import { moundCaption, moundPitchReadout } from "@/components/mound-chrome";
 import { ShineMute } from "@/components/ShineMute";
-import { DayStrip, DoneHeader, PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone, usePlatePause } from "@/components/ShinePlateBits";
+import { DayStrip, DoneHeader, PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
 import {
   duckCrowd,
   setCrowdLevel,
@@ -45,44 +40,20 @@ import {
 } from "@/shine/audio.ts";
 import type { Cell } from "@/shine/core/zone.ts";
 import type { PitchType } from "@/shine/core/zone.ts";
-import { moundBeatSpec, PREPARE_MS_REDUCED, type Stage } from "@/shine/beats.ts";
+import { moundBeatSpec, PREPARE_MS_REDUCED } from "@/shine/beats.ts";
 import { cheerLines, crowdStem, ouenSwell } from "@/shine/culture.ts";
 import { featuredParkId, kitAccent, parkSkyClass } from "@/shine/stage.ts";
 import { parkSrc, portraitMood, portraitSrc, officialFor, sceneBustSrc, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
-import { gutsActive, leverageIndex } from "@/shine/oracle.ts";
-import {
-  HR_STAMP_HOLD_MS,
-  resultStamp,
-  STAMP_DELAY_MS,
-  stampHoldMs,
-  stillFor,
-  type ActionManifest,
-  type ActionView,
-  type StingFlags,
-} from "@/shine/action-art.ts";
-import {
-  decideDelivery,
-  decidePitch,
-  DELIVERY_DUR,
-  lastPitchSwung,
-  maybePitchLastSpurt,
-  moundBeatFor,
-  moundFieldBeat,
-  resolveDelivery,
-  startPitchingGame,
-  type DeliveryDecision,
-  type MoundBeat,
-  type PitchingGame,
-} from "@/shine/pitching.ts";
+import { HR_STAMP_HOLD_MS, STAMP_DELAY_MS, stillFor, type ActionManifest, type ActionView, type StingFlags } from "@/shine/action-art.ts";
+import { moundFieldBeat, type MoundBeat } from "@/shine/pitching.ts";
+import { batterInBox, MoundController, MOUND_LAND_U, moundGutsOn, type MoundCue } from "@/shine/mound-controller.ts";
 import { RACE_PACE } from "@/shine/race.ts";
 import { hitterAdaptation, pitcherRivalBat, rivalBatSlot } from "@/shine/rivals.ts";
 import { useShine } from "@/shine/store.ts";
-import type { CharacterId, TraineeRun } from "@/shine/types.ts";
-import { uniqueName, uniqueShouldFire } from "@/shine/unique.ts";
+import type { TraineeRun } from "@/shine/types.ts";
 import type { GameKind } from "@/shine/featured-game.ts";
-import { SuspendableTimers } from "@/shine/suspendable.ts";
 
 function kindFor(turn: number): GameKind {
   const t = turnMeta(turn).type;
@@ -96,136 +67,23 @@ function kindFor(turn: number): GameKind {
   return "first-light";
 }
 
-/** Who is in the box: the cast hitter in her slot (rivalBatSlot), else an unnamed academy bat. */
-interface InTheBox {
-  id: CharacterId | "academy";
-  plate: HrNameplate;
-}
-
-function batterInBox(run: TraineeRun, game: PitchingGame): InTheBox {
-  // The bullpen faces the lineup's first bat (pitching.ts batterFor).
-  const index = game.kind === "practice" ? 0 : game.battersFaced;
-  if (index % 6 === rivalBatSlot(run.characterId)) {
-    const id = pitcherRivalBat(run.characterId);
-    const s = sheet(id);
-    return { id, plate: { name: s.name, jp: s.jp, number: s.number } };
-  }
-  return { id: "academy", plate: { name: game.batterName, jp: null, number: null } };
-}
-
-/** The beat the film holds from the pitch landing to the next wind-up, with whether it was swung at. */
-interface FilmBeat {
-  beat: MoundBeat;
-  swung: boolean;
-}
-
-/**
- * The broadcast chrome over the film. Each showing has its own key, is mounted
- * at the wind-up on the pause-aware timers and taken down on them after its
- * CHROME_MS, so Time holds it where it stands.
- */
-interface BannerUp {
-  key: number;
-  text: string;
-  jp: string | null;
-  tone: "accent" | "spurt";
-}
-interface LowerThirdUp {
-  key: number;
-  name: string;
-  jp: string | null;
-  number: number | null;
-  line: string;
-  accent: string;
-}
-interface VsUp {
-  key: number;
-  left: VsSide;
-  right: VsSide;
-}
-/** The batter the last pitch finished: her card's words (C8), up from the landing to the next wind-up. */
-interface PaEndUp extends MoundCard {
-  key: number;
-}
-
-/** An academy bat's nameplate trim: slate, not the pitcher's own kit colour. */
-const ACADEMY_ACCENT = "#8fa2c2";
+/** How long the "Saved" chip blinks at the aim. */
+const SAVED_CHIP_MS = 900;
 
 export function ShineMound() {
   const run = useShine((s) => s.run);
-  const finishGame = useShine((s) => s.finishGame);
-  const openTitle = useShine((s) => s.openTitle);
-  const openSettings = useShine((s) => s.openSettings);
-  const saveLive = useShine((s) => s.saveLive);
-  const liveGame = useShine((s) => s.liveGame);
-  const settings = useShine((s) => s.settings);
-  const reduced = settings.reducedMotion;
-  const overlay = useShine((s) => s.overlay);
-
-  const [game, setGame] = useState<PitchingGame | null>(null);
-  const [aim, setAim] = useState<Cell>({ row: 1, col: 1 });
-  const [type, setType] = useState<PitchType>("fastball");
-  const [stage, setStage] = useState<Stage>("idle");
-  const [u, setU] = useState(0);
-  // The caption's beat: its label reads until the beat is over, then the engine's banner.
-  const [beat, setBeat] = useState<MoundBeat | null>(null);
-  // The film's beat: the picture and its stamp hold it until the next wind-up.
-  const [film, setFilm] = useState<FilmBeat | null>(null);
-  // The date is over and its last stamp is down: the done panel is up.
-  const [closed, setClosed] = useState(false);
-  const [crowdHold, setCrowdHold] = useState(false);
-  // The chrome (C6, C7, C8): her skill (or the last spurt) across the film, the new batter's
-  // nameplate, the VS card when a cast hitter steps in, and the card after each batter.
-  const [banner, setBanner] = useState<BannerUp | null>(null);
-  const [lowerThird, setLowerThird] = useState<LowerThirdUp | null>(null);
-  const [vs, setVs] = useState<VsUp | null>(null);
-  const [paEnd, setPaEnd] = useState<PaEndUp | null>(null);
-  const [cardUp, setCardUp] = useState<number | null>(null);
-  const [restored, setRestored] = useState(false);
-  const [savedChip, setSavedChip] = useState(false);
+  const reduced = useShine((s) => s.settings.reducedMotion);
   const [manifest, setManifest] = useState<ActionManifest | null>(null);
-  const [nowMs, setNowMs] = useState(0);
-  const [ghost, setGhost] = useState<Cell | null>(null);
-
-  const raf = useRef(0);
-  // Field / reaction / next-batter waits stop with the pause (and a hidden tab).
-  const [timers] = useState(() => new SuspendableTimers());
-  const stageRef = useRef<Stage>("idle");
-  stageRef.current = stage;
-  const flightStart = useRef(0);
-  const pending = useRef<DeliveryDecision | null>(null);
-  const gameRef = useRef<PitchingGame | null>(null);
-  const pitchRef = useRef<PitchType>("fastball");
-  const resolvedAtRef = useRef<number | null>(null);
-  const filmRef = useRef<FilmBeat | null>(null);
-  filmRef.current = film;
-  // The bug and the batter as they stood at the wind-up: the pitch that ends a plate
-  // appearance deals the next batter at once, and the result belongs to the one it ended.
-  const atThrow = useRef<{ bug: BugState; by: InTheBox } | null>(null);
-  const paEndRef = useRef<PaEndUp | null>(null);
-  // Who has had her nameplate (battersFaced), whether the last spurt has had its banner, and the chrome's keys.
-  const introduced = useRef(-1);
-  const spurtShown = useRef(false);
-  const chromeKey = useRef(0);
-  const watching = useRef(false);
-  const nextArm = useRef(false);
-  const pausedRef = useRef(false);
-  const throwRef = useRef<() => void>(() => {});
-  gameRef.current = game;
-
-  // The film's clock: performance.now() with every pause cut out. The stamp, the home run
-  // and the money clip run on it, so Time holds the moment where it stood (as the race's does).
-  const pauseClock = useRef<{ cut: number; since: number | null }>({ cut: 0, since: null });
-  const clock = useCallback(() => {
-    const c = pauseClock.current;
-    return (c.since ?? performance.now()) - c.cut;
-  }, []);
-
-  const later = useCallback((fn: () => void, ms: number) => timers.set(fn, ms), [timers]);
-
-  function clearTimers() {
-    timers.clearAll();
-  }
+  // Read at the wind-up, for the VS card's stills.
+  const manifestRef = useRef<ActionManifest | null>(null);
+  manifestRef.current = manifest;
+  const reducedRef = useRef(reduced);
+  reducedRef.current = reduced;
+  // The glove as the Coach last left it: a date that changes under a mounted mound keeps it.
+  const aimRef = useRef<Cell>({ row: 1, col: 1 });
+  // One controller per date, made in an effect so StrictMode's mount → unmount → mount
+  // hands a fresh controller instead of a destroyed one.
+  const [mound, setMound] = useState<MoundController | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -247,31 +105,17 @@ export function ShineMound() {
   useEffect(() => {
     if (!run) return;
     const kind = kindFor(run.turn);
+    const { liveGame } = useShine.getState();
     const saved = liveGame && liveGame.side === "mound" && liveGame.runId === run.id && liveGame.turn === run.turn ? liveGame : null;
-    const g = saved ? structuredClone(saved.game) : startPitchingGame(run, kind);
-    setGame(g);
-    if (saved?.aim) setAim(saved.aim);
-    setRestored(Boolean(saved));
-    watching.current = false;
-    nextArm.current = false;
-    atThrow.current = null;
-    paEndRef.current = null;
-    introduced.current = -1;
-    spurtShown.current = false;
-    resolvedAtRef.current = null;
-    setStage("idle");
-    setCrowdHold(false);
-    setBanner(null);
-    setLowerThird(null);
-    setVs(null);
-    setPaEnd(null);
-    setCardUp(null);
-    setBeat(null);
-    setFilm(null);
-    setClosed(false);
-    setU(0);
-    pending.current = null;
-    setType("fastball");
+    const c = new MoundController({
+      run,
+      kind,
+      restore: saved ? { game: saved.game, aim: saved.aim } : undefined,
+      initialAim: aimRef.current,
+      reducedMotion: reducedRef.current,
+      vsStill: (id, pose) => stillFor(manifestRef.current?.girls[id], pose)?.url ?? portraitSrc(id, "focused"),
+    });
+    setMound(c);
     unlockAudio();
     const parkId = featuredParkId({ kind, homePark: sheet(run.characterId).parkId });
     sfxCrowd(0.05, crowdStem(parkId));
@@ -279,88 +123,123 @@ export function ShineMound() {
       startWalkUp(run.characterId, useShine.getState().ownedCosmetics.includes("walk-up-alt"));
     }
     return () => {
-      clearTimers();
-      cancelAnimationFrame(raf.current);
+      c.destroy();
+      setMound(null);
       stopCrowd();
       stopMusic();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run?.id, run?.turn]);
 
-  useEffect(() => {
-    if (!run || !game || game.kind === "practice" || game.done) return;
-    if (stage === "flight" || stage === "prepare" || stage === "paused") return;
-    saveLive({ side: "mound", runId: run.id, turn: run.turn, game, aim });
-    // The save runs between every pitch; its chip only blinks at the aim, never over a result (C14).
-    if (stage !== "idle" && stage !== "dead") {
-      setSavedChip(false);
-      return;
-    }
-    setSavedChip(true);
-    const t = window.setTimeout(() => setSavedChip(false), 900);
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game?.battersFaced, game?.count.balls, game?.count.strikes, game?.act, stage === "idle"]);
+  if (!run || !mound) return null;
+  return <MoundFrame mound={mound} run={run} manifest={manifest} aimRef={aimRef} />;
+}
 
-  const { paused, pauseReason, pause, resume } = usePlatePause({
-    onFreeze: () => {
-      timers.suspend();
-      duckCrowd(false);
-      const c = pauseClock.current;
-      if (c.since === null) c.since = performance.now();
-    },
-    onResume: () => {
-      if (stageRef.current === "flight") flightStart.current = performance.now() - u * flightMs();
-      const c = pauseClock.current;
-      if (c.since !== null) {
-        c.cut += performance.now() - c.since;
-        c.since = null;
+function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; run: TraineeRun; manifest: ActionManifest | null; aimRef: MutableRefObject<Cell> }) {
+  const finishGame = useShine((s) => s.finishGame);
+  const openTitle = useShine((s) => s.openTitle);
+  const openSettings = useShine((s) => s.openSettings);
+  const saveLive = useShine((s) => s.saveLive);
+  const settings = useShine((s) => s.settings);
+  const reduced = settings.reducedMotion;
+  const overlay = useShine((s) => s.overlay);
+
+  const snap = useSyncExternalStore(mound.subscribe, mound.getSnapshot, mound.getSnapshot);
+  const { game, stage, aim, type, beat, film, closed, paused, pauseReason, restored, ghost, banner, lowerThird, vs, paEnd, cardUp } = snap;
+  aimRef.current = aim;
+
+  const [u, setU] = useState(0);
+  const [nowMs, setNowMs] = useState(0);
+  const [crowdHold, setCrowdHold] = useState(false);
+  const [savedChip, setSavedChip] = useState(false);
+  // The film's clock: the scheduler's with every pause cut out. The stamp, the home run
+  // and the money clip run on it, so Time holds the moment where it stood (as the race's does).
+  const clock = mound.clock;
+
+  useEffect(() => {
+    mound.setReducedMotion(reduced);
+  }, [mound, reduced]);
+
+  // The date's cues: her wind-up, the release, the stamp's slam, Time, and the saves.
+  useEffect(() => {
+    // A new date under a mounted mound starts clean.
+    setU(0);
+    setCrowdHold(false);
+    const { id: runId, turn } = mound.run;
+    let chip = 0;
+    const off = mound.onCue((cue: MoundCue) => {
+      if (cue.t === "windup") {
+        setU(0);
+        sfxSelect();
+        sfxAnticipation(cue.guts);
+        duckCrowd(true);
+        if (cue.guts) setCrowdLevel(0.2);
+        if (cue.spurt) sfxCrowdBurst();
+      } else if (cue.t === "vs") {
+        sfxCrowdBurst();
+      } else if (cue.t === "land") {
+        setU(0);
+        duckCrowd(false);
+        if (!cue.practice) sfxRelease(cue.spec.cue);
+      } else if (cue.t === "resolved") {
+        setNowMs(cue.at);
+      } else if (cue.t === "stamp") {
+        sfxStamp(cue.tone);
+      } else if (cue.t === "paused") {
+        duckCrowd(false);
+      } else if (cue.t === "save") {
+        saveLive({ side: "mound", runId, turn, game: cue.game, aim: cue.aim });
+        // The save runs between every pitch; its chip only blinks at the aim, never over a result (C14).
+        window.clearTimeout(chip);
+        if (!cue.chip) {
+          setSavedChip(false);
+          return;
+        }
+        setSavedChip(true);
+        chip = window.setTimeout(() => setSavedChip(false), SAVED_CHIP_MS);
       }
-      timers.resume();
-      return true;
-    },
-  });
-  pausedRef.current = paused;
-
-  useEffect(() => {
-    if (paused || !nextArm.current) return;
-    nextArm.current = false;
-    stageRef.current = "idle";
-    throwRef.current();
-  }, [paused]);
-
-  function flightMs() {
-    return DELIVERY_DUR * 1000 * (reduced ? 1 : RACE_PACE.flightScale);
-  }
-
-  useEffect(() => {
-    if (stage !== "flight" || !run || !game || paused) return;
-    const loop = () => {
-      const uu = (performance.now() - flightStart.current) / flightMs();
-      setU(uu);
-      setNowMs(clock());
-      if (uu >= 1.08) {
-        const next = { ...game };
-        const pitch = pitchRef.current;
-        const d = pending.current ?? decideDelivery(run, next, pitch, aim);
-        resolveDelivery(run, next, pitch, aim, d.kickT, d.releaseT);
-        land(next);
-        return;
-      }
-      raf.current = requestAnimationFrame(loop);
+    });
+    mound.start();
+    return () => {
+      off();
+      window.clearTimeout(chip);
     };
-    raf.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, paused]);
+  }, [mound, saveLive]);
+
+  // Time: a hidden tab or a lost window freezes the date; the Coach resumes it deliberately.
+  useEffect(() => {
+    const hide = () => {
+      if (document.visibilityState === "hidden") mound.pause("hidden");
+    };
+    const blur = () => mound.pause("hidden");
+    document.addEventListener("visibilitychange", hide);
+    window.addEventListener("blur", blur);
+    return () => {
+      document.removeEventListener("visibilitychange", hide);
+      window.removeEventListener("blur", blur);
+    };
+  }, [mound]);
+
+  // The flight clock: the pitch in the air redraws on it until it lands.
+  useEffect(() => {
+    if (stage !== "flight" || paused) return;
+    let raf = 0;
+    const loop = () => {
+      setU(Math.min(mound.flightU(), MOUND_LAND_U));
+      setNowMs(clock());
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [stage, paused, mound, clock]);
 
   // The reaction clock: the stage redraws on it through the beat, its stamp and the wait for
   // the next wind-up. Paused, the film clock is frozen, so there's nothing to redraw. A
   // finished date stops once its last stamp (a home run's is the longest) is down.
-  const doneNow = Boolean(game?.done);
+  const doneNow = game.done;
   useEffect(() => {
     if (paused) return;
-    const at = resolvedAtRef.current;
+    const at = mound.getSnapshot().resolvedAt;
     if (!(stage === "field" || stage === "reaction" || (stage === "idle" && at !== null))) return;
     const end = doneNow && at !== null ? at + STAMP_DELAY_MS + HR_STAMP_HOLD_MS : Infinity;
     let id = 0;
@@ -371,19 +250,20 @@ export function ShineMound() {
     };
     id = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(id);
-  }, [stage, paused, doneNow, clock]);
+  }, [stage, paused, doneNow, clock, mound]);
 
   useEffect(() => {
-    if (!game?.done || game.kind !== "finale" || !game.pgMet) return;
+    if (!game.done || game.kind !== "finale" || !game.pgMet) return;
     setCrowdHold(true);
     setCrowdLevel(0.18);
     const t = window.setTimeout(() => setCrowdHold(false), reduced ? 1500 : 4000);
     return () => window.clearTimeout(t);
-  }, [game?.done, game?.kind, game?.pgMet, reduced]);
+  }, [game.done, game.kind, game.pgMet, reduced]);
 
+  // Settings open on top pauses the mound (and keeps it paused under it).
   useEffect(() => {
-    if (overlay) pause("user");
-  }, [overlay, pause]);
+    if (overlay) mound.pause("user");
+  }, [overlay, mound, paused]);
 
   // One listener for the life of the mound; it reads the latest state through the ref.
   const onKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
@@ -396,8 +276,8 @@ export function ShineMound() {
       if (paused) {
         // Back in the box: the throw button returns under the thumb, so re-arm the input guard.
         useShine.getState().bumpView();
-        resume();
-      } else pause("user");
+        mound.resume();
+      } else mound.pause("user");
       return;
     }
     if (paused) return;
@@ -406,7 +286,7 @@ export function ShineMound() {
       const t = e.target instanceof Element ? e.target : null;
       if (t?.closest("button, a, input, select, textarea, [role=button]")) return;
       e.preventDefault();
-      throwIt();
+      mound.throw();
     }
   };
   useEffect(() => {
@@ -420,51 +300,28 @@ export function ShineMound() {
     const w = window as unknown as { __dsMound?: unknown };
     w.__dsMound = {
       go: () => {
-        throwIt();
+        mound.throw();
       },
-      setSit: (c: Cell) => setAim(c),
-      setType: (t: PitchType) => setType(t),
-      snapshot: () => ({
-        stage: stageRef.current,
-        game: gameRef.current,
-        aim,
-        type,
-        beat,
-        film: filmRef.current,
-        closed,
-        chrome: { banner: banner?.text ?? null, lowerThird: lowerThird?.name ?? null, vs: vs ? `${vs.left.name}|${vs.right.name}` : null, card: cardUp !== null ? (paEnd?.line ?? null) : null },
-      }),
+      setSit: (c: Cell) => mound.setAim(c),
+      setType: (t: PitchType) => mound.setType(t),
+      snapshot: () => {
+        const live = mound.getSnapshot();
+        return {
+          stage: live.stage,
+          game: live.game,
+          aim,
+          type,
+          beat,
+          film: live.film,
+          closed,
+          chrome: { banner: banner?.text ?? null, lowerThird: lowerThird?.name ?? null, vs: vs ? `${vs.left.name}|${vs.right.name}` : null, card: cardUp !== null ? (paEnd?.line ?? null) : null },
+        };
+      },
       // The skill banner, or the last spurt's, as the wind-up shows it (for a look without the date's odds).
-      forceBanner: (tone: "accent" | "spurt" = "accent") => {
-        if (!run) return;
-        if (tone === "spurt") showBanner(MOUND_SPURT.text, MOUND_SPURT.jp, "spurt");
-        else showBanner(uniqueName(run.characterId), sheet(run.characterId).jp, "accent");
-      },
+      forceBanner: (tone: "accent" | "spurt" = "accent") => mound.forceBanner(tone),
       // The done panel as a date that ends now would show it, met or missed (for a look at both).
-      forceDone: (met: boolean) => {
-        const g = gameRef.current;
-        if (!g) return;
-        // Stop the pitch in the air and every wait, so nothing lands on the closed date.
-        watching.current = false;
-        clearTimers();
-        cancelAnimationFrame(raf.current);
-        pending.current = null;
-        stageRef.current = "reaction";
-        setStage("reaction");
-        const banner = met ? (g.role === "closer" ? "HOLD." : "COMMAND.") : g.kind === "gate" ? "The Gate still opens." : g.role === "closer" ? "HOLD slipped." : "It got away from her.";
-        setGame({ ...g, done: true, pgMet: met, banner });
-        setClosed(true);
-      },
-      forceBeat: (b: MoundBeat) => {
-        setBeat(b);
-        const f = { beat: b, swung: b === "miss" || b === "hit" || b === "hr" || b === "out" };
-        filmRef.current = f;
-        setFilm(f);
-        const now = clock();
-        resolvedAtRef.current = now;
-        setNowMs(now);
-        setStage("reaction");
-      },
+      forceDone: (met: boolean) => mound.forceDone(met),
+      forceBeat: (b: MoundBeat) => mound.forceBeat(b),
     };
     return () => {
       delete w.__dsMound;
@@ -508,14 +365,12 @@ export function ShineMound() {
     bugObserver.current = ro;
   }, []);
 
-  if (!run || !game) return null;
   const who = sheet(run.characterId);
   const practice = game.kind === "practice";
   const ask = practice ? null : officialFor(run.characterId, run.turn);
   const parkId = featuredParkId({ kind: game.kind, homePark: who.parkId });
   const park = parkSrc(parkId);
-  const li = leverageIndex(game.scoreDiff, game.inning, game.outs, game.runners >= 2, game.count);
-  const gutsOn = gutsActive({ li, closer: game.role === "closer", lastSpurt: game.lastSpurt });
+  const gutsOn = moundGutsOn(game);
   const spec = beat ? moundBeatSpec(beat, reduced) : null;
   const reacting = (stage === "field" || stage === "reaction") && spec && spec.big;
   const mood = reacting
@@ -544,8 +399,8 @@ export function ShineMound() {
     tappedAtU: null,
     // Under the done panel the film lets go of the last pitch: the frame is her still for
     // the beat, not a hitter's held celebration under "Her day".
-    resolvedAtMs: doneUp ? null : resolvedAtRef.current,
-    nowMs: doneUp ? clock() : stage === "field" || stage === "reaction" || resolvedAtRef.current !== null ? nowMs : clock(),
+    resolvedAtMs: doneUp ? null : snap.resolvedAt,
+    nowMs: doneUp ? clock() : stage === "field" || stage === "reaction" || snap.resolvedAt !== null ? nowMs : clock(),
     reduced,
   };
   const hrUp = hrMomentUp(actionView);
@@ -559,198 +414,8 @@ export function ShineMound() {
     );
   }
 
-  /** What is left of the film's stamp, on the film clock (0 when there is none). */
-  function stampLeftMs(): number {
-    const at = resolvedAtRef.current;
-    const f = filmRef.current;
-    if (at === null || !f || gameRef.current?.kind === "practice") return 0;
-    const fb = moundFieldBeat(f.beat);
-    if (!resultStamp(fb, f.swung)) return 0;
-    return Math.max(0, at + STAMP_DELAY_MS + stampHoldMs(fb) - clock());
-  }
-
-  function land(next: PitchingGame) {
-    const b = moundBeatFor(next);
-    const s = moundBeatSpec(b, reduced);
-    const f: FilmBeat = { beat: b, swung: lastPitchSwung(next) };
-    pending.current = null;
-    resolvedAtRef.current = clock();
-    setNowMs(resolvedAtRef.current);
-    setU(0);
-    setBeat(b);
-    filmRef.current = f;
-    setFilm(f);
-    setGhost(aim);
-    setGame({ ...next });
-    duckCrowd(false);
-    // The batter this pitch finished, if it finished one: her line holds the caption from here
-    // to the next wind-up and becomes her card (C8, C15).
-    const held = atThrow.current;
-    const end = next.kind !== "practice" && held ? moundPaEnd(next.events, held.bug.outs) : null;
-    const up: PaEndUp | null = end && held ? { key: ++chromeKey.current, ...moundCard(held.by.plate.name, end) } : null;
-    paEndRef.current = up;
-    setPaEnd(up);
-    if (next.kind !== "practice") {
-      sfxRelease(s.cue);
-      // The stamp's slam lands with the stamp, on the pause-aware timers, in her side's tone
-      // (her strikeout gold, an out teal). A walk or a hit against her is slate, set down, not
-      // slammed: the play's own sound carries it.
-      const tone = resultStamp(moundFieldBeat(b), f.swung, "pitcher")?.tone;
-      if (tone && tone !== "slate") later(() => sfxStamp(tone), STAMP_DELAY_MS);
-    }
-    if (s.fieldMs > 0) {
-      setStage("field");
-      later(() => setStage("reaction"), s.fieldMs);
-      later(() => finishBeat(), s.fieldMs + s.reactionMs);
-    } else {
-      setStage("reaction");
-      later(() => finishBeat(), s.reactionMs);
-    }
-  }
-
-  function finishBeat() {
-    const g = gameRef.current;
-    if (g?.done) {
-      watching.current = false;
-      setStage("reaction");
-      // The done panel waits out a stamp still standing.
-      later(() => setClosed(true), stampLeftMs());
-      return;
-    }
-    if (watching.current) {
-      // The caption goes back to the banner; the film holds the beat, and its stamp, until the next wind-up.
-      setBeat(null);
-      // A batter done: once her stamp has cleared, her card holds the Coach's slot, then the next wind-up.
-      const stampLeft = stampLeftMs();
-      const card = paEndRef.current;
-      if (card) later(() => setCardUp((cur) => (paEndRef.current?.key === card.key ? card.key : cur)), stampLeft);
-      const wait = Math.max(reduced ? RACE_PACE.betweenPitchMsReduced : RACE_PACE.betweenPitchMs, stampLeft + (card ? MOUND_CARD_MS : 0));
-      later(() => {
-        if (!watching.current) return;
-        const live = gameRef.current;
-        if (!live || live.done) return;
-        if (pausedRef.current) {
-          nextArm.current = true;
-          return;
-        }
-        stageRef.current = "idle";
-        throwRef.current();
-      }, wait);
-      return;
-    }
-    setBeat(null);
-    filmRef.current = null;
-    setFilm(null);
-    setStage("idle");
-  }
-
-  function throwIt() {
-    const live = gameRef.current;
-    if (!run || !live || live.done || pausedRef.current) return;
-    const s = stageRef.current;
-    if (s !== "idle" && s !== "dead" && s !== "situation") return;
-    watching.current = true;
-    const by = batterInBox(run, live);
-    atThrow.current = { bug: moundBug(live), by };
-    const pitch = decidePitch(run, live);
-    pitchRef.current = pitch;
-    setType(pitch);
-    pending.current = decideDelivery(run, live, pitch, aim);
-    setU(0);
-    setBeat(null);
-    filmRef.current = null;
-    setFilm(null);
-    resolvedAtRef.current = null;
-    // The last batter's line and card step aside for the wind-up.
-    paEndRef.current = null;
-    setPaEnd(null);
-    setCardUp(null);
-    setStage("prepare");
-    sfxSelect();
-    sfxAnticipation(gutsOn);
-    duckCrowd(true);
-    if (gutsOn) setCrowdLevel(0.2);
-    if (maybePitchLastSpurt(live)) sfxCrowdBurst();
-
-    // A batter steps in (C7): her nameplate at the foot, and when she's the cast hitter coming
-    // up fresh, the VS card first. The wind-up waits out the card, so the chrome that belongs
-    // to the wind-up (the nameplate, the skill) lands as the card clears.
-    const practiceNow = live.kind === "practice";
-    const fresh = live.count.balls === 0 && live.count.strikes === 0;
-    const newBatter = !practiceNow && introduced.current !== live.battersFaced;
-    const vsNow = newBatter && fresh && by.id !== "academy";
-    const introMs = vsNow ? CHROME_MS.vs : 0;
-    if (newBatter) introduced.current = live.battersFaced;
-    if (vsNow && by.id !== "academy") {
-      const key = ++chromeKey.current;
-      const girl = (id: CharacterId, pose: "set" | "stance") => stillFor(manifest?.girls[id], pose)?.url ?? portraitSrc(id, "focused");
-      setVs({ key, left: { src: girl(run.characterId, "set"), name: who.name }, right: { src: girl(by.id, "stance"), name: by.plate.name } });
-      sfxCrowdBurst();
-      later(() => setVs((cur) => (cur?.key === key ? null : cur)), CHROME_MS.vs);
-    }
-    const atWindup = (fn: () => void) => (introMs > 0 ? later(fn, introMs) : fn());
-    if (newBatter) {
-      const index = live.battersFaced;
-      atWindup(() => {
-        const key = ++chromeKey.current;
-        setLowerThird({
-          key,
-          name: by.plate.name,
-          jp: by.plate.jp,
-          number: by.plate.number,
-          line: moundOrderLine(index, by.id !== "academy"),
-          accent: by.id === "academy" ? ACADEMY_ACCENT : kitAccent(by.id),
-        });
-        later(() => setLowerThird((cur) => (cur?.key === key ? null : cur)), CHROME_MS.lowerThird);
-      });
-    }
-    let skillNow = false;
-    if (
-      uniqueShouldFire(run.characterId, {
-        already: live.uniqueFired,
-        kind: live.kind,
-        pitching: true,
-        firstPitchOfPa: live.count.balls === 0 && live.count.strikes === 0,
-        paIndex: Math.max(1, live.battersFaced || 1),
-        lastSpurt: live.lastSpurt,
-        stealArmed: false,
-        parkId: sheet(run.characterId).parkId,
-        scoreDiff: live.scoreDiff,
-        inning: live.inning,
-      })
-    ) {
-      live.uniqueFired = true;
-      skillNow = true;
-      const text = uniqueName(run.characterId);
-      atWindup(() => showBanner(text, who.jp, "accent"));
-    }
-    // The last spurt gets its banner once, at the first wind-up of it that her skill isn't using.
-    if (maybePitchLastSpurt(live) && !spurtShown.current && !skillNow) {
-      spurtShown.current = true;
-      atWindup(() => showBanner(MOUND_SPURT.text, MOUND_SPURT.jp, "spurt"));
-    }
-    later(
-      () => {
-        if (stageRef.current !== "prepare") return;
-        flightStart.current = performance.now();
-        // The band belongs to the wind-up: it's gone by the release.
-        setBanner(null);
-        setStage("flight");
-      },
-      introMs + (reduced ? PREPARE_MS_REDUCED : RACE_PACE.prepareMs),
-    );
-  }
-
-  /** Her skill (or the last spurt) across the film for CHROME_MS.skill, on the pause-aware timers. */
-  function showBanner(text: string, jp: string | null, tone: "accent" | "spurt") {
-    const key = ++chromeKey.current;
-    setBanner({ key, text, jp, tone });
-    later(() => setBanner((cur) => (cur?.key === key ? null : cur)), CHROME_MS.skill);
-  }
-
   function leave() {
-    if (!game || !game.done) return;
-    watching.current = false;
+    if (!game.done) return;
     finishGame(game.kind, game.pgMet, game.sgMet, game.outsRecorded >= 3, false, moundRead(game), game.spurtFired, undefined, {
       tells: game.tells,
       record: { events: game.events, arm: "academy", pgId: game.pgId },
@@ -764,14 +429,12 @@ export function ShineMound() {
   function resumeMound() {
     // Back on the rubber: the grid and Go return under the thumb, so re-arm the input guard.
     useShine.getState().bumpView();
-    resume();
+    mound.resume();
   }
-
-  throwRef.current = throwIt;
 
   const showingBeat = stage === "field" || stage === "reaction";
   // From the pitch landing to the next wind-up, the bug and the batter are the ones at the wind-up.
-  const held = film ? atThrow.current : null;
+  const held = film ? snap.atThrow : null;
   const bug = held ? settleMoundBug(held.bug, game.events) : moundBug(game);
   const inBox = held ? held.by : batterInBox(run, game);
   const closeRead = game.done ? moundRead(game) : null;
@@ -884,7 +547,7 @@ export function ShineMound() {
             </div>
           }
         >
-          {picking && !game.done ? <SitZone aim={aim} onSit={setAim} ghost={ghost} label="Glove" /> : null}
+          {picking && !game.done ? <SitZone aim={aim} onSit={(c) => mound.setAim(c)} ghost={ghost} label="Glove" /> : null}
         </ActionStage>
         {/* Under the done panel her mood bust fades in over the film (C4). */}
         {doneUp ? (
@@ -931,13 +594,13 @@ export function ShineMound() {
           </div>
           <div className="flex items-center gap-1.5">
             <ShineMute />
-            <PauseButton onPause={() => pause("user")} />
+            <PauseButton onPause={() => mound.pause("user")} />
           </div>
         </header>
         {/* The home run takes the HUD away, but not Time: a faded glyph over the bars, where the HUD's was. */}
         {hrUp ? (
           <div className="shine-hr-time">
-            <PauseButton onPause={() => pause("user")} />
+            <PauseButton onPause={() => mound.pause("user")} />
           </div>
         ) : null}
 
@@ -1000,7 +663,7 @@ export function ShineMound() {
                 <p className="min-h-10 text-center font-story text-sm text-cream/90">{caption}</p>
               )}
               {picking && !game.done ? (
-                <PixelBtn className="shine-go h-14 text-sm" onClick={throwIt} ariaLabel={goLabel}>
+                <PixelBtn className="shine-go h-14 text-sm" onClick={() => mound.throw()} ariaLabel={goLabel}>
                   {goLabel}
                 </PixelBtn>
               ) : null}
