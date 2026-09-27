@@ -451,6 +451,106 @@ describe("action art: result stamp", () => {
   });
 });
 
+describe("action art: the pitcher's side of the stamp", () => {
+  it("colours the mound's stamps for her: her K gold, a hit or walk off her slate, an out teal, a home run coral", async () => {
+    const { resultStamp } = await import("./action-art.ts");
+    assert.deepEqual(resultStamp("k", true, "pitcher"), { jp: "三振", en: "Strike three", tone: "gold" });
+    assert.deepEqual(resultStamp("k", false, "pitcher"), { jp: "見逃し三振", en: "Caught looking", tone: "gold" }, "same kana, her tone");
+    for (const against of ["walk", "single", "double", "sac-fly", "bunt-down"] as const) {
+      assert.equal(resultStamp(against, false, "pitcher")?.tone, "slate", against);
+    }
+    for (const out of ["grounder-out", "fly-out", "bunt-out"] as const) {
+      assert.deepEqual(resultStamp(out, true, "pitcher"), { jp: "アウト", en: "Out", tone: "teal" }, out);
+    }
+    assert.deepEqual(resultStamp("hr", true, "pitcher"), { jp: "ホームラン", en: "Home run", tone: "coral" });
+    for (const quiet of ["foul", "foul-tip", "ball", "take-strike", "miss"] as const) {
+      assert.equal(resultStamp(quiet, true, "pitcher"), null, quiet);
+    }
+  });
+
+  it("leaves the race's tones where they were", async () => {
+    const { resultStamp } = await import("./action-art.ts");
+    for (const beat of ALL_BEATS) {
+      for (const swung of [true, false]) {
+        assert.deepEqual(resultStamp(beat, swung, "batter"), resultStamp(beat, swung), beat);
+      }
+    }
+    assert.equal(resultStamp("k", true)?.tone, "coral");
+    assert.equal(resultStamp("single", true)?.tone, "teal");
+    assert.equal(resultStamp("hr", true)?.tone, "gold");
+  });
+
+  it("never hands the mound's words a new spelling: only the tone turns", async () => {
+    const { resultStamp } = await import("./action-art.ts");
+    for (const beat of ALL_BEATS) {
+      const b = resultStamp(beat, true);
+      const p = resultStamp(beat, true, "pitcher");
+      assert.equal(p?.jp, b?.jp, beat);
+      assert.equal(p?.en, b?.en, beat);
+    }
+  });
+});
+
+describe("action art: the run she scores", () => {
+  it("stamps 得点 in gold and holds it 1.2 s", async () => {
+    const { resultStamp, SCORE_STAMP, SCORE_STAMP_HOLD_MS, stampHoldMs, stampVisible, STAMP_DELAY_MS } = await import("./action-art.ts");
+    assert.deepEqual(SCORE_STAMP, { jp: "得点", en: "Run scores", tone: "gold" });
+    assert.deepEqual(resultStamp("score", false), SCORE_STAMP);
+    assert.deepEqual(resultStamp("score", true, "pitcher"), SCORE_STAMP, "a run is gold on her own card");
+    assert.equal(SCORE_STAMP_HOLD_MS, 1200);
+    assert.equal(stampHoldMs("score"), SCORE_STAMP_HOLD_MS);
+    assert.equal(stampVisible(STAMP_DELAY_MS, "score"), true);
+    assert.equal(stampVisible(STAMP_DELAY_MS + SCORE_STAMP_HOLD_MS - 1, "score"), true);
+    assert.equal(stampVisible(STAMP_DELAY_MS + SCORE_STAMP_HOLD_MS, "score"), false);
+  });
+});
+
+describe("action art: the home run's plate", () => {
+  it("names the hitter and her number on the race", async () => {
+    const { hrPlateLine } = await import("./action-art.ts");
+    assert.equal(hrPlateLine({ name: "Aoi", jp: "アオイ", number: 1 }), "Aoi · #1");
+    assert.equal(hrPlateLine({ name: "Nishi", jp: null, number: null }), "Nishi");
+  });
+
+  it("names who it came off on the mound", async () => {
+    const { hrPlateLine } = await import("./action-art.ts");
+    const reina = { name: "Reina", jp: "レイナ", number: 18 };
+    assert.equal(hrPlateLine({ name: "Nishi", jp: null, number: null }, "pitcher", reina), "Nishi · off Reina #18");
+    assert.equal(hrPlateLine({ name: "Aoi", jp: "アオイ", number: 1 }, "pitcher", reina), "Aoi · off Reina #18", "the hitter's own number steps aside");
+    assert.equal(hrPlateLine({ name: "Nishi", jp: null, number: null }, "pitcher", { name: "Reina", jp: null, number: null }), "Nishi · off Reina");
+    assert.equal(hrPlateLine({ name: "Aoi", jp: null, number: 1 }, "pitcher", null), "Aoi · #1", "no arm to name: the race's plate");
+  });
+});
+
+describe("action art: the ball's flight", () => {
+  it("starts high, lands mid-zone rather than at her ankles, and swells as it comes", async () => {
+    const { plate2dFlight } = await import("./action-art.ts");
+    const mid = { x: 1.5, y: 1.5 };
+    const start = plate2dFlight({ u: 0, loc: mid });
+    const end = plate2dFlight({ u: 1, loc: mid });
+    assert.deepEqual([start.left, start.top], [50, 40]);
+    assert.deepEqual([end.left, end.top], [50, 62]);
+    assert.ok(start.scale < 1 && end.scale > 2, "a speck at release, a ball at the plate");
+    for (const y of [0, 3]) {
+      const t = plate2dFlight({ u: 1, loc: { x: 1.5, y } }).top;
+      assert.ok(t >= 57 && t <= 67, `lands in the zone band (${t})`);
+    }
+    assert.ok(plate2dFlight({ u: 1, loc: { x: 0, y: 1.5 } }).left < 50, "inside fans left");
+    assert.equal(plate2dFlight({ u: Number.NaN, loc: mid }).top, 40, "a bad clock holds at release");
+    assert.equal(plate2dFlight({ u: 4, loc: mid }).top, 62, "clamped to the plate");
+  });
+
+  it("points the trail along the path: straight down the middle, leaning with the location", async () => {
+    const { plate2dFlight } = await import("./action-art.ts");
+    assert.ok(Math.abs(plate2dFlight({ u: 0.5, loc: { x: 1.5, y: 1.5 } }).angleDeg - 90) < 1e-9, "down the middle is straight down");
+    const away = plate2dFlight({ u: 0.5, loc: { x: 3, y: 1.5 } }).angleDeg;
+    const inside = plate2dFlight({ u: 0.5, loc: { x: 0, y: 1.5 } }).angleDeg;
+    assert.ok(away < 90 && away > 45, `away leans right (${away})`);
+    assert.ok(inside > 90 && inside < 135, `inside leans left (${inside})`);
+    assert.equal(plate2dFlight({ u: 0, loc: { x: 3, y: 1.5 } }).angleDeg, away, "the path is a line: one angle all the way");
+  });
+});
+
 describe("the home run is its own moment", () => {
   it("holds its stamp longer than a single, and the race waits for it", async () => {
     const { stampVisible, stampHoldMs, STAMP_DELAY_MS, STAMP_HOLD_MS, HR_STAMP_HOLD_MS } = await import("./action-art.ts");

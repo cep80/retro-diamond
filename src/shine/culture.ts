@@ -76,7 +76,7 @@ export function workMorningLine(parkId: string) {
 
 /** Story, not a gacha. Mentor C rotates at year-start. She does not change parks. */
 const RETIRED_YEAR_VOICE = "She's moving to the Palms organization. A new voice arrives.";
-const RETIRED_REACH = "She was on. The goal she came for stayed open.";
+const RETIRED_REACH = "She was on. It still got away.";
 const RETIRED_K = "She struck out. The sit never found the pitch.";
 
 export function yearVoice(year: 1 | 2 | 3) {

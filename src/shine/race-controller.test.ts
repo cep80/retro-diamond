@@ -1,8 +1,22 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { SCORE_STAMP_HOLD_MS, STAMP_DELAY_MS } from "./action-art.ts";
+import type { PlateEvent } from "./events.ts";
 import { EXHIBITION_ENCOUNTER, VirtualScheduler } from "./plate-harness.ts";
-import { cardVerdict, RaceController, type RaceCue } from "./race-controller.ts";
+import {
+  cardVerdict,
+  GUN_MAX_KMH,
+  GUN_MIN_KMH,
+  paCardHoldMs,
+  pitchKmh,
+  pitchReadout,
+  RaceController,
+  scoredOnPa,
+  type RaceCue,
+} from "./race-controller.ts";
+import { RACE_PACE } from "./race.ts";
 import { newRun } from "./run.ts";
+import { FORBIDDEN_IN_STORY } from "./story.ts";
 
 function race(seed: string, over: Partial<ConstructorParameters<typeof RaceController>[0]> = {}) {
   const sched = new VirtualScheduler();
@@ -267,5 +281,181 @@ describe("race controller", () => {
     assert.ok(kRate > 0.06 && kRate < 0.4, `K rate ${kRate.toFixed(2)}`);
     assert.ok(reachRate > 0.18 && reachRate < 0.55, `reach rate ${reachRate.toFixed(2)}`);
     assert.ok(walkRate > 0.02, `walk rate ${walkRate.toFixed(2)}`);
+  });
+});
+
+/** Every phase the race enters, with the scheduler's time it entered it. */
+function phaseLog(c: RaceController, sched: VirtualScheduler) {
+  const log: { phase: string; t: number }[] = [{ phase: c.getSnapshot().phase, t: sched.t }];
+  c.subscribe(() => {
+    const phase = c.getSnapshot().phase;
+    if (log.at(-1)!.phase !== phase) log.push({ phase, t: sched.t });
+  });
+  return log;
+}
+
+describe("race controller: the day's broadcast beats", () => {
+  it("the radar gun reads each pitch in km/h: faster flights read higher, inside a gun's range", () => {
+    assert.equal(pitchKmh({ type: "fastball", speed: 0.395 }), 145, "a mid arm's fastball");
+    assert.ok(pitchKmh({ type: "fastball", speed: 0.34 }) > pitchKmh({ type: "fastball", speed: 0.42 }), "a shorter flight is a faster pitch");
+    assert.ok(pitchKmh({ type: "fastball", speed: 0.4 }) > pitchKmh({ type: "slider", speed: 0.5 }));
+    assert.ok(pitchKmh({ type: "slider", speed: 0.5 }) > pitchKmh({ type: "curve", speed: 0.62 }), "a curve is the slow one");
+    assert.equal(pitchKmh({ type: "fastball", speed: 0.05 }), GUN_MAX_KMH, "never past the gun's top");
+    assert.equal(pitchKmh({ type: "changeup", speed: 2 }), GUN_MIN_KMH, "never under its floor");
+    assert.equal(pitchKmh({ type: "curve", speed: Number.NaN }), 112, "a broken flight reads the pitch's norm");
+    for (const type of ["fastball", "slider", "curve", "changeup"] as const) {
+      for (const speed of [0.3, 0.4, 0.5, 0.6, 0.7, 0.8]) {
+        const k = pitchKmh({ type, speed });
+        assert.ok(Number.isInteger(k) && k >= GUN_MIN_KMH && k <= GUN_MAX_KMH, `${type} ${speed}s → ${k}`);
+      }
+    }
+  });
+
+  it("the readout names the pitch and the gun, in the broadcast's words", () => {
+    assert.equal(pitchReadout({ type: "fastball", speed: 0.395 }), "Fastball · 145 km/h");
+    assert.equal(pitchReadout({ type: "changeup", speed: 0.735 }), "Changeup · 124 km/h");
+    assert.match(pitchReadout({ type: "slider", speed: 0.45 }), /^Slider · \d{3} km\/h$/);
+    assert.match(pitchReadout({ type: "curve", speed: 0.6 }), /^Curveball · \d{3} km\/h$/);
+    for (const type of ["fastball", "slider", "curve", "changeup"] as const) {
+      assert.doesNotMatch(pitchReadout({ type, speed: 0.5 }), FORBIDDEN_IN_STORY, "broadcast words, no system speak");
+    }
+  });
+
+  it("she scored on a trip only when she came home herself, not on a home run's trot or a mate's run", () => {
+    const events: PlateEvent[] = [
+      { t: "score", pa: 1, runner: "self", from: 0, on: "hr", selfReachedBy: "hit" },
+      { t: "score", pa: 2, runner: "mate", from: 2, on: "single", selfReachedBy: null },
+      { t: "score", pa: 3, runner: "self", from: 2, on: "single", selfReachedBy: "walk" },
+    ];
+    assert.equal(scoredOnPa(events, 1), false, "the home run is its own moment");
+    assert.equal(scoredOnPa(events, 2), false, "a teammate scoring is not her run");
+    assert.equal(scoredOnPa(events, 3), true);
+    assert.equal(scoredOnPa(events, 4), false);
+    assert.equal(scoredOnPa([], 1), false);
+  });
+
+  it("a card with her run on it holds long enough for the 得点 stamp and a read after it", () => {
+    assert.equal(paCardHoldMs({ reduced: false, scored: false }), RACE_PACE.paCardMs);
+    assert.equal(paCardHoldMs({ reduced: true, scored: false }), RACE_PACE.paCardMsReduced);
+    for (const reduced of [false, true]) {
+      const hold = paCardHoldMs({ reduced, scored: true });
+      assert.equal(hold, paCardHoldMs({ reduced, scored: false }) + SCORE_STAMP_HOLD_MS);
+      assert.ok(hold > STAMP_DELAY_MS + SCORE_STAMP_HOLD_MS, "the stamp clears before the card goes");
+    }
+  });
+
+  it("the day's first Go can hold the first wind-up for the VS card; Time freezes that wait too", () => {
+    const { c, sched, cues } = race("intro");
+    let prepared: number | null = null;
+    c.onPlateCueRaw((q) => {
+      if (q.t === "prepare" && prepared === null) prepared = sched.t;
+    });
+    assert.equal(c.go({ introMs: 1200 }), true);
+    const go = cues.find((q): q is Extract<RaceCue, { t: "go" }> => q.t === "go");
+    assert.equal(go?.introMs, 1200, "the Go says how long the card holds");
+    assert.equal(c.getSnapshot().phase, "racing");
+    sched.advance(600);
+    assert.equal(c.getSnapshot().plate.stage, "idle", "no wind-up under the card");
+    c.pause("user");
+    sched.advance(20_000);
+    assert.equal(prepared, null, "the paused card holds the pitch");
+    assert.equal(c.getSnapshot().plate.stage, "idle");
+    c.resume();
+    sched.advance(599);
+    assert.equal(prepared, null, "the rest of the card, not a fresh one and not none");
+    sched.advance(2);
+    assert.notEqual(prepared, null, "then her wind-up");
+    assert.equal(c.getSnapshot().plate.stage, "prepare");
+  });
+
+  it("a plain Go (and every later at-bat) starts the wind-up at once", () => {
+    const { c, sched, cues } = race("no-intro");
+    c.go();
+    assert.equal(c.getSnapshot().plate.stage, "prepare");
+    const go = cues.find((q): q is Extract<RaceCue, { t: "go" }> => q.t === "go");
+    assert.equal(go?.introMs, 0);
+    const s = untilPhase(c, sched, "pick");
+    assert.equal(s.phase, "pick");
+    const log: number[] = [];
+    c.onPlateCueRaw((q) => {
+      if (q.t === "prepare") log.push(sched.t);
+    });
+    const at = sched.t;
+    untilPhase(c, sched, "racing", 5000);
+    sched.advance(0);
+    assert.ok(log.length > 0 && log[0]! - at <= RACE_PACE.betweenPitchMs + 60, "the next at-bat steps in on the usual wait, no card");
+  });
+
+  it("an at-bat she scored on holds its card SCORE_STAMP_HOLD_MS longer, and says so on the cue", () => {
+    for (let i = 0; i < 200; i++) {
+      const { c, sched, cues } = race(`scored-${i}`);
+      const log = phaseLog(c, sched);
+      c.go();
+      const first = untilPhase(c, sched, "pa-card");
+      if (first.phase !== "pa-card" || first.plate.game.done) continue;
+      if (!first.card!.scored) continue;
+      untilPhase(c, sched, "pick", 20_000);
+      const enter = log.find((l) => l.phase === "pa-card")!;
+      const leave = log.find((l) => l.phase === "pick" && l.t > enter.t)!;
+      assert.equal(leave.t - enter.t, RACE_PACE.paCardMs + SCORE_STAMP_HOLD_MS);
+      const cue = cues.find((q): q is Extract<RaceCue, { t: "pa-card" }> => q.t === "pa-card")!;
+      assert.equal(cue.scored, true);
+      assert.equal(scoredOnPa(first.plate.game.events, first.card!.pa), true);
+      return;
+    }
+    assert.fail("no first at-bat she scored on in 200 seeds");
+  });
+
+  it("an at-bat she didn't score on keeps the usual card", () => {
+    for (let i = 0; i < 100; i++) {
+      const { c, sched } = race(`plain-${i}`);
+      const log = phaseLog(c, sched);
+      c.go();
+      const first = untilPhase(c, sched, "pa-card");
+      if (first.phase !== "pa-card" || first.card!.scored) continue;
+      untilPhase(c, sched, "pick", 20_000);
+      const enter = log.find((l) => l.phase === "pa-card")!;
+      const leave = log.find((l) => l.phase === "pick" && l.t > enter.t)!;
+      assert.equal(leave.t - enter.t, RACE_PACE.paCardMs);
+      return;
+    }
+    assert.fail("no plain first at-bat in 100 seeds");
+  });
+
+  it("a run on the last at-bat gets its card before the done panel; Next from it ends the day", () => {
+    let seen = 0;
+    for (let i = 0; i < 300 && seen < 2; i++) {
+      const { c, sched, cues } = race(`last-run-${i}`);
+      const log = phaseLog(c, sched);
+      c.go();
+      untilPhase(c, sched, "done");
+      const s = c.getSnapshot();
+      assert.equal(s.phase, "done");
+      if (!s.card!.scored) {
+        // The last at-bat without a run of hers goes straight to the done panel.
+        const last = log.at(-2)!;
+        assert.equal(last.phase, "racing", "no card between the last at-bat and the done panel");
+        continue;
+      }
+      seen += 1;
+      const card = log.at(-2)!;
+      assert.equal(card.phase, "pa-card", "her last run gets its card");
+      assert.equal(log.at(-1)!.t - card.t, RACE_PACE.paCardMs + SCORE_STAMP_HOLD_MS);
+      assert.equal(cues.filter((q) => q.t === "done").length, 1);
+      assert.equal(s.watching, false);
+      assert.equal(c.go(), false);
+      // Again, skipping the card: Next goes to the done panel, never a pick.
+      const again = race(`last-run-${i}`);
+      again.c.go();
+      const start = again.sched.t;
+      while (!(again.c.getSnapshot().phase === "pa-card" && again.c.getSnapshot().plate.game.done) && again.sched.t - start < 120_000) again.sched.advance(50);
+      assert.equal(again.c.getSnapshot().phase, "pa-card");
+      again.c.next();
+      assert.equal(again.c.getSnapshot().phase, "done", "Next from the last card is the done panel");
+      assert.equal(again.cues.filter((q) => q.t === "done").length, 1);
+      again.sched.advance(10_000);
+      assert.equal(again.c.getSnapshot().phase, "done", "and nothing fires after it");
+    }
+    assert.ok(seen > 0, "a last at-bat she scored on exists in 300 seeds");
   });
 });

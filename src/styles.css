@@ -1072,7 +1072,9 @@
   overflow: hidden;
   pointer-events: none;
   mix-blend-mode: screen;
-  opacity: 0.55;
+  /* High enough, and a warm enough gold, that the rays read gold over the navy
+     night rather than khaki (screen at partial opacity greys a pale yellow). */
+  opacity: 0.88;
   -webkit-mask-image: radial-gradient(circle at 50% 38%, transparent 0 24%, #000 32% 62%, transparent 76%);
   mask-image: radial-gradient(circle at 50% 38%, transparent 0 24%, #000 32% 62%, transparent 76%);
   animation:
@@ -1084,7 +1086,7 @@
   content: "";
   position: absolute;
   inset: -50%;
-  background: repeating-conic-gradient(from 0deg at 50% 44%, rgb(255 214 120 / 0.85) 0deg 6deg, transparent 6deg 18deg);
+  background: repeating-conic-gradient(from 0deg at 50% 44%, rgb(255 210 104 / 0.95) 0deg 6deg, transparent 6deg 18deg);
   transform-origin: 50% 44%;
   animation:
     shine-hr-rays-grow 360ms ease-out both,
@@ -1183,8 +1185,18 @@
 .shine-stamp-hr .shine-stamp-en {
   animation: shine-outcome-card 240ms ease-out 520ms both;
 }
-/* Her nameplate, in the story face, trimmed in her kit colour. */
+/* Her nameplate, in the story face, trimmed in her kit colour. It rides the
+   bottom bar as the broadcast lower third (the bar is 12dvh; the plate is about
+   2rem tall, so this centres it there), clear of the phone's home bar. */
 .shine-hr-name {
+  position: absolute;
+  left: 50%;
+  bottom: max(calc(6dvh - 1rem), env(safe-area-inset-bottom));
+  translate: -50% 0;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   padding: 0.35rem 1rem;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--shine-accent, var(--color-gold)) 70%, transparent);
@@ -3428,4 +3440,861 @@
   .shine-set-keys {
     display: none;
   }
+}
+
+/* ===== Stage builder (check-in 14): stamps, the home run, the flight ball, the pitch readout ===== */
+
+/* Time holds a stamp wherever a date lays it (the race's 得点 sits on its card, outside the stage). */
+.shine-race[data-paused] :is(.shine-stamp, .shine-stamp *) {
+  animation-play-state: paused;
+}
+
+/* The race's home run: a warm bloom behind her head, under the rays' ring (the
+   rays' mask keeps them off her face, so the bloom is its own screen layer). */
+.shine-hr-bloom {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  background: radial-gradient(circle at 50% 38%, rgb(255 209 102 / 0.42), rgb(255 209 102 / 0.16) 26%, transparent 44%);
+  animation:
+    shine-hr-rays-in 360ms ease-out both,
+    shine-hr-out 240ms ease-in calc(var(--hr-hold, 2600ms) - 240ms) forwards;
+}
+.shine-hr-bloom.shine-hr-still {
+  animation: none;
+}
+
+/* A home run off her (the mound): the same three seconds, turned grey. Faint
+   colourless rays, no bloom or streamers (the stage drops them), a coral stamp
+   that lands without the jolt, her picture drained under it, the plate in slate. */
+.shine-hr-rays.shine-hr-against {
+  opacity: 0.18;
+  filter: grayscale(1);
+}
+.shine-hr-against .shine-hr {
+  animation: none;
+}
+.shine-hr-against .shine-hr-name {
+  border-color: rgb(143 162 194 / 0.55);
+  box-shadow: none;
+}
+.shine-hr-against .shine-hr-name .shine-kana {
+  color: rgb(245 248 255 / 0.8);
+}
+.shine-hr-backdrop.shine-hr-against::before {
+  filter: blur(24px) brightness(0.5) saturate(0.3);
+}
+/* Her film under it: desaturated and dimmed over the takeover's own length
+   (--hr-hold), in over ~400 ms and back out with the layers' last 240 ms. It is
+   an animation, not a transition, so Time freezes it with the rest of the stage. */
+.shine-hr-dim {
+  animation: shine-hr-dim var(--hr-hold, 2600ms) linear both;
+}
+.shine-hr-dim.shine-hr-still {
+  animation: none;
+  filter: saturate(0.35) brightness(0.72);
+}
+@keyframes shine-hr-dim {
+  0% {
+    filter: saturate(1) brightness(1);
+  }
+  15% {
+    filter: saturate(0.35) brightness(0.72);
+  }
+  91% {
+    filter: saturate(0.35) brightness(0.72);
+  }
+  100% {
+    filter: saturate(1) brightness(1);
+  }
+}
+
+/* The pitch: a ball that swells as it comes (plate2dFlight's scale), with a
+   short tapered streak back along its path (--trail-angle, the direction of
+   travel). The streak is drawn from the ball's centre, so it rides its scale. */
+.shine-flight-ball {
+  transform: translate(-50%, -50%) scale(var(--ball-scale, 1));
+  box-shadow:
+    0 0 6px #f5f8ff,
+    0 0 14px rgb(245 248 255 / 0.35);
+}
+.shine-flight-ball.is-still {
+  transform: translate(-50%, -50%) scale(1.2);
+}
+/* A warm tracer, not a white one: white vanishes on her jersey, cream-gold reads on it and on the night. */
+.shine-flight-ball::after {
+  content: "";
+  position: absolute;
+  right: 50%;
+  top: 50%;
+  width: 34px;
+  height: 10px;
+  margin-top: -5px;
+  background: linear-gradient(90deg, transparent, rgb(255 214 120 / 0.55) 55%, rgb(255 236 186 / 0.9));
+  clip-path: polygon(0 44%, 100% 0, 100% 100%, 0 56%);
+  transform-origin: 100% 50%;
+  rotate: var(--trail-angle, 90deg);
+}
+.shine-flight-ball.is-still::after {
+  display: none;
+}
+
+/* The pitch readout: a broadcast plate under the bug, a gold rule on ink, wiped
+   in from the rule. Above the HUD's scrim so the scrim never greys it; it never
+   takes a tap. A date can move it with --bug-foot (the bug's foot, from the top). */
+.shine-pitch-read {
+  position: absolute;
+  left: 12px;
+  top: 0.75rem;
+  z-index: 21;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  padding: 0.3rem 0.8rem 0.3rem 0.6rem;
+  border-left: 3px solid var(--color-gold);
+  border-radius: 0 6px 6px 0;
+  background: rgb(8 17 39 / 0.85);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-cream);
+  animation: shine-pitch-read-in 240ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+/* Under the bug and the tag line under it (the bug's foot is ~60 px on the mound
+   with its tag floating to ~83; the exhibition's bug carries its tag to ~78). */
+.shine-stage-bleed .shine-pitch-read {
+  top: var(--bug-foot, calc(max(env(safe-area-inset-top), 10px) + 82px));
+}
+.shine-pitch-read.is-still {
+  animation: none;
+}
+@keyframes shine-pitch-read-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shine-hr-bloom,
+  .shine-pitch-read {
+    animation: none;
+  }
+  .shine-hr-dim {
+    animation: none;
+    filter: saturate(0.35) brightness(0.72);
+  }
+  .shine-flight-ball {
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  .shine-flight-ball::after {
+    display: none;
+  }
+}
+
+/* ===== Chrome builder (check-in 14): the date's broadcast chrome (DateChrome.tsx),
+   the done panel's head and day strip, the bug's gold tag and Final, the grid on a
+   short screen, the park behind the column on a wide one ===== */
+
+/* Every chrome piece stops with the date: its `paused` prop (data-dc-paused) holds
+   it, and so does the date's own Time. The caller's pause-aware timer that
+   unmounts it is frozen too, so the two stay in step. */
+[data-dc-paused],
+[data-dc-paused] *,
+[data-dc-paused] *::before,
+[data-dc-paused] *::after,
+.shine-race[data-paused] :is(.shine-skill-banner, .shine-lower-third, .shine-vs, .shine-done-head, .shine-day-strip),
+.shine-race[data-paused] :is(.shine-skill-banner, .shine-lower-third, .shine-vs, .shine-done-head, .shine-day-strip) *,
+.shine-race[data-paused] :is(.shine-skill-banner, .shine-lower-third, .shine-vs, .shine-done-head, .shine-day-strip) *::before,
+.shine-race[data-paused] :is(.shine-skill-banner, .shine-lower-third, .shine-vs, .shine-done-head, .shine-day-strip) *::after {
+  animation-play-state: paused !important;
+}
+/* Reduced motion: a piece fades in and stays until its caller takes it away. It
+   ends visible, so the OS setting's near-zero durations still show it. */
+@keyframes shine-dc-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* C6 · Her unique skill (her kit colour) or the last spurt (coral): a skewed band
+   across the film, under her face (the release close-up holds it near 30%). It
+   slides in, holds, and fades in --dc-ms (CHROME_MS.skill). */
+.shine-skill-banner {
+  --band: var(--shine-accent, var(--color-gold));
+  position: absolute;
+  inset-inline: -6%;
+  top: 42%;
+  z-index: 25;
+  pointer-events: none;
+  transform: skewY(-6deg);
+}
+.shine-skill-banner[data-tone="spurt"] {
+  --band: var(--color-coral);
+}
+.shine-skill-band {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.1rem 0.7rem;
+  margin: 0;
+  padding: 0.6rem 12%;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, transparent 4%, rgb(255 255 255 / 0.75) 14% 86%, transparent 96%) top / 100% 2px no-repeat,
+    linear-gradient(90deg, transparent 4%, rgb(255 255 255 / 0.75) 14% 86%, transparent 96%) bottom / 100% 2px no-repeat,
+    linear-gradient(90deg, transparent, var(--band) 10% 90%, transparent);
+  color: var(--color-ink);
+  text-align: center;
+  text-wrap: balance;
+  animation: shine-skill-in var(--dc-ms, 1100ms) linear both;
+}
+/* One gleam across the band while it holds. */
+.shine-skill-band::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 38%, rgb(255 255 255 / 0.6) 50%, transparent 62%);
+  translate: -100% 0;
+  animation: shine-skill-gleam var(--dc-ms, 1100ms) ease-out both;
+}
+.shine-skill-kana {
+  font-family: var(--font-jp);
+  font-size: clamp(0.8rem, 3.4vw, 1.05rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.12em;
+}
+.shine-skill-name {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 6vw, 2rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.shine-skill-banner[data-tone="spurt"] .shine-skill-name {
+  font-size: clamp(1.1rem, 5vw, 1.6rem);
+  letter-spacing: 0.1em;
+}
+@keyframes shine-skill-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%);
+    animation-timing-function: cubic-bezier(0.2, 1.25, 0.4, 1);
+  }
+  6% {
+    opacity: 1;
+  }
+  20% {
+    transform: translateX(0);
+  }
+  80% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(6%);
+  }
+}
+@keyframes shine-skill-gleam {
+  0%,
+  22% {
+    translate: -100% 0;
+  }
+  58%,
+  100% {
+    translate: 100% 0;
+  }
+}
+.shine-skill-banner.is-reduced .shine-skill-band {
+  animation: shine-dc-fade 160ms ease-out both;
+}
+.shine-skill-banner.is-reduced .shine-skill-band::after {
+  display: none;
+}
+
+/* C7 · A new batter's (or pitcher's) nameplate: the home run's nameplate look,
+   as a broadcast lower third at the foot of the film, just above the Coach's
+   lines (the mound measures them into --coach-h; the race's caption sits under
+   6.5rem). It slides in, holds and goes in --dc-ms (CHROME_MS.lowerThird). */
+.shine-lower-third {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--coach-h, 6.5rem) + 10px);
+  z-index: 18;
+  display: flex;
+  justify-content: flex-start;
+  pointer-events: none;
+  animation: shine-lt-life var(--dc-ms, 1400ms) linear both;
+}
+.shine-lt-plate {
+  display: flex;
+  align-items: stretch;
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--shine-accent, var(--color-gold)) 70%, transparent);
+  border-radius: 12px;
+  background: rgb(8 17 39 / 0.86);
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--shine-accent, var(--color-gold)) 35%, transparent),
+    0 8px 20px rgb(0 0 0 / 0.35);
+  color: var(--color-cream);
+}
+.shine-lt-num {
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding: 0 0.7rem;
+  background: var(--shine-accent, var(--color-gold));
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.shine-lt-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.18rem;
+  padding: 0.4rem 0.9rem 0.45rem;
+}
+.shine-lt-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-story);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.06em;
+}
+.shine-lt-name .shine-kana {
+  font-family: var(--font-jp);
+  color: var(--color-gold);
+}
+.shine-lt-line {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-grass-2);
+}
+@keyframes shine-lt-life {
+  0% {
+    opacity: 0;
+    transform: translateX(-28px);
+    animation-timing-function: cubic-bezier(0.2, 1, 0.3, 1);
+  }
+  16% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  86% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+.shine-lower-third.is-reduced {
+  animation: shine-dc-fade 160ms ease-out both;
+}
+
+/* C7 · VS: the pitcher on the left, the batter on the right, cut on a diagonal
+   with a gold rule, VS landing between them in the gold stamp face. Each half
+   shows its still full height, cropped to her middle, so both faces sit clear of
+   the mark. Over the film, under the HUD and the Coach; --dc-ms is CHROME_MS.vs. */
+.shine-vs {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--color-ink);
+  animation: shine-vs-life var(--dc-ms, 1200ms) linear both;
+}
+.shine-vs-side {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.shine-vs-side img {
+  position: absolute;
+  top: 0;
+  width: 62%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+  user-select: none;
+}
+.shine-vs-a {
+  clip-path: polygon(0 0, 62% 0, 38% 100%, 0 100%);
+  animation: shine-vs-in-a 320ms cubic-bezier(0.2, 1, 0.3, 1) both;
+}
+.shine-vs-a img {
+  left: 0;
+}
+.shine-vs-b {
+  clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%);
+  animation: shine-vs-in-b 320ms cubic-bezier(0.2, 1, 0.3, 1) both;
+}
+/* Her stance still is centred on her body, not her face: a batter looks toward the
+   plate, so the crop leans left of centre to land her face right of the diagonal. */
+.shine-vs-b img {
+  right: 0;
+  object-position: 35% 0;
+}
+.shine-vs-side::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 55%, rgb(8 17 39 / 0.55));
+}
+.shine-vs-name {
+  position: absolute;
+  z-index: 1;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid rgb(255 209 102 / 0.55);
+  border-radius: 999px;
+  background: rgb(8 17 39 / 0.78);
+  font-family: var(--font-story);
+  font-size: clamp(1.05rem, 5.2vw, 1.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  color: var(--color-cream);
+}
+/* Low in each half, above the Coach's caption, staggered so two long names never meet. */
+.shine-vs-a .shine-vs-name {
+  left: 12px;
+  bottom: calc(var(--coach-h, 6.5rem) + 4.5rem);
+}
+.shine-vs-b .shine-vs-name {
+  right: 12px;
+  bottom: calc(var(--coach-h, 6.5rem) + 1rem);
+}
+.shine-vs-rule {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, var(--color-gold), #fff3c4 50%, var(--color-gold));
+  clip-path: polygon(calc(62% - 3px) 0, calc(62% + 3px) 0, calc(38% + 3px) 100%, calc(38% - 3px) 100%);
+  animation: shine-dc-fade 200ms ease-out 140ms both;
+}
+.shine-vs-mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+}
+.shine-vs-mark .shine-stamp {
+  animation: shine-stamp-slam 380ms cubic-bezier(0.2, 1.6, 0.4, 1) 180ms both;
+}
+.shine-vs-mark .shine-stamp-jp {
+  font-family: var(--font-display);
+  font-size: clamp(3.4rem, 18vw, 5.6rem);
+  font-style: italic;
+  letter-spacing: 0.04em;
+}
+@keyframes shine-vs-life {
+  0% {
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  84% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes shine-vs-in-a {
+  from {
+    transform: translateX(-35%);
+  }
+}
+@keyframes shine-vs-in-b {
+  from {
+    transform: translateX(35%);
+  }
+}
+.shine-vs.is-reduced {
+  animation: shine-dc-fade 160ms ease-out both;
+}
+.shine-vs.is-reduced :is(.shine-vs-a, .shine-vs-b, .shine-vs-rule, .shine-vs-mark .shine-stamp) {
+  animation: none;
+}
+
+/* C3 · The done panel's head: the label, her still stamp (達成 gold, 未達 slate),
+   the headline at text-3xl. The block rises in once. */
+.shine-done-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  text-align: center;
+  animation: shine-done-rise 320ms cubic-bezier(0.2, 1, 0.3, 1) both;
+}
+.shine-done-head.is-reduced {
+  animation: none;
+}
+.shine-done-stamp {
+  margin-block: 0.15rem 0.2rem;
+}
+.shine-done-stamp .shine-stamp-jp {
+  font-size: clamp(2rem, 10vw, 2.6rem);
+  -webkit-text-stroke-width: 2.5px;
+}
+.shine-done-stamp .shine-stamp-en {
+  font-size: clamp(0.6rem, 2.6vw, 0.72rem);
+  letter-spacing: 0.26em;
+}
+.shine-done-headline {
+  line-height: 1.12;
+  text-wrap: balance;
+  text-shadow: 0 2px 12px rgb(8 17 39 / 0.85);
+}
+/* The small label reads on anything behind it (a white jersey, a floodlight). */
+.shine-done-head > p:first-child {
+  text-shadow: 0 1px 8px rgb(8 17 39 / 0.95);
+}
+@keyframes shine-done-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* C6b · The day strip: one mini stamp per at-bat or batter, kana over an English
+   pill in the stamp's tone, leaning like the stamp. A steal, a run she scored or
+   runs in against her ride the corner. They land one after another. */
+.shine-day-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  /* Rows leave room for the marks that ride a chip's corner. */
+  gap: 1.05rem 0.85rem;
+  margin: 0.1rem 0 0.15rem;
+  padding: 0.45rem 0 0;
+  list-style: none;
+}
+.shine-day-chip {
+  --tone: #8fa2c2;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  rotate: -6deg;
+  animation: shine-day-pop 280ms cubic-bezier(0.2, 1.5, 0.4, 1) calc(240ms + var(--i, 0) * 80ms) both;
+}
+.shine-day-chip[data-tone="gold"] {
+  --tone: var(--color-gold);
+}
+.shine-day-chip[data-tone="coral"] {
+  --tone: var(--color-coral);
+}
+.shine-day-chip[data-tone="teal"] {
+  --tone: var(--color-grass-2);
+}
+/* At this size a stroked kana clots, so the kana wear the tone and an ink edge. */
+.shine-day-jp {
+  font-family: var(--font-jp);
+  font-size: 0.85rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--tone);
+  text-shadow:
+    0 1px 0 var(--color-ink),
+    0 0 6px rgb(8 17 39 / 0.9);
+}
+.shine-day-en {
+  padding: 0.2em 0.55em 0.2em 0.7em;
+  border-radius: 999px;
+  background: var(--tone);
+  font-family: var(--font-display);
+  font-size: 0.55rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+.shine-day-marks {
+  position: absolute;
+  top: -0.7rem;
+  right: -0.35rem;
+  display: flex;
+  gap: 2px;
+  rotate: 6deg;
+}
+.shine-day-mark {
+  padding: 0.18em 0.35em;
+  border-radius: 4px;
+  background: var(--color-gold);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.45);
+  font-family: var(--font-jp);
+  font-size: 0.5rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--color-ink);
+}
+.shine-day-mark.is-against {
+  background: var(--color-coral);
+}
+@keyframes shine-day-pop {
+  from {
+    opacity: 0;
+    scale: 1.6;
+  }
+}
+.shine-day-strip.is-reduced .shine-day-chip {
+  animation: none;
+}
+
+/* C12 · The date's tag rides the bug's foot on every date, the goal in gold. It
+   takes the bug's width, never widens it, and wraps to two lines at most. */
+/* A narrow bug (the final one) still gives the tag room, short of the HUD's buttons. */
+.shine-scorebug[data-tagged] {
+  min-width: min(15rem, calc(100vw - 8rem));
+}
+/* The foot's padding is a clear border, so a clamped third line can't show in it. */
+.shine-scorebug[data-tagged] .shine-bug-tag {
+  display: -webkit-box;
+  width: 0;
+  min-width: 100%;
+  overflow: hidden;
+  padding-bottom: 0;
+  border-bottom: 0.16rem solid transparent;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+/* The goal keeps its words together: it wraps as one piece onto the band's second line. */
+.shine-bug-tag b {
+  font-family: var(--font-story);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  /* The goal wraps inside the band's two-line clamp: an ellipsis at worst, never a cut word. */
+  white-space: normal;
+  text-transform: none;
+  color: var(--color-gold);
+}
+@media (min-width: 640px) {
+  .shine-scorebug[data-tagged] {
+    min-width: min(20rem, 100%);
+  }
+}
+/* C3 · Final: the score stays up under the done panel. */
+.shine-scorebug[data-final] .shine-bug-inning b {
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+/* C13 · A short phone: the grid starts below her chin (36% down the film, not
+   over her mouth) and keeps its old foot, so it still clears the Coach's lines
+   and Go (the mound's measured --coach-h can pull the foot up further). */
+@media (max-height: 720px) {
+  .shine-film-grid {
+    --grid-top: max(calc(52cqh - var(--grid-h0) / 2), 36cqh);
+    height: max(160px, min(calc(52cqh + var(--grid-h0) / 2 - var(--grid-top)), calc(100cqh - var(--coach-h, 0px) - 8px - var(--grid-top))));
+  }
+}
+@media (max-height: 720px) and (min-width: 640px) {
+  .shine-film-grid {
+    --grid-top: max(calc(52cqh + 36px - var(--grid-h0) / 2), 36cqh);
+    height: max(
+      160px,
+      min(calc(52cqh + 36px + var(--grid-h0) / 2 - var(--grid-top)), calc(100cqh - var(--coach-h, 0px) - 8px - var(--grid-top)))
+    );
+  }
+}
+
+/* C11 · A wide screen: the park (--race-backdrop, set by the date) fills the
+   flanks, blurred and dimmed, with a shade hugging the column and a vignette at
+   the window's edges, so the column still reads as the picture. Drawn before
+   the screen, so the screen paints over it; the home run's own backdrop covers
+   it for its three seconds. */
+@media (min-width: 640px) {
+  .shine-race::before {
+    --col-half: min(50vw, 37.5dvh, 360px);
+    content: "";
+    position: absolute;
+    inset: -48px;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        90deg,
+        transparent calc(50% - var(--col-half) - 140px),
+        rgb(8 17 39 / 0.55) calc(50% - var(--col-half)),
+        rgb(8 17 39 / 0.55) calc(50% + var(--col-half)),
+        transparent calc(50% + var(--col-half) + 140px)
+      ),
+      radial-gradient(ellipse at 50% 45%, transparent 45%, rgb(8 17 39 / 0.7)),
+      var(--race-backdrop, none) center 40% / cover no-repeat;
+    /* Blurred to colour and light only; a park's floodlights stay embers, not blobs. */
+    filter: blur(28px) brightness(0.4) saturate(0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shine-skill-banner .shine-skill-band,
+  .shine-lower-third,
+  .shine-vs {
+    animation: shine-dc-fade 160ms ease-out both;
+  }
+  .shine-skill-band::after {
+    display: none;
+  }
+  .shine-vs :is(.shine-vs-a, .shine-vs-b, .shine-vs-rule, .shine-vs-mark .shine-stamp),
+  .shine-done-head,
+  .shine-day-chip {
+    animation: none;
+  }
+}
+
+/* ===== Mound builder (check-in 14): her face under the done panel, the card after each batter ===== */
+
+/* C4 · Under the done panel, her mood bust (the cut-out scene bust) over the film:
+   elated when she did it, crushed when she didn't. Her still goes soft and dim
+   behind it (the main's data-done-up), so the park stays and she is the one
+   picture; the bust starts under the scorebug with her face above the panel, and
+   its cut foot melts away. It fades in once; it never takes a tap. */
+.shine-mound-bust {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  animation: shine-mound-bust-in 300ms ease-out both;
+}
+.shine-mound-bust::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(8 17 39 / 0.35), rgb(8 17 39 / 0.1) 40%, rgb(8 17 39 / 0.6));
+}
+/* It ends where the done panel starts (--coach-h, measured from the panel's top), so
+   the label and the stamp never sit on her jersey; a short phone gets a smaller bust. */
+.shine-mound-bust img {
+  position: absolute;
+  left: 50%;
+  top: var(--bug-foot, 96px);
+  height: min(calc(100% - var(--bug-foot, 96px) - var(--coach-h, 40%) + 1.5rem), 80dvh);
+  width: auto;
+  max-width: 100%;
+  aspect-ratio: 3 / 4;
+  translate: -50% 0;
+  object-fit: contain;
+  object-position: 50% 0;
+  user-select: none;
+  filter: drop-shadow(0 12px 28px rgb(0 0 0 / 0.45));
+  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 98%);
+  mask-image: linear-gradient(180deg, #000 70%, transparent 98%);
+}
+@keyframes shine-mound-bust-in {
+  from {
+    opacity: 0;
+  }
+}
+.shine-mound-bust.is-reduced {
+  animation-duration: 160ms;
+}
+/* Her still behind the bust: soft and dim, on the same 300 ms (held by Time with the stage). */
+.shine-race[data-done-up] .shine-stage-bleed .shine-film {
+  animation: shine-mound-film-soft 300ms ease-out both;
+}
+.shine-race[data-done-up="still"] .shine-stage-bleed .shine-film {
+  animation: none;
+  filter: blur(14px) brightness(0.55) saturate(0.85);
+}
+@keyframes shine-mound-film-soft {
+  to {
+    filter: blur(14px) brightness(0.55) saturate(0.85);
+  }
+}
+
+/* C8 · The card after each batter: the race's at-bat card, read-only, in the Coach's
+   slot from her stamp clearing to the next wind-up. It never takes a tap. */
+.shine-mound-card {
+  pointer-events: none;
+  cursor: default;
+}
+.shine-mound-card.is-reduced {
+  animation: shine-dc-fade 160ms ease-out both;
+}
+
+/* C6b · The mound's strip runs to six or more chips, so it wraps: the rows open a
+   little further so a 失点 mark on the second row can't read as the chip's above. */
+[data-mound-done] .shine-day-strip {
+  row-gap: 1.4rem;
+}
+
+/* Time holds both where they stand. */
+.shine-race[data-paused] :is(.shine-mound-bust, .shine-mound-card) {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shine-mound-bust {
+    animation-duration: 160ms;
+  }
+  .shine-race[data-done-up] .shine-stage-bleed .shine-film {
+    animation: none;
+    filter: blur(14px) brightness(0.55) saturate(0.85);
+  }
+  .shine-mound-card {
+    animation: shine-dc-fade 160ms ease-out both;
+  }
+}
+
+/* ===== Race builder (check-in 14): her 得点 over the card, the race's done panel ===== */
+
+/* C17 · The run she scored: 得点 lands over her trot, above the at-bat card, like a
+   stamp on a play. Over the film, under the HUD and the Coach; it never takes a
+   tap. Time holds it (the stage builder's .shine-stamp rule), reduced motion sets
+   it down still (StampMark's `reduced`, and the OS rule on .shine-stamp). */
+.shine-race-score {
+  position: absolute;
+  inset: 0 0 16%;
+  z-index: 16;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* C3 · A long headline (the exhibition's whole day: "A home run, one walk, a
+   stolen base.") steps down a size so it holds two lines over the strip. */
+.shine-race-done[data-long-head] .shine-done-headline {
+  font-size: 1.5rem;
+  line-height: 1.15;
 }

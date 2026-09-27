@@ -9,11 +9,12 @@
  * decision (`race.ts`) and the sequencing between pitches and PAs. No timing
  * input exists. Renders nothing, persists nothing.
  */
-import type { Cell } from "./core/zone.ts";
+import type { Cell, PitchType } from "./core/zone.ts";
 import { hashId, makeRng } from "./core/rng.ts";
-import { resultStamp, STAMP_DELAY_MS, stampHoldMs } from "./action-art.ts";
+import { resultStamp, SCORE_STAMP_HOLD_MS, STAMP_DELAY_MS, stampHoldMs } from "./action-art.ts";
 import { sheet } from "./bible.ts";
 import type { CoachCardId, DuelCall } from "./duel.ts";
+import type { PlateEvent } from "./events.ts";
 import { featuredLi, fieldBeatFor, type EncounterConfig, type FeaturedGame, type FieldBeat, type GameKind, type SwingKind } from "./featured-game.ts";
 import { gutsActive, leverageIndex } from "./oracle.ts";
 import { PlateController, realScheduler, type PlateCue, type PlateScheduler, type PlateSnapshot } from "./plate-controller.ts";
@@ -23,11 +24,76 @@ import type { TraineeRun } from "./types.ts";
 export type RacePhase = "pick" | "racing" | "pa-card" | "done";
 
 export type RaceCue =
-  | { t: "go"; pa: number }
+  /** `introMs` > 0: the first pitch waits that long (the VS card plays over it). */
+  | { t: "go"; pa: number; introMs: number }
   | { t: "decision"; decision: SwingDecision }
-  | { t: "pa-card"; pa: number; beat: FieldBeat; line: string; reached: boolean }
+  /** `scored`: she came around to score on this trip (not a home run's own trot); the card holds for her 得点. */
+  | { t: "pa-card"; pa: number; beat: FieldBeat; line: string; reached: boolean; scored: boolean }
   | { t: "pick"; pa: number }
   | { t: "done" };
+
+/**
+ * She came around to score on plate appearance `pa`: stole, was driven in, came
+ * home on a wild pitch. A home run's own trot (from 0) is the home run's moment,
+ * not this one.
+ */
+export function scoredOnPa(events: readonly PlateEvent[], pa: number): boolean {
+  return events.some((e) => e.t === "score" && e.runner === "self" && e.from !== 0 && e.pa === pa);
+}
+
+/**
+ * How long an at-bat's card holds before the next pick (or the done panel).
+ * A run she scored holds it SCORE_STAMP_HOLD_MS longer: the 得点 stamp lands
+ * STAMP_DELAY_MS into the card and clears well before it goes, so the card is
+ * still read on its own after the stamp.
+ */
+export function paCardHoldMs(opts: { reduced: boolean; scored: boolean; pace?: Pick<typeof RACE_PACE, "paCardMs" | "paCardMsReduced"> }): number {
+  const pace = opts.pace ?? RACE_PACE;
+  const base = opts.reduced ? pace.paCardMsReduced : pace.paCardMs;
+  return base + (opts.scored ? SCORE_STAMP_HOLD_MS : 0);
+}
+
+// ── The broadcast pitch readout ─────────────────────────────────────────────
+
+/** A pitch's broadcast name, one table for both dates (the race's gun and the mound's plate). */
+export const PITCH_NAME: Record<PitchType, string> = {
+  fastball: "Fastball",
+  slider: "Slider",
+  curve: "Curveball",
+  changeup: "Changeup",
+};
+
+/**
+ * LivePitch.speed is not a speed: it is the flight time in seconds (a lower
+ * number is a faster pitch; zone.ts pitchSpeed, times the arm's speedMult).
+ * The gun reads it as km/h around each pitch's broadcast norm at a mid arm's
+ * flight time, faster as the flight shortens, inside what a gun shows.
+ */
+const PITCH_GUN: Record<PitchType, { kmh: number; atS: number }> = {
+  fastball: { kmh: 145, atS: 0.395 },
+  slider: { kmh: 131, atS: 0.495 },
+  curve: { kmh: 112, atS: 0.615 },
+  changeup: { kmh: 124, atS: 0.735 },
+};
+const GUN_KMH_PER_S = 150;
+export const GUN_MIN_KMH = 92;
+export const GUN_MAX_KMH = 163;
+
+/** The radar gun's reading for a pitch, in whole km/h. */
+export function pitchKmh(pitch: { type: PitchType; speed: number }): number {
+  const gun = PITCH_GUN[pitch.type] ?? PITCH_GUN.fastball;
+  const s = Number.isFinite(pitch.speed) ? pitch.speed : gun.atS;
+  const kmh = gun.kmh + (gun.atS - s) * GUN_KMH_PER_S;
+  return Math.round(Math.max(GUN_MIN_KMH, Math.min(GUN_MAX_KMH, kmh)));
+}
+
+/** The broadcast plate's words: "Fastball · 148 km/h" (the plate sets it in caps). */
+export function pitchReadout(pitch: { type: PitchType; speed: number }): string {
+  return `${PITCH_NAME[pitch.type] ?? "Pitch"} · ${pitchKmh(pitch)} km/h`;
+}
+
+/** The readout comes up this far into the flight, once the gun has it; it stays through the result. */
+export const READOUT_FROM_U = 0.15;
 
 /**
  * The Duel verdict under the card line, minus any sentence the line already
@@ -48,6 +114,8 @@ export interface PaCard {
   line: string;
   reached: boolean;
   verdict: string;
+  /** She came around to score on this trip: the card carries her 得点 and holds for it. */
+  scored: boolean;
 }
 
 export interface RaceSnapshot {
@@ -206,28 +274,34 @@ export class RaceController {
 
   // ── Go ───────────────────────────────────────────────────────────────────
 
-  /** Runs the whole plate appearance. Returns false when there is nothing to run. */
-  go(): boolean {
+  /**
+   * Runs the whole plate appearance. Returns false when there is nothing to run.
+   * `introMs` holds the first wind-up that long (the VS card at the day's first
+   * Go); the wait is the race's own, so Time freezes it like any other.
+   */
+  go(opts: { introMs?: number } = {}): boolean {
     if (this.phase !== "pick") return false;
     const snap = this.plate.getSnapshot();
     if (snap.game.done || snap.paused) return false;
     if (snap.stage !== "idle" && snap.stage !== "dead") return false;
+    const intro = Math.max(0, Number.isFinite(opts.introMs) ? (opts.introMs as number) : 0);
     this.phase = "racing";
     this.watching = true;
     this.nextPa = false;
     this.paAtGo = snap.game.paIndex;
     this.decision = null;
-    this.cue({ t: "go", pa: this.paAtGo });
+    this.cue({ t: "go", pa: this.paAtGo, introMs: intro });
     this.changed();
-    this.plate.startPitch();
+    if (intro > 0) this.later("pitch", () => this.plate.startPitch(), intro);
+    else this.plate.startPitch();
     return true;
   }
 
-  /** Skip the PA card and go straight to the next pick. */
+  /** Skip the PA card: straight to the next pick (or, after the last at-bat, the done panel). */
   next() {
     if (this.phase !== "pa-card") return;
     this.clearPending();
-    this.toPick();
+    this.afterCard();
   }
 
   pause(reason: "user" | "hidden") {
@@ -351,18 +425,31 @@ export class RaceController {
 
   private closePa(game: FeaturedGame) {
     if (this.phase !== "racing") return;
-    this.finishPa(game);
-    if (game.done) {
-      this.watching = false;
-      this.nextPa = false;
-      this.phase = "done";
-      this.cue({ t: "done" });
-      this.changed();
+    const card = this.finishPa(game);
+    // The last at-bat goes straight to the done panel, unless she came around to
+    // score on it: that run gets its card and its 得点 first, like any other.
+    if (game.done && !card.scored) {
+      this.toDone();
       return;
     }
     this.phase = "pa-card";
     this.changed();
-    this.later("card", () => this.toPick(), this.reduced ? this.pace.paCardMsReduced : this.pace.paCardMs);
+    this.later("card", () => this.afterCard(), paCardHoldMs({ reduced: this.reduced, scored: card.scored, pace: this.pace }));
+  }
+
+  private afterCard() {
+    if (this.phase !== "pa-card") return;
+    if (this.plate.getSnapshot().game.done) this.toDone();
+    else this.toPick();
+  }
+
+  private toDone() {
+    this.clearPending();
+    this.watching = false;
+    this.nextPa = false;
+    this.phase = "done";
+    this.cue({ t: "done" });
+    this.changed();
   }
 
   private between() {
@@ -402,15 +489,18 @@ export class RaceController {
     if (decision.swing) this.plate.swingAt(decision.kind, decision.u, decision.timingErr, decision.aim, game.kind === "practice" ? undefined : RACE_MODS);
   }
 
-  private finishPa(game: FeaturedGame) {
+  private finishPa(game: FeaturedGame): PaCard {
     const beat = fieldBeatFor(game);
     const reached = beat === "single" || beat === "double" || beat === "hr" || beat === "walk" || beat === "bunt-down";
     const rbiThisPa = game.events.reduce((n, e) => (e.t === "rbi" && e.pa === this.paAtGo ? n + e.runs : n), 0);
     const line = paCardLine({ beat, banner: game.banner, reached, struckOut: beat === "k", rbi: rbiThisPa });
     // The stamp said its words first; the verdict doesn't say them again.
     const stamped = [resultStamp(beat, true), resultStamp(beat, false)].map((st) => (st ? ` ${st.en}.` : "")).join("");
-    this.card = { pa: this.paAtGo, beat, line, reached, verdict: cardVerdict(line + stamped, game.lastVerdict) };
-    this.cue({ t: "pa-card", pa: this.paAtGo, beat, line, reached });
+    const scored = game.kind !== "practice" && scoredOnPa(game.events, this.paAtGo);
+    const card: PaCard = { pa: this.paAtGo, beat, line, reached, verdict: cardVerdict(line + stamped, game.lastVerdict), scored };
+    this.card = card;
+    this.cue({ t: "pa-card", pa: this.paAtGo, beat, line, reached, scored });
+    return card;
   }
 
   private toPick() {

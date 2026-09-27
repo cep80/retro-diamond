@@ -833,7 +833,7 @@ function Postgame() {
         </div>
         <div className="mt-auto max-w-md pb-2">
           <p className="font-display text-lg font-bold">
-            {last?.type === "finale" ? "Diamond Finale." : met ? who.pgVerb : "The goal slipped."}
+            {last?.type === "finale" ? "Diamond Finale." : met ? who.pgVerb : "It got away from her."}
           </p>
           {lastLine ? (
             <p className="mt-2 font-ui text-base leading-relaxed text-cream/90">

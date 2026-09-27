@@ -65,6 +65,17 @@ export interface ResultStamp {
   tone: "gold" | "coral" | "teal" | "slate";
 }
 
+/**
+ * Whose date the stamp is coloured for. The race is the batter's: her hit is
+ * teal, her strikeout coral. The mound is the pitcher's, so the same beats
+ * read the other way: her strikeout is gold, a hit or a walk against her is
+ * the small slate set-down, an out she gets is teal, a home run off her coral.
+ */
+export type StampSide = "batter" | "pitcher";
+
+/** A stamp key: a beat that ends an at-bat, or the run she scores on the bases (the race's 得点). */
+export type StampKey = FieldBeat | "score";
+
 const OUT_STAMP: ResultStamp = { jp: "アウト", en: "Out", tone: "slate" };
 
 const STAMPS: Partial<Record<FieldBeat, ResultStamp>> = {
@@ -73,16 +84,39 @@ const STAMPS: Partial<Record<FieldBeat, ResultStamp>> = {
   single: { jp: "ヒット", en: "Base hit", tone: "teal" },
   walk: { jp: "フォアボール", en: "Ball four", tone: "teal" },
   "sac-fly": { jp: "犠牲フライ", en: "Sac fly", tone: "teal" },
-  "bunt-down": { jp: "送りバント", en: "Bunt down", tone: "teal" },
+  "bunt-down": { jp: "バントヒット", en: "Bunt single", tone: "teal" },
   "grounder-out": OUT_STAMP,
   "fly-out": OUT_STAMP,
   "bunt-out": OUT_STAMP,
 };
 
-export function resultStamp(beat: FieldBeat | null, swung: boolean): ResultStamp | null {
+/** The pitcher's side: the same words, her tones. A beat that isn't listed keeps the batter's tone. */
+const PITCHER_TONES: Partial<Record<FieldBeat, ResultStamp["tone"]>> = {
+  hr: "coral",
+  double: "slate",
+  single: "slate",
+  walk: "slate",
+  "sac-fly": "slate",
+  "bunt-down": "slate",
+  "grounder-out": "teal",
+  "fly-out": "teal",
+  "bunt-out": "teal",
+};
+
+/** She comes home: gold, the same slam as a hit (the race lays it over her trot). */
+export const SCORE_STAMP: ResultStamp = { jp: "得点", en: "Run scores", tone: "gold" };
+
+export function resultStamp(beat: StampKey | null, swung: boolean, side: StampSide = "batter"): ResultStamp | null {
   if (!beat) return null;
-  if (beat === "k") return swung ? { jp: "三振", en: "Strike three", tone: "coral" } : { jp: "見逃し三振", en: "Caught looking", tone: "coral" };
-  return STAMPS[beat] ?? null;
+  if (beat === "score") return SCORE_STAMP;
+  if (beat === "k") {
+    const tone = side === "pitcher" ? "gold" : "coral";
+    return swung ? { jp: "三振", en: "Strike three", tone } : { jp: "見逃し三振", en: "Caught looking", tone };
+  }
+  const stamp = STAMPS[beat];
+  if (!stamp) return null;
+  if (side === "batter") return stamp;
+  return { ...stamp, tone: PITCHER_TONES[beat] ?? stamp.tone };
 }
 
 /** The stamp lands just after the settle still (CONTACT_HOLD_MS) has spoken, and clears before the next pick. */
@@ -92,15 +126,37 @@ export const STAMP_HOLD_MS = 1500;
 export const HR_STAMP_HOLD_MS = 2600;
 /** An out in play says it and steps aside: the card is right behind it. */
 export const OUT_STAMP_HOLD_MS = 900;
+/** The run she scores holds the card this long under its stamp. */
+export const SCORE_STAMP_HOLD_MS = 1200;
 
-export function stampHoldMs(beat: FieldBeat | null): number {
+export function stampHoldMs(beat: StampKey | null): number {
   if (beat === "hr") return HR_STAMP_HOLD_MS;
+  if (beat === "score") return SCORE_STAMP_HOLD_MS;
   if (beat === "grounder-out" || beat === "fly-out" || beat === "bunt-out") return OUT_STAMP_HOLD_MS;
   return STAMP_HOLD_MS;
 }
 
-export function stampVisible(sinceResolveMs: number, beat: FieldBeat | null = null): boolean {
+export function stampVisible(sinceResolveMs: number, beat: StampKey | null = null): boolean {
   return sinceResolveMs >= STAMP_DELAY_MS && sinceResolveMs < STAMP_DELAY_MS + stampHoldMs(beat);
+}
+
+/** The name on the home run's plate: kana and number for the cast, the name alone for an academy bat. */
+export interface HrNameplate {
+  name: string;
+  jp: string | null;
+  number: number | null;
+}
+
+/**
+ * The home run's lower third, after the kana. The race names the hitter and
+ * her number; the mound names the hitter and who it came off, so the plate
+ * is about the pitcher whose date it is: "Nishi · off Reina #18".
+ */
+export function hrPlateLine(hitter: HrNameplate, side: StampSide = "batter", pitcher: HrNameplate | null = null): string {
+  if (side === "pitcher" && pitcher) {
+    return `${hitter.name} · off ${pitcher.name}${pitcher.number !== null ? ` #${pitcher.number}` : ""}`;
+  }
+  return `${hitter.name}${hitter.number !== null ? ` · #${hitter.number}` : ""}`;
 }
 
 export const BATTER_POSES = ["stance", "load", "cut", "contact", "follow", "take", "celebrate", "crushed", "trot"] as const;
@@ -296,21 +352,31 @@ export function settledBatterPose(beat: FieldBeat | null): BatterPose | null {
 
 /**
  * The ball's flight on the 3:4 frame, mound → plate. u=0 is the release
- * point high in the frame; u=1 is the plate at the bottom. `loc` fans the
- * last stretch so where it crossed still reads. Percent of the frame.
+ * point high in the frame; u=1 is the plate, mid-zone on her load still
+ * (62% down, give or take the location), not her ankles. It grows as it
+ * comes, so it reads as a ball coming at her rather than a speck on the dirt.
+ * `loc` fans the last stretch so where it crossed still reads. Percent of the
+ * frame; `angleDeg` is the direction of travel on screen (0 is right, 90 is
+ * straight down), for the trail behind it.
  */
+export const FLIGHT_START_TOP = 40;
+export const FLIGHT_DROP = 22;
 export function plate2dFlight(opts: { u: number; loc: { x: number; y: number } }): {
   left: number;
   top: number;
   scale: number;
+  angleDeg: number;
 } {
   const t = Math.max(0, Math.min(1, Number.isFinite(opts.u) ? opts.u : 0));
   const aimX = (opts.loc.x / 3 - 0.5) * 16;
   const aimY = (opts.loc.y / 3 - 0.5) * 8;
+  // The frame is 3:4, so a percent of its height is 4/3 of a percent of its width.
+  const angleDeg = (Math.atan2((FLIGHT_DROP + aimY) * (4 / 3), aimX) * 180) / Math.PI;
   return {
     left: 50 + aimX * t,
-    top: 48 + 38 * t + aimY * t,
-    scale: 0.75 + t * 0.75,
+    top: FLIGHT_START_TOP + FLIGHT_DROP * t + aimY * t,
+    scale: 0.6 + t * 1.9,
+    angleDeg,
   };
 }
 

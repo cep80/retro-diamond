@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
+import { dayChipLabel, doneStamp, scorebugLabel, type DayChip } from "@/components/race-ui";
 import { portraitSrc } from "@/shine/bible.ts";
 import type { Cell } from "@/shine/core/zone.ts";
 import type { Bases } from "@/shine/events.ts";
@@ -133,7 +134,8 @@ export function PauseOverlay({
             : "The count and the runners hold. The pitch, if one was in the air, waits."}
         </p>
         <div className="mt-4 flex flex-col gap-2">
-          <PixelBtn className="h-12" onClick={onResume}>
+          {/* The way back in is the date's one action colour: Go's gold. */}
+          <PixelBtn className="shine-go h-12" onClick={onResume}>
             {resumeLabel}
           </PixelBtn>
           <PixelBtn variant="ghost" className="h-11" onClick={onSettings}>
@@ -169,8 +171,12 @@ export function BasesDiamond({ bases, self }: { bases: Bases; self: 1 | 2 | 3 | 
 /**
  * The broadcast scorebug: inning and score, the count with its letters, the
  * outs, the bases. It floats in the top corner of the film, above her head.
- * `tag` names the game on a band along the bug's foot (the exhibition), so no
- * loose label floats over her cap.
+ * `tag` names the game on a band along the bug's foot (the exhibition; the
+ * mound and the career race with their date), so no loose label floats over
+ * her cap; `tagGold` is the goal after it, in gold ("HOLD · Record 3 outs").
+ * `done` keeps the score up under the done panel: the count and the bases step
+ * off, and an empty `atBat` drops its cell. The inning stays the real one; her
+ * date usually ends before the game does, so the bug never claims "Final".
  */
 export function Scorebug({
   inning,
@@ -181,6 +187,8 @@ export function Scorebug({
   bases,
   self,
   tag,
+  tagGold,
+  done = false,
 }: {
   inning: string | null;
   score: string | null;
@@ -190,11 +198,20 @@ export function Scorebug({
   bases: Bases;
   self: 1 | 2 | 3 | null;
   tag?: string;
+  tagGold?: string;
+  done?: boolean;
 }) {
   const lamps = (n: number, of: number, on: string) =>
     Array.from({ length: of }, (_, i) => <i key={i} className={`shine-bug-lamp ${i < n ? on : ""}`} />);
+  const final = done;
+  const tagged = Boolean(tag || tagGold);
   return (
-    <div className="shine-scorebug" aria-label={`${tag ? `${tag}. ` : ""}${inning ? `${inning} inning, ` : ""}${score ? `${score}. ` : ""}${count.balls} and ${count.strikes}, ${outs} out. ${atBat}.`}>
+    <div
+      className="shine-scorebug"
+      data-final={final ? "" : undefined}
+      data-tagged={tagged ? "" : undefined}
+      aria-label={scorebugLabel({ tag, tagGold, inning, score, atBat, count, outs, done })}
+    >
       <span className="shine-bug-cells">
         {inning ? (
           <span className="shine-bug-cell shine-bug-inning">
@@ -202,32 +219,121 @@ export function Scorebug({
             {score ? <span>{score}</span> : null}
           </span>
         ) : null}
-        <span className="shine-bug-cell shine-bug-count" aria-hidden>
-          <span className="shine-bug-row">
-            <em>B</em>
-            {lamps(count.balls, 3, "is-ball")}
-          </span>
-          <span className="shine-bug-row">
-            <em>S</em>
-            {lamps(count.strikes, 2, "is-strike")}
-          </span>
-          <span className="shine-bug-row">
-            <em>O</em>
-            {lamps(outs, 2, "is-out")}
-          </span>
-        </span>
-        <span className="shine-bug-cell" aria-hidden>
-          <BasesDiamond bases={bases} self={self} />
-        </span>
+        {final ? null : (
+          <>
+            <span className="shine-bug-cell shine-bug-count" aria-hidden>
+              <span className="shine-bug-row">
+                <em>B</em>
+                {lamps(count.balls, 3, "is-ball")}
+              </span>
+              <span className="shine-bug-row">
+                <em>S</em>
+                {lamps(count.strikes, 2, "is-strike")}
+              </span>
+              <span className="shine-bug-row">
+                <em>O</em>
+                {lamps(outs, 2, "is-out")}
+              </span>
+            </span>
+            <span className="shine-bug-cell" aria-hidden>
+              <BasesDiamond bases={bases} self={self} />
+            </span>
+          </>
+        )}
         {/* "1 of 3" stays together: a narrow bug wraps it as AT-BAT / 1 OF 3, never 1 OF / 3. */}
-        <span className="shine-bug-cell shine-bug-atbat">{atBat.replace(/(\d+) of (\d+)/, "$1 of $2")}</span>
+        {atBat ? <span className="shine-bug-cell shine-bug-atbat">{atBat.replace(/(\d+) of (\d+)/, "$1 of $2")}</span> : null}
       </span>
-      {tag ? (
+      {tagged ? (
         <span className="shine-bug-tag" aria-hidden>
           {tag}
+          {tag && tagGold ? " · " : null}
+          {tagGold ? <b>{tagGold}</b> : null}
         </span>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The top of the done panel: the label, her still stamp (達成 gold when she
+ * did it, 未達 slate when she didn't; `met` null for a date with no goal, such
+ * as the exhibition or the bullpen), then the headline, big. The stamp is
+ * still; the block rises in once unless `reduced`, and `paused` holds it.
+ */
+export function DoneHeader({
+  met,
+  label,
+  headline,
+  reduced = false,
+  paused = false,
+}: {
+  met: boolean | null;
+  label: string;
+  headline: string;
+  reduced?: boolean;
+  paused?: boolean;
+}) {
+  const stamp = met === null ? null : doneStamp(met);
+  return (
+    <div
+      className={`shine-done-head ${reduced ? "is-reduced" : ""}`}
+      data-met={met === null ? undefined : String(met)}
+      data-dc-paused={paused ? "" : undefined}
+    >
+      <p className="font-display text-xs uppercase tracking-[0.3em] text-grass-2">{label}</p>
+      {stamp ? (
+        <div className={`shine-stamp shine-stamp-${stamp.tone} shine-stamp-still shine-done-stamp`} role="img" aria-label={stamp.en}>
+          <span className="shine-stamp-jp" aria-hidden>
+            {stamp.jp}
+          </span>
+          <span className="shine-stamp-en" aria-hidden>
+            {stamp.en}
+          </span>
+        </div>
+      ) : null}
+      <p className="shine-done-headline font-story text-3xl font-extrabold text-cream">{headline}</p>
+    </div>
+  );
+}
+
+/**
+ * The finish at a glance: one mini stamp per at-bat (race, raceDayChips) or
+ * per batter (mound, moundDayChips), kana over a small English pill in the
+ * stamp's tone. A steal, a run she scored, or runs in against her ride the
+ * chip's corner. Pictures, not a stat line.
+ */
+export function DayStrip({
+  chips,
+  label = "The day",
+  reduced = false,
+  paused = false,
+}: {
+  chips: readonly DayChip[];
+  label?: string;
+  reduced?: boolean;
+  paused?: boolean;
+}) {
+  if (!chips.length) return null;
+  return (
+    <ol className={`shine-day-strip ${reduced ? "is-reduced" : ""}`} aria-label={label} data-dc-paused={paused ? "" : undefined}>
+      {chips.map((c, i) => (
+        <li key={c.key} className="shine-day-chip" data-tone={c.tone} style={{ ["--i" as string]: i }} aria-label={dayChipLabel(c)}>
+          <span className="shine-day-jp" aria-hidden>
+            {c.jp}
+          </span>
+          <span className="shine-day-en" aria-hidden>
+            {c.en}
+          </span>
+          {c.stole || c.scored || c.runs ? (
+            <span className="shine-day-marks" aria-hidden>
+              {c.stole ? <span className="shine-day-mark">盗塁</span> : null}
+              {c.scored ? <span className="shine-day-mark">得点</span> : null}
+              {c.runs ? <span className="shine-day-mark is-against">{c.runs > 1 ? c.runs : ""}失点</span> : null}
+            </span>
+          ) : null}
+        </li>
+      ))}
+    </ol>
   );
 }
 

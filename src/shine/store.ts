@@ -379,7 +379,7 @@ export const useShine = create<ShineState>()(
             ? (read ?? `${sheet(next.characterId).pgVerb}.`)
             : kind === "gate"
               ? (read ?? "The Gate still opens.")
-              : (read ?? next.coachWarning ?? "The goal slipped."),
+              : (read ?? next.coachWarning ?? "It got away from her."),
           eyeCard: false,
         });
       },

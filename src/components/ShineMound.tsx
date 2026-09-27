@@ -12,12 +12,23 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
-import { dateHeadline, leaveLabel, middleRead, moundRead, RACE_COPY, scorePhrase } from "@/components/race-ui";
+import { dateHeadline, genericRead, leaveLabel, middleRead, moundDayChips, moundRead, RACE_COPY, scorePhrase } from "@/components/race-ui";
 import { moundBug, settleMoundBug, type BugState } from "@/components/race-bug";
 import { ActionStage, hrMomentUp, type HrNameplate } from "@/components/action/ActionStage";
 import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
+import { CHROME_MS, LowerThird, SkillBanner, VsSplash, type VsSide } from "@/components/DateChrome";
+import {
+  MOUND_CARD_MS,
+  MOUND_SPURT,
+  moundCaption,
+  moundCard,
+  moundOrderLine,
+  moundPaEnd,
+  moundPitchReadout,
+  type MoundCard,
+} from "@/components/mound-chrome";
 import { ShineMute } from "@/components/ShineMute";
-import { PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone, usePlatePause } from "@/components/ShinePlateBits";
+import { DayStrip, DoneHeader, PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone, usePlatePause } from "@/components/ShinePlateBits";
 import {
   duckCrowd,
   setCrowdLevel,
@@ -37,11 +48,20 @@ import type { PitchType } from "@/shine/core/zone.ts";
 import { moundBeatSpec, PREPARE_MS_REDUCED, type Stage } from "@/shine/beats.ts";
 import { cheerLines, crowdStem, ouenSwell } from "@/shine/culture.ts";
 import { featuredParkId, kitAccent, parkSkyClass } from "@/shine/stage.ts";
-import { parkSrc, portraitMood, portraitSrc, officialFor, sheet } from "@/shine/bible.ts";
+import { parkSrc, portraitMood, portraitSrc, officialFor, sceneBustSrc, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { gutsActive, leverageIndex } from "@/shine/oracle.ts";
-import { HR_STAMP_HOLD_MS, resultStamp, STAMP_DELAY_MS, stampHoldMs, type ActionManifest, type ActionView, type StingFlags } from "@/shine/action-art.ts";
+import {
+  HR_STAMP_HOLD_MS,
+  resultStamp,
+  STAMP_DELAY_MS,
+  stampHoldMs,
+  stillFor,
+  type ActionManifest,
+  type ActionView,
+  type StingFlags,
+} from "@/shine/action-art.ts";
 import {
   decideDelivery,
   decidePitch,
@@ -99,6 +119,38 @@ interface FilmBeat {
   swung: boolean;
 }
 
+/**
+ * The broadcast chrome over the film. Each showing has its own key, is mounted
+ * at the wind-up on the pause-aware timers and taken down on them after its
+ * CHROME_MS, so Time holds it where it stands.
+ */
+interface BannerUp {
+  key: number;
+  text: string;
+  jp: string | null;
+  tone: "accent" | "spurt";
+}
+interface LowerThirdUp {
+  key: number;
+  name: string;
+  jp: string | null;
+  number: number | null;
+  line: string;
+  accent: string;
+}
+interface VsUp {
+  key: number;
+  left: VsSide;
+  right: VsSide;
+}
+/** The batter the last pitch finished: her card's words (C8), up from the landing to the next wind-up. */
+interface PaEndUp extends MoundCard {
+  key: number;
+}
+
+/** An academy bat's nameplate trim: slate, not the pitcher's own kit colour. */
+const ACADEMY_ACCENT = "#8fa2c2";
+
 export function ShineMound() {
   const run = useShine((s) => s.run);
   const finishGame = useShine((s) => s.finishGame);
@@ -122,7 +174,13 @@ export function ShineMound() {
   // The date is over and its last stamp is down: the done panel is up.
   const [closed, setClosed] = useState(false);
   const [crowdHold, setCrowdHold] = useState(false);
-  const [sting, setSting] = useState<string | null>(null);
+  // The chrome (C6, C7, C8): her skill (or the last spurt) across the film, the new batter's
+  // nameplate, the VS card when a cast hitter steps in, and the card after each batter.
+  const [banner, setBanner] = useState<BannerUp | null>(null);
+  const [lowerThird, setLowerThird] = useState<LowerThirdUp | null>(null);
+  const [vs, setVs] = useState<VsUp | null>(null);
+  const [paEnd, setPaEnd] = useState<PaEndUp | null>(null);
+  const [cardUp, setCardUp] = useState<number | null>(null);
   const [restored, setRestored] = useState(false);
   const [savedChip, setSavedChip] = useState(false);
   const [manifest, setManifest] = useState<ActionManifest | null>(null);
@@ -144,6 +202,11 @@ export function ShineMound() {
   // The bug and the batter as they stood at the wind-up: the pitch that ends a plate
   // appearance deals the next batter at once, and the result belongs to the one it ended.
   const atThrow = useRef<{ bug: BugState; by: InTheBox } | null>(null);
+  const paEndRef = useRef<PaEndUp | null>(null);
+  // Who has had her nameplate (battersFaced), whether the last spurt has had its banner, and the chrome's keys.
+  const introduced = useRef(-1);
+  const spurtShown = useRef(false);
+  const chromeKey = useRef(0);
   const watching = useRef(false);
   const nextArm = useRef(false);
   const pausedRef = useRef(false);
@@ -192,10 +255,17 @@ export function ShineMound() {
     watching.current = false;
     nextArm.current = false;
     atThrow.current = null;
+    paEndRef.current = null;
+    introduced.current = -1;
+    spurtShown.current = false;
     resolvedAtRef.current = null;
     setStage("idle");
     setCrowdHold(false);
-    setSting(null);
+    setBanner(null);
+    setLowerThird(null);
+    setVs(null);
+    setPaEnd(null);
+    setCardUp(null);
     setBeat(null);
     setFilm(null);
     setClosed(false);
@@ -221,6 +291,11 @@ export function ShineMound() {
     if (!run || !game || game.kind === "practice" || game.done) return;
     if (stage === "flight" || stage === "prepare" || stage === "paused") return;
     saveLive({ side: "mound", runId: run.id, turn: run.turn, game, aim });
+    // The save runs between every pitch; its chip only blinks at the aim, never over a result (C14).
+    if (stage !== "idle" && stage !== "dead") {
+      setSavedChip(false);
+      return;
+    }
     setSavedChip(true);
     const t = window.setTimeout(() => setSavedChip(false), 900);
     return () => window.clearTimeout(t);
@@ -349,7 +424,37 @@ export function ShineMound() {
       },
       setSit: (c: Cell) => setAim(c),
       setType: (t: PitchType) => setType(t),
-      snapshot: () => ({ stage: stageRef.current, game: gameRef.current, aim, type, beat, film: filmRef.current, closed }),
+      snapshot: () => ({
+        stage: stageRef.current,
+        game: gameRef.current,
+        aim,
+        type,
+        beat,
+        film: filmRef.current,
+        closed,
+        chrome: { banner: banner?.text ?? null, lowerThird: lowerThird?.name ?? null, vs: vs ? `${vs.left.name}|${vs.right.name}` : null, card: cardUp !== null ? (paEnd?.line ?? null) : null },
+      }),
+      // The skill banner, or the last spurt's, as the wind-up shows it (for a look without the date's odds).
+      forceBanner: (tone: "accent" | "spurt" = "accent") => {
+        if (!run) return;
+        if (tone === "spurt") showBanner(MOUND_SPURT.text, MOUND_SPURT.jp, "spurt");
+        else showBanner(uniqueName(run.characterId), sheet(run.characterId).jp, "accent");
+      },
+      // The done panel as a date that ends now would show it, met or missed (for a look at both).
+      forceDone: (met: boolean) => {
+        const g = gameRef.current;
+        if (!g) return;
+        // Stop the pitch in the air and every wait, so nothing lands on the closed date.
+        watching.current = false;
+        clearTimers();
+        cancelAnimationFrame(raf.current);
+        pending.current = null;
+        stageRef.current = "reaction";
+        setStage("reaction");
+        const banner = met ? (g.role === "closer" ? "HOLD." : "COMMAND.") : g.kind === "gate" ? "The Gate still opens." : g.role === "closer" ? "HOLD slipped." : "It got away from her.";
+        setGame({ ...g, done: true, pgMet: met, banner });
+        setClosed(true);
+      },
       forceBeat: (b: MoundBeat) => {
         setBeat(b);
         const f = { beat: b, swung: b === "miss" || b === "hit" || b === "hr" || b === "out" };
@@ -385,6 +490,24 @@ export function ShineMound() {
     coachObserver.current = ro;
   }, []);
 
+  // The date's tag rides the scorebug's foot now (C12), so the bug grows to two lines of tag on
+  // a narrow phone. The pitch readout (C9) sits under it: --bug-foot, measured from the screen's top.
+  const bugObserver = useRef<ResizeObserver | null>(null);
+  const bugRef = useCallback((el: HTMLElement | null) => {
+    bugObserver.current?.disconnect();
+    bugObserver.current = null;
+    const screen = el?.closest<HTMLElement>(".shine-race-screen");
+    if (!el || !screen || typeof ResizeObserver === "undefined") return;
+    const measure = () => {
+      const foot = el.getBoundingClientRect().bottom - screen.getBoundingClientRect().top;
+      screen.style.setProperty("--bug-foot", `${Math.max(0, Math.round(foot + 8))}px`);
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    measure();
+    bugObserver.current = ro;
+  }, []);
+
   if (!run || !game) return null;
   const who = sheet(run.characterId);
   const practice = game.kind === "practice";
@@ -409,8 +532,10 @@ export function ShineMound() {
   const holdFilm = !picking;
   const fieldBeat = holdFilm && film ? moundFieldBeat(film.beat) : null;
   const flags: StingFlags = { spurt: game.lastSpurt };
+  // While the VS card covers the film her wind-up waits in the set: it (and its push-in) starts as the card clears.
+  const vsHold = Boolean(vs) && stage === "prepare";
   const actionView: ActionView = {
-    stage,
+    stage: vsHold ? "situation" : stage,
     beat: fieldBeat,
     swung: holdFilm && film ? film.swung : false,
     swingKind: holdFilm ? "contact" : null,
@@ -458,11 +583,19 @@ export function ShineMound() {
     setGhost(aim);
     setGame({ ...next });
     duckCrowd(false);
+    // The batter this pitch finished, if it finished one: her line holds the caption from here
+    // to the next wind-up and becomes her card (C8, C15).
+    const held = atThrow.current;
+    const end = next.kind !== "practice" && held ? moundPaEnd(next.events, held.bug.outs) : null;
+    const up: PaEndUp | null = end && held ? { key: ++chromeKey.current, ...moundCard(held.by.plate.name, end) } : null;
+    paEndRef.current = up;
+    setPaEnd(up);
     if (next.kind !== "practice") {
       sfxRelease(s.cue);
-      // The stamp's slam lands with the stamp, on the pause-aware timers. The out's slate
-      // stamp is set down, not slammed: the play's own sound carries it.
-      const tone = resultStamp(moundFieldBeat(b), f.swung)?.tone;
+      // The stamp's slam lands with the stamp, on the pause-aware timers, in her side's tone
+      // (her strikeout gold, an out teal). A walk or a hit against her is slate, set down, not
+      // slammed: the play's own sound carries it.
+      const tone = resultStamp(moundFieldBeat(b), f.swung, "pitcher")?.tone;
       if (tone && tone !== "slate") later(() => sfxStamp(tone), STAMP_DELAY_MS);
     }
     if (s.fieldMs > 0) {
@@ -487,7 +620,11 @@ export function ShineMound() {
     if (watching.current) {
       // The caption goes back to the banner; the film holds the beat, and its stamp, until the next wind-up.
       setBeat(null);
-      const wait = Math.max(reduced ? RACE_PACE.betweenPitchMsReduced : RACE_PACE.betweenPitchMs, stampLeftMs());
+      // A batter done: once her stamp has cleared, her card holds the Coach's slot, then the next wind-up.
+      const stampLeft = stampLeftMs();
+      const card = paEndRef.current;
+      if (card) later(() => setCardUp((cur) => (paEndRef.current?.key === card.key ? card.key : cur)), stampLeft);
+      const wait = Math.max(reduced ? RACE_PACE.betweenPitchMsReduced : RACE_PACE.betweenPitchMs, stampLeft + (card ? MOUND_CARD_MS : 0));
       later(() => {
         if (!watching.current) return;
         const live = gameRef.current;
@@ -513,7 +650,8 @@ export function ShineMound() {
     const s = stageRef.current;
     if (s !== "idle" && s !== "dead" && s !== "situation") return;
     watching.current = true;
-    atThrow.current = { bug: moundBug(live), by: batterInBox(run, live) };
+    const by = batterInBox(run, live);
+    atThrow.current = { bug: moundBug(live), by };
     const pitch = decidePitch(run, live);
     pitchRef.current = pitch;
     setType(pitch);
@@ -523,12 +661,50 @@ export function ShineMound() {
     filmRef.current = null;
     setFilm(null);
     resolvedAtRef.current = null;
+    // The last batter's line and card step aside for the wind-up.
+    paEndRef.current = null;
+    setPaEnd(null);
+    setCardUp(null);
     setStage("prepare");
     sfxSelect();
     sfxAnticipation(gutsOn);
     duckCrowd(true);
     if (gutsOn) setCrowdLevel(0.2);
     if (maybePitchLastSpurt(live)) sfxCrowdBurst();
+
+    // A batter steps in (C7): her nameplate at the foot, and when she's the cast hitter coming
+    // up fresh, the VS card first. The wind-up waits out the card, so the chrome that belongs
+    // to the wind-up (the nameplate, the skill) lands as the card clears.
+    const practiceNow = live.kind === "practice";
+    const fresh = live.count.balls === 0 && live.count.strikes === 0;
+    const newBatter = !practiceNow && introduced.current !== live.battersFaced;
+    const vsNow = newBatter && fresh && by.id !== "academy";
+    const introMs = vsNow ? CHROME_MS.vs : 0;
+    if (newBatter) introduced.current = live.battersFaced;
+    if (vsNow && by.id !== "academy") {
+      const key = ++chromeKey.current;
+      const girl = (id: CharacterId, pose: "set" | "stance") => stillFor(manifest?.girls[id], pose)?.url ?? portraitSrc(id, "focused");
+      setVs({ key, left: { src: girl(run.characterId, "set"), name: who.name }, right: { src: girl(by.id, "stance"), name: by.plate.name } });
+      sfxCrowdBurst();
+      later(() => setVs((cur) => (cur?.key === key ? null : cur)), CHROME_MS.vs);
+    }
+    const atWindup = (fn: () => void) => (introMs > 0 ? later(fn, introMs) : fn());
+    if (newBatter) {
+      const index = live.battersFaced;
+      atWindup(() => {
+        const key = ++chromeKey.current;
+        setLowerThird({
+          key,
+          name: by.plate.name,
+          jp: by.plate.jp,
+          number: by.plate.number,
+          line: moundOrderLine(index, by.id !== "academy"),
+          accent: by.id === "academy" ? ACADEMY_ACCENT : kitAccent(by.id),
+        });
+        later(() => setLowerThird((cur) => (cur?.key === key ? null : cur)), CHROME_MS.lowerThird);
+      });
+    }
+    let skillNow = false;
     if (
       uniqueShouldFire(run.characterId, {
         already: live.uniqueFired,
@@ -544,17 +720,32 @@ export function ShineMound() {
       })
     ) {
       live.uniqueFired = true;
-      setSting(uniqueName(run.characterId));
-      later(() => setSting(null), 700);
+      skillNow = true;
+      const text = uniqueName(run.characterId);
+      atWindup(() => showBanner(text, who.jp, "accent"));
+    }
+    // The last spurt gets its banner once, at the first wind-up of it that her skill isn't using.
+    if (maybePitchLastSpurt(live) && !spurtShown.current && !skillNow) {
+      spurtShown.current = true;
+      atWindup(() => showBanner(MOUND_SPURT.text, MOUND_SPURT.jp, "spurt"));
     }
     later(
       () => {
         if (stageRef.current !== "prepare") return;
         flightStart.current = performance.now();
+        // The band belongs to the wind-up: it's gone by the release.
+        setBanner(null);
         setStage("flight");
       },
-      reduced ? PREPARE_MS_REDUCED : RACE_PACE.prepareMs,
+      introMs + (reduced ? PREPARE_MS_REDUCED : RACE_PACE.prepareMs),
     );
+  }
+
+  /** Her skill (or the last spurt) across the film for CHROME_MS.skill, on the pause-aware timers. */
+  function showBanner(text: string, jp: string | null, tone: "accent" | "spurt") {
+    const key = ++chromeKey.current;
+    setBanner({ key, text, jp, tone });
+    later(() => setBanner((cur) => (cur?.key === key ? null : cur)), CHROME_MS.skill);
   }
 
   function leave() {
@@ -583,6 +774,7 @@ export function ShineMound() {
   const held = film ? atThrow.current : null;
   const bug = held ? settleMoundBug(held.bug, game.events) : moundBug(game);
   const inBox = held ? held.by : batterInBox(run, game);
+  const closeRead = game.done ? moundRead(game) : null;
   const closeLine = game.done
     ? dateHeadline({
         exhibition: false,
@@ -590,12 +782,23 @@ export function ShineMound() {
         pgMet: game.pgMet,
         verb: who.pgVerb,
         banner: game.banner,
-        cardLine: game.pgId === "k-side" && !game.pgMet ? moundRead(game) : (spec?.label ?? null),
+        // The bullpen closes on its own banner, not on the last look's "Ball."
+        cardLine: practice ? null : game.pgId === "k-side" && !game.pgMet ? moundRead(game) : (spec?.label ?? null),
         pgId: game.pgId,
+        // A met goal says her verb, then what she did, never the tag's gold verb alone (C3).
+        read: closeRead,
       })
     : null;
-  const closeRead = game.done ? moundRead(game) : null;
+  // The headline carries the read when it can; the line under it only says what the headline didn't.
+  const readUnder = closeRead && closeLine && !closeLine.includes(closeRead) && !(game.pgMet && genericRead(closeRead)) ? closeRead : null;
   const middle = game.done ? middleRead(game.simLog) : null;
+  // The finish at a glance (C6b): one chip per batter she finished, in her side's tones.
+  const dayChips = doneUp ? moundDayChips(game.events) : [];
+  // Under the done panel, her own face (C4): joy when she did it, heartbreak when she didn't.
+  const bustMood = game.pgMet ? "elated" : "crushed";
+  // The card after each batter (C8), from her stamp clearing to the next wind-up.
+  const cardShown = cardUp !== null && paEnd !== null && cardUp === paEnd.key && !game.done;
+  const finalBug = doneUp && !practice;
   // Her rival's read on this pitcher, said out loud before it's used: the first-strike read
   // at 0-0, the two-strike read at two strikes. Both are about where the glove sits, so the
   // Coach can answer them.
@@ -612,8 +815,17 @@ export function ShineMound() {
         : game.count.strikes === 2
           ? castRead.twoStrikeLine
           : null;
-  const caption =
-    stage === "prepare" ? "Set." : stage === "flight" ? "" : practice ? game.banner : showingBeat && spec ? spec.label : game.banner;
+  const caption = moundCaption({
+    stage,
+    practice,
+    picking,
+    firstPitch: game.pitchCount === 0,
+    done: game.done,
+    vsName: vsHold && vs ? vs.right.name : null,
+    paLine: paEnd?.line ?? null,
+    beatLabel: showingBeat && spec ? spec.label : null,
+    banner: game.banner,
+  });
   const goLabel = stage === "dead" ? "Back on the rubber" : RACE_COPY.go;
 
   return (
@@ -623,7 +835,13 @@ export function ShineMound() {
       data-mound-race="1"
       data-hr={hrUp ? "" : undefined}
       data-paused={paused ? "" : undefined}
-      style={{ ["--shine-accent" as string]: kitAccent(run.characterId) }}
+      // The done panel is up: her still goes soft behind her bust (C4); "still" without the motion.
+      data-done-up={doneUp ? (reduced ? "still" : "") : undefined}
+      style={{
+        ["--shine-accent" as string]: kitAccent(run.characterId),
+        // A wide screen: the park fills the flanks, blurred (C11).
+        ["--race-backdrop" as string]: `url("${park}")`,
+      }}
     >
       {paused ? (
         <PauseOverlay
@@ -652,7 +870,8 @@ export function ShineMound() {
           manifest={manifest}
           pitch={null}
           focus="pitcher"
-          recognized={null}
+          // The broadcast readout (C9): the pitch she chose, from the flight to her next wind-up.
+          recognized={practice || doneUp ? null : moundPitchReadout(type)}
           quietCard={practice}
           flags={flags}
           prepareMs={reduced ? PREPARE_MS_REDUCED : RACE_PACE.prepareMs}
@@ -667,34 +886,48 @@ export function ShineMound() {
         >
           {picking && !game.done ? <SitZone aim={aim} onSit={setAim} ghost={ghost} label="Glove" /> : null}
         </ActionStage>
+        {/* Under the done panel her mood bust fades in over the film (C4). */}
+        {doneUp ? (
+          <div className={`shine-mound-bust ${reduced ? "is-reduced" : ""}`} data-mound-bust={bustMood} aria-hidden>
+            <img src={sceneBustSrc(run.characterId, bustMood)} alt="" draggable={false} />
+          </div>
+        ) : null}
         {/* Two strikes in a jp park: the 応援団's swell warms the film. */}
         <div className={`shine-race-ouen ${swell ? "is-on" : ""}`} aria-hidden />
 
-        {/* The HUD floats on the film: the scorebug and the date's tag, then sound and time. */}
+        {/* The broadcast chrome, at the wind-up, never at the aim: the VS card when a cast hitter
+            steps in, the new batter's nameplate, her skill or the last spurt across the film. */}
+        {vs ? <VsSplash key={vs.key} left={vs.left} right={vs.right} reduced={reduced} paused={paused} /> : null}
+        {lowerThird ? (
+          <LowerThird
+            key={lowerThird.key}
+            name={lowerThird.name}
+            jp={lowerThird.jp}
+            number={lowerThird.number}
+            line={lowerThird.line}
+            accent={lowerThird.accent}
+            reduced={reduced}
+            paused={paused}
+          />
+        ) : null}
+        {banner ? <SkillBanner key={banner.key} text={banner.text} jp={banner.jp} tone={banner.tone} reduced={reduced} paused={paused} /> : null}
+
+        {/* The HUD floats on the film: the scorebug with the date's tag on its foot (C12), then
+            sound and time. Done, it stays up with the final score (C3). */}
         <header className="shine-race-hud">
-          <div className="min-w-0">
-            {!doneUp ? (
-              <Scorebug
-                inning={bug.inning}
-                score={bug.score === null ? null : scorePhrase(bug.score)}
-                atBat={bug.atBat}
-                count={bug.count}
-                outs={bug.outs}
-                bases={bug.bases}
-                self={null}
-              />
-            ) : null}
-            <p className="shine-race-tag">
-              {dateLabel(turnMeta(run.turn), who.style)}
-              {ask ? (
-                <>
-                  {" · "}
-                  <b>
-                    {who.pgVerb} · {speakGoal(ask.verb)}
-                  </b>
-                </>
-              ) : null}
-            </p>
+          <div ref={bugRef} className="min-w-0">
+            <Scorebug
+              inning={bug.inning}
+              done={finalBug}
+              score={finalBug ? scorePhrase(game.scoreDiff) : bug.score === null ? null : scorePhrase(bug.score)}
+              atBat={finalBug ? "" : bug.atBat}
+              count={bug.count}
+              outs={bug.outs}
+              bases={bug.bases}
+              self={null}
+              tag={dateLabel(turnMeta(run.turn), who.style)}
+              tagGold={ask ? `${who.pgVerb} · ${speakGoal(ask.verb)}` : undefined}
+            />
           </div>
           <div className="flex items-center gap-1.5">
             <ShineMute />
@@ -714,14 +947,16 @@ export function ShineMound() {
           <p className="sr-only" aria-live="polite">
             {doneUp ? closeLine : caption}
           </p>
-          {savedChip ? <p className="shine-saved-chip shine-mound-saved">Saved</p> : null}
+          {savedChip && picking ? <p className="shine-saved-chip shine-mound-saved">Saved</p> : null}
           {doneUp ? (
             <div className="flex flex-col gap-2" data-mound-done={game.kind}>
-              <p className="text-center font-display text-[10px] uppercase tracking-widest text-grass-2">Her day</p>
-              <p className="text-center font-story text-xl font-extrabold text-cream">{closeLine}</p>
-              {closeRead && closeRead !== closeLine ? <p className="text-center font-story text-sm text-cream/85">{closeRead}</p> : null}
+              {/* The result screen (C3): the label, her 達成 / 未達 stamp, the headline big, the day's chips. */}
+              <DoneHeader met={practice ? null : game.pgMet} label={RACE_COPY.doneLabel} headline={closeLine ?? ""} reduced={reduced} paused={paused} />
+              <DayStrip chips={dayChips} label="Batter by batter" reduced={reduced} paused={paused} />
+              {readUnder ? <p className="text-center font-story text-sm text-cream/85">{readUnder}</p> : null}
               {middle ? <p className="text-center font-story text-sm text-cream/80">{middle}</p> : null}
-              <PixelBtn className="h-12" onClick={leave}>
+              {/* The way forward wears Go's gold (C16). */}
+              <PixelBtn className="shine-go h-12" onClick={leave}>
                 {leaveLabel({ practice })}
               </PixelBtn>
             </div>
@@ -732,10 +967,6 @@ export function ShineMound() {
                 <p className="text-center font-story text-sm text-grass-2">
                   Picked up where she left it. Inning {game.inning}, {game.outs} out, {game.count.balls}-{game.count.strikes}.
                 </p>
-              ) : null}
-              {sting && stage === "prepare" ? <p className="shine-unique-sting text-center font-display text-sm font-bold text-gold">{sting}</p> : null}
-              {maybePitchLastSpurt(game) ? (
-                <p className="shine-spurt text-center font-display text-sm font-bold text-coral">This is the one she trained for.</p>
               ) : null}
               {game.callback && picking ? (
                 <p className="text-center font-story text-sm text-gold">
@@ -753,12 +984,21 @@ export function ShineMound() {
                   ))}
                 </ul>
               ) : null}
-              {readLine ? (
+              {readLine && !cardShown ? (
                 <p className="text-center font-story text-sm text-gold" data-mound-read>
                   {readLine}
                 </p>
               ) : null}
-              <p className="min-h-10 text-center font-story text-sm text-cream/90">{caption}</p>
+              {cardShown && paEnd ? (
+                // The batter she just finished, in her side's tone: the caption's line, framed. The live
+                // region already said it, so the card is for the eye. It never takes a tap.
+                <div className={`shine-atbat-card shine-mound-card ${reduced ? "is-reduced" : ""}`} data-tone={paEnd.tone} data-mound-card={paEnd.tone} aria-hidden>
+                  <span className="shine-atbat-line">{paEnd.line}</span>
+                  <span className="shine-atbat-verdict">{paEnd.meta}</span>
+                </div>
+              ) : (
+                <p className="min-h-10 text-center font-story text-sm text-cream/90">{caption}</p>
+              )}
               {picking && !game.done ? (
                 <PixelBtn className="shine-go h-14 text-sm" onClick={throwIt} ariaLabel={goLabel}>
                   {goLabel}

@@ -22,6 +22,7 @@ import { track as trackEvent } from "@/lib/telemetry.ts";
 import {
   ballLeavesBat,
   HR_STAMP_HOLD_MS,
+  hrPlateLine,
   resultStamp,
   STAMP_DELAY_MS,
   stampVisible,
@@ -41,7 +42,10 @@ import {
   type ActionView,
   type BatterPose,
   type GirlArt,
+  type HrNameplate,
   type PitcherPose,
+  type ResultStamp,
+  type StampSide,
   type StingFlags,
 } from "@/shine/action-art.ts";
 import type { LivePitch } from "@/shine/featured-game.ts";
@@ -49,11 +53,21 @@ import type { RivalArmId } from "@/shine/rivals.ts";
 import type { CharacterId } from "@/shine/types.ts";
 import { portraitSrc, sheet, type PortraitMood } from "@/shine/bible.ts";
 
-/** The name on the home run's plate: kana and number for the cast, the name alone for an academy bat. */
-export interface HrNameplate {
-  name: string;
-  jp: string | null;
-  number: number | null;
+export type { HrNameplate } from "@/shine/action-art.ts";
+
+/**
+ * One result stamp, slammed in its tone (slate sets down instead). The stage
+ * draws its own; a date lays this over its card for a beat the stage doesn't
+ * own (the race's 得点, SCORE_STAMP). Pause freezes it anywhere on a date
+ * (styles.css, stage builder block).
+ */
+export function StampMark({ stamp, reduced = false, mark, className }: { stamp: ResultStamp; reduced?: boolean; mark?: string; className?: string }) {
+  return (
+    <div className={`shine-stamp shine-stamp-${stamp.tone} ${reduced ? "shine-stamp-still" : ""} ${className ?? ""}`} data-action-stamp={mark ?? ""}>
+      <span className="shine-stamp-jp">{stamp.jp}</span>
+      <span className="shine-stamp-en">{stamp.en}</span>
+    </div>
+  );
 }
 
 export interface ActionStageProps {
@@ -63,7 +77,11 @@ export interface ActionStageProps {
   armId: RivalArmId;
   manifest: ActionManifest | null;
   pitch: LivePitch | null;
-  /** The pitch type read once the controller recognises it (null before). */
+  /**
+   * The broadcast pitch readout ("FASTBALL · 142 km/h"), read once the pitch is
+   * recognised (null before). It shows under the bug from the flight until the
+   * next pitch's wind-up, never at the aim and never under the home run.
+   */
   recognized: string | null;
   /** Sting flags for the money-beat priority (spec §1.1). */
   flags?: StingFlags;
@@ -74,7 +92,9 @@ export interface ActionStageProps {
   heroMood?: PortraitMood;
   /**
    * Force who fills the frame. The mound race watches the trainee throw;
-   * the plate race leaves this unset and follows `focusFor`.
+   * the plate race leaves this unset and follows `focusFor`. "pitcher" also
+   * makes the date hers: the stamps take the pitcher's tones and a home run is
+   * one against her (no party, her picture drained, "off <her> #<n>").
    */
   focus?: ActionFocus;
   /** Hide the outcome chip (bullpen looks are glove reads, not called strikes). */
@@ -311,11 +331,15 @@ export function ActionStage({
   const pitcher = armId === "academy" ? undefined : manifest?.girls[armId];
   const picture = useMemo(() => pictureFor(view, flags, twoStrikeHold), [view, flags, twoStrikeHold]);
   const focus = focusProp ?? focusFor(view, Boolean(pitcher));
+  // Whose date it is: the mound is the pitcher's, so its stamps and its home run read for her.
+  const side: StampSide = focusProp === "pitcher" ? "pitcher" : "batter";
   const [clipDone, setClipDone] = useState<number | null>(null);
   // A money clip is sticky: once it starts for a resolve it plays to its end
   // even after the plate returns to idle (the race's next pick waits on it).
   const stickyClip = useRef<{ key: number; role: ActionFocus; clip: ActionClip } | null>(null);
-  const fresh = view.resolvedAtMs !== null && clipDone !== view.resolvedAtMs ? clipFor(picture.clip, focusProp ?? clipOwner(view), { batter, pitcher }) : null;
+  // A home run off her is never the hitter's party on her date: the frame holds on her.
+  const clipBeat = side === "pitcher" && picture.clip === "hr" ? null : picture.clip;
+  const fresh = view.resolvedAtMs !== null && clipDone !== view.resolvedAtMs ? clipFor(clipBeat, focusProp ?? clipOwner(view), { batter, pitcher }) : null;
   if (fresh && view.resolvedAtMs !== null) stickyClip.current = { key: view.resolvedAtMs, ...fresh };
   const money =
     view.resolvedAtMs !== null && stickyClip.current?.key === view.resolvedAtMs && clipDone !== view.resolvedAtMs && view.nowMs < clipEndsAtMs(stickyClip.current.clip, view.resolvedAtMs)
@@ -333,6 +357,7 @@ export function ActionStage({
   }
 
   const inFlight = view.stage === "flight";
+  // Reduced motion (the setting's `is-still`, or the media query): the ball keeps its path but doesn't swell or streak at her.
   const ball = inFlight && pitch ? plate2dFlight({ u: view.u, loc: pitch.loc }) : null;
   const sinceResolve = view.resolvedAtMs === null ? -1 : view.nowMs - view.resolvedAtMs;
   const cutIdx = picture.cutIn && sinceResolve >= 0 ? cutInFrame(picture.cutIn, sinceResolve, view.reduced) : -1;
@@ -342,11 +367,17 @@ export function ActionStage({
   // The per-pitch call chip belongs to the card layout (the mound). On the race's
   // bleed film the caption under her carries the call, once, with no chip over it.
   const showCard = !bleed && !quietCard && picture.card && view.stage !== "idle" && view.stage !== "situation";
-  const stamp = quietCard ? null : resultStamp(view.beat, view.swung);
+  const stamp = quietCard ? null : resultStamp(view.beat, view.swung, side);
   const stampUp = Boolean(stamp) && sinceResolve >= 0 && stampVisible(sinceResolve, view.beat);
   // The full-screen home run needs the bleed layout (the race, the mound): its fixed layers
   // sit in the page's stacking order, over the HUD. A card layout keeps the plain in-card stamp.
   const hr = bleed && view.beat === "hr" && stampUp;
+  // A home run off her (the mound): no streamers, no gold, her picture drained under it.
+  const against = hr && side === "pitcher";
+  const againstCls = against ? "shine-hr-against" : "";
+  const stillCls = view.reduced ? "shine-hr-still" : "";
+  // The broadcast pitch readout: from the flight to the next wind-up, under the bug.
+  const readout = recognized && !hr && (inFlight || view.stage === "field" || view.stage === "reaction") ? recognized : null;
   // On a wide screen the home run's rays and streamers run past the film's
   // column: the still in the frame, blurred and dimmed, fills the flanks under
   // them. The race's frame is the batter's celebration; the mound's is the
@@ -359,6 +390,7 @@ export function ActionStage({
         ? (stillFor(batter, "celebrate")?.url ?? portraitSrc(batterId, "elated"))
         : null;
   const hrName: HrNameplate | null = hrBy ?? (batterId === "academy" ? null : { name: sheet(batterId).name, jp: sheet(batterId).jp, number: sheet(batterId).number });
+  const hrOff: HrNameplate | null = side === "pitcher" && armId !== "academy" ? { name: sheet(armId).name, jp: sheet(armId).jp, number: sheet(armId).number } : null;
   // Her still pushes in behind the home run and stays in until the next pitch
   // cuts away, so the zoom never snaps back on screen.
   const hrZoom = bleed && !quietCard && !view.reduced && view.beat === "hr" && sinceResolve >= STAMP_DELAY_MS;
@@ -388,13 +420,14 @@ export function ActionStage({
       {hrBackdrop ? (
         <div
           key={`hr-back-${resolvedKey}`}
-          className={`shine-hr-backdrop ${view.reduced ? "shine-hr-still" : ""}`}
+          className={`shine-hr-backdrop ${againstCls} ${stillCls}`}
           style={{ ...HR_HOLD_VAR, ["--hr-backdrop" as string]: `url("${hrBackdrop}")` }}
           aria-hidden
         />
       ) : null}
-      {/* The picture: a 3:4 box that covers the frame, so the ball and the clip stay on her as painted. */}
-      <div className="shine-film">
+      {/* The picture: a 3:4 box that covers the frame, so the ball and the clip stay on her as painted.
+          A home run off her drains it (grey and dim) for the takeover's length, on the takeover's clock. */}
+      <div className={`shine-film ${against ? `shine-hr-dim ${stillCls}` : ""}`} style={against ? HR_HOLD_VAR : undefined}>
         <div className={`shine-film-cover ${hrZoom ? "shine-hr-zoom" : ""}`}>
           <div
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(255,209,102,0.12),transparent_55%),linear-gradient(180deg,#0a1128_0%,#121a2e_45%,#1a2744_100%)]"
@@ -421,14 +454,16 @@ export function ActionStage({
             />
           )}
           {ball ? (
+            // The ball swells as it comes and drags a short streak back along its path.
             <div
-              className="pointer-events-none absolute size-3 rounded-full bg-cream shadow-[0_0_6px_#f5f8ff,0_0_14px_rgba(245,248,255,0.35)]"
+              className={`shine-flight-ball pointer-events-none absolute size-4 rounded-full bg-cream ${view.reduced ? "is-still" : ""}`}
               data-action-ball="flight"
               style={{
                 left: `${ball.left}%`,
                 top: `${ball.top}%`,
-                transform: `translate(-50%, -50%) scale(${ball.scale / 1.25})`,
                 opacity: ballOpacity(view.u),
+                ["--ball-scale" as string]: ball.scale,
+                ["--trail-angle" as string]: `${ball.angleDeg}deg`,
               }}
               aria-hidden
             />
@@ -468,21 +503,22 @@ export function ActionStage({
           <div className="shine-letterbox shine-letterbox-bottom pointer-events-none absolute inset-x-0 bottom-0" aria-hidden />
         </>
       ) : null}
-      {inFlight && recognized ? (
-        <p
-          className="pointer-events-none absolute left-3 top-3 rounded-full border border-white/25 bg-ink/85 px-3 py-1 font-display text-[10px] uppercase tracking-widest text-cream shine-outcome-card"
-          data-action-read={recognized}
-        >
-          {recognized}
+      {readout ? (
+        // The broadcast plate under the bug: a gold rule, the pitch on ink. Keyed so a new pitch wipes in again.
+        <p key={`read-${readout}`} className={`shine-pitch-read ${view.reduced ? "is-still" : ""}`} data-action-read={readout}>
+          {readout}
         </p>
       ) : null}
       {stamp && stampUp && hr ? (
         // A home run is its own moment, over the whole screen: bars close in, gold rays turn
-        // around her face, streamers flutter down, and the kana land one by one on her jersey.
+        // around her face over a bloom, streamers flutter down, and the kana land one by one on
+        // her jersey, her name in the bottom bar. Off the pitcher (the mound) it is the same
+        // three seconds turned grey: faint rays, no bloom, no streamers, a coral stamp.
         <>
-          <div key={`hr-rays-${resolvedKey}`} className={`shine-hr-rays ${view.reduced ? "shine-hr-still" : ""}`} style={HR_HOLD_VAR} aria-hidden />
-          <div key={`hr-${resolvedKey}`} className={`shine-hr-moment ${view.reduced ? "shine-hr-still" : ""}`} style={HR_HOLD_VAR} data-action-stamp="hr" aria-hidden>
-            {view.reduced
+          {against ? null : <div key={`hr-bloom-${resolvedKey}`} className={`shine-hr-bloom ${stillCls}`} style={HR_HOLD_VAR} aria-hidden />}
+          <div key={`hr-rays-${resolvedKey}`} className={`shine-hr-rays ${againstCls} ${stillCls}`} style={HR_HOLD_VAR} aria-hidden />
+          <div key={`hr-${resolvedKey}`} className={`shine-hr-moment ${againstCls} ${stillCls}`} style={HR_HOLD_VAR} data-action-stamp="hr" aria-hidden>
+            {view.reduced || against
               ? null
               : HR_STREAMERS.map((s, i) => (
                   <span
@@ -502,7 +538,7 @@ export function ActionStage({
             <div className="shine-hr-bar shine-hr-bar-top" />
             <div className="shine-hr-bar shine-hr-bar-bottom" />
             <div className="shine-hr">
-              <div className="shine-stamp shine-stamp-gold shine-stamp-hr">
+              <div className={`shine-stamp shine-stamp-${stamp.tone} shine-stamp-hr`}>
                 <span className="shine-stamp-jp">
                   {[...stamp.jp].map((ch, i) => (
                     <span key={i} className="shine-hr-kana" style={{ ["--i" as string]: i }}>
@@ -513,14 +549,13 @@ export function ActionStage({
                 <span className="shine-stamp-en">{stamp.en}</span>
               </div>
               {hrName ? (
-                <p className="shine-hr-name">
+                <p className="shine-hr-name" data-action-hr-name={side}>
                   {hrName.jp ? (
                     <>
                       <span className="shine-kana">{hrName.jp}</span>{" "}
                     </>
                   ) : null}
-                  {hrName.name}
-                  {hrName.number !== null ? ` · #${hrName.number}` : null}
+                  {hrPlateLine(hrName, side, hrOff)}
                 </p>
               ) : null}
             </div>
@@ -528,10 +563,7 @@ export function ActionStage({
         </>
       ) : stamp && stampUp ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
-          <div key={resolvedKey} className={`shine-stamp shine-stamp-${stamp.tone} ${view.reduced ? "shine-stamp-still" : ""}`} data-action-stamp={view.beat ?? ""}>
-            <span className="shine-stamp-jp">{stamp.jp}</span>
-            <span className="shine-stamp-en">{stamp.en}</span>
-          </div>
+          <StampMark key={resolvedKey} stamp={stamp} reduced={view.reduced} mark={view.beat ?? ""} />
         </div>
       ) : null}
       {flash ? <div key={`flash-${resolvedKey}`} className="shine-contact-flash pointer-events-none absolute inset-0" aria-hidden /> : null}

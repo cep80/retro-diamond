@@ -646,7 +646,7 @@ function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedT
     else if (game.pgMet) game.banner = `${verb}.`;
     else if (game.kind === "gate") game.banner = "The Gate still opens.";
     else if (game.kind === "practice") game.banner = "That's the look. Back to the complex.";
-    else game.banner = "The goal slipped.";
+    else game.banner = "It got away from her.";
     return;
   }
 

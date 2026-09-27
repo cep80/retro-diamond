@@ -405,7 +405,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
           ? game.blown
             ? "Blown. The lead is gone."
             : "HOLD slipped."
-          : "The goal slipped.";
+          : "It got away from her.";
     tickPitcherSg(run, game);
     return;
   }
@@ -418,7 +418,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
       if (pull === "runs") game.simLog = ["ERA crossed 6. She's lifted."];
       game.done = true;
       game.pgMet = evaluatePg(run, game);
-      game.banner = pull ? "Pulled. The bullpen takes it." : game.pgMet ? "COMMAND." : "The goal slipped.";
+      game.banner = pull ? "Pulled. The bullpen takes it." : game.pgMet ? "COMMAND." : "It got away from her.";
       tickPitcherSg(run, game);
       return;
     }
@@ -430,7 +430,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   if (jamDate && (game.earnedRuns > 0 || game.inning > 7)) {
     game.done = true;
     game.pgMet = evaluatePg(run, game);
-    game.banner = game.pgMet ? "COMMAND." : "The goal slipped.";
+    game.banner = game.pgMet ? "COMMAND." : "It got away from her.";
     tickPitcherSg(run, game);
     return;
   }
@@ -438,7 +438,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   if (aceSide && game.outsRecorded >= 3) {
     game.done = true;
     game.pgMet = evaluatePg(run, game);
-    game.banner = game.pgMet ? "COMMAND." : "The goal slipped.";
+    game.banner = game.pgMet ? "COMMAND." : "It got away from her.";
     tickPitcherSg(run, game);
     return;
   }
@@ -446,7 +446,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   if (act1Done && !jamDate && !aceSide) {
     game.done = true;
     game.pgMet = evaluatePg(run, game);
-    game.banner = game.pgMet ? "COMMAND." : "The goal slipped.";
+    game.banner = game.pgMet ? "COMMAND." : "It got away from her.";
     tickPitcherSg(run, game);
     return;
   }

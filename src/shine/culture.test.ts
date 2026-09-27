@@ -149,7 +149,7 @@ describe("culture presentation", () => {
       yearVoice(2),
     );
     assert.equal(
-      morningSpeech("She was on. The goal she came for stayed open.", 2, "palms"),
+      morningSpeech("She was on. It still got away.", 2, "palms"),
       "She reached once. She needed two.",
     );
     assert.equal(
