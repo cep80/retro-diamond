@@ -63,9 +63,11 @@ Today her pack is Aoi in a red cap: same pose, same uniform, long ponytail, lant
 
 `public/art/action/<aoi|miki|yuki>/grounder.webp`: 3/4 front from the first-base side, bat through, eyes on a ball skipping to short. Today a ground-out plays over the follow-through still, which centres her backside in the frame.
 
-## 5. Reina logo clean-up (minor)
+## 5. Logo clean-up (minor)
 
-Paint the horse-head logo out of Reina's cap on her select-card and action stills.
+- Paint the horse-head logo out of Reina's cap on her select-card and action stills.
+- Sol's cap carries the same horse-head badge on every action still (set, release, follow); paint it out too.
+- Reina's and Kira's wind-up cleats carry a sneaker-brand "N" mark; paint it out.
 
 ## 6. From the milestone review (2026-09-26)
 
@@ -76,6 +78,26 @@ Paint the horse-head logo out of Reina's cap on her select-card and action still
 - **One kit per girl, everywhere (major).** Aoi's number and trim change between her reaction bust (navy "1", red collar) and her swing and home-run stills (pink "1", navy and pink trim). Sol's changes between busts too. Regenerate the off-model stills and busts against one kit reference sheet per girl (jersey, number colour, trim, pants).
 - **One venue per at-bat (minor).** Within a single pitch, Kira's wind-up is in a big stadium, Aoi's swing is in a lantern park, and her reaction is in a tree-lined park. Paint the pitcher's wind-up plate for each park on the same backdrop as the batter stills.
 - **Place plates (minor).** The scene card names "The Dusters' Dorm, a windowsill of coffee cans", but the backdrop is a blurred field. That's the 12 plates in §2.
+- **Reina changes venue within one pitch (polish).** Her release is painted in a dirt-infield stadium, but her set, follow-through and K frames are in the lantern park. Repaint `reina/release.webp` on the lantern-park backdrop.
+
+## 7. The pitcher's date (creative director, check-in 13, 2026-09-26)
+
+The mound is full-bleed now, so its art gaps show. The code already works around them: stamp colours by side, a muted home run against, and her mood bust under the done panel. Pictures carry the read, though, and these are what's missing.
+
+- **Pitcher reaction stills (major).** Today a K, a walk, a hit, an out, a home run against and the done panel all hold one follow-through frame with one expression, so the mound fails the stranger read test by design. Make three per pitcher (reina, sol, kira), 9 in all: `public/art/action/<id>/{celebrate,crushed,rattled}.webp`, 3:4, framed and lit like her set still, in the same venue.
+  - `celebrate`: after a strikeout or an inning-ending out. The glove pops, a fist, mouth open.
+  - `crushed`: a home run against. She turns over her shoulder to watch it leave, cap brim down.
+  - `rattled`: after a walk or a hit. Tugging her cap, looking away, breathing out.
+  - Code wiring when they land: add the three to PITCHER_POSES, and map k → celebrate, hr/hit → crushed and walk → rattled in `pictureFor`, on the pitcher's side.
+- **The batter from the mound (major).** The mound never shows who she's pitching to, so every batter is a solo portrait, not a duel. Paint a reverse angle from behind the mound: an academy batter (a girl in a generic academy kit, face small or shadowed) in the box, with the catcher's mitt up and the umpire, at night under lanterns.
+  - Two images: `public/art/action/academy/{stance,swing}.webp`.
+  - Optionally the same angle for aoi, miki and yuki, so a cast rival gets her own.
+  - The mound cuts to it during the flight and on contact.
+- **Kira's set is too wide (minor).** Her set still is a full-length wide shot, so her face is about 60 px tall on a 375 px phone and sits under the scorebug. Regenerate it framed thigh-up like Reina's, with her face in the upper third below the HUD (the film drops 48 px). Keep the stadium, the backwards cap and the smirk.
+- **The running game (minor).** A steal and a run scored end on the same walking-away trot still that a walk and a single use. Make two per hitter (aoi, miki, yuki):
+  - `slide.webp`: into second, dirt spraying, the tag just late.
+  - `score.webp`: stepping on home and turning to high-five, big smile.
+  - The race's new "Run scores" stamp plays over `score.webp` once it exists.
 
 ## Also still open from earlier
 
