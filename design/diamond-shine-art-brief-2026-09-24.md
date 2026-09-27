@@ -99,6 +99,16 @@ The mound is full-bleed now, so its art gaps show. The code already works around
   - `score.webp`: stepping on home and turning to high-five, big smile.
   - The race's new "Run scores" stamp plays over `score.webp` once it exists.
 
+## 8. The Rookie year's complex screens (creative director, check-in 17, 2026-09-27)
+
+The work screen is what a player sees 15+ times a year, and it shows one stance still every morning. Uma plays a short training cut after each session; these stills do that job.
+
+- **One still per training type, per girl (about 5 each, major).** Cage, Poles or Bullpen, Off day in casual clothes, Trainer's room with an ice pack on her shoulder or knee. Same kit, same light as her stance still, 3:4. The morning after a session, the work screen shows the still for what she did, under that day's gain.
+- **Cage Coach and Bullpen Coach busts (2, major).** Two people, on green like the girls' busts, 4 moods each if possible. The mentor day ("stays after the last bucket") and the year-start line ("the new one shows up with donuts") have no face today.
+- **Curtain call stills for the five girls other than Aoi (5, major).** A bow with cap in hand under the lights, in her home park. Today they reuse trot or follow, so the result doesn't feel like a Winning Live. For pitchers, follow is also shown on the postgame right after, the same picture twice.
+- **Catch with Coach, one picture per girl (6, minor).** Parking-lot lights, the complex going quiet, a ball in the air between her glove and the Coach's (the Coach off-frame or only an arm).
+- **The Clubhouse wall plate (1, minor).** A cork board with empty frames, warm light, for the empty state and behind the card wall.
+
 ## Also still open from earlier
 
 - Generated action stills for the stranger read test: HR and walk still fail (see `design/diamond-shine-action-art-handoff-2026-09-18.md`).

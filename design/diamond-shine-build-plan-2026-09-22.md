@@ -252,8 +252,25 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
     - scrapbook pages stop saying "goal"
   - **Smoke script:** asset errors now fail a run, and the Clubhouse stays out of the training rotation so the five-tile screen gets exercised.
   - **Caught in my own check-in 14 fix:** a saved-line matcher (RETIRED_REACH) had been reworded, which broke the old-save migration. It's restored word for word.
+- **Check-in 16 (game designer): the Rookie year.**
+  - **First Light:** it was a coin flip for Reina and Sol. The main ask is now "Strike out 2", not 3.
+    - Simulated at 400 dates per row at a Day-18 rookie's Stuff: met goes from 47–55% to 77–83%.
+    - A career miss (both asks failed) goes from 27–31% to 11–15% for Reina, whose smaller ask stays the curve.
+    - Sol's smaller ask becomes "Walk nobody".
+    - Kira is unchanged (89%).
+  - **Refuted by the sim:** Reina's curve might be missing from her pitch mix. She throws slider and curve at every Stuff.
+  - **Deferred:** the Bullpen's missing specialty bonus. It would reshape the Year 2–3 strikeout balance tuned in check-in 10, so it needs its own sim first.
+- **Check-in 17 (creative director): the Rookie year is about 35% of the way to Uma.**
+  - The broadcast dates are 45–50%, the VN scenes about 40%, and the complex screens 10–25%.
+  - 12 code findings, being built now:
+    - the work screen (its effect invisible, a photo on a photo, unfinished tiles, the HUD, narration in her bubble)
+    - the shells, one gold action, the postgame, and the curtain call
+    - the won-date face at the done panel
+    - Aoi's Rookie year end naming unplayed Classics
+    - bug tag wrapping and day strip layout
+  - Art brief §8 has the art: training stills, coach busts, curtain calls, Catch with Coach, and the Clubhouse plate.
 - **Open:**
-  - the game designer's Rookie-year difficulty review (running)
+  - the check-in 17 build (running)
   - a production deploy (needs the user's go-ahead)
   - the stranger playtest (M6, a user step)
   - server-side receipt verification before any real purchase
