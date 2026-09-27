@@ -104,7 +104,7 @@ function postGate(id: CharacterId, met: boolean, m: CoachMemory | null, wm: Retu
     case "sol":
       return [
         met ? "The outs are in. She threw them. She won't say which pitch." : "The outs weren't there. She'll tell you it was still her pitch.",
-        quote ?? "\"The changeup felt wrong.\" \"It was a strike.\" \"It felt wrong.\"",
+        quote ?? "\"You wanted the curve.\" \"I did.\" \"Then say it louder next time.\"",
         wm === "strained" ? "\"You're riding the arm. I can take it. Kira can't. Don't confuse us.\"" : "\"Fine. Four pitches. Give me a reason each time.\"",
       ];
     case "kira":
@@ -232,7 +232,7 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
             : classic && !lanternHeld && !nightHeld
               ? "Lantern Classic and Night Classic. Neither one held."
               : clean
-                ? "Every ninth held. She points at the bullpen door on her way out."
+                ? "Every ninth held. She says you owe her a juice for each one."
                 : misses === 1
                   ? "One ninth didn't hold. She's already warming for next year."
                   : misses === 2

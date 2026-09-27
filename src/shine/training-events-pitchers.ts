@@ -160,15 +160,15 @@ const REINA: TrainingEvent[] = [
     beats: [
       nar("The knitting bag has been under the bench since the Lantern Classic. There's a skin of infield dust on it."),
       aoi("Reina, your yarn has dust on it. I'm not saying anything. I'm writing it down, though.", "neutral"),
-      reina("Twenty-seven up. Twenty-seven down. No walks.", "neutral"),
-      reina("Everyone keeps saying congratulations. It felt like holding my breath for three hours, Coach. I'm still holding it.", "crushed"),
+      reina("I've read the scorecard every night since. Fourteen. Not thirteen.", "neutral"),
+      reina("Everyone keeps asking how it went. It felt like holding my breath for three hours, Coach. I'm still holding it.", "crushed"),
       nar("Aoi quietly puts her pencil away."),
     ],
     choices: [
       {
         label: "Take her to 6-4-3 for okonomiyaki.",
         reply: [
-          nar("Haruko doesn't say congratulations. She says \"You look hungry\" and turns the grill up."),
+          nar("Haruko doesn't ask how it went. She says \"You look hungry\" and turns the grill up."),
           reina("Two. I ate two whole ones. Don't tell Aoi.", "elated"),
           nar("On the walk home she breathes out, long, like she's letting go of a rope."),
         ],
@@ -258,7 +258,7 @@ const REINA: TrainingEvent[] = [
     place: "Koi Park bullpen · a week before the Stretch, cicadas warming up",
     beats: [
       nar("She's asked you to stand in with a bat. \"Don't swing. Just stand there. Be a person.\""),
-      nar("She goes to three balls and two strikes on purpose. Eleven times. She comes back ten."),
+      nar("She goes to three balls and two strikes on purpose. Eleven times. She comes back all eleven."),
       nar("The twelfth is low by an inch. You both watch it into the glove."),
       reina("That was ball four.", "crushed"),
       reina("To you. The first one I've ever thrown to somebody with a name.", "crushed"),
@@ -891,7 +891,7 @@ const KIRA: TrainingEvent[] = [
         reply: [
           kira("In the cap? For luck? Partner, luck is for amateurs.", "neutral"),
           nar("She tucks it in the band anyway and checks it with two fingers, twice, like the door."),
-          kira("Okay. Four outs of luck. Let's go.", "focused"),
+          kira("Okay. Enough luck for the ninth. Let's go.", "focused"),
         ],
         effect: { stat: { key: "stuff", delta: 1 }, energy: -5 },
       },

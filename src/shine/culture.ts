@@ -183,7 +183,7 @@ export const VERSES: Record<CharacterId, [string, string, string]> = {
   ],
   kira: [
     "Two taps of her glove. The whole section taps back.",
-    "Stars point at the bullpen door, not the sky.",
+    "The section waves bus transfers. She laughs every time.",
     "They start it the second the bullpen door opens.",
   ],
   yuki: [

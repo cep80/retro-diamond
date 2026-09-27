@@ -210,7 +210,7 @@ const ENDINGS: Record<CharacterId, Scenes> = {
     show: {
       place: "The Palms · six in the morning, the stand not open yet",
       beats: [
-        { who: "narration", text: "She's stretching the left leg in the dark, the way she always has. You're holding the stopwatch, the way you always have." },
+        { who: "narration", text: "Gray light over the right-field wall. Her stretch is done, and she's on the plate, waiting for you. You've got the stopwatch." },
         { who: "yuki", text: "Top of the Academy. Already. …It took three years. I know. Let me say already.", mood: "elated" },
         { who: "narration", text: "She takes off down the line, touches the bag, and then does something you've never seen her do. She walks back." },
         { who: "yuki", text: "Slow. On purpose. It's horrible. Aoi does this for fun.", mood: "elated" },
@@ -232,7 +232,7 @@ const ENDINGS: Record<CharacterId, Scenes> = {
         { who: "narration", text: "The Academy letter is folded into a very small square in her sock. She's stretching the left leg in daylight, where anyone can see." },
         { who: "yuki", text: "Letter came. Already read it. On the bus. Twice. Fast.", mood: "crushed" },
         { who: "yuki", text: "I'd do it all the same. I'd go before anyone said so. Every time.", mood: "focused" },
-        { who: "yuki", text: "But nobody ever held the stopwatch before. They just told me the time after.", mood: "neutral" },
+        { who: "yuki", text: "You held the stopwatch the whole way. Even the morning it stayed in your pocket.", mood: "neutral" },
         { who: "narration", text: "She takes off down the line, touches the bag, and comes back barely breathing." },
         { who: "yuki", text: "3.3. Faster than the first day. Don't write it down. …Write it down, Stopwatch.", mood: "elated" },
       ],

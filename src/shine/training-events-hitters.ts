@@ -722,7 +722,7 @@ export const HITTER_EVENTS: readonly TrainingEvent[] = [
     place: "The Palms · the day after the Lantern Classic",
     beats: [
       { who: "narration", text: "The shaved-ice stand is out of strawberry, because Yuki bought four last night, and the stand lady has made a sign about it." },
-      { who: "yuki", text: "First to home! On a single! Did you see the catcher? She had a face.", mood: "elated" },
+      { who: "yuki", text: "She made a sign about me! I'm famous, Stopwatch. At a shaved-ice stand.", mood: "elated" },
       { who: "narration", text: "Then she goes quiet, which Yuki doesn't do, and looks at her left leg." },
       { who: "yuki", text: "I told you before the game this time. Not after. And you didn't write it down, and you didn't pull me. You just waited with me.", mood: "neutral" },
       { who: "yuki", text: "First time I ever waited for anything. It was awful. Did it help? Don't answer that.", mood: "focused" },

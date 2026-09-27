@@ -101,8 +101,8 @@ const RIVAL_INTROS: Record<CharacterId, Record<RivalKind, RivalIntroScene>> = {
       { who: "reina", text: "I know. You saw it. Good.", mood: "focused" },
       { who: "miki", text: "So. Let's do twelve pitches, break the record, and then both go home and not sleep.", mood: "elated" },
     ]),
-    stretch: intro("reina", "miki", "stretch", "The Stretch · North Field, too hot for the cage heater", [
-      { who: "narration", text: "It's too hot for Gary, so for once Gary is quiet. Everyone keeps glancing at the cage like something's wrong." },
+    stretch: intro("reina", "miki", "stretch", "The Stretch · Koi Park, late August, heat coming off the dirt", [
+      { who: "narration", text: "Miki came down from North in two shirts, out of habit. At Koi, in this heat, that lasted four minutes." },
       { who: "reina", text: "If the bases are loaded and it's you, I'm going to three-and-two. On purpose.", mood: "focused" },
       { who: "miki", text: "…Why would you tell me that.", mood: "neutral" },
       { who: "reina", text: "Because you're the only honest hitter in this league. It should be fair.", mood: "neutral" },
@@ -142,7 +142,7 @@ const RIVAL_INTROS: Record<CharacterId, Record<RivalKind, RivalIntroScene>> = {
       { who: "coach", text: "It's both, Miki." },
       { who: "sol", text: "Good. I'm going to enjoy this.", mood: "elated" },
     ]),
-    stretch: intro("miki", "sol", "stretch", "The Stretch · the Dusters' park, ninety-one degrees at first pitch", [
+    stretch: intro("miki", "sol", "stretch", "The Stretch · North Field, ninety-one degrees at first pitch", [
       { who: "narration", text: "The dirt is so dry it squeaks. Out at the bullpen door, Kira is eating a tuna-mayo onigiri. She has the eighth and ninth, if Sol ever lets her in. Sol never lets her in." },
       { who: "miki", text: "So. You for seven, then Kira for two. Long night of people throwing hard at me.", mood: "neutral" },
       { who: "sol", text: "Nobody's getting to Kira tonight. I'm finishing it.", mood: "focused" },
@@ -262,7 +262,7 @@ const RIVAL_INTROS: Record<CharacterId, Record<RivalKind, RivalIntroScene>> = {
       { who: "yuki", text: "The ball's fast. The catcher's knees aren't. I'm watching her knees.", mood: "focused" },
       { who: "sol", text: "Get on, then. I've got a pickoff move I haven't shown anybody.", mood: "elated" },
     ]),
-    stretch: intro("yuki", "reina", "stretch", "The Stretch · Koi Park dugout, the cicadas at full volume", [
+    stretch: intro("yuki", "reina", "stretch", "The Stretch · the Palms dugout, the cicadas at full volume", [
       { who: "narration", text: "Kira leans out of the bullpen door and holds up a juice box. The bet is no steal tonight. She always takes no. She likes losing to Yuki." },
       { who: "yuki", text: "Kira bet against me again. Free juice.", mood: "elated" },
       { who: "reina", text: "Your lead was four steps last time. Not three and a half. Four.", mood: "neutral" },
@@ -273,8 +273,8 @@ const RIVAL_INTROS: Record<CharacterId, Record<RivalKind, RivalIntroScene>> = {
     ]),
     series: intro("yuki", "reina", "series", "Skyline Series · the tunnel, an hour to first pitch", [
       { who: "narration", text: "Yuki has the lighthouse box on an equipment trunk, lid on. She keeps touching the lid." },
-      { who: "reina", text: "You brought a puzzle to the Series.", mood: "neutral" },
-      { who: "yuki", text: "It's not a puzzle. It's a box. …Don't look at the box.", mood: "neutral" },
+      { who: "reina", text: "You've touched that lid nine times since I sat down.", mood: "neutral" },
+      { who: "yuki", text: "It's nothing. It's a box. …Don't look at the box.", mood: "neutral" },
       { who: "reina", text: "You run on me every time. Thirty-eight percent of the time, you're out. Not forty. Thirty-eight.", mood: "focused" },
       { who: "yuki", text: "And the rest of the time I'm on second, looking at you. And you never look back.", mood: "focused" },
       { who: "reina", text: "Last one. I'll look at you tonight. Once.", mood: "neutral" },

@@ -268,7 +268,7 @@ export const TITLE_LINES: Record<CharacterId, string> = {
   reina: "You're four minutes late. I counted. Sit where I can see you.",
   miki: "Oh. You came back. …Cool. That's cool.",
   sol: "Ándale, Jefe. My sister saved you an elote. Extra chili. Eat it before I do.",
-  kira: "Partner! You made the last bus. Give me your transfer, I keep them. Ha, long story.",
+  kira: "Partner! You made the last bus. Here, take a transfer. Don't lose it. Ha, long story.",
   yuki: "Already warmed up. Already waiting. You're slow, Stopwatch.",
 };
 

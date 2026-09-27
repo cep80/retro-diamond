@@ -158,7 +158,7 @@ function closingDateLabel(run: TraineeRun): string | null {
 
 export function endingQuote(run: TraineeRun, rank: EndingRank) {
   const who = sheet(run.characterId);
-  if (rank === "never-quit") return "Section 4 kept ringing both cowbells after the Finale. Nobody told them to stop.";
+  if (rank === "never-quit") return "She peels the price tag off the second cowbell and hands it to you.";
   // The chip already says S or A, and the frame line carries the 胴上げ; the quote is hers alone.
   if (rank === "S" || rank === "A") return who.endings.show;
   if (rank === "B") {
