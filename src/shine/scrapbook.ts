@@ -292,7 +292,204 @@ export const PAGE_CAPTIONS: Record<BigGame, { met: [hitter: string, pitcher: str
   },
 };
 
-const GAME_INDEX: Record<BigGame, number> = { gate: 0, "first-light": 1, "lantern-classic": 2, "night-classic": 3, stretch: 4, series: 5, finale: 6 };
+type GirlCaptions = Record<BigGame, { met: string; missed: string }>;
+
+/**
+ * Her own page for each big game (check-in 23): what that game asked of her, said in her world
+ * (her keepsakes, her people, her habits). One short sentence, past tense, the narrator's voice.
+ * The role captions above are the fallback for a girl or a game this table doesn't cover.
+ */
+export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
+  aoi: {
+    gate: {
+      met: "She reached first, and Haruko put a new sticker on the sign that night.",
+      missed: "She didn't reach, and she ran the last ground ball out like it was 1981.",
+    },
+    "first-light": {
+      met: "She reached and wrote it on the back of her batting glove, under Day one.",
+      missed: "She didn't reach, and on the ride home she wrote down every pitch that beat her.",
+    },
+    "lantern-classic": {
+      met: "She drove in a run and caught herself grinning in the box.",
+      missed: "The run stayed out there, and she asked if you could skip the shop that night.",
+    },
+    "night-classic": {
+      met: "She reached twice, and the pencil stub put two small circles in her scorebook.",
+      missed: "She came up short and asked you to write down the pitch she chased, so she'd remember.",
+    },
+    stretch: {
+      met: "Her hit came late, and she tripped leaving the box and laughed the hardest of anyone.",
+      missed: "The late hit didn't come, and she sat under the 6-4-3 sign until Haruko turned the grill off.",
+    },
+    series: {
+      met: "She had three good at-bats, and Haruko waved the 6-4-3 flag in row F for every one.",
+      missed: "The at-bats didn't add up, and Haruko folded the flag and kept the grill on anyway.",
+    },
+    finale: {
+      met: "She got the hit with a runner in scoring position, and the sign at 6-4-3 had to change.",
+      missed: "The hit with runners on never came, and she kept score of the whole game anyway.",
+    },
+  },
+  reina: {
+    gate: {
+      met: "She got her three outs and wrote each one in the ruled notebook before she sat down.",
+      missed: "The outs didn't come, and she ripped out a whole row of the scarf that night.",
+    },
+    "first-light": {
+      met: "She got her two punchouts and checked the notebook twice to be sure.",
+      missed: "The punchouts didn't come, and she threw in the empty bullpen until you told her the slot was back.",
+    },
+    "lantern-classic": {
+      met: "She went deep under the lanterns and didn't pick up her knitting for a month after.",
+      missed: "She came out before the fifth and sat in the tunnel knitting until the lanterns went out.",
+    },
+    "night-classic": {
+      met: "She got two punchouts back to back on a slick ball, after a night she swore she slept.",
+      missed: "The punchouts never came back to back, and she rubbed the same ball until the dew dried.",
+    },
+    stretch: {
+      met: "With the bases loaded she went to three-and-two on purpose and got out of it.",
+      missed: "A run came in with the bases loaded, and she left the dropped stitch where it was.",
+    },
+    series: {
+      met: "She went six innings with Miki's melon pan still in her jacket pocket.",
+      missed: "She didn't get the six innings, and she ate Miki's melon pan on the bench after.",
+    },
+    finale: {
+      met: "She walked the leadoff hitter, and you stayed in the dugout and watched her get the next three.",
+      missed: "She walked the leadoff hitter, and a run came in before the third out.",
+    },
+  },
+  miki: {
+    gate: {
+      met: "She saw three pitches in one at-bat, and Section 4 rang the cowbell for each.",
+      missed: "She swung early every time and said it was cool on the bus home, which it wasn't.",
+    },
+    "first-light": {
+      met: "She didn't strike out once, and then she went and stood behind the dugout for a minute.",
+      missed: "She struck out, and you bought her a melon pan and walked slow and didn't do the talk.",
+    },
+    "lantern-classic": {
+      met: "She fouled them off with two strikes until the cowbell in Section 4 wouldn't stop.",
+      missed: "She never got a two-strike foul in, and Gary clanked in the empty cage all night.",
+    },
+    "night-classic": {
+      met: "She ran the count full and fouled off heat until the pitcher had to think.",
+      missed: "The count never got full, and she ate both melon pans on the bus, the in-case one too.",
+    },
+    stretch: {
+      met: "She got the bat on a breaking ball, and Section 4 rang the bell like it was a home run.",
+      missed: "The breaking balls got under her bat, and she took the ugly ones in the cage until midnight.",
+    },
+    series: {
+      met: "She came up with runners on, and the whole North bench leaned on the rail.",
+      missed: "The bases were empty every time she came up, and she said cool about it twice.",
+    },
+    finale: {
+      met: "She made them throw her three pitches in one at-bat, and then she made them sick of her.",
+      missed: "They got her early every time, and she still looked for you before she looked at Section 4.",
+    },
+  },
+  sol: {
+    gate: {
+      met: "She threw nothing but heat, and nobody caught up to it for three outs.",
+      missed: "The outs didn't come, and she iced the arm on Luz's tailgate like there was a game tomorrow.",
+    },
+    "first-light": {
+      met: "She got her two punchouts on heat and told Luz the changeup was still dead.",
+      missed: "The punchouts didn't come, and when you asked how she was, she said ninety-nine.",
+    },
+    "lantern-classic": {
+      met: "She went five innings with the wind pushing the lanterns sideways and never looked at the bullpen.",
+      missed: "She came out before the fifth and iced the arm until you came and stood by the ice machine.",
+    },
+    "night-classic": {
+      met: "She struck out two in a row, and that night she called Luz and didn't say why.",
+      missed: "The punchouts never came back to back, and she traced the grip inside her glove in the tunnel.",
+    },
+    stretch: {
+      met: "She got out of the jam with Kira tapping on the bullpen door the whole time.",
+      missed: "A run scored out of the jam, and she said ninety-nine before anyone asked.",
+    },
+    series: {
+      met: "She went six innings, and Luz watched every one from row one with the truck closed.",
+      missed: "She didn't get the six innings, and Luz was still in row one when she came out.",
+    },
+    finale: {
+      met: "She opened the ninth with Luz's changeup and got the two punchouts before the lead could go.",
+      missed: "She threw Luz's changeup first like she promised, and the rest of the ninth didn't go her way.",
+    },
+  },
+  kira: {
+    gate: {
+      met: "Her first out came before the catcher had settled, and she was home before the last bus.",
+      missed: "The outs didn't come, and she was back at the bullpen door with her bag before anyone looked for her.",
+    },
+    "first-light": {
+      met: "She held the one-run lead and pointed at the bullpen door, not the crowd.",
+      missed: "The one-run lead went, and she rode the last bus to the end of the line and back.",
+    },
+    "lantern-classic": {
+      met: "She got the two punchouts, and Aoi drew two little buses in her scorebook.",
+      missed: "The two punchouts didn't come, and she tapped the bullpen door twice on her way back anyway.",
+    },
+    "night-classic": {
+      met: "She came in with runners on, and every one of them stayed where she found them.",
+      missed: "The runners she inherited came home, and she waited at the bullpen door to see if you'd come.",
+    },
+    stretch: {
+      met: "She got four outs, the first of them in the eighth, which she had never pitched before.",
+      missed: "She asked for the eighth and got it, and the lead didn't make it to the last out.",
+    },
+    series: {
+      met: "She pitched a clean ninth with the Stars Park transfer tucked in her cap.",
+      missed: "A run got in, and she took the transfer out of her cap and put it back in the tin.",
+    },
+    finale: {
+      met: "The tying run started on first and never got home, and she walked to the dugout instead of the door.",
+      missed: "The tying run came around, and she went to the dugout anyway, like she'd said she would.",
+    },
+  },
+  yuki: {
+    gate: {
+      met: "She reached first and was already looking at second.",
+      missed: "She didn't reach, and she ran the bags alone after the lights went off while you held the stopwatch.",
+    },
+    "first-light": {
+      met: "She stole second before anyone said go, and she kept going.",
+      missed: "The steal didn't come, and she hid the leg from you all the way to the bus.",
+    },
+    "lantern-classic": {
+      met: "She waited for your sign for once, then scored from first on a single.",
+      missed: "She didn't score from first, and she told you the leg had grabbed before you had to ask.",
+    },
+    "night-classic": {
+      met: "She reached twice, and both times she was leaning toward second before the pitch.",
+      missed: "She came up short, and she ate a strawberry shaved ice so fast it hurt.",
+    },
+    stretch: {
+      met: "She stole late, and Kira owed her another juice.",
+      missed: "The late steal didn't come, and Kira won the juice bet for once and didn't look happy about it.",
+    },
+    series: {
+      met: "She scored without a hit, and Reina looked at her once, too late.",
+      missed: "She never got around without a hit, and the lighthouse box stayed shut on the trunk.",
+    },
+    finale: {
+      met: "She stole with a runner in scoring position and was gone before you finished saying go.",
+      missed: "The steal didn't come, and that night she did a thousand-piece puzzle, slowly.",
+    },
+  },
+};
+
+/** Her own caption for the page when she has one, else the role's. */
+export function pageCaption(id: CharacterId, game: BigGame, met: boolean): string {
+  const own = GIRL_CAPTIONS[id]?.[game]?.[met ? "met" : "missed"];
+  if (own) return own;
+  return PAGE_CAPTIONS[game][met ? "met" : "missed"][isPitcherStyle(sheet(id).style) ? 1 : 0];
+}
+
+const GAME_INDEX: Record<BigGame, number> ={ gate: 0, "first-light": 1, "lantern-classic": 2, "night-classic": 3, stretch: 4, series: 5, finale: 6 };
 
 /** A page minted before the book kept its mark still says how it went. */
 function metFromLine(line: string): boolean {
@@ -361,7 +558,6 @@ export type BookEntry = { kind: "page"; page: BookPage } | { kind: "note"; turn:
  * pages as notes. Rival pages are folded into the page they happened on.
  */
 export function scrapbookBook(id: CharacterId, highlights: readonly Highlight[], pgResults?: readonly string[]): BookEntry[] {
-  const pitcher = isPitcherStyle(sheet(id).style);
   const games = new Map<number, Highlight>();
   for (const h of highlights) if (h.kind === "game" && bigGameOf(h.turn)) games.set(h.turn, h);
   const seen = new Map<string, number>();
@@ -382,7 +578,7 @@ export function scrapbookBook(id: CharacterId, highlights: readonly Highlight[],
         seen.set(rival, n);
         meeting = meetingLine(rival, n);
       }
-      const caption = PAGE_CAPTIONS[game][met ? "met" : "missed"][pitcher ? 1 : 0];
+      const caption = pageCaption(id, game, met);
       const smaller = !met && /smaller (ask|one) held/i.test(h.line) ? " She still got the little one." : "";
       const page: BookPage = {
         turn: h.turn,

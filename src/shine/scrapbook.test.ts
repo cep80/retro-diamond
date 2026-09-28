@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { PlateEvent } from "./events.ts";
 import { newRun } from "./run.ts";
-import { addHighlight, definingPaFrom, gameHighlight, HIGHLIGHT_CAP, letterPage, PAGE_CAPTIONS, replayLines, scrapbookBook, scrapbookLine, scrapbookPages } from "./scrapbook.ts";
+import { addHighlight, definingPaFrom, gameHighlight, GIRL_CAPTIONS, HIGHLIGHT_CAP, letterPage, PAGE_CAPTIONS, pageCaption, replayLines, scrapbookBook, scrapbookLine, scrapbookPages } from "./scrapbook.ts";
 import { FORBIDDEN_IN_STORY } from "./story.ts";
 import type { Highlight } from "./types.ts";
 import type { DefiningPa } from "./types.ts";
@@ -111,7 +111,8 @@ describe("scrapbook book (check-in 22)", () => {
     assert.deepEqual(pages[1]!.notes, ["A pinch of dirt from the baseline, kept."]);
     for (const p of pages) {
       assert.doesNotMatch(p.caption, /got what she came for|First look at/);
-      assert.equal(p.caption, PAGE_CAPTIONS[p.game][p.met ? "met" : "missed"][0]);
+      assert.equal(p.caption, pageCaption("aoi", p.game, p.met));
+      assert.equal(p.caption, GIRL_CAPTIONS.aoi[p.game][p.met ? "met" : "missed"]);
     }
   });
 
@@ -119,7 +120,34 @@ describe("scrapbook book (check-in 22)", () => {
     const entries = scrapbookBook("sol", [game(5, "She got what she came for.")], ["missed", "pending", "pending", "pending", "pending", "pending", "pending"]);
     const page = entries[0]!.kind === "page" ? entries[0]!.page : null;
     assert.equal(page?.met, false);
-    assert.equal(page?.caption, PAGE_CAPTIONS.gate.missed[1]);
+    assert.equal(page?.caption, GIRL_CAPTIONS.sol.gate.missed);
+  });
+
+  it("gives every girl her own caption for every big game, both ways, in the game's voice", () => {
+    const girls = ["aoi", "reina", "miki", "sol", "kira", "yuki"] as const;
+    const games = ["gate", "first-light", "lantern-classic", "night-classic", "stretch", "series", "finale"] as const;
+    const roles = new Set(Object.values(PAGE_CAPTIONS).flatMap((c) => [...c.met, ...c.missed]));
+    const seen = new Set<string>();
+    for (const id of girls) {
+      for (const g of games) {
+        for (const met of [true, false]) {
+          const line = GIRL_CAPTIONS[id]?.[g]?.[met ? "met" : "missed"];
+          const where = `${id} ${g} ${met ? "met" : "missed"}`;
+          assert.ok(line && line.trim().length > 0, where);
+          assert.equal(pageCaption(id, g, met), line, where);
+          assert.doesNotMatch(line, FORBIDDEN_IN_STORY, where);
+          assert.doesNotMatch(line, /\b(he|him|his|himself)\b/i, where);
+          assert.doesNotMatch(line, /\b(date|stat|stats|goal|PA)\b/i, where);
+          assert.doesNotMatch(line, /—/, where);
+          // One short sentence, in the narrator's voice (not her quote).
+          assert.match(line, /^[^.!?"“”]+[.]$/, where);
+          assert.ok(line.split(/\s+/).length <= 22, `${where}: too long`);
+          assert.ok(!roles.has(line) && !seen.has(line), `${where}: repeats`);
+          seen.add(line);
+        }
+      }
+    }
+    assert.equal(seen.size, 84);
   });
 
   it("never repeats a caption, and every caption is in the game's voice", () => {

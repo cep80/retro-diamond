@@ -165,9 +165,9 @@ export function endingQuote(run: TraineeRun, rank: EndingRank) {
   if (rank === "B") {
     const finale = officialFor(run.characterId, 60);
     // Each pitcher's Finale ask, said as what she did.
-    if (run.pgResults[6] === "met" && finale?.pgId === "clean-ninth") return "Diamond Finale. Ball four to lead off, then nothing. She finished it.";
+    if (run.pgResults[6] === "met" && finale?.pgId === "clean-ninth") return "Diamond Finale. Ball four to lead off. She threw the next one, and nobody scored.";
     if (run.pgResults[6] === "met" && finale?.pgId === "k-2") return "Diamond Finale. Two punchouts in the ninth, and the lead held.";
-    if (run.pgResults[6] === "met" && finale?.pgId === "hold-one-run") return "Diamond Finale. The tying run stayed on first.";
+    if (run.pgResults[6] === "met" && finale?.pgId === "hold-one-run") return "Diamond Finale. The tying run started on first. It never got home.";
     if (run.pgResults[6] === "met") return "She won the Diamond Finale. The top of the Academy takes more than one night.";
     // "One win away" only when winning the Finale is all that stood between her and A.
     if (run.pgResults[6] !== "pending")

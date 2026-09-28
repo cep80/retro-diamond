@@ -252,7 +252,7 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
               : rookie && clean
                 ? "She sat in the bullpen an hour after the lights went off. Then she asked when spring starts."
                 : classic && !lanternHeld && nightHeld
-          ? "Night Classic held. Lantern Classic didn't. The side wasn't struck out."
+          ? "Night Classic held. Lantern Classic didn't. The two punchouts didn't come."
           : classic && lanternHeld && !nightHeld
             ? "Lantern Classic held. Night Classic didn't."
             : classic && !lanternHeld && !nightHeld

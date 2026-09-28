@@ -334,7 +334,7 @@ test("Kira's classic year-end names the Lantern miss beside the Night that held"
   run.pgResults[3] = "met";
   const s = relationshipScene(run, "year-end");
   assert.match(s.lines[0]!, /Night Classic held/);
-  assert.match(s.lines[0]!, /side wasn't struck out/);
+  assert.match(s.lines[0]!, /two punchouts didn't come/);
   assert.doesNotMatch(s.lines[0]!, /Every ninth held/);
 });
 

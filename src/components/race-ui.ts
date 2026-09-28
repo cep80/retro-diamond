@@ -754,7 +754,7 @@ export const FINALE_NIGHT: Record<CharacterId, { met: string; missed: string }> 
   },
   kira: {
     met: "She takes the seat in the dugout. Nobody asks her to move.",
-    missed: "She sits in the dugout anyway, bag at her feet, until the last bus.",
+    missed: "She sits in the dugout anyway, the tin of transfers in her lap, until the last bus.",
   },
   yuki: {
     met: "She hands the stopwatch back. It's still running.",
