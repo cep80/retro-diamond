@@ -5503,3 +5503,15 @@
   background: linear-gradient(0deg, var(--color-ink) 0%, rgb(8 17 39 / 0.9) 55%, rgb(8 17 39 / 0.78) 100%);
   transition: background 240ms ease;
 }
+
+/* Settings on a short phone: the page scrolls, so its head (and "Close settings") stays pinned. */
+.shine-set .shine-set-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin-inline: -1rem;
+  padding-inline: 1rem;
+  padding-block: 0.5rem;
+  background: rgb(8 17 39 / 0.92);
+  backdrop-filter: blur(8px);
+}
