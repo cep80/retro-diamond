@@ -268,9 +268,13 @@ const RECAP_US = [
   "A man behind the dugout eats a hot dog like it owes him money.",
 ];
 
-export function recapLine(parkId: string, inning: number): string {
+/** Lines only a hitter's day can say: the box, the walk-up, a foul, the spikes. */
+const BATTER_ONLY = /in the box|Walk-up|fouled back|spikes|before the pitch/i;
+
+export function recapLine(parkId: string, inning: number, pitcher = false): string {
   const culture = parkCulture(parkId);
-  const pool = culture === "jp" ? RECAP_JP : culture === "blend" ? RECAP_BLEND : RECAP_US;
+  const all = culture === "jp" ? RECAP_JP : culture === "blend" ? RECAP_BLEND : RECAP_US;
+  const pool = pitcher ? all.filter((l) => !BATTER_ONLY.test(l)) : all;
   return pool[Math.abs(inning) % pool.length]!;
 }
 

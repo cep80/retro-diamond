@@ -28,8 +28,11 @@
  *   --stuck-s <n>    a screen and state that hold this long with no progress is a stuck point (default 60)
  *   --dpr <n>        screenshot pixel ratio (default 1)
  *   --headed         show the browser
+ *   --career         play on past Classic Spring: Years 2 and 3, the Finale (or the early close at
+ *                    the second miss), the ending scene, the Winning Live, the scrapbook, and the
+ *                    Clubhouse wall. Stops with outcome "reached-clubhouse". Default --max-min 150.
  *
- * Stops at: the Year 2 start (Classic Spring's Morning pressed), a stuck screen (no progress
+ * Stops at: the Year 2 start (Classic Spring's Morning pressed; with --career, the Clubhouse wall), a stuck screen (no progress
  * for --stuck-s), a page or console error, a tap that finds no enabled primary action, an input
  * guard that never clears, or the end of her career. Writes <out>/report.json: the screens in
  * order, the turn reached, every date and its result, every error, every stuck point with its
@@ -52,10 +55,10 @@ const GIRLS = {
   yuki: { name: "Yuki", pitcher: false },
 };
 
-const USAGE = `usage: node scripts/year-smoke.mjs --girl <${Object.keys(GIRLS).join("|")}> [--seed text] [--size 390x844] [--out dir] [--fast] [--reduced] [--keys] [--keep-going] [--base url] [--max-min n] [--stuck-s n] [--dpr n] [--headed]`;
+const USAGE = `usage: node scripts/year-smoke.mjs --girl <${Object.keys(GIRLS).join("|")}> [--seed text] [--size 390x844] [--out dir] [--fast] [--reduced] [--keys] [--keep-going] [--base url] [--max-min n] [--stuck-s n] [--dpr n] [--headed] [--career]`;
 
 function parseArgs(argv) {
-  const o = { girl: "aoi", seed: null, size: "390x844", out: null, fast: false, reduced: false, keys: false, keepGoing: false, base: "http://localhost:8091", maxMin: 45, stuckS: 60, dpr: 1, headed: false };
+  const o = { girl: "aoi", seed: null, size: "390x844", out: null, fast: false, reduced: false, keys: false, keepGoing: false, base: "http://localhost:8091", maxMin: null, stuckS: 60, dpr: 1, headed: false, career: false };
   for (let i = 0; i < argv.length; i++) {
     let a = argv[i];
     let v = null;
@@ -82,6 +85,7 @@ function parseArgs(argv) {
     else if (a === "--keys") o.keys = true;
     else if (a === "--keep-going") o.keepGoing = true;
     else if (a === "--headed") o.headed = true;
+    else if (a === "--career") o.career = true;
     else if (a === "--help" || a === "-h") o.help = true;
     else o.error = `unknown option ${a}`;
   }
@@ -92,6 +96,7 @@ function parseArgs(argv) {
     o.width = Number(m[1]);
     o.height = Number(m[2]);
   }
+  o.maxMin ??= o.career ? 150 : 45;
   for (const k of ["maxMin", "stuckS", "dpr"]) if (!(o[k] > 0)) o.error = `--${k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)} must be a positive number`;
   return o;
 }
@@ -109,7 +114,7 @@ const stamp = new Date().toISOString().replace(/[:.]/g, "-");
 const out = resolve(opts.out ?? join(tmpdir(), "year-smoke", `${opts.girl}-${stamp}`));
 mkdirSync(out, { recursive: true });
 const touch = opts.width < 800;
-const replay = `node scripts/year-smoke.mjs --girl ${opts.girl} --seed ${seed} --size ${opts.size}${opts.fast ? " --fast" : ""}${opts.reduced ? " --reduced" : ""}${opts.keys ? " --keys" : ""}`;
+const replay = `node scripts/year-smoke.mjs --girl ${opts.girl} --seed ${seed} --size ${opts.size}${opts.fast ? " --fast" : ""}${opts.reduced ? " --reduced" : ""}${opts.keys ? " --keys" : ""}${opts.career ? " --career" : ""}`;
 
 // ── the page side (serialized into the page; no outer references) ──────────────
 
@@ -349,6 +354,14 @@ function readResult(mound) {
   };
 }
 
+/** The pictures behind a settled screen (its backdrop, the wall's cards) that have not painted. */
+function emptyImages() {
+  return [...document.querySelectorAll(".shine-backdrop img, .shine-backdrop video, [data-clubhouse-film]")]
+    .filter((el) => el.getClientRects().length > 0 && getComputedStyle(el).display !== "none")
+    .filter((el) => (el.tagName === "VIDEO" ? el.readyState < 2 && !el.poster : !(el.complete && el.naturalWidth > 0)))
+    .map((el) => `${el.tagName.toLowerCase()} ${el.getAttribute("src")}${el.tagName === "IMG" ? ` (complete=${el.complete}, ${el.naturalWidth}px)` : ` (readyState ${el.readyState})`}`);
+}
+
 // ── the stranger ───────────────────────────────────────────────────────────────
 
 const report = {
@@ -361,6 +374,7 @@ const report = {
   reducedConfirmed: null,
   fast: opts.fast,
   keys: opts.keys,
+  career: opts.career,
   base: opts.base,
   out,
   startedAt: new Date().toISOString(),
@@ -368,6 +382,8 @@ const report = {
   why: null,
   turnReached: null,
   yearReached: null,
+  endingRank: null,
+  closedEarly: null,
   durationMs: null,
   screens: [],
   dates: [],
@@ -592,6 +608,7 @@ const COPY_RULES = [
   { id: "punctuation", re: /\.\.(?!\.)|[ ][.,!?;:](?!\d)|,,|\S[ ]{2,}\S/ },
 ];
 const copySeen = new Set();
+const NUMBER_WORD = /^(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)$/i;
 
 async function scanCopy(s) {
   if (!s.text || s.type === "overlay") return;
@@ -601,6 +618,8 @@ async function scanCopy(s) {
     for (const rule of COPY_RULES) {
       const m = rule.re.exec(line);
       if (!m) continue;
+      // A number said out loud ("Week one-fifty-six") is speech, not an id.
+      if (rule.id === "snake-or-kebab-id" && m[0].split(/[-_]/).every((w) => NUMBER_WORD.test(w))) continue;
       const key = `${rule.id}|${line}`;
       if (copySeen.has(key)) continue;
       copySeen.add(key);
@@ -671,6 +690,7 @@ let sceneLines = 0;
 let reducedState = opts.reduced ? "todo" : "done";
 let started = false;
 let careerOver = false;
+let clubhouseFromTitle = false;
 let date = null;
 /** When the current view came up, and the screenshot taken of it (if any). */
 let viewSince = Date.now();
@@ -734,7 +754,17 @@ async function act(s) {
       return press(s, byName("Tap to start"), "Tap to start");
 
     case "title": {
-      if (careerOver && !s.hasRun) return stop("career-ended", "her career closed in the Rookie year; back at the title");
+      if (careerOver && !s.hasRun) {
+        if (!opts.career) return stop("career-ended", "her career closed in the Rookie year; back at the title");
+        // The Winning Live's "Clubhouse" ends the career on the title; the wall is the title's Clubhouse door.
+        if (!clubhouseFromTitle) {
+          clubhouseFromTitle = true;
+          await defect(s, "clubhouse-lands-on-title", `"Clubhouse" on the Winning Live opened the title, not the Clubhouse wall`);
+        }
+        const door = s.buttons.find((x) => /^Clubhouse(, \d+)?$/i.test(x.name));
+        if (!door) return stuckAt(s, "the title after the career has no Clubhouse door", s.buttons.map((x) => x.name).join(", "));
+        return press(s, byName(door.name), door.name);
+      }
       if (reducedState === "todo") {
         reducedState = "opening";
         return press(s, byName("Settings"), "Settings (title)");
@@ -808,7 +838,8 @@ async function act(s) {
       let pick;
       if (open.length === 1) pick = open[0];
       else if (s.energy !== null && s.energy < 40 && open.some((x) => REST.test(x.label))) pick = open.find((x) => /^Off day$/i.test(x.label)) ?? open.find((x) => REST.test(x.label));
-      else if (s.turn >= CATCH_FROM_TURN && open.some((x) => /^Clubhouse$/i.test(x.label))) pick = open.find((x) => /^Clubhouse$/i.test(x.label));
+      // Once a year: late in each year (Day 17 of 20), not every Clubhouse tile from Day 17 of the career on.
+      else if (((s.turn - 1) % 20) + 1 >= CATCH_FROM_TURN && open.some((x) => /^Clubhouse$/i.test(x.label))) pick = open.find((x) => /^Clubhouse$/i.test(x.label));
       else {
         const train = open.filter((x) => !NOT_TRAINING.test(x.label));
         pick = train.length ? train[stationIdx++ % train.length] : open[0];
@@ -820,7 +851,7 @@ async function act(s) {
     case "shell": {
       const b = s.buttons.find((x) => /^(Morning|Listen|Toss it back)$/i.test(x.name));
       if (!b) return stuckAt(s, "a tap finds no enabled primary action", s.buttons.map((x) => x.name).join(", "));
-      if (s.turn >= 21 && /Classic Spring/i.test(s.chip ?? "")) {
+      if (!opts.career && s.turn >= 21 && /Classic Spring/i.test(s.chip ?? "")) {
         await press(s, byName(b.name), `${b.name} (Classic Spring)`);
         if (!stopped) stop("reached-year-2", "Classic Spring's Morning pressed");
         return;
@@ -917,13 +948,21 @@ async function act(s) {
 
     case "winning-live": {
       careerOver = true;
+      report.endingRank = s.sub;
+      report.closedEarly = s.turn !== null && s.turn < 60;
       const b = s.buttons.find((x) => /^(The scrapbook|Clubhouse)$/i.test(x.name));
       if (!b) return stuckAt(s, "a tap finds no enabled primary action", s.buttons.map((x) => x.name).join(", "));
+      if (/^Clubhouse$/i.test(b.name)) await shotOnce(`t${pad(s.turn)}-winning-live-scrapbook`);
       return press(s, byName(b.name), b.name);
     }
 
-    case "wall":
-      return stop(careerOver ? "career-ended" : "stuck", "landed on the Clubhouse wall");
+    case "wall": {
+      if (!careerOver) return stop("stuck", "landed on the Clubhouse wall");
+      await shotOnce("wall");
+      // Her card should be on the wall she just earned it for.
+      if (!new RegExp(`#\\d+ ${girl.name}\\b`, "i").test(s.text)) await defect(s, "wall-missing-card", `the Clubhouse wall shows no card for ${girl.name}`);
+      return stop(opts.career ? "reached-clubhouse" : "career-ended", "landed on the Clubhouse wall");
+    }
 
     default:
       return wait(300);
@@ -985,6 +1024,16 @@ try {
       lastViewShot = null;
       report.screens.push({ at: secs(), turn: s.turn, type: s.type, sub: s.sub, chip: s.chip, screen: s.screen });
       console.log(`[+${secs()}s] T${s.turn ?? "-"} ${s.type}${s.sub ? ` (${s.sub})` : ""}${s.chip ? ` · ${s.chip}` : ""}`);
+      // A settled screen whose picture never paints is a screen with no her on it (Sol's Winning Live, once).
+      if (/^(winning-live|year-end|curtain|postgame|shell|wall)$/.test(s.type)) {
+        let empty = [];
+        for (let i = 0; i < 25; i++) {
+          empty = await page.evaluate(emptyImages).catch(() => []);
+          if (!empty.length) break;
+          await wait(200);
+        }
+        if (empty.length) await defect(s, "image-empty", `after 5 s the ${s.type} screen still has an unpainted picture: ${empty.join("; ")}`);
+      }
       const k = `${s.turn ?? 0}|${s.type}`;
       if (!shotKeys.has(k) && s.type !== "loading") {
         shotKeys.add(k);
@@ -1025,6 +1074,8 @@ const summary = {
   outcome: report.outcome,
   why: report.why,
   turnReached: report.turnReached,
+  endingRank: report.endingRank,
+  closedEarly: report.closedEarly,
   minutes: Number((report.durationMs / 60000).toFixed(1)),
   dates: report.dates.map(
     (d) =>
@@ -1041,4 +1092,4 @@ console.log(JSON.stringify(summary, null, 2));
 // Clean: Year 2 reached with no error, no stuck point and no defect. Copy flags are a heuristic to read, not a failure.
 // A missing still or clip is a failed run too: the usage promises exit 0 only with no error.
 process.exitCode =
-  report.outcome === "reached-year-2" && report.errors.length === 0 && report.stuck.length === 0 && report.defects.length === 0 && report.assetErrors.length === 0 ? 0 : 1;
+  report.outcome === (opts.career ? "reached-clubhouse" : "reached-year-2") && report.errors.length === 0 && report.stuck.length === 0 && report.defects.length === 0 && report.assetErrors.length === 0 ? 0 : 1;

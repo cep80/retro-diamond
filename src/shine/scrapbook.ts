@@ -222,8 +222,30 @@ function replayOutcome(pa: DefiningPa): string {
 
 export const HIGHLIGHT_CAP = 24;
 
+/** Her first two big games (the Gate, First Light) stay in the book however long the career runs. */
+function isFirstPage(h: Highlight): boolean {
+  if (h.kind !== "game") return false;
+  const type = turnMeta(h.turn).type;
+  return type === "gate" || type === "first-light";
+}
+
+/** The newest pages up to n, always keeping the Gate and First Light, in the order they happened. */
+export function keepPages(pages: readonly Highlight[], n: number): Highlight[] {
+  if (pages.length <= n) return [...pages];
+  const pinned = new Set(pages.filter(isFirstPage));
+  const room = Math.max(0, n - pinned.size);
+  const rest = pages.filter((h) => !pinned.has(h));
+  const newest = new Set(room > 0 ? rest.slice(-room) : []);
+  return pages.filter((h) => pinned.has(h) || newest.has(h));
+}
+
+/** The pages the scrapbook opens to: eight of them, her first big games among them. */
+export function scrapbookPages(pages: readonly Highlight[]): Highlight[] {
+  return keepPages(pages, 8);
+}
+
 export function addHighlight(run: TraineeRun, h: Highlight | null) {
   if (!h) return;
   if (run.highlights.some((x) => x.turn === h.turn && x.kind === h.kind && x.line === h.line)) return;
-  run.highlights = [...run.highlights, h].slice(-HIGHLIGHT_CAP);
+  run.highlights = keepPages([...run.highlights, h], HIGHLIGHT_CAP);
 }

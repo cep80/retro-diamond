@@ -57,8 +57,10 @@ describe("race sitelines", () => {
     assert.equal(moundRead({ kind: "first-light", pgMet: true, pgId: "k-2", strikeouts: 4 }), "Four punchouts.");
     assert.equal(moundRead({ kind: "first-light", pgMet: false, pgId: "k-2", strikeouts: 1, outsRecorded: 6 }), "One punchout. She needed two.");
     assert.equal(moundRead({ kind: "night-classic", pgMet: true, pgId: "k-consecutive", maxKStreak: 2 }), "Two punchouts, back to back.");
-    assert.equal(moundRead({ kind: "night-classic", pgMet: false, pgId: "k-consecutive", maxKStreak: 1 }), "One punchout. She needed two in a row.");
-    assert.equal(moundRead({ kind: "night-classic", pgMet: false, pgId: "k-consecutive", maxKStreak: 0 }), "The punchouts didn't come back to back.");
+    assert.equal(moundRead({ kind: "night-classic", pgMet: false, pgId: "k-consecutive", maxKStreak: 1, strikeouts: 1 }), "One punchout. She needed two in a row.");
+    // The count is what she got, not the streak: two apart is two, never "one".
+    assert.equal(moundRead({ kind: "night-classic", pgMet: false, pgId: "k-consecutive", maxKStreak: 1, strikeouts: 2 }), "Two punchouts, never back to back.");
+    assert.equal(moundRead({ kind: "night-classic", pgMet: false, pgId: "k-consecutive", maxKStreak: 0, strikeouts: 0 }), "No punchouts. She needed two in a row.");
     assert.equal(moundRead({ kind: "first-light", pgMet: true, pgId: "hold-one-run" }), "The lead held.");
     assert.equal(moundRead({ kind: "first-light", pgMet: false, pgId: "hold-one-run" }), "The lead is gone.");
     assert.equal(moundRead({ kind: "lantern-classic", pgMet: true, pgId: "k-side", bestInningKs: 3 }), "She struck out the side.");

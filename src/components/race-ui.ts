@@ -492,9 +492,11 @@ export function moundRead(game: {
     if (k === 2) return "Two punchouts. She needed three.";
   }
   if (game.pgId === "k-consecutive") {
-    return (game.maxKStreak ?? 0) >= 1
-      ? "One punchout. She needed two in a row."
-      : "The punchouts didn't come back to back.";
+    // Say the punchouts she got; the streak is only what made them not count.
+    const k = game.strikeouts ?? 0;
+    if (k === 0) return "No punchouts. She needed two in a row.";
+    if (k === 1) return "One punchout. She needed two in a row.";
+    return `${k === 2 ? "Two" : k === 3 ? "Three" : k === 4 ? "Four" : String(k)} punchouts, never back to back.`;
   }
   if (game.pgId === "hold-one-run") return "The lead is gone.";
   if (game.pgId === "k-side") {

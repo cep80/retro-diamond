@@ -22,8 +22,9 @@ const SMALLER_DONE: Record<string, string> = {
   "See 3 pitches": "She saw three pitches.",
   "See 4 pitches": "She saw four pitches.",
   "Strand inherited runners": "She stranded the runners she came in with.",
-  "Strike out 2": "Two punchouts.",
-  "Strike out 3": "Three punchouts.",
+  // The mound's read already counts the punchouts ("Two punchouts. She needed the side."); don't say it twice.
+  "Strike out 2": "",
+  "Strike out 3": "",
   "Throw a curve for a strike": "The curve went for a strike.",
   "Walk nobody": "She walked nobody.",
   "Work a full count": "She took it to 3-2.",
@@ -31,6 +32,7 @@ const SMALLER_DONE: Record<string, string> = {
 
 export function smallerAskLine(sgVerb: string | null | undefined): string {
   const done = sgVerb ? SMALLER_DONE[sgVerb] : undefined;
+  if (done === "") return KEEPS_HER_IN;
   return done ? `${done} ${KEEPS_HER_IN}` : `She got the smaller one. ${KEEPS_HER_IN}`;
 }
 
@@ -535,7 +537,9 @@ export function applyGameResult(
         ? "That one got away. North doesn't care, and her path stays open."
         : run.pgMisses >= 2
           ? `${turnMeta(run.turn).label} closed the Academy path.`
-          : "Miss one more big game and her Academy days are over.";
+          : turnMeta(run.turn).type === "series"
+            ? "One big game got away. Nothing left this year can close her path."
+            : "Miss one more big game and her Academy days are over.";
       if (run.pgMisses >= 2 && !isMikiPath(run)) {
         const page = [...run.highlights].reverse().find((h) => h.kind === "game" && h.turn === run.turn);
         const date = turnMeta(run.turn).label;

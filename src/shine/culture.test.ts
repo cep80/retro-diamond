@@ -65,6 +65,10 @@ describe("culture presentation", () => {
     assert.equal(cowbellOn("north", 1, 7), true);
     assert.equal(cowbellOn("koi", 1, 7), false);
     assert.match(recapLine("koi", 7), /./);
+    // A pitcher's postgame never puts her in the box or on a walk-up.
+    for (const park of ["koi", "north", "stars"]) {
+      for (let i = 0; i < 20; i++) assert.doesNotMatch(recapLine(park, i, true), /in the box|Walk-up|fouled back|spikes|before the pitch/i, park);
+    }
     for (let i = 0; i < 10; i++) {
       assert.doesNotMatch(recapLine("stars", i), /the race/i);
     }

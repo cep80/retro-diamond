@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { PlateEvent } from "./events.ts";
 import { newRun } from "./run.ts";
-import { definingPaFrom, gameHighlight, replayLines, scrapbookLine } from "./scrapbook.ts";
+import { addHighlight, definingPaFrom, gameHighlight, HIGHLIGHT_CAP, replayLines, scrapbookLine, scrapbookPages } from "./scrapbook.ts";
+import type { Highlight } from "./types.ts";
 import type { DefiningPa } from "./types.ts";
 
 function finalePa(over: Partial<DefiningPa> = {}): DefiningPa {
@@ -86,5 +87,26 @@ describe("scrapbook replay", () => {
   it("keeps a hitter replay as the at-bat she sat", () => {
     const [line] = replayLines(finalePa({ rival: "reina", inning: 9 }), "aoi");
     assert.equal(line, "Diamond Finale. Inning 9, 0 out, bases empty. Aoi vs Reina.");
+  });
+});
+
+describe("scrapbook pages", () => {
+  const page = (turn: number, kind: Highlight["kind"] = "game"): Highlight => ({ turn, kind, label: `D${turn}`, line: `Day ${turn}.` });
+
+  it("opens a three-year book with the Gate and First Light still in it", () => {
+    const book = [page(5), page(18), ...[25, 30, 33, 38, 45, 50, 55, 60].map((t) => page(t)), page(59, "memory")];
+    const shown = scrapbookPages(book);
+    assert.equal(shown.length, 8);
+    assert.deepEqual(shown.slice(0, 2).map((h) => h.turn), [5, 18]);
+    assert.equal(shown.at(-1)!.turn, 59);
+  });
+
+  it("keeps her first big games when the stored book hits its cap", () => {
+    const run = newRun("aoi");
+    addHighlight(run, page(5));
+    addHighlight(run, page(18));
+    for (let t = 19; t < 19 + HIGHLIGHT_CAP + 5; t++) addHighlight(run, page(t, "memory"));
+    assert.equal(run.highlights.length, HIGHLIGHT_CAP);
+    assert.deepEqual(run.highlights.slice(0, 2).map((h) => h.turn), [5, 18]);
   });
 });

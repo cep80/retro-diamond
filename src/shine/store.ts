@@ -284,7 +284,8 @@ export const useShine = create<ShineState>()(
       finishCareer: () => {
         const { run, clubhouse } = get();
         set({
-          screen: "title",
+          // "Clubhouse" goes to the wall, where her card now hangs.
+          screen: "wall",
           run: null,
           clubhouse: rememberCard(clubhouse, run?.clubhouseCard ?? null),
           lastLine: null,

@@ -46,7 +46,7 @@ function isRivalKind(t: string | null): t is RivalKind {
 }
 import { ScenePlayer } from "./ScenePlayer";
 import { catchWithCoachScene, memoryLine, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
-import { keepsakeWallLine, replayLines, scrapbookLine } from "@/shine/scrapbook.ts";
+import { keepsakeWallLine, replayLines, scrapbookLine, scrapbookPages } from "@/shine/scrapbook.ts";
 import type { CharacterId, DefiningPa, Highlight, Spark } from "@/shine/types.ts";
 
 type TitleIcon = "exhibition" | "clubhouse" | "shop" | "settings";
@@ -311,7 +311,7 @@ function Wall() {
                       #{who.number} {who.name}
                     </p>
                     <p className="mt-1 font-ui text-xs text-muted">
-                      {who.pgVerb} · vs {sheet(who.rival).name}
+                      Her rival: {sheet(who.rival).name}
                     </p>
                     {cardBanner(c) ? (
                       <p className="mt-1 font-ui text-xs text-gold">Park banner · #{who.number}</p>
@@ -823,6 +823,7 @@ function Postgame() {
   const film = sceneFilmSrc(run.characterId, picture.mood);
   const bust = picture.kind === "bust" ? sceneBustSrc(run.characterId, picture.mood) : null;
   const stamp = doneStamp(met);
+  const keptToday = run.highlights.some((h) => h.kind === "keepsake" && h.turn === last?.turn);
 
   if (curtain) {
     const call = curtainFilmSrc(run.characterId);
@@ -912,16 +913,17 @@ function Postgame() {
           {lastLine ? <p className="shine-after-line">{dateSpeech(lastLine)}</p> : null}
           {run.fanBeat ? <p className="mt-3 font-ui text-sm text-gold">{run.fanBeat}</p> : null}
           {last?.type === "gate" ? <SceneBlock scene={relationshipScene(run, "post-gate")} /> : null}
-          {last?.type === "first-light" && run.keepsake === "dirt" ? (
+          {/* The keepsake line speaks only for today: a pitcher who kept the Gate's ball didn't keep another. */}
+          {last?.type === "first-light" && keptToday && run.keepsake === "dirt" ? (
             <p className="mt-3 font-ui text-sm text-gold">She kept a pinch of dirt from the baseline and wrapped it in a sock. &ldquo;Don&apos;t tell anyone. It&apos;s dirt.&rdquo;</p>
-          ) : last?.type === "first-light" && run.keepsake === "ball" && isPitcherStyle(who.style) ? (
+          ) : last?.type === "first-light" && keptToday && run.keepsake === "ball" && isPitcherStyle(who.style) ? (
             <p className="mt-3 font-ui text-sm text-cream/70">She kept the last-out ball.</p>
-          ) : last?.type === "first-light" && run.keepsake !== "dirt" ? (
+          ) : last?.type === "first-light" && !run.keepsake ? (
             <p className="mt-3 font-ui text-sm text-cream/70">
               {isPitcherStyle(who.style) ? "No ball in her pocket this time." : "The baseline stayed. No keepsake this time."}
             </p>
           ) : null}
-          <p className="shine-after-recap mt-2 font-ui text-sm text-cream/70">{recapLine(parkId, run.turn)}</p>
+          <p className="shine-after-recap mt-2 font-ui text-sm text-cream/70">{recapLine(parkId, run.turn, isPitcherStyle(who.style))}</p>
           {seriesFinale ? <p className="mt-3 font-ui text-sm text-gold">{seriesFinale}</p> : null}
           {last?.type === "finale" && !met ? (
             <p className="mt-3 font-ui text-sm text-cream/70">Losing the Finale doesn&apos;t take anything away from her.</p>
@@ -963,7 +965,7 @@ function YearEnd() {
   if (card && still) {
     const rankLabel = endingRankLabel(card.ending);
     return (
-      <main className="shine-after" data-winning-live={card.ending}>
+      <main className={`shine-after ${pages ? "is-pages" : ""}`} data-winning-live={card.ending}>
         <div className="shine-backdrop" aria-hidden>
           <img src={film} alt="" className="shine-after-film" />
           {clip ? <video key={clip} src={clip} poster={film} autoPlay loop muted playsInline className="shine-after-film" data-winning-clip={clip} /> : null}
@@ -1094,7 +1096,7 @@ function Scrapbook({ highlights, pa, who }: { highlights: Highlight[]; pa: Defin
     <div className="mt-4 rounded-2xl border border-line bg-panel/80 p-4" data-testid="scrapbook">
       <p className="font-display text-[10px] uppercase tracking-widest text-gold">Scrapbook</p>
       <ul className="mt-2 space-y-1 font-ui text-sm">
-        {highlights.slice(-8).map((h, i) => (
+        {scrapbookPages(highlights).map((h, i) => (
           <li key={`${h.turn}-${i}`} className="flex gap-2">
             <span className="shrink-0 font-display text-[10px] uppercase text-muted">{h.label}</span>
             <span className="text-cream/90">{scrapbookLine(who, h.line)}</span>

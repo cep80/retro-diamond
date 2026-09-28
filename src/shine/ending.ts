@@ -1,6 +1,7 @@
 import { uid } from "./core/rng.ts";
 import { turnMeta } from "./calendar.ts";
 import { isPitcherStyle, officialFor, sheet, yearStillLine } from "./bible.ts";
+import { scrapbookPages } from "./scrapbook.ts";
 import type {
   ClubhouseCard,
   EndingRank,
@@ -114,7 +115,7 @@ export function endingRank(run: TraineeRun, finalePlayed: boolean, finalePg: boo
 export function rankGap(run: TraineeRun, target: "S" | "A", finalePlayed: boolean, finalePg: boolean): string[] {
   const gap: string[] = [];
   if (!(finalePlayed && finalePg)) gap.push("a Finale win");
-  if (target === "S" ? run.pgMisses > 0 : run.pgMisses > 1) gap.push(target === "S" ? "every big game held" : "no more than one big game lost");
+  if (target === "S" ? run.pgMisses > 0 : run.pgMisses > 1) gap.push(target === "S" ? "no big game lost" : "no more than one big game lost");
   const need = target === "S" ? RANK_FANS.S : RANK_FANS.A;
   if (run.fans < need) gap.push(`${need} fans`);
   return gap;
@@ -125,7 +126,7 @@ function listed(items: string[]): string {
 }
 
 function gamesLost(run: TraineeRun): string {
-  return run.pgMisses === 0 ? "every big game held" : run.pgMisses === 1 ? "one big game got away" : `${run.pgMisses} big games got away`;
+  return run.pgMisses === 0 ? "every big game kept her in it" : run.pgMisses === 1 ? "one big game cost her" : `${run.pgMisses} big games cost her`;
 }
 
 /**
@@ -300,7 +301,7 @@ export function mintClubhouseCard(run: TraineeRun): ClubhouseCard {
     altLook: run.fans >= 100,
     peakStats: { ...run.stats },
     runNumber: 1,
-    highlights: run.highlights.slice(-8),
+    highlights: scrapbookPages(run.highlights),
     definingPa: run.definingPa ?? null,
   };
 }

@@ -5359,3 +5359,9 @@
     display: none;
   }
 }
+
+/* Check-in 18: with the scrapbook open, the words run up over her face, so the shade covers it all. */
+.shine-after.is-pages .shine-after-shade {
+  background: linear-gradient(0deg, var(--color-ink) 0%, rgb(8 17 39 / 0.9) 55%, rgb(8 17 39 / 0.78) 100%);
+  transition: background 240ms ease;
+}

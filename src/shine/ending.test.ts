@@ -437,7 +437,7 @@ describe("the ending says why", () => {
     run.fans = 70;
     const a = endingRank(run, true, true);
     assert.equal(a, "A");
-    assert.equal(endingWhy(run, a, true, true), "70 fans, one big game got away, and she won the Finale. S needs every big game held and 80 fans.");
+    assert.equal(endingWhy(run, a, true, true), "70 fans, one big game cost her, and she won the Finale. S needs no big game lost and 80 fans.");
     run.pgMisses = 0;
     run.fans = RANK_FANS.S;
     assert.equal(endingRank(run, true, true), "S", "doing what A's line asked for makes it S");
@@ -489,7 +489,7 @@ describe("the ending says why", () => {
                 const lifted = newRun(id);
                 lifted.stats = { ...run.stats };
                 lifted.fans = gap.some((g) => g.endsWith(" fans")) ? (target === "S" ? 80 : 60) : run.fans;
-                lifted.pgMisses = gap.includes("every big game held") ? 0 : gap.includes("no more than one big game lost") ? 1 : run.pgMisses;
+                lifted.pgMisses = gap.includes("no big game lost") ? 0 : gap.includes("no more than one big game lost") ? 1 : run.pgMisses;
                 const finaleWon = gap.includes("a Finale win") ? true : won;
                 const got = endingRank(lifted, finaleWon || played, finaleWon);
                 const why = `${id} fans=${fans} misses=${misses} played=${played} won=${won} floor=${floor} → ${rank}, ask for ${target}: ${gap.join(" | ")} → ${got}`;
@@ -510,7 +510,7 @@ describe("the ending says why", () => {
     run.fans = 52;
     run.pgResults[6] = "met";
     assert.equal(endingRank(run, true, true), "B");
-    assert.equal(endingWhy(run, "B", true, true), "52 fans, one big game got away. She won the Finale. A needs 60 fans.");
+    assert.equal(endingWhy(run, "B", true, true), "52 fans, one big game cost her. She won the Finale. A needs 60 fans.");
     assert.doesNotMatch(endingQuote(run, "B"), /one win away/, "a won Finale isn't a game short");
   });
 
@@ -522,7 +522,7 @@ describe("the ending says why", () => {
     run.fans = 45;
     run.pgResults[6] = "missed";
     assert.equal(endingRank(run, true, false), "B");
-    assert.equal(endingWhy(run, "B", true, false), "45 fans, one big game got away. She played the Finale and came up short. A needs a Finale win and 60 fans.");
+    assert.equal(endingWhy(run, "B", true, false), "45 fans, one big game cost her. She played the Finale and came up short. A needs a Finale win and 60 fans.");
     assert.doesNotMatch(endingQuote(run, "B"), /one win away/);
     run.fans = 70;
     assert.match(endingQuote(run, "B"), /one win away/);
