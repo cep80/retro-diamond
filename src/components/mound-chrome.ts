@@ -96,6 +96,60 @@ export function moundCard(name: string, end: MoundPaEnd): MoundCard {
   };
 }
 
+// ── The middle innings (check-in 20) ────────────────────────────────────────
+
+/** Each inning of the montage holds this long (reduced motion: no motion, a shorter hold). */
+export const MOUND_MIDDLE_BEAT_MS = 2200;
+export const MOUND_MIDDLE_BEAT_MS_REDUCED = 1500;
+
+/** The montage's head, in the broadcast's two languages. */
+export const MOUND_MIDDLE_HEAD = { text: "The middle innings", jp: "中盤" } as const;
+
+/** "3rd": an inning as the bug and the montage say it. */
+export function inningOrdinal(n: number): string {
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  const last = n % 10;
+  return `${n}${last === 1 ? "st" : last === 2 ? "nd" : last === 3 ? "rd" : "th"}`;
+}
+
+const WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
+
+function word(n: number): string {
+  return WORDS[n] ?? String(n);
+}
+
+function punchouts(n: number): string {
+  if (n <= 0) return "";
+  return n === 1 ? "One punchout." : `${word(n)} punchouts.`;
+}
+
+/**
+ * One inning of the montage in a line, broadcast-short: how it went, then her
+ * punchouts. "1-2-3. Two punchouts." · "A run scores. One punchout." ·
+ * "Two on. Both stranded." · "Taken deep. Two runs."
+ */
+export function middleInningLine(s: { ks: number; hits: number; hrs: number; walks: number; runs: number; jam?: boolean }): string {
+  const on = s.hits + s.walks;
+  if (on === 0) {
+    if (s.ks >= 3) return "Struck out the side.";
+    return s.ks > 0 ? `1-2-3. ${punchouts(s.ks)}` : "1-2-3.";
+  }
+  let what: string;
+  if (s.hrs > 0) what = s.runs <= 1 ? "Taken deep." : `Taken deep. ${word(s.runs)} runs.`;
+  else if (s.runs === 1) what = "A run scores.";
+  else if (s.runs > 1) what = `${word(s.runs)} runs score.`;
+  else if (s.jam) what = on >= 3 ? "Bases loaded. She gets out of it." : "Two on. She gets out of it.";
+  else what = on === 1 ? "One on. Stranded." : on === 2 ? "Two on. Both stranded." : "Bases loaded. All stranded.";
+  const k = punchouts(s.ks);
+  return k ? `${what} ${k}` : what;
+}
+
+/** Her pitch count under the montage: "58 pitches". */
+export function pitchCountLine(n: number): string {
+  return n === 1 ? "1 pitch" : `${n} pitches`;
+}
+
 /**
  * The one caption under the film. At her wind-up she's set (or the cast
  * hitter steps in under the VS card); in flight nothing; at the first aim of

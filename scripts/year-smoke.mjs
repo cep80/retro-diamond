@@ -248,6 +248,8 @@ function probe() {
     }
     o.prog = [o.stage, o.racePhase, count].join("|");
     o.tag = q(".shine-scorebug", race)?.getAttribute("aria-label") ?? null;
+    // A long start's middle innings: how many rows the montage has up (0 when none).
+    o.middle = Number(race.dataset.moundMiddle ?? 0);
     if (done) {
       o.type = mound ? "mound-done" : "race-done";
       o.buttons = btns(done);
@@ -711,6 +713,7 @@ function newDate(s) {
     doneAt: null,
     leftAt: null,
     goToDoneS: null,
+    middle: null,
     goPresses: 0,
     result: null,
     doneShot: null,
@@ -880,6 +883,19 @@ async function act(s) {
     case "race-watch":
     case "mound-watch":
       if (!date || date.turn !== s.turn) date = newDate(s);
+      if (s.middle > 0) {
+        // The middle innings' montage: one look at each row count, and when it started and ended.
+        date.middle ??= { rows: 0, fromS: secs(), toS: null };
+        date.middle.rows = Math.max(date.middle.rows, s.middle);
+        date.middle.toS = secs();
+        const label = `t${pad(s.turn)}-mound-middle-${s.middle}`;
+        if (!onceShots.has(label)) {
+          // Let the new row finish its slide in before the look.
+          await wait(450);
+          await shotOnce(label);
+        }
+        return wait(150);
+      }
       return wait(250);
 
     case "race-done":
@@ -1079,7 +1095,7 @@ const summary = {
   minutes: Number((report.durationMs / 60000).toFixed(1)),
   dates: report.dates.map(
     (d) =>
-      `T${d.turn} ${d.side} ${d.result?.kind ?? "?"} ${!d.result ? "unfinished" : d.result.kind === "practice" ? "(no goal)" : d.result.pgMet ? "met" : "missed"} (Go→done ${d.goToDoneS ?? "?"} s)`,
+      `T${d.turn} ${d.side} ${d.result?.kind ?? "?"} ${!d.result ? "unfinished" : d.result.kind === "practice" ? "(no goal)" : d.result.pgMet ? "met" : "missed"} (Go→done ${d.goToDoneS ?? "?"} s${d.middle ? `, middle ${d.middle.rows} inn` : ""})`,
   ),
   errors: report.errors.length,
   assetErrors: report.assetErrors.length,

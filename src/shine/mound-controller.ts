@@ -3,6 +3,10 @@
  *
  *   aim → Go → (prepare → flight → field → reaction) × pitches, her card after each batter … → done
  *
+ * A long start (five or six innings) plays its middle innings as a montage, one
+ * beat an inning, thrown silently by the same engine (mound-summary.ts), between
+ * the first time through and the inning that decides it.
+ *
  * The Coach sits the glove and presses Go once; she picks every pitch and
  * throws the rest of the date on her own (watch mode). This owns the stage
  * machine, the PitchingGame progression (decidePitch / decideDelivery /
@@ -43,8 +47,20 @@ import { pitcherRivalBat, rivalBatSlot } from "./rivals.ts";
 import { kitAccent } from "./stage.ts";
 import { SuspendableTimers } from "./suspendable.ts";
 import type { CharacterId, TraineeRun } from "./types.ts";
-import { uniqueName, uniqueShouldFire } from "./unique.ts";
-import { MOUND_CARD_MS, MOUND_SPURT, moundCard, moundOrderLine, moundPaEnd, type MoundCard } from "../components/mound-chrome.ts";
+import { uniqueName } from "./unique.ts";
+import { planMiddle, uniqueDue } from "./mound-summary.ts";
+import {
+  inningOrdinal,
+  middleInningLine,
+  MOUND_CARD_MS,
+  MOUND_MIDDLE_BEAT_MS,
+  MOUND_MIDDLE_BEAT_MS_REDUCED,
+  MOUND_SPURT,
+  moundCard,
+  moundOrderLine,
+  moundPaEnd,
+  type MoundCard,
+} from "../components/mound-chrome.ts";
 import { moundBug, type BugState } from "../components/race-bug.ts";
 import { CHROME_MS } from "../components/race-ui.ts";
 
@@ -123,6 +139,27 @@ export interface VsUp {
 export interface PaEndUp extends MoundCard {
   key: number;
 }
+/** One inning of the middle-innings montage, as the panel says it. */
+export interface MiddleRow {
+  inning: number;
+  /** "3rd". */
+  label: string;
+  /** "1-2-3. Two punchouts." */
+  line: string;
+  /** Her smaller ask came in this inning: the row is gold. */
+  gold: boolean;
+}
+/**
+ * The long start's middle innings (mound-summary.ts): one row a beat, her count
+ * and her tank as the date stands after the newest row. Up from the top of the
+ * summary to the wind-up of the inning that plays live.
+ */
+export interface MiddleUp {
+  key: number;
+  rows: MiddleRow[];
+  pitchCount: number;
+  tank: number;
+}
 
 /** A stamp slammed down (a walk or a hit against her is slate: set down, not slammed). */
 export type MoundStampTone = Exclude<ResultStamp["tone"], "slate">;
@@ -142,6 +179,8 @@ export type MoundCue =
   | { t: "stamp"; tone: MoundStampTone }
   /** The date is over and its last stamp is down: the done panel goes up. */
   | { t: "closed" }
+  /** An inning of the middle-innings montage lands (its tick). */
+  | { t: "middle"; inning: number }
   | { t: "paused"; reason: MoundPauseReason }
   | { t: "resumed" }
   /** Save the attempt now; `chip` blinks "Saved" (only at the aim, never over a result). */
@@ -174,6 +213,8 @@ export interface MoundSnapshot {
   paEnd: PaEndUp | null;
   /** The key of the card showing (C8), null when none. */
   cardUp: number | null;
+  /** The middle innings' montage, while it runs. */
+  middle: MiddleUp | null;
   /** One Go is running the date. */
   watching: boolean;
 }
@@ -200,6 +241,8 @@ export interface MoundControllerOptions {
   timers?: MoundTimers;
   /** The VS card's still for a girl (her set, the batter's stance), read at the wind-up. */
   vsStill?: (id: CharacterId, pose: "set" | "stance") => string;
+  /** A long start's middle innings play as a montage (default); false plays every pitch (tests compare the two). */
+  middleSummary?: boolean;
 }
 
 export class MoundController {
@@ -222,6 +265,8 @@ export class MoundController {
   private vs: VsUp | null = null;
   private paEnd: PaEndUp | null = null;
   private cardUp: number | null = null;
+  private middle: MiddleUp | null = null;
+  private readonly middleSummary: boolean;
   private watching = false;
   private dead = false;
   /** The next wind-up came due while paused: resume throws it. */
@@ -262,6 +307,7 @@ export class MoundController {
     this.game = opts.restore ? structuredClone(opts.restore.game) : startPitchingGame(opts.run, opts.kind);
     this.aim = opts.restore?.aim ?? opts.initialAim ?? { row: 1, col: 1 };
     this.restored = Boolean(opts.restore);
+    this.middleSummary = opts.middleSummary ?? true;
   }
 
   // ── subscriptions ────────────────────────────────────────────────────────
@@ -301,6 +347,7 @@ export class MoundController {
         vs: this.vs,
         paEnd: this.paEnd,
         cardUp: this.cardUp,
+        middle: this.middle,
         watching: this.watching,
       };
     }
@@ -392,7 +439,69 @@ export class MoundController {
   throw(): boolean {
     if (this.dead || this.game.done || this.pauseReason) return false;
     if (this.stage !== "idle" && this.stage !== "dead" && this.stage !== "situation") return false;
+    return this.next();
+  }
+
+  /** What the date shows next: the middle innings' montage when a long start is at it, else her wind-up. */
+  private next(): boolean {
+    if (this.startMiddle()) return true;
+    this.stage = "idle";
     return this.windup();
+  }
+
+  // ── the middle innings ───────────────────────────────────────────────────
+
+  /**
+   * A long start past the first time through, at the top of an inning that
+   * doesn't decide the date: the innings up to the one that does play as a
+   * montage, one beat an inning, on the pause-aware timers. The pitches are
+   * thrown by the same engine to the same glove (mound-summary.ts), so the date
+   * is the one the film would have shown. Each beat moves the date to the end of
+   * its inning (the bug ticks, the save follows); the last hands the inning that
+   * decides it to her wind-up.
+   */
+  private startMiddle(): boolean {
+    if (!this.middleSummary || this.dead || this.pauseReason) return false;
+    const plan = planMiddle(this.run, this.game, this.aim);
+    if (!plan) return false;
+    const key = ++this.chromeKey;
+    this.watching = true;
+    this.stage = "reaction";
+    this.beat = null;
+    this.film = null;
+    this.resolvedAt = null;
+    this.atThrow = null;
+    this.paEnd = null;
+    this.cardUp = null;
+    this.banner = null;
+    this.lowerThird = null;
+    this.vs = null;
+    const rows: MiddleRow[] = [];
+    const step = (i: number) => {
+      const inn = plan[i]!;
+      rows.push({ inning: inn.inning, label: inningOrdinal(inn.inning), line: middleInningLine(inn), gold: inn.sgMet });
+      this.game = inn.end;
+      this.middle = { key, rows: [...rows], pitchCount: inn.pitchCount, tank: inn.tank };
+      this.cue({ t: "middle", inning: inn.inning });
+      this.timers.set(
+        () => {
+          if (this.middle?.key !== key || this.dead) return;
+          if (i + 1 < plan.length) return step(i + 1);
+          this.middle = null;
+          if (this.pauseReason) {
+            this.nextArm = true;
+            this.changed();
+            return;
+          }
+          this.stage = "idle";
+          this.windup();
+        },
+        this.reduced ? MOUND_MIDDLE_BEAT_MS_REDUCED : MOUND_MIDDLE_BEAT_MS,
+      );
+      this.changed();
+    };
+    step(0);
+    return true;
   }
 
   private windup(): boolean {
@@ -466,20 +575,7 @@ export class MoundController {
       });
     }
     let skillNow = false;
-    if (
-      uniqueShouldFire(run.characterId, {
-        already: live.uniqueFired,
-        kind: live.kind,
-        pitching: true,
-        firstPitchOfPa: live.count.balls === 0 && live.count.strikes === 0,
-        paIndex: Math.max(1, live.battersFaced || 1),
-        lastSpurt: live.lastSpurt,
-        stealArmed: false,
-        parkId: who.parkId,
-        scoreDiff: live.scoreDiff,
-        inning: live.inning,
-      })
-    ) {
+    if (uniqueDue(run, live)) {
       live.uniqueFired = true;
       skillNow = true;
       const text = uniqueName(run.characterId);
@@ -632,8 +728,7 @@ export class MoundController {
           this.nextArm = true;
           return;
         }
-        this.stage = "idle";
-        this.windup();
+        this.next();
       }, wait);
       this.changed();
       return;
@@ -678,8 +773,7 @@ export class MoundController {
     // The next wind-up came due while she was away: it goes now.
     if (this.nextArm) {
       this.nextArm = false;
-      this.stage = "idle";
-      this.windup();
+      this.next();
     }
     this.changed();
   }
@@ -704,6 +798,7 @@ export class MoundController {
     this.clearLand();
     this.flight = null;
     this.pending = null;
+    this.middle = null;
     this.stage = "reaction";
     const banner = met ? (g.role === "closer" ? "HOLD." : "COMMAND.") : g.kind === "gate" ? "The Gate still opens." : g.role === "closer" ? "HOLD slipped." : "It got away from her.";
     this.game = { ...g, done: true, pgMet: met, banner };

@@ -4272,6 +4272,144 @@
   animation: shine-dc-fade 160ms ease-out both;
 }
 
+/* Check-in 20 · The middle innings of a long start: a broadcast board in the Coach's
+   slot (under her face, over the scrim), one row a beat. The newest row slides in
+   under a gold wipe; her count and her arm sit at its foot, the arm's bar running
+   down as the innings go. Reduced motion: the rows are set down still. */
+.shine-mound-middle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.6rem 0.9rem 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--shine-accent, var(--color-gold)) 45%, transparent);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgb(20 35 68 / 0.9), rgb(8 17 39 / 0.95));
+  box-shadow:
+    inset 0 3px 0 var(--shine-accent, var(--color-gold)),
+    0 10px 26px rgb(0 0 0 / 0.4);
+  color: var(--color-cream);
+  pointer-events: none;
+  animation: shine-outcome-card 260ms ease-out both;
+}
+.shine-middle-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-grass-2);
+}
+.shine-middle-head .shine-kana {
+  font-family: var(--font-jp);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: var(--color-gold);
+}
+.shine-middle-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.shine-middle-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-width: 0;
+}
+.shine-middle-row[data-new] {
+  animation: shine-middle-row 380ms cubic-bezier(0.2, 1, 0.3, 1) both;
+}
+.shine-middle-inn {
+  flex: none;
+  width: 2.3rem;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+}
+.shine-middle-line {
+  min-width: 0;
+  font-family: var(--font-story);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.shine-middle-row[data-gold] .shine-middle-line {
+  color: var(--color-gold);
+}
+.shine-middle-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgb(245 248 255 / 0.12);
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgb(245 248 255 / 0.75);
+}
+.shine-middle-arm {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.shine-middle-tank {
+  position: relative;
+  width: 5.5rem;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgb(245 248 255 / 0.14);
+}
+.shine-middle-tank > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--color-grass-2);
+  transition:
+    width 700ms cubic-bezier(0.2, 1, 0.3, 1),
+    background-color 300ms ease;
+}
+.shine-middle-tank[data-low] > i {
+  background: var(--color-coral);
+}
+@keyframes shine-middle-row {
+  from {
+    opacity: 0;
+    transform: translateX(-18px);
+    text-shadow: 0 0 14px var(--color-gold);
+  }
+}
+.shine-mound-middle.is-reduced,
+.shine-mound-middle.is-reduced .shine-middle-row[data-new] {
+  animation: none;
+}
+.shine-mound-middle.is-reduced .shine-middle-tank > i {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shine-mound-middle,
+  .shine-middle-row[data-new] {
+    animation: none;
+  }
+  .shine-middle-tank > i {
+    transition: none;
+  }
+}
+
 /* C6b · The mound's strip runs to six or more chips, so it wraps: the rows open a
    little further so a 失点 mark on the second row can't read as the chip's above. */
 [data-mound-done] .shine-day-strip {

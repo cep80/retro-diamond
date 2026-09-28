@@ -21,7 +21,7 @@ import { moundBug, settleMoundBug } from "@/components/race-bug";
 import { ActionStage, hrMomentUp } from "@/components/action/ActionStage";
 import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
 import { LowerThird, SkillBanner, VsSplash } from "@/components/DateChrome";
-import { moundCaption, moundPitchReadout } from "@/components/mound-chrome";
+import { moundCaption, moundPitchReadout, MOUND_MIDDLE_HEAD, pitchCountLine } from "@/components/mound-chrome";
 import { ShineMute } from "@/components/ShineMute";
 import { DayStrip, DoneHeader, PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
 import {
@@ -47,8 +47,8 @@ import { parkSrc, portraitMood, portraitSrc, officialFor, sceneBustSrc, sheet } 
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { HR_STAMP_HOLD_MS, STAMP_DELAY_MS, stillFor, type ActionManifest, type ActionView, type StingFlags } from "@/shine/action-art.ts";
-import { moundFieldBeat, type MoundBeat } from "@/shine/pitching.ts";
-import { batterInBox, MoundController, MOUND_LAND_U, moundGutsOn, type MoundCue } from "@/shine/mound-controller.ts";
+import { ARM_GONE_TANK, moundFieldBeat, type MoundBeat } from "@/shine/pitching.ts";
+import { batterInBox, MoundController, MOUND_LAND_U, moundGutsOn, type MiddleUp, type MoundCue } from "@/shine/mound-controller.ts";
 import { RACE_PACE } from "@/shine/race.ts";
 import { hitterAdaptation, pitcherRivalBat, rivalBatSlot } from "@/shine/rivals.ts";
 import { useShine } from "@/shine/store.ts";
@@ -145,7 +145,7 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
   const overlay = useShine((s) => s.overlay);
 
   const snap = useSyncExternalStore(mound.subscribe, mound.getSnapshot, mound.getSnapshot);
-  const { game, stage, aim, type, beat, film, closed, paused, pauseReason, restored, ghost, banner, lowerThird, vs, paEnd, cardUp } = snap;
+  const { game, stage, aim, type, beat, film, closed, paused, pauseReason, restored, ghost, banner, lowerThird, vs, paEnd, cardUp, middle: montage } = snap;
   aimRef.current = aim;
 
   const [u, setU] = useState(0);
@@ -185,6 +185,9 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
         setNowMs(cue.at);
       } else if (cue.t === "stamp") {
         sfxStamp(cue.tone);
+      } else if (cue.t === "middle") {
+        // The montage's tick: an inning lands on the board.
+        sfxSelect();
       } else if (cue.t === "paused") {
         duckCrowd(false);
       } else if (cue.t === "save") {
@@ -314,7 +317,7 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
           beat,
           film: live.film,
           closed,
-          chrome: { banner: banner?.text ?? null, lowerThird: lowerThird?.name ?? null, vs: vs ? `${vs.left.name}|${vs.right.name}` : null, card: cardUp !== null ? (paEnd?.line ?? null) : null },
+          chrome: { banner: banner?.text ?? null, lowerThird: lowerThird?.name ?? null, vs: vs ? `${vs.left.name}|${vs.right.name}` : null, card: cardUp !== null ? (paEnd?.line ?? null) : null, middle: live.middle ? live.middle.rows.map((r) => `${r.label} ${r.line}`) : null },
         };
       },
       // The skill banner, or the last spurt's, as the wind-up shows it (for a look without the date's odds).
@@ -471,7 +474,7 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
   // the last one (the beat cleared, the game already on the next count) and her wind-up.
   const beforePitch = picking || stage === "prepare" || (stage === "reaction" && beat === null && !game.done);
   const readLine =
-    !castRead || !beforePitch
+    !castRead || !beforePitch || montage
       ? null
       : game.count.balls === 0 && game.count.strikes === 0
         ? castRead.firstLine
@@ -490,12 +493,16 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
     banner: game.banner,
   });
   const goLabel = stage === "dead" ? "Back on the rubber" : RACE_COPY.go;
+  // The middle innings' montage says its newest inning out loud.
+  const middleNow = montage ? montage.rows.at(-1) : null;
+  const middleSay = middleNow ? `${middleNow.label}. ${middleNow.line}` : null;
 
   return (
     <main
       className={`shine-race text-cream ${swell ? "shine-ouen-swell" : ""}`}
       data-stage={stage}
       data-mound-race="1"
+      data-mound-middle={montage ? montage.rows.length : undefined}
       data-hr={hrUp ? "" : undefined}
       data-paused={paused ? "" : undefined}
       // The done panel is up: her still goes soft behind her bust (C4); "still" without the motion.
@@ -534,7 +541,7 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
           pitch={null}
           focus="pitcher"
           // The broadcast readout (C9): the pitch she chose, from the flight to her next wind-up.
-          recognized={practice || doneUp ? null : moundPitchReadout(type)}
+          recognized={practice || doneUp || montage ? null : moundPitchReadout(type)}
           quietCard={practice}
           flags={flags}
           prepareMs={reduced ? PREPARE_MS_REDUCED : RACE_PACE.prepareMs}
@@ -608,7 +615,7 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
         <section ref={coachRef} className="shine-race-coach" aria-label="The Coach">
           {/* One live region for the whole date, so the closing line is heard when the panel swaps in. */}
           <p className="sr-only" aria-live="polite">
-            {doneUp ? closeLine : caption}
+            {doneUp ? closeLine : (middleSay ?? caption)}
           </p>
           {savedChip && picking ? <p className="shine-saved-chip shine-mound-saved">Saved</p> : null}
           {doneUp ? (
@@ -638,7 +645,7 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
                 </p>
               ) : null}
               {/* The section sings while she throws; at the aim the grid needs the room. */}
-              {verses.length && !picking && !game.done ? (
+              {verses.length && !picking && !game.done && !montage ? (
                 <ul className="space-y-0.5 text-center">
                   {verses.map((v, i) => (
                     <li key={i} className="font-ui text-xs text-gold/80">
@@ -652,7 +659,9 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
                   {readLine}
                 </p>
               ) : null}
-              {cardShown && paEnd ? (
+              {montage ? (
+                <MiddleInnings middle={montage} reduced={reduced} paused={paused} />
+              ) : cardShown && paEnd ? (
                 // The batter she just finished, in her side's tone: the caption's line, framed. The live
                 // region already said it, so the card is for the eye. It never takes a tap.
                 <div className={`shine-atbat-card shine-mound-card ${reduced ? "is-reduced" : ""}`} data-tone={paEnd.tone} data-mound-card={paEnd.tone} aria-hidden>
@@ -672,5 +681,43 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
         </section>
       </div>
     </main>
+  );
+}
+
+/**
+ * The long start's middle innings (check-in 20): a broadcast board in the Coach's
+ * slot, under her face. One row lands a beat, her count and her arm under them.
+ * The live region says each row; the board is for the eye. Reduced motion sets
+ * the rows down still.
+ */
+function MiddleInnings({ middle, reduced, paused }: { middle: MiddleUp; reduced: boolean; paused: boolean }) {
+  // Her arm between full and gone (the pull at ARM_GONE_TANK is the empty end).
+  const arm = Math.max(0, Math.min(1, (middle.tank - ARM_GONE_TANK) / (1 - ARM_GONE_TANK)));
+  return (
+    <div className={`shine-mound-middle ${reduced ? "is-reduced" : ""}`} data-mound-summary={middle.rows.length} data-dc-paused={paused ? "" : undefined} aria-hidden>
+      <p className="shine-middle-head">
+        <span>{MOUND_MIDDLE_HEAD.text}</span>
+        <span className="shine-kana" lang="ja">
+          {MOUND_MIDDLE_HEAD.jp}
+        </span>
+      </p>
+      <ol className="shine-middle-rows">
+        {middle.rows.map((r, i) => (
+          <li key={r.inning} className="shine-middle-row" data-summary-row data-new={i === middle.rows.length - 1 ? "" : undefined} data-gold={r.gold ? "" : undefined}>
+            <span className="shine-middle-inn">{r.label}</span>
+            <span className="shine-middle-line">{r.line}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="shine-middle-foot">
+        <span>{pitchCountLine(middle.pitchCount)}</span>
+        <span className="shine-middle-arm">
+          <span>Arm</span>
+          <span className="shine-middle-tank" data-low={arm < 0.3 ? "" : undefined}>
+            <i style={{ width: `${Math.round(arm * 100)}%` }} />
+          </span>
+        </span>
+      </div>
+    </div>
   );
 }

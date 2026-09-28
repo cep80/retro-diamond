@@ -345,8 +345,13 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
   - **Also found, open:**
     - Kira's Lantern ("strike out the side") is met only 14–16% of the time.
     - Control can't be trained, because the Bullpen tile never asks for a focus. Pitchers keep their starting Control all career.
+- **Check-in 20 (gameplay programmer): the long starts' middle innings play as a montage.**
+  - A five- or six-inning start plays these innings live: the first time through (at least six batters, to the end of an inning), the inning where the ask is lost, and the inning that ends the date (the last out, or the arm-gone or run pull). The innings between them play as "The middle innings 中盤", a board in the Coach's slot. It adds one row per inning every 2.2 s (1.5 s with reduced motion, no motion), for example "3rd · 1-2-3. Two punchouts.". Her pitch count and arm bar sit under the rows, and the scorebug ticks with each row.
+  - The middle innings are thrown pitch by pitch, silently, by the same engine and to the same glove (`mound-summary.ts`). Every roll is hashed from the seed and the pitch count, so the date comes out identical, not just statistically the same. Tests compare it with a date played pitch by pitch, 48 seeds, deepEqual. `resolveMiddle`'s separate model stays unwired.
+  - Pause, saves (one save at each row; a reload resumes the montage) and short dates (timeline unchanged) are all tested.
+  - Career smoke, Go to done: Sol Lantern 177 s and Series 182 s; Reina Lantern 162 and 195 s, Series 262 s (the ask was lost in the 4th, so four innings were live). Before this, it was 288–371 s. With reduced motion: 88 and 97 s.
 - **Open:**
-  - the long mound starts (the middle innings as a summary), Kira's Lantern band, trainable Control
+  - Kira's Lantern band, trainable Control
   - a production deploy (needs the user's go-ahead)
   - the stranger playtest (M6, a user step)
   - server-side receipt verification before any real purchase
