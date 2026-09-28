@@ -29,9 +29,39 @@ export function curtainFilmSrc(id: CharacterId) {
   return `/art/action/${id}/trot.webp`;
 }
 
+/**
+ * The postgame's picture, straight after the done panel (and after the Call, when
+ * she earned one). It is never the picture that was just on screen:
+ * - the done panel settles a miss on her crushed face, so the postgame is her composed one;
+ * - a won date with no Call left her on the done panel's still (a hitter's celebrate,
+ *   a pitcher's elated bust), so the postgame is the other one: the hitter's bust,
+ *   the pitcher's follow-through;
+ * - after the Call (the hitter's trot, the pitcher's follow-through) it is the one
+ *   the Call didn't hold: the hitter's celebrate, the pitcher's bust.
+ * ShineApp draws "film" with sceneFilmSrc and "bust" with sceneBustSrc.
+ */
+export function postgamePicture(id: CharacterId, met: boolean, curtain: boolean): { kind: "film" | "bust"; mood: "elated" | "focused" } {
+  if (!met) return { kind: "bust", mood: "focused" };
+  const pitcher = isPitcherStyle(sheet(id).style);
+  return { kind: pitcher === curtain ? "bust" : "film", mood: "elated" };
+}
+
+/** The Call's own stamp: 喝采 (the cheer) over a gold "Curtain Call" pill, slammed like a date's. */
+export const CURTAIN_STAMP = { jp: "喝采", en: "Curtain Call", tone: "gold" } as const;
+
+/**
+ * The card that opens a new year on its spring morning: the class in kana (the
+ * way the track calls them), the year's name big, and the season under it.
+ */
+export function yearCard(year: 1 | 2 | 3): { kana: string; name: string; sub: string } {
+  if (year === 3) return { kana: "シニア級", name: "Senior", sub: "Year three · Spring" };
+  if (year === 2) return { kana: "クラシック級", name: "Classic", sub: "Year two · Spring" };
+  return { kana: "ジュニア級", name: "Rookie", sub: "Year one · Spring" };
+}
+
 /** The line under the Call. It names the still, not a pose she does not have. */
 export function curtainCaption(id: CharacterId) {
-  if (id === "aoi") return "Cap in hand. No bat.";
+  if (id === "aoi") return "Cap in hand.";
   if (id === "yuki") return "She's going.";
   if (isPitcherStyle(sheet(id).style)) return "The glove stays.";
   return "The bat is down.";
@@ -99,8 +129,8 @@ export function dateSpeech(line: string) {
 export function fanLetter(run: { characterId: CharacterId; highlights?: { kind: string; label: string; line: string }[] }): string {
   const last = [...(run.highlights ?? [])].reverse().find((h) => h.kind === "game");
   const who = sheet(run.characterId);
-  if (!last) return `They wrote from the seats. They already call her number ${who.number}.`;
-  return `${last.label}. ${last.line} Row J kept the napkin. They already call her number ${who.number}.`;
+  if (!last) return `They wrote from the seats. They've started wearing ${who.number}.`;
+  return `${last.label}. ${last.line} Row J kept the napkin. They've started wearing ${who.number}.`;
 }
 
 /** Campus speech. A saved year-start line from before the coach rewrite still speaks the new one. */

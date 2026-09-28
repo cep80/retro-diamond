@@ -269,8 +269,53 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
     - Aoi's Rookie year end naming unplayed Classics
     - bug tag wrapping and day strip layout
   - Art brief §8 has the art: training stills, coach busts, curtain calls, Catch with Coach, and the Clubhouse plate.
+- **Check-in 17 build (2026-09-28): all 12 findings built.** Three parallel builders; the run was paused for a CLI restart and resumed from the partial edits.
+  - **Work screen (1, 2, 3, 10, 11):**
+    - her portrait full-bleed under a fixed HUD: name and day, an energy gauge coloured at the training lines (70 / 40 / 20), a readable mood badge, the goal chip
+    - each tile names what it raises
+    - training tiles go coral under 40 energy
+    - morning-after chips rebuilt from the calendar (checked against 1,000+ engine turns)
+    - five tiles with no empty cell
+    - narration as a Coach's note; her bubble has only her words (`herMorning`, 9 lines per girl)
+  - **Complex screens (6, 7, 8, 9):**
+    - shells on the scene layout, over a warmer plate with a key light
+    - the Classic / Senior year card
+    - one gold, bottom-pinned action on every screen
+    - the postgame heads with the stamp and the date's name
+    - SceneBlock is one box with a name pill
+    - the curtain call moves, with a 喝采 stamp
+  - **Race (4, 5, 12):**
+    - the done panel settles on her face: celebrate when met (trot if she closed on a walk or run), crushed when missed
+    - every girl has Rookie year-end lines that no longer fall through to Classic lines
+    - the bug tag wraps balanced; the day strip goes three across past four chips
+  - **Playtest (8 smoke runs, all reached Year 2) and code review; fixed:**
+    - Finding 9's repeat moved to done panel → postgame. `postgamePicture(id, met, curtain)` is now never the picture just shown: a miss shows her composed bust; a win with no Call shows the other picture (hitter bust, pitcher follow-through). Tested for every girl.
+    - Tapping the Clubhouse tile didn't re-arm the input guard, and "Toss it back" now sits where the tiles were, so a double tap spent the once-a-year catch. It now calls bumpView.
+    - The morning key light brightened night scenes too. ScenePlayer now marks night places (eventChip, or a "night" chip) and gets no sun.
+    - Postgame at 375x667 / 360x640: the stamp sits beside the name, her picture rides higher, and the recap filler hides.
+    - The goal chips (work HUD, race and mound bug) drop the bare style verb (HOLD / REACH / COMMAND) and show only her ask.
+    - SceneBlock and the Catch shell put narration in a gold-rule caption; her name pill shows only when she speaks.
+    - The work-day lift test now covers all 8 training tiles, including the Hitch with a parent, and a failed roll can't pass it vacuously.
+    - The mute button gets the 44 px hit ring the round buttons already had (the round buttons were measured without their ::after).
+  - **Narrative director review (rotation), applied:**
+    - Year end: her box repeated the year still above it, once word for word (Sol). A test now forbids any repeated sentence. Rewritten Rookie openers start on her ("She's already written both in the book. In pen, this time."; Section 4's third cowbell; "All heat, both days. Luz says that's the problem. Sol says that's the point.").
+    - Kira's Rookie lines no longer plan next year (that's her Year 2 arc): "Her bag's by the door. It always is."
+    - Yuki hides the leg in Year 1 ("Already stretched. Twice. …It's cold, that's all.").
+    - The five girls who shared one tiredness template now each have their own line (Reina: "Forty good pitches in the arm. Not forty-one.").
+    - Sol's low mood: "Ninety-nine. Don't ask again, Jefe." Miki's heater is Gary.
+    - The smaller-ask line says what she did, then "That keeps her in it." Old saves' lines still read as relief.
+    - Kira's curtain call said "Stars." at every park; it now starts "Dugout." so the skin swap names the right one.
+    - Other fixes:
+      - The Classic card no longer repeats the year-end line or the donut line.
+      - The Coach night keeps her in the scene.
+      - "Hold the still" → "Walk off".
+      - The curtain caption loses "No bat" and "Walk-up.".
+      - "Worn. Back off." → "It went wrong. Ease off today."
+      - "The outs came. The punchouts didn't." (old saves map)
+      - "Two strikeouts" is said, not "Strike out 2".
+      - Sol's sg blurb is corrected.
+  - **Art note (user step):** Sol's crushed and elated busts are a little off-model (lighter skin, straighter hair, navy numbers). They now show on every Sol done panel and on the postgame after a First Light win. Add both to art brief §8.
 - **Open:**
-  - the check-in 17 build (running)
   - a production deploy (needs the user's go-ahead)
   - the stranger playtest (M6, a user step)
   - server-side receipt verification before any real purchase

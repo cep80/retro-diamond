@@ -121,7 +121,7 @@ export function daysAwayLabel(n: number): string {
 
 /** After-PA / campus line: what happens next, in days. */
 export function nextDateLine(fromTurn: number, lastType?: TurnType): string {
-  if (lastType === "finale") return "The year is over. Hold the still.";
+  if (lastType === "finale") return "The year is over.";
   const next = nextNamedBeat(fromTurn);
   const left = next.turn - fromTurn;
   if (next.type === "forced-scene") {

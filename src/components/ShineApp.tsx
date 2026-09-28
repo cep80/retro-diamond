@@ -7,10 +7,26 @@ import { ROUND_ICON_PATHS, ShineBack, ShineRoundBtn } from "@/components/ShineRo
 import { careerMuteAppliesToScreen, setMasterMuted, setMix, sfxCowbell, sfxGain, sfxSelect, sfxTitleSting, startEnding, startMusic, stopMusic, unlockAudio } from "@/shine/audio.ts";
 import { ShineHelp, ShineSettings } from "@/components/ShineSettings";
 import { nextNamedBeat, nextDateLine, turnMeta, dateLabel, daysAwayLabel, yearOf, PLATE_TURNS } from "@/shine/calendar.ts";
-import { BIBLE, careerFilmSrc, endingClipSrc, endingFilmSrc, isPitcherStyle, parkSrc, sceneBustSrc, sceneFilmSrc, sheet, yearStillLine } from "@/shine/bible.ts";
+import { BIBLE, careerFilmSrc, endingClipSrc, endingFilmSrc, isPitcherStyle, parkSrc, sceneBustSrc, sceneFilmSrc, sheet, yearStillLine, type PortraitMood } from "@/shine/bible.ts";
 import { NEVER_SOLD, SKUS, cosmeticClasses, previewClaimable } from "@/shine/commerce.ts";
 import { kitAccent } from "@/shine/stage.ts";
-import { cheerLines, curtainCallLine, curtainCaption, curtainFilmSrc, curtainSkin, datePark, dateSpeech, endingRankLabel, fanLetter, recapLine, shouldCurtainCall, yearVoice } from "@/shine/culture.ts";
+import {
+  cheerLines,
+  CURTAIN_STAMP,
+  curtainCallLine,
+  curtainCaption,
+  curtainFilmSrc,
+  curtainSkin,
+  datePark,
+  dateSpeech,
+  endingRankLabel,
+  fanLetter,
+  postgamePicture,
+  recapLine,
+  shouldCurtainCall,
+  yearCard,
+} from "@/shine/culture.ts";
+import { doneStamp } from "@/components/race-ui";
 import { ShineComplexWork } from "./ShineComplexWork";
 import { careerStill, cardAltLook, cardBanner, cardGold, nextGirlId, nextGirlName, parentEligible, pickInheritSparks, postgameLeaveLabel, seriesFinaleLine, sparkEffectLine, sparkGapLine, yearFoldLine } from "@/shine/ending.ts";
 import { coachWarningTone, PG_INDEX } from "@/shine/run.ts";
@@ -233,10 +249,13 @@ function Wall() {
   const nextHook = sparkGapLine(clubhouse);
   const liveQuote = run?.clubhouseCard ? careerStill(run).quote : null;
   return (
-    <main className="shine-stage text-cream">
-      <img src="/bg/park-koi.jpg" alt="" className="shine-scene-plate" />
-      <div className="shine-stage-wash absolute inset-0" />
-      <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
+    <main className="shine-stage shine-wall text-cream">
+      <div className="shine-backdrop" aria-hidden>
+        <img src="/bg/park-koi.jpg" alt="" className="shine-scene-plate" />
+        <div className="shine-stage-wash absolute inset-0" />
+        <div className="shine-keylight" />
+      </div>
+      <div className="relative z-10 mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-8">
         <div className="flex items-center gap-3">
           <ShineBack onClick={openTitle} />
           <p className="episode-chip w-fit">ダイヤシャイン</p>
@@ -249,7 +268,20 @@ function Wall() {
           <p className="mt-4 rounded-xl border border-gold/40 bg-ink/70 px-4 py-3 font-ui text-sm text-gold">{nextHook}</p>
         ) : null}
         {clubhouse.length === 0 ? (
-          <p className="mt-6 font-ui text-sm text-muted">No cards yet. Finish a Rookie year.</p>
+          <>
+            <p className="mt-6 font-ui text-sm text-muted">No cards yet. Finish a Rookie year.</p>
+            {/* The wall already has a frame for each of them, dimmed until her year is done. */}
+            <ul className="shine-wall-frames" aria-hidden>
+              {BIBLE.map((c) => (
+                <li key={c.id} className="shine-wall-frame" style={{ ["--face-accent" as string]: kitAccent(c.id) }}>
+                  <img src={sceneBustSrc(c.id, "neutral")} alt="" onError={(e) => fallBackTo(e.currentTarget, careerFilmSrc(c.id))} />
+                  <span className="shine-wall-frame-tag">
+                    <span className="shine-kana">{c.jp}</span>#{c.number}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
         ) : (
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {clubhouse.map((c) => {
@@ -304,20 +336,19 @@ function Wall() {
             })}
           </div>
         )}
-        {clubhouse.length > 0 ? (
-          <div className="mt-8 flex flex-wrap gap-3">
-            <PixelBtn
-              className="h-12"
-              onClick={() => {
-                sfxSelect();
-                openSelect();
-              }}
-            >
-              Coach the next her
-            </PixelBtn>
-          </div>
-        ) : null}
       </div>
+      {clubhouse.length > 0 ? (
+        <GoDock>
+          <GoButton
+            onClick={() => {
+              sfxSelect();
+              openSelect();
+            }}
+          >
+            Coach the next her
+          </GoButton>
+        </GoDock>
+      ) : null}
     </main>
   );
 }
@@ -661,13 +692,9 @@ function Complex() {
 
   if (storyCard) {
     return (
-      <Shell runTurn={run.turn} label="Letters · Fan 30">
-        <p className="font-display text-[10px] uppercase tracking-widest text-gold">Character Story</p>
-        <p className="mt-3 font-ui text-base leading-relaxed text-cream/90">{fanLetter(run)}</p>
-        <p className="mt-3 font-ui text-sm text-gold">Letters at the complex. She&apos;s a draw.</p>
-        <PixelBtn className="mt-6 h-12" onClick={dismissStoryCard}>
-          Morning
-        </PixelBtn>
+      <Shell runTurn={run.turn} label="Letters" mood="elated" pill={{ kana: "ファンレター", name: "Letters", tone: "gold" }} action={{ label: "Morning", onClick: dismissStoryCard }}>
+        <p className="shine-shell-line">{fanLetter(run)}</p>
+        <p className="shine-shell-aside text-gold">Letters at the complex. People come to see her now.</p>
       </Shell>
     );
   }
@@ -675,36 +702,50 @@ function Complex() {
   if (catchBeat) {
     const catchScene = catchWithCoachScene(run);
     return (
-      <Shell runTurn={run.turn} label="Catch with Coach">
-        <SceneBlock scene={catchScene} />
-        <p className="mt-3 font-ui text-xs text-muted">Once a year. She looks lighter.</p>
-        <PixelBtn
-          className="mt-6 h-12"
-          onClick={() => {
+      <Shell
+        runTurn={run.turn}
+        label="Catch with Coach"
+        chipLabel
+        mood={catchScene.mood}
+        pill={{ kana: who.jp, name: who.name, tone: "accent" }}
+        action={{
+          label: "Toss it back",
+          onClick: () => {
             train("clubhouse");
             setCatchBeat(false);
-          }}
-        >
-          Toss it back
-        </PixelBtn>
+          },
+        }}
+      >
+        <SceneLines scene={catchScene} />
+        <p className="shine-shell-aside text-muted">She looks lighter.</p>
       </Shell>
     );
   }
 
   if (meta.type === "year-start") {
+    const card = yearCard(run.year);
     return (
-      <Shell runTurn={run.turn} label={meta.label}>
-        <p className="font-ui text-base leading-relaxed text-cream/90">
+      <Shell
+        runTurn={run.turn}
+        label={meta.label}
+        chipLabel
+        card={
+          <div className="shine-year-card" data-year-card={run.year}>
+            <span className="shine-year-card-kana shine-kana">{card.kana}</span>
+            <span className="shine-year-card-name">{card.name}</span>
+            <span className="shine-year-card-sub">{card.sub}</span>
+          </div>
+        }
+        action={{ label: "Morning", onClick: finishYearStart }}
+      >
+        {/* The card already names the year, and the Coach's note next morning carries the new coach: this is her. */}
+        <p className="shine-shell-line">
           {run.year === 2
-            ? "Classic year. The Lantern Classic is always at Lantern Field."
+            ? "She was at the complex before the gate opened. A year older. Same number."
             : run.year === 3
-              ? "Senior year. The Stretch is coming."
+              ? "Her last spring at the Academy. She knows where everything is now, even the good hose."
               : "The year is open."}
         </p>
-        <p className="mt-3 font-ui text-sm text-gold">{yearVoice(run.year, isPitcherStyle(who.style))}</p>
-        <PixelBtn className="mt-6 h-12" onClick={finishYearStart}>
-          Morning
-        </PixelBtn>
       </Shell>
     );
   }
@@ -712,15 +753,18 @@ function Complex() {
   if (meta.type === "mentor-event") {
     const pitcher = isPitcherStyle(who.style);
     return (
-      <Shell runTurn={run.turn} label={dateLabel(meta, who.style)}>
-        <p className="font-ui text-base leading-relaxed text-cream/90">
+      <Shell
+        runTurn={run.turn}
+        label={dateLabel(meta, who.style)}
+        mood="focused"
+        pill={{ kana: "居残り", name: dateLabel(meta, who.style), tone: "gold" }}
+        action={{ label: "Listen", onClick: finishMentor }}
+      >
+        <p className="shine-shell-line">
           {pitcher
-            ? "Bullpen Coach stays after the last pitch. Just the two of you and the rubber."
-            : "Cage Coach stays after the last bucket. Just the two of you in the tunnel."}
+            ? "She and the Bullpen Coach stay after the last pitch. You hold the bucket."
+            : "She and the Cage Coach stay after the last bucket. You feed the machine."}
         </p>
-        <PixelBtn className="mt-6 h-12" onClick={finishMentor}>
-          Listen
-        </PixelBtn>
       </Shell>
     );
   }
@@ -735,7 +779,11 @@ function Complex() {
       lastLine={lastLine}
       train={train}
       finishForcedCage={finishForcedCage}
-      setCatchBeat={setCatchBeat}
+      setCatchBeat={(on) => {
+        // "Toss it back" sits where the bottom row of tiles was; re-arm the guard so a double tap can't spend the catch.
+        useShine.getState().bumpView();
+        setCatchBeat(on);
+      }}
       openTitle={openTitle}
       openSettings={openSettings}
       next={next}
@@ -749,14 +797,14 @@ function Postgame() {
   const dismissPostgame = useShine((s) => s.dismissPostgame);
   const bumpView = useShine((s) => s.bumpView);
   const lastLine = useShine((s) => s.lastLine);
-  const openTitle = useShine((s) => s.openTitle);
-  const openSettings = useShine((s) => s.openSettings);
+  const reduced = useShine((s) => s.settings.reducedMotion);
   const last = run.calendar.at(-1);
   const who = sheet(run.characterId);
   const idx = last?.type && last.type in PG_INDEX ? PG_INDEX[last.type as keyof typeof PG_INDEX] : 0;
   const parkId = datePark(last?.type ?? "", who.parkId);
   const skin = curtainSkin(parkId);
-  const [curtain, setCurtain] = useState(() => shouldCurtainCall(last?.type ?? "", run.pgResults[idx] === "met"));
+  const calledOut = shouldCurtainCall(last?.type ?? "", run.pgResults[idx] === "met");
+  const [curtain, setCurtain] = useState(calledOut);
   const verses = cheerLines(run.characterId, run.fans);
   const [canSkipCurtain, setCanSkipCurtain] = useState(() => last?.type !== "lantern-classic");
 
@@ -768,78 +816,100 @@ function Postgame() {
 
   const met = run.pgResults[idx] === "met";
   const seriesFinale = last?.type === "series" ? seriesFinaleLine(run) : null;
-  const film = endingFilmSrc(run.characterId, met ? "A" : "C");
-  const clip = endingClipSrc(run.characterId, met ? "A" : "C");
+  // The date's own name heads both screens: the stamp says how it went, the name says which one.
+  const dateName = last ? dateLabel(turnMeta(last.turn), who.style) : "The game";
+  // Never the picture that was just on screen (the done panel's settled still, or the Call's).
+  const picture = postgamePicture(run.characterId, met, calledOut);
+  const film = sceneFilmSrc(run.characterId, picture.mood);
+  const bust = picture.kind === "bust" ? sceneBustSrc(run.characterId, picture.mood) : null;
+  const stamp = doneStamp(met);
 
   if (curtain) {
     const call = curtainFilmSrc(run.characterId);
+    // The Call's line, its caption, then each verse the crowd has earned, one after another.
+    const verseLines = [curtainCallLine(who.curtainCall, skin), `${curtainCaption(run.characterId)} ${skin === "otachidai" ? "The 応援団 sings her name." : "The organ finds her."}`, ...verses];
     return (
-      <main className="relative min-h-dvh overflow-hidden bg-ink text-cream" data-curtain={last?.type ?? "date"}>
-        <img src={call} alt="" className="absolute inset-0 size-full object-cover object-[center_18%]" data-curtain-film={run.characterId} />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/15" />
-        <div className="relative z-10 flex min-h-dvh flex-col">
-          <div className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-8">
-            <p className="episode-chip w-fit">{skin === "otachidai" ? "お立ち台" : "Dugout"}</p>
-            <p className="font-display text-[10px] uppercase tracking-widest text-gold">Curtain Call</p>
-            <div className="flex items-center gap-2">
-              <ShineMute />
-              <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
-              <ShineBack onClick={openTitle} />
-            </div>
-          </div>
-          <div className="mt-auto px-4 pb-8 sm:px-8">
-            <p className="font-display text-lg font-bold">{last ? dateLabel(turnMeta(last.turn), who.style) : "The game"}</p>
-            <p className="mt-2 max-w-md font-ui text-base leading-relaxed text-cream/90 sm:text-lg">{curtainCallLine(who.curtainCall, skin)}</p>
-            <p className="mt-3 font-ui text-xs text-cream/70">
-              {curtainCaption(run.characterId)} {skin === "otachidai" ? "応援歌." : "Walk-up."}
-            </p>
-            {verses.map((v, i) => (
-              <p key={i} className="mt-2 font-ui text-xs text-gold/85">
-                {v}
-              </p>
-            ))}
-            {canSkipCurtain ? (
-              <PixelBtn
-                className="mt-6 h-12"
-                onClick={() => {
-                  // "Back to the complex" takes this spot; re-arm the guard so a double tap can't skip the read.
-                  bumpView();
-                  setCurtain(false);
-                }}
-              >
-                Hold the still
-              </PixelBtn>
-            ) : (
-              <p className="mt-6 font-ui text-sm text-cream/70">The first Lantern Classic Call is hers.</p>
-            )}
-          </div>
+      <main className={`shine-after shine-curtain ${reduced ? "is-reduced" : ""}`} data-curtain={last?.type ?? "date"}>
+        <div className="shine-backdrop" aria-hidden>
+          <img src={call} alt="" className="shine-after-film shine-curtain-film" data-curtain-film={run.characterId} />
+          <div className="shine-after-shade" />
         </div>
+        <header className="shine-after-top">
+          <p className="episode-chip w-fit">{skin === "otachidai" ? "お立ち台" : "Dugout"}</p>
+          <TopButtons />
+        </header>
+        <div className="flex-1" />
+        <section className="shine-after-body">
+          <div className="shine-after-head">
+            <div className={`shine-stamp shine-stamp-${CURTAIN_STAMP.tone} shine-after-stamp shine-curtain-stamp ${reduced ? "shine-stamp-still" : ""}`} role="img" aria-label={CURTAIN_STAMP.en}>
+              <span className="shine-stamp-jp" aria-hidden>
+                {CURTAIN_STAMP.jp}
+              </span>
+              <span className="shine-stamp-en" aria-hidden>
+                {CURTAIN_STAMP.en}
+              </span>
+            </div>
+            <h1 className="shine-after-name">{dateName}</h1>
+          </div>
+          {verseLines.map((v, i) => (
+            <p key={i} className={`shine-curtain-verse ${i === 0 ? "is-call" : i === 1 ? "is-caption" : "is-verse"}`} style={{ ["--i" as string]: i }}>
+              {v}
+            </p>
+          ))}
+        </section>
+        <GoDock>
+          {canSkipCurtain ? (
+            <GoButton
+              onClick={() => {
+                // "Back to the complex" takes this spot; re-arm the guard so a double tap can't skip the read.
+                bumpView();
+                setCurtain(false);
+              }}
+            >
+              Walk off
+            </GoButton>
+          ) : (
+            <p className="shine-dock-wait">The first Lantern Classic Call is hers.</p>
+          )}
+        </GoDock>
       </main>
     );
   }
 
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-ink text-cream" data-after-pa={last?.type ?? "date"}>
-      <img src={film} alt="" className="absolute inset-0 size-full object-cover object-[center_18%] opacity-80" />
-      <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-ink/30" />
-      <div className="relative z-10 mx-auto flex min-h-dvh max-w-5xl flex-col px-4 py-8 sm:px-8">
-        <div className="flex items-center justify-between gap-3">
-          <p className="episode-chip w-fit">{last ? dateLabel(turnMeta(last.turn), who.style) : "The game"}</p>
-          <div className="flex items-center gap-2">
-            <ShineMute />
-            <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
-            <ShineBack onClick={openTitle} />
+    <main className="shine-after" data-after-pa={last?.type ?? "date"} data-met={met ? "true" : "false"}>
+      <div className="shine-backdrop" aria-hidden>
+        {bust ? (
+          <>
+            <img src={parkSrc(parkId)} alt="" className="shine-scene-plate" />
+            <img src={bust} alt="" className="shine-after-bust" data-postgame-bust={picture.mood} onError={(e) => fallBackTo(e.currentTarget, film)} />
+          </>
+        ) : (
+          <img src={film} alt="" className="shine-after-film" data-scene-film={run.characterId} />
+        )}
+        <div className="shine-after-shade" />
+        {bust ? <div className="shine-keylight" /> : null}
+      </div>
+      <header className="shine-after-top">
+        <p className="episode-chip w-fit">{last ? `Day ${last.turn}` : "The game"}</p>
+        <TopButtons />
+      </header>
+      <div className="flex-1" />
+      <section className="shine-after-body">
+        {/* The done panel's stamp and the date's name: what happened, at a glance, in no one's jargon. */}
+        <div className="shine-after-head">
+          <div className={`shine-stamp shine-stamp-${stamp.tone} shine-stamp-still shine-after-stamp`} role="img" aria-label={stamp.en}>
+            <span className="shine-stamp-jp" aria-hidden>
+              {stamp.jp}
+            </span>
+            <span className="shine-stamp-en" aria-hidden>
+              {stamp.en}
+            </span>
           </div>
+          <h1 className="shine-after-name">{dateName}</h1>
         </div>
-        <div className="mt-auto max-w-md pb-2">
-          <p className="font-display text-lg font-bold">
-            {last?.type === "finale" ? "Diamond Finale." : met ? who.pgVerb : "It got away from her."}
-          </p>
-          {lastLine ? (
-            <p className="mt-2 font-ui text-base leading-relaxed text-cream/90">
-              {dateSpeech(lastLine)}
-            </p>
-          ) : null}
+        <div className="max-w-md">
+          {lastLine ? <p className="shine-after-line">{dateSpeech(lastLine)}</p> : null}
           {run.fanBeat ? <p className="mt-3 font-ui text-sm text-gold">{run.fanBeat}</p> : null}
           {last?.type === "gate" ? <SceneBlock scene={relationshipScene(run, "post-gate")} /> : null}
           {last?.type === "first-light" && run.keepsake === "dirt" ? (
@@ -851,7 +921,7 @@ function Postgame() {
               {isPitcherStyle(who.style) ? "No ball in her pocket this time." : "The baseline stayed. No keepsake this time."}
             </p>
           ) : null}
-          <p className="mt-2 font-ui text-sm text-cream/70">{recapLine(parkId, run.turn)}</p>
+          <p className="shine-after-recap mt-2 font-ui text-sm text-cream/70">{recapLine(parkId, run.turn)}</p>
           {seriesFinale ? <p className="mt-3 font-ui text-sm text-gold">{seriesFinale}</p> : null}
           {last?.type === "finale" && !met ? (
             <p className="mt-3 font-ui text-sm text-cream/70">Losing the Finale doesn&apos;t take anything away from her.</p>
@@ -862,11 +932,11 @@ function Postgame() {
           <p className="mt-4 font-ui text-sm text-cream/80">
             {yearFoldLine(run, dateLabel(turnMeta(run.turn), who.style), nextDateLine(run.turn, last?.type))}
           </p>
-          <PixelBtn className="mt-6 h-12" onClick={dismissPostgame}>
-            {postgameLeaveLabel(run, last?.type === "finale")}
-          </PixelBtn>
         </div>
-      </div>
+      </section>
+      <GoDock>
+        <GoButton onClick={dismissPostgame}>{postgameLeaveLabel(run, last?.type === "finale")}</GoButton>
+      </GoDock>
     </main>
   );
 }
@@ -877,8 +947,6 @@ function YearEnd() {
   const finishCareer = useShine((s) => s.finishCareer);
   const bumpView = useShine((s) => s.bumpView);
   const dismissYearEnd = useShine((s) => s.dismissYearEnd);
-  const openTitle = useShine((s) => s.openTitle);
-  const openSettings = useShine((s) => s.openSettings);
   const card = run.clubhouseCard;
   const [pages, setPages] = useState(false);
   const still = card ? careerStill(run) : null;
@@ -895,123 +963,126 @@ function YearEnd() {
   if (card && still) {
     const rankLabel = endingRankLabel(card.ending);
     return (
-      <main className="relative min-h-dvh overflow-hidden bg-ink text-cream" data-winning-live={card.ending}>
-        <img src={film} alt="" className="absolute inset-0 size-full object-cover object-[center_18%]" />
-        {clip ? (
-          <video
-            key={clip}
-            src={clip}
-            poster={film}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="absolute inset-0 size-full object-cover"
-            data-winning-clip={clip}
-            aria-hidden
-          />
-        ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/15" />
-        <div className="relative z-10 flex min-h-dvh flex-col">
-          <div className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-8">
+      <main className="shine-after" data-winning-live={card.ending}>
+        <div className="shine-backdrop" aria-hidden>
+          <img src={film} alt="" className="shine-after-film" />
+          {clip ? <video key={clip} src={clip} poster={film} autoPlay loop muted playsInline className="shine-after-film" data-winning-clip={clip} /> : null}
+          <div className="shine-after-shade" />
+        </div>
+        <header className="shine-after-top">
+          <div className="flex min-w-0 flex-col items-start gap-1.5">
             <p className="episode-chip w-fit">{rankLabel}</p>
             <p className="font-display text-[10px] uppercase tracking-widest text-gold">Winning Live</p>
-            <div className="flex items-center gap-2">
-              <ShineMute />
-              <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
-              <ShineBack onClick={openTitle} />
-            </div>
           </div>
-          <div className="mt-auto px-4 pb-8 sm:px-8">
-            <p className="max-w-md font-ui text-base leading-relaxed text-cream/90 sm:text-lg">{still.quote}</p>
-            <p className="mt-3 font-ui text-sm text-gold">{still.trained}</p>
-            <p className="mt-2 font-ui text-sm text-gold">{still.mentor}</p>
-            <p
-              className={`mt-4 font-display text-lg font-bold text-gold ${still.rank === "never-quit" ? "shine-cowbell-line" : ""}`}
+          <TopButtons />
+        </header>
+        <div className="flex-1" />
+        <section className="shine-after-body">
+          <p className="max-w-md font-ui text-base leading-relaxed text-cream/90 sm:text-lg">{still.quote}</p>
+          <p className="mt-3 font-ui text-sm text-gold">{still.trained}</p>
+          <p className="mt-2 font-ui text-sm text-gold">{still.mentor}</p>
+          <p className={`mt-4 font-display text-lg font-bold text-gold ${still.rank === "never-quit" ? "shine-cowbell-line" : ""}`}>{still.frame}</p>
+          <p className="mt-1 max-w-md font-ui text-xs text-cream/70" data-ending-why>
+            {still.why}
+          </p>
+          {pages ? (
+            <>
+              <p className="mt-4 max-w-md font-ui text-sm text-gold">{sparkGapLine([card]) ?? `Next: Coach ${nextGirlName(run.characterId)}.`}</p>
+              <Scrapbook highlights={card.highlights ?? run.highlights} pa={card.definingPa ?? run.definingPa} who={run.characterId} />
+            </>
+          ) : null}
+        </section>
+        <GoDock>
+          {pages ? (
+            <GoButton onClick={finishCareer}>Clubhouse</GoButton>
+          ) : (
+            <GoButton
+              onClick={() => {
+                if (card.ending === "never-quit") sfxCowbell();
+                // "Clubhouse" (which ends the career) lands exactly here; a double tap must not skip the scrapbook.
+                bumpView();
+                setPages(true);
+              }}
             >
-              {still.frame}
-            </p>
-            <p className="mt-1 max-w-md font-ui text-xs text-cream/70" data-ending-why>
-              {still.why}
-            </p>
-            {pages ? (
-              <>
-                <p className="mt-4 max-w-md font-ui text-sm text-gold">
-                  {sparkGapLine([card]) ?? `Next: Coach ${nextGirlName(run.characterId)}.`}
-                </p>
-                <Scrapbook highlights={card.highlights ?? run.highlights} pa={card.definingPa ?? run.definingPa} who={run.characterId} />
-                <PixelBtn className="mt-6 h-12" onClick={finishCareer}>
-                  Clubhouse
-                </PixelBtn>
-              </>
-            ) : (
-              <PixelBtn
-                className="mt-6 h-12"
-                onClick={() => {
-                  if (card.ending === "never-quit") sfxCowbell();
-                  // "Clubhouse" (which ends the career) lands exactly here; a double tap must not skip the scrapbook.
-                  bumpView();
-                  setPages(true);
-                }}
-              >
-                The scrapbook
-              </PixelBtn>
-            )}
-          </div>
-        </div>
+              The scrapbook
+            </GoButton>
+          )}
+        </GoDock>
       </main>
     );
   }
   const nextYear = run.turn <= 20 ? "Classic year" : "Senior year";
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-ink text-cream" data-year-end={run.year}>
-      <img src={film} alt="" className="absolute inset-0 size-full object-cover object-[center_18%]" />
-      <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/15" />
-      <div className="relative z-10 flex min-h-dvh flex-col">
-        <div className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-8">
-          <p className="episode-chip w-fit">Year-End</p>
-          <div className="flex items-center gap-2">
-            <ShineMute />
-            <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
-            <ShineBack onClick={openTitle} />
-          </div>
-        </div>
-        <div className="mt-auto px-4 pb-8 sm:px-8">
-          <p className="max-w-md font-ui text-base leading-relaxed text-cream/90 sm:text-lg">
-            {yearStillLine(run.characterId, run.turn, run.pgResults, run.definingPa, run.lightCard)}
-          </p>
+    <main className="shine-after" data-year-end={run.year}>
+      <div className="shine-backdrop" aria-hidden>
+        <img src={film} alt="" className="shine-after-film" />
+        <div className="shine-after-shade" />
+      </div>
+      <header className="shine-after-top">
+        <p className="episode-chip w-fit">
+          Day {run.turn} · {dateLabel(turnMeta(run.turn), who.style)}
+        </p>
+        <TopButtons />
+      </header>
+      <div className="flex-1" />
+      <section className="shine-after-body">
+        <div className="max-w-md">
+          <p className="shine-after-line">{yearStillLine(run.characterId, run.turn, run.pgResults, run.definingPa, run.lightCard)}</p>
           <p className="mt-3 font-ui text-sm text-cream/80">
             {run.turn <= 20
               ? "Next spring: the Classic year. The Lantern Classic is always at Lantern Field."
               : "Next spring: her senior year. The Stretch is coming."}
           </p>
           <SceneBlock scene={relationshipScene(run, "year-end")} />
-          <PixelBtn className="mt-6 h-12" onClick={dismissYearEnd}>
-            {nextYear}
-          </PixelBtn>
         </div>
-      </div>
+      </section>
+      <GoDock>
+        <GoButton onClick={dismissYearEnd}>{nextYear}</GoButton>
+      </GoDock>
     </main>
   );
 }
 
+function isSpoken(line: string) {
+  return /^["“「]/.test(line.trim());
+}
+
+/** Her beat's lines as the scene box sets them: her words and the Coach's memory under them. */
+function SceneLines({ scene }: { scene: RelationshipScene }) {
+  return (
+    <>
+      {scene.lines.map((l, i) => (
+        // Her words open on a quote mark; anything else is the narrator, set as a caption, not in her mouth.
+        <p key={i} className={`shine-vn-line ${isSpoken(l) ? "" : "is-narration"}`}>
+          {l}
+        </p>
+      ))}
+      {scene.quoted ? <p className="shine-vn-note">{memoryLine(scene.quoted)}</p> : null}
+    </>
+  );
+}
+
+/**
+ * Her beat on a screen that already shows her picture: the scenes' box, full width,
+ * with her name on its pill (the picture is the screen's own, never a second copy).
+ */
 function SceneBlock({ scene }: { scene: RelationshipScene }) {
-  const art = sceneFilmSrc(scene.speaker, scene.mood);
   const who = sheet(scene.speaker);
   return (
-    <div className="shine-dialogue mt-4" data-testid="relationship-scene">
-      {art ? <img src={art} alt="" className="h-28 w-auto shrink-0 object-cover" data-scene-film={scene.speaker} /> : null}
-      <div className="shine-speech">
-        <p className="shine-kana text-[11px] text-ink/50">
-          #{who.number} {who.jp}
-        </p>
-        {scene.lines.map((l, i) => (
-          <p key={i} className="mt-1 font-ui text-sm leading-relaxed">
-            {l}
-          </p>
-        ))}
-        {scene.quoted ? <p className="mt-2 font-ui text-[11px] text-ink/55">{memoryLine(scene.quoted)}</p> : null}
-      </div>
+    <div
+      className="shine-vn-box"
+      data-testid="relationship-scene"
+      data-scene-mood={scene.mood}
+      style={{ ["--shine-accent" as string]: kitAccent(scene.speaker) }}
+    >
+      {/* Her name only when she says something. */}
+      {scene.lines.some(isSpoken) ? (
+        <span className="shine-vn-name">
+          <span className="shine-kana">{who.jp}</span>
+          {who.name}
+        </span>
+      ) : null}
+      <SceneLines scene={scene} />
     </div>
   );
 }
@@ -1053,35 +1124,115 @@ function Scrapbook({ highlights, pa, who }: { highlights: Highlight[]; pa: Defin
   );
 }
 
-function Shell({ runTurn, label, children }: { runTurn: number; label: string; children: ReactNode }) {
-  const run = useShine((s) => s.run);
+/** Sound, Settings and the way back to the title: the same three rounds on every screen's top right. */
+function TopButtons() {
   const openTitle = useShine((s) => s.openTitle);
   const openSettings = useShine((s) => s.openSettings);
-  const park = run ? parkSrc(sheet(run.characterId).parkId) : "/bg/park-koi.jpg";
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <ShineMute />
+      <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
+      <ShineBack onClick={openTitle} />
+    </div>
+  );
+}
+
+/** The one way on: gold, full width, held at the foot of the screen, like the date's Leave. */
+function GoDock({ children }: { children: ReactNode }) {
+  return <div className="shine-dock">{children}</div>;
+}
+
+function GoButton({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <PixelBtn className="shine-go h-12 w-full text-sm" onClick={onClick}>
+      {children}
+    </PixelBtn>
+  );
+}
+
+/** A scene's way on once it's heard: the same gold button, set under the box at the foot of the screen. */
+function SceneGo({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <div className="shine-scene-go">
+      <GoButton onClick={onClick}>{children}</GoButton>
+    </div>
+  );
+}
+
+type ShellPill ={ kana: string; name: string; tone: "gold" | "accent" };
+
+/**
+ * A day that isn't work, set like a scene: the park blurred to light, her bust in
+ * front of it, the words in the box at the foot with a pill naming who (or what)
+ * it is, and the way on at the bottom of the box. The chip keeps the day; it names
+ * the moment too unless the pill already does.
+ */
+function Shell({
+  runTurn,
+  label,
+  chipLabel = false,
+  mood = "neutral",
+  pill = null,
+  card = null,
+  action,
+  children,
+}: {
+  runTurn: number;
+  label: string;
+  chipLabel?: boolean;
+  mood?: PortraitMood;
+  pill?: ShellPill | null;
+  card?: ReactNode;
+  action: { label: string; onClick: () => void };
+  children: ReactNode;
+}) {
+  const run = useShine((s) => s.run);
+  const id: CharacterId = run?.characterId ?? "aoi";
+  const park = parkSrc(sheet(id).parkId);
   const next = nextNamedBeat(runTurn);
   const turnsAway = Math.max(0, next.turn - runTurn);
-  const style = run ? sheet(run.characterId).style : "lead";
+  const style = sheet(id).style;
   return (
-    <main className="relative min-h-dvh overflow-hidden bg-ink text-cream">
-      {/* The park blurred to light, as the scenes show a place: the pixel ballpark never shows sharp. */}
-      <img src={park} alt="" className="shine-scene-plate" />
-      <div className="shine-stage-wash absolute inset-0" />
-      <div className="relative z-10 mx-auto max-w-5xl px-4 py-8 sm:px-8">
-        <div className="flex items-center justify-between gap-3">
-          <p className="episode-chip w-fit">
-            Day {runTurn} · {label}
-          </p>
-          <p className="font-display text-[10px] uppercase tracking-widest text-gold">
-            {dateLabel(next, style)} · {daysAwayLabel(turnsAway)}
-          </p>
-          <div className="flex items-center gap-2">
-            <ShineMute />
-            <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
-            <ShineBack onClick={openTitle} />
-          </div>
-        </div>
-        <div className="mt-6">{children}</div>
+    <main className="shine-shell" data-shell={label} style={{ ["--shine-accent" as string]: kitAccent(id) }}>
+      <div className="shine-backdrop" aria-hidden>
+        {/* The park blurred to light, as the scenes show a place: the pixel ballpark never shows sharp. */}
+        <img src={park} alt="" className="shine-scene-plate" />
+        <img
+          key={`${id}-${mood}`}
+          src={sceneBustSrc(id, mood)}
+          alt=""
+          className="shine-shell-bust"
+          data-shell-mood={mood}
+          onError={(e) => fallBackTo(e.currentTarget, careerFilmSrc(id))}
+        />
+        <div className="shine-shell-shade" />
+        {/* Last, as in the scenes: the light falls on her too. */}
+        <div className="shine-keylight" />
       </div>
+      <header className="shine-shell-top">
+        <div className="shine-shell-heading">
+          <p className="episode-chip w-fit">{chipLabel ? `Day ${runTurn} · ${label}` : `Day ${runTurn}`}</p>
+          <p className="shine-shell-next">
+            <span className="shine-shell-next-name">{dateLabel(next, style)}</span>
+            <span className="shine-shell-next-when">{daysAwayLabel(turnsAway)}</span>
+          </p>
+        </div>
+        <TopButtons />
+      </header>
+      <div className="flex-1" />
+      {card}
+      <section className={`shine-shell-box ${pill ? "" : "is-narration"}`}>
+        {pill ? (
+          <span className={`shine-vn-name ${pill.tone === "gold" ? "is-gold" : ""}`}>
+            <span className="shine-kana">{pill.kana}</span>
+            {pill.name}
+          </span>
+        ) : null}
+        <div className="shine-shell-text">{children}</div>
+        <div className="shine-shell-go">
+          <GoButton onClick={action.onClick}>{action.label}</GoButton>
+        </div>
+      </section>
     </main>
   );
 }
@@ -1108,15 +1259,14 @@ function Establishing() {
         chip="First Day"
         actions={
           heard ? (
-            <PixelBtn
-              className="h-12"
+            <SceneGo
               onClick={() => {
                 stopMusic();
                 dismissEstablishing();
               }}
             >
               Morning
-            </PixelBtn>
+            </SceneGo>
           ) : null
         }
       />
@@ -1143,11 +1293,7 @@ function StoryScreen({ scene, chip, cta, onDone }: { scene: SceneLike; chip: str
         onDone={() => setHeard(true)}
         chip={chip}
         actions={
-          heard ? (
-            <PixelBtn className="h-12" onClick={onDone}>
-              {cta}
-            </PixelBtn>
-          ) : null
+          heard ? <SceneGo onClick={onDone}>{cta}</SceneGo> : null
         }
       />
     </main>
@@ -1234,9 +1380,7 @@ function EventScreen({ event }: { event: TrainingEvent }) {
             </span>
           ))}
         </div>
-        <PixelBtn className="h-12" onClick={() => resolveEvent(key, choice.effect)}>
-          To work
-        </PixelBtn>
+        <SceneGo onClick={() => resolveEvent(key, choice.effect)}>To work</SceneGo>
       </>
     ) : null;
   return (

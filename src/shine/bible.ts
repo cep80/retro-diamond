@@ -190,7 +190,7 @@ const RAW_BIBLE: RawSheet[] = [
     aptitude: "A",
     pgVerb: "COMMAND",
     rival: "reina",
-    sg: "Record an out at the Gate. Two strikeouts at First Light.",
+    sg: "Record an out at the Gate. Walk nobody at First Light.",
     past: "Sol from the Dusters. Throws a hundred and one and apologizes to nobody.",
     letters:
       "The Dusters played in a hundred-and-two degrees the afternoon you struck out eight and walked none in five innings against Academy Central. My grandfather runs the grounds crew and said the dirt was so dry your cleat prints disappeared between batters. The battery was Fuentes, your junior catcher, who caught everything back-handed when it ran inside. The only batter who touched you was number seven, who fouled a fastball off her forearm and stayed in.",
@@ -242,7 +242,7 @@ const RAW_BIBLE: RawSheet[] = [
     },
     unique: "Ninth Light.",
     walkUp: "Closer entrance",
-    curtainCall: "Stars. She points at the bullpen door, not the sky.",
+    curtainCall: "Dugout. She points at the bullpen door, not the sky.",
     endings: {
       miss2: "The Academy path closed. The bullpen door stayed shut.",
       lantern: "She unpacked the bag. It's folded flat in a drawer at Stars Park.",
@@ -316,11 +316,12 @@ const ONE_PUNCHOUT = "One punchout. She needed three.";
 const TWO_PUNCHOUTS = "Two punchouts. She needed three.";
 /** First Light asks for two now; saves from the three-punchout ask keep the lines above. */
 const ONE_OF_TWO = "One punchout. She needed two.";
-const NO_PUNCHOUTS = "The outs are in. The punchouts weren't.";
+const NO_PUNCHOUTS = "The outs came. The punchouts didn't.";
 /** Saves from before the 2026-09-22 copy pass carry the old wording. */
 const RETIRED_PUNCHOUTS: Record<string, string> = {
   "One punchout. The date asked for three.": ONE_PUNCHOUT,
   "Two punchouts. The date asked for three.": TWO_PUNCHOUTS,
+  "The outs are in. The punchouts weren't.": NO_PUNCHOUTS,
 };
 
 /** The First Light card, when the date already said how many punchouts came. */

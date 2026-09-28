@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { BIBLE } from "./bible.ts";
+import { BIBLE, yearStillLine } from "./bible.ts";
 import { catchWithCoachScene, memoryLine, recall, relationshipScene, warmth } from "./relationship.ts";
 import { newRun, remember } from "./run.ts";
+import { FORBIDDEN_IN_STORY } from "./story.ts";
 import type { SceneSlot } from "./relationship.ts";
 
 const SLOTS: SceneSlot[] = ["opening", "post-gate", "year-end"];
@@ -133,6 +134,59 @@ test("Aoi's rookie year-end names the Gate miss when First Light held", () => {
   assert.doesNotMatch(s.lines[0]!, /Every big game held/);
 });
 
+test("Aoi's clean Rookie year-end names both dates in her book, not the Classics", () => {
+  const run = newRun("aoi");
+  run.turn = 20;
+  run.pgResults[0] = "met";
+  run.pgResults[1] = "met";
+  const s = relationshipScene(run, "year-end");
+  assert.equal(s.lines[0], "She's already written both in the book. In pen, this time.");
+  assert.equal(s.mood, "elated");
+});
+
+test("no Rookie year-end names a Classic, and every 'held' in it is true", () => {
+  const marks = ["met", "missed"] as const;
+  for (const c of BIBLE) {
+    for (const gate of marks) {
+      for (const light of marks) {
+        // The Gate never counts as a miss; First Light does only when the smaller ask slipped too.
+        for (const misses of light === "met" ? [0] : [0, 1]) {
+          const run = newRun(c.id);
+          run.turn = 20;
+          run.pgResults[0] = gate;
+          run.pgResults[1] = light;
+          run.pgMisses = misses;
+          const scene = relationshipScene(run, "year-end");
+          const line = scene.lines[0]!;
+          const at = `${c.id} gate=${gate} light=${light} misses=${misses}: ${line}`;
+          // A slipped First Light is never her grinning, even when the smaller ask kept the miss off the book.
+          assert.equal(scene.mood, light === "met" ? "elated" : "neutral", at);
+          assert.doesNotMatch(line, /Classic|Lantern|Night/, at);
+          assert.doesNotMatch(line, FORBIDDEN_IN_STORY, at);
+          if (gate === "missed" || light === "missed") assert.doesNotMatch(line, /Every|Everything|Both held/, at);
+          if (/Both held|First Light did\b(?!n't)/.test(line)) assert.equal(light, "met", at);
+          if (/Both held|The Gate held/.test(line)) assert.equal(gate, "met", at);
+          if (/Gate didn't hold|Neither one held/.test(line)) assert.equal(gate, "missed", at);
+          if (/First Light (didn't|slipped)|Neither one held/.test(line)) assert.equal(light, "missed", at);
+        }
+      }
+    }
+  }
+});
+
+test("a clean Rookie year where both dates held starts on her, not a second scoreboard", () => {
+  for (const id of ["aoi", "miki", "sol", "kira", "yuki"] as const) {
+    const run = newRun(id);
+    run.turn = 20;
+    run.pgResults[0] = "met";
+    run.pgResults[1] = "met";
+    const line = relationshipScene(run, "year-end").lines[0]!;
+    // The year still above it already names both dates.
+    assert.doesNotMatch(line, /^The Gate and First Light\./, id);
+    assert.doesNotMatch(line, /Every big game|Everything held|didn't|slipped/, id);
+  }
+});
+
 test("Aoi's classic year-end keeps the Gate miss beside the dates that held", () => {
   const run = newRun("aoi");
   run.turn = 40;
@@ -146,14 +200,14 @@ test("Aoi's classic year-end keeps the Gate miss beside the dates that held", ()
   assert.doesNotMatch(s.lines[0]!, /Every big game held/);
 });
 
-test("Miki's rookie year-end names the Gate miss when First Light held", () => {
+test("Miki's rookie year-end, when only First Light held, hears the bell at First Light", () => {
   const run = newRun("miki");
   run.turn = 20;
   run.pgResults[0] = "missed";
   run.pgResults[1] = "met";
   const s = relationshipScene(run, "year-end");
-  assert.match(s.lines[0]!, /Gate didn't hold/);
-  assert.match(s.lines[0]!, /First Light did/);
+  // The headline already says the Gate didn't hold; her box says what she did with it.
+  assert.match(s.lines[0]!, /hearing it at First Light/);
   assert.doesNotMatch(s.lines[0]!, /Everything held/);
 });
 
@@ -179,12 +233,33 @@ test("Sol's rookie year-end names the First Light miss beside the Gate that held
   run.pgResults[1] = "missed";
   const s = relationshipScene(run, "year-end");
   assert.match(s.lines[0]!, /Gate held/);
-  assert.match(s.lines[0]!, /punchouts weren't there/);
+  assert.match(s.lines[0]!, /First Light didn't/);
   assert.doesNotMatch(s.lines[0]!, /fastball|which pitch/);
-  run.lightCard = "One punchout. She needed three.";
-  const kept = relationshipScene(run, "year-end");
-  assert.equal(kept.lines[0], "The Gate held. First Light didn't. One punchout. She needed three.");
-  assert.doesNotMatch(kept.lines[0]!, /weren't there/);
+});
+
+test("no Rookie year-end line repeats a sentence the headline already said", () => {
+  const marks = ["met", "missed"] as const;
+  const sentences = (s: string) => s.match(/[^.!?]+[.!?]/g)?.map((x) => x.trim()) ?? [];
+  for (const c of BIBLE) {
+    for (const gate of marks) {
+      for (const light of marks) {
+        for (const card of [null, "One punchout. She needed two."]) {
+          const run = newRun(c.id);
+          run.turn = 20;
+          run.pgResults[0] = gate;
+          run.pgResults[1] = light;
+          run.lightCard = card;
+          const head = new Set(sentences(yearStillLine(c.id, 20, run.pgResults, null, card)));
+          for (const line of relationshipScene(run, "year-end").lines) {
+            for (const s of sentences(line)) {
+              if (/^(First Light|The Gate)\.?$/.test(s)) continue;
+              assert.ok(!head.has(s), `${c.id} gate=${gate} light=${light}: "${s}" is already in the headline`);
+            }
+          }
+        }
+      }
+    }
+  }
 });
 
 test("Sol's classic year-end names the Night miss beside the Lantern that held", () => {
@@ -224,7 +299,7 @@ test("year-end drops the miss counter and keeps the date", () => {
   sol.pgResults[1] = "missed";
   assert.equal(
     relationshipScene(sol, "year-end").lines[0],
-    "She threw the Gate and First Light, and the punchouts weren't there for either.",
+    "Neither one held. She'll give you the inning, not the excuse.",
   );
   const solLater = newRun("sol");
   solLater.turn = 60;

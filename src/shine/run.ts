@@ -2,14 +2,41 @@ import { hashId, makeRng, uid } from "./core/rng.ts";
 import { PLATE_TURNS, turnMeta, yearOf } from "./calendar.ts";
 import { memoryLine } from "./relationship.ts";
 import { isPitcherStyle, officialFor, sheet } from "./bible.ts";
-import { speakGoal } from "./goals.ts";
 
-/** The postgame's relief line after a miss the smaller ask saved. The screen colours it as good news. */
+/** Old saves' relief line after a miss the smaller ask saved. Don't edit: coachWarningTone matches it. */
 export const SMALLER_ASK_HELD = "The smaller ask held";
+/** The relief line's close: what she did kept the miss off the book. The screen colours it as good news. */
+export const KEEPS_HER_IN = "That keeps her in it.";
+
+/** The smaller ask, said as what she did. */
+const SMALLER_DONE: Record<string, string> = {
+  "Draw a walk": "She drew a walk.",
+  "Escape a jam": "She got out of the jam.",
+  "Hit an outfield ball": "She put one in the outfield.",
+  "Reach base once": "She reached base.",
+  "Reach base": "She reached base.",
+  "Record 1 out": "She got her out.",
+  "Record 3 outs": "She got her three outs.",
+  "See 2 pitches in one PA": "She saw two pitches in one look.",
+  "See 3 pitches in one PA": "She saw three pitches in one look.",
+  "See 3 pitches": "She saw three pitches.",
+  "See 4 pitches": "She saw four pitches.",
+  "Strand inherited runners": "She stranded the runners she came in with.",
+  "Strike out 2": "Two punchouts.",
+  "Strike out 3": "Three punchouts.",
+  "Throw a curve for a strike": "The curve went for a strike.",
+  "Walk nobody": "She walked nobody.",
+  "Work a full count": "She took it to 3-2.",
+};
+
+export function smallerAskLine(sgVerb: string | null | undefined): string {
+  const done = sgVerb ? SMALLER_DONE[sgVerb] : undefined;
+  return done ? `${done} ${KEEPS_HER_IN}` : `She got the smaller one. ${KEEPS_HER_IN}`;
+}
 
 /** A coach line is relief (the smaller ask held) or a warning (a miss that counts). */
 export function coachWarningTone(line: string): "relief" | "warning" {
-  return line.includes(SMALLER_ASK_HELD) ? "relief" : "warning";
+  return line.includes(SMALLER_ASK_HELD) || line.includes(KEEPS_HER_IN) ? "relief" : "warning";
 }
 import { awardGameSparks, awardStatSparks, awardTrainingSpark, careerClosesEarly, finaleUnlocked, inheritSparks, isMikiPath, mintClubhouseCard } from "./ending.ts";
 import { addHighlight, definingPaFrom, gameHighlight, keepsakeHighlight, rivalHighlight, type GameRecord } from "./scrapbook.ts";
@@ -400,7 +427,7 @@ function tickFanBeat(run: TraineeRun) {
     run.fanBeat = "A park banner with her number is up in the Clubhouse.";
   } else if (run.fans >= 30 && run.fanStory < 30) {
     run.fanStory = 30;
-    run.fanBeat = "Letters at the complex. She's a draw.";
+    run.fanBeat = "Letters at the complex. People come to see her now.";
   }
 }
 
@@ -499,11 +526,7 @@ export function applyGameResult(
   } else if (official) {
     if (sgMet) {
       // Name the smaller ask, since nothing else on the screen does. It's good news, so it reads as relief.
-      const sg = officialFor(run.characterId, run.turn)?.sgVerb;
-      const ask = sg ? speakGoal(sg) : null;
-      run.coachWarning = ask
-        ? `She didn't get what she came for. ${SMALLER_ASK_HELD}: ${ask[0]!.toLowerCase()}${ask.slice(1)}. She's still in it.`
-        : `She didn't get what she came for. ${SMALLER_ASK_HELD}. She's still in it.`;
+      run.coachWarning = smallerAskLine(officialFor(run.characterId, run.turn)?.sgVerb);
     } else {
       run.pgMisses += 1;
       applyMood(run, pgMissMoodDrop(run.stats.guts));

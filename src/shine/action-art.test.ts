@@ -30,6 +30,9 @@ import {
   PITCHER_POSES,
   RELEASE_HOLD_U,
   CUT_LEAD_U,
+  settledBatterPose,
+  STAMP_DELAY_MS,
+  STAMP_HOLD_MS,
   STILLS_BUDGET_BYTES,
   stillFor,
   type ActionManifest,
@@ -167,6 +170,65 @@ describe("action art: cue → picture", () => {
       assert.ok(p.family, beat);
       assert.equal(p.angle, swung ? "three_quarter" : "mound_close", beat);
     }
+  });
+});
+
+describe("action art: the done panel settles her face", () => {
+  const done = (over: Partial<ActionView>) => pictureFor(view({ stage: "idle", ...over }));
+
+  it("a met date closing on a swapped-in home run is her celebrating at once, not the contact grimace", () => {
+    assert.equal(done({ beat: "hr", swung: true, resolvedAtMs: null }).batter, "contact", "the bug: no clock, no settle");
+    const met = done({ beat: "hr", swung: true, resolvedAtMs: null, settled: "met" });
+    assert.equal(met.batter, "celebrate");
+    assert.equal(met.card, "Gone.", "the beat keeps its card and family under the settled face");
+    assert.equal(met.family, "hit");
+  });
+
+  it("a met date celebrates over any closing beat but a walk or a run, which keep the trot", () => {
+    for (const beat of [...ALL_BEATS, null]) {
+      const swung = beat !== null && !["take-strike", "ball", "walk", "k"].includes(beat);
+      const p = done({ beat, swung, resolvedAtMs: null, settled: "met" });
+      assert.equal(p.batter, beat === "walk" ? "trot" : "celebrate", String(beat));
+    }
+  });
+
+  it("a missed date is her crushed, whatever the last pitch was", () => {
+    for (const beat of [...ALL_BEATS, null]) {
+      const swung = beat !== null && !["take-strike", "ball", "walk", "k"].includes(beat);
+      assert.equal(done({ beat, swung, resolvedAtMs: null, settled: "missed" }).batter, "crushed", String(beat));
+    }
+  });
+
+  it("the last pitch playing as itself keeps its contact hold, then its own still under its stamp, then the verdict", () => {
+    const base = { beat: "k" as const, swung: true, resolvedAtMs: 1000, settled: "met" as const };
+    assert.equal(done({ ...base, nowMs: 1000 }).batter, "follow", "the swing first");
+    assert.equal(done({ ...base, nowMs: 1000 + CONTACT_HOLD_MS }).batter, "crushed", "never a grin under 'Strike three'");
+    assert.equal(done({ ...base, nowMs: 1000 + STAMP_DELAY_MS + STAMP_HOLD_MS }).batter, "celebrate");
+    const hr = { beat: "hr" as const, swung: true, resolvedAtMs: 1000, settled: "met" as const };
+    assert.equal(done({ ...hr, nowMs: 1000 }).batter, "contact");
+    assert.equal(done({ ...hr, nowMs: 1000 + CONTACT_HOLD_MS }).batter, "celebrate");
+  });
+
+  it("a day with no verdict settles the closing beat as itself", () => {
+    assert.equal(done({ beat: "hr", swung: true, resolvedAtMs: null, settled: true }).batter, "celebrate");
+    assert.equal(done({ beat: "single", swung: true, resolvedAtMs: null, settled: true }).batter, "follow", "no contact grimace either");
+    assert.equal(done({ beat: "k", swung: false, resolvedAtMs: null, settled: true }).batter, "crushed");
+    assert.equal(done({ beat: "walk", swung: false, resolvedAtMs: null, settled: true }).batter, "trot");
+    assert.equal(done({ beat: "take-strike", swung: false, resolvedAtMs: null, settled: true }).batter, "take");
+    assert.equal(done({ beat: null, resolvedAtMs: null, settled: true }).batter, "stance");
+  });
+
+  it("never reaches the wind-up or the flight", () => {
+    assert.equal(pictureFor(view({ stage: "prepare", settled: "met" })).batter, "load");
+    assert.equal(pictureFor(view({ stage: "flight", u: 0.5, settled: "missed" })).batter, "load");
+  });
+
+  it("settledBatterPose: the verdict wins over the beat", () => {
+    assert.equal(settledBatterPose("k", "met"), "celebrate");
+    assert.equal(settledBatterPose("hr", "missed"), "crushed");
+    assert.equal(settledBatterPose("walk", "met"), "trot");
+    assert.equal(settledBatterPose("walk", "missed"), "crushed");
+    assert.equal(settledBatterPose("single"), null, "mid-date a plain hit keeps its row's pose");
   });
 });
 

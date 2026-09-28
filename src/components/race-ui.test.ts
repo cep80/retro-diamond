@@ -50,7 +50,7 @@ describe("race sitelines", () => {
     assert.equal(moundRead({ kind: "practice", pgMet: true }), "Three looks. The glove is real.");
     assert.equal(moundRead({ kind: "gate", pgMet: true }), "Three outs. The Gate opened.");
     assert.equal(moundRead({ kind: "gate", pgMet: false }), "The Gate still opens.");
-    assert.equal(moundRead({ kind: "first-light", pgMet: false, outsRecorded: 5, strikeouts: 0 }), "The outs are in. The punchouts weren't.");
+    assert.equal(moundRead({ kind: "first-light", pgMet: false, outsRecorded: 5, strikeouts: 0 }), "The outs came. The punchouts didn't.");
     assert.equal(moundRead({ kind: "first-light", pgMet: true, pgId: "k-3", strikeouts: 3 }), "Three punchouts.");
     // First Light asks for two now; the read counts what she actually got.
     assert.equal(moundRead({ kind: "first-light", pgMet: true, pgId: "k-2", strikeouts: 2 }), "Two punchouts.");
@@ -218,8 +218,8 @@ describe("race ui: scorebug parts", () => {
     const live = { inning: "9th", score: "Up 1", atBat: "vs Nishi", count: { balls: 1, strikes: 2 }, outs: 1 };
     assert.equal(scorebugLabel(live), "9th inning, Up 1. 1 and 2, 1 out. vs Nishi.");
     assert.equal(
-      scorebugLabel({ ...live, tag: "Academy Gate", tagGold: "HOLD · Record 3 outs" }),
-      "Academy Gate · HOLD · Record 3 outs. 9th inning, Up 1. 1 and 2, 1 out. vs Nishi.",
+      scorebugLabel({ ...live, tag: "Academy Gate", tagGold: "Record 3 outs" }),
+      "Academy Gate · Record 3 outs. 9th inning, Up 1. 1 and 2, 1 out. vs Nishi.",
     );
     assert.equal(scorebugLabel({ ...live, tag: "Exhibition" }), "Exhibition. 9th inning, Up 1. 1 and 2, 1 out. vs Nishi.");
     // Her day usually ends before the game does, so a done bug keeps the real inning and never says "Final".

@@ -589,7 +589,7 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
               bases={bug.bases}
               self={null}
               tag={dateLabel(turnMeta(run.turn), who.style)}
-              tagGold={ask ? `${who.pgVerb} · ${speakGoal(ask.verb)}` : undefined}
+              tagGold={ask ? speakGoal(ask.verb) : undefined}
             />
           </div>
           <div className="flex items-center gap-1.5">

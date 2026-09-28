@@ -507,10 +507,10 @@ export function lastTrainLine(run: TraineeRun) {
   if (run.lastInjury) return "She's hurting. Trainer's room.";
   if (run.lastBreakthrough === "contact") return "Cage Coach saw it. The swing is hers.";
   if (run.lastBreakthrough === "speed") return "Poles Coach saw it. The first step is hers.";
-  if (run.lastTrainingSpark) return `She found two. A ${run.lastTrainingSpark} Spark, from the work.`;
+  if (run.lastTrainingSpark) return `The work gave her something to keep: a ${run.lastTrainingSpark} Spark.`;
   const last = run.calendar.at(-1);
   if (!last) return null;
-  if (last.outcome === "bonus") return "She found two. The morning gave more than it owed.";
+  if (last.outcome === "bonus") return "The morning gave more than it owed.";
   if (last.outcome === "success") {
     if (last.statTrained == null) {
       if (last.station === "treatment") return "Trainer's room. The work waits.";
@@ -521,8 +521,8 @@ export function lastTrainLine(run: TraineeRun) {
     return workLanded(last.statTrained);
   }
   if (last.outcome === "fail") return "Not today. She'll take another.";
-  if (last.outcome === "bad-fail") return "Worn. Back off.";
-  if (last.outcome === "event") return "Catch with Coach. Parking lot lights. No work — just the toss.";
+  if (last.outcome === "bad-fail") return "It went wrong. Ease off today.";
+  if (last.outcome === "event") return "Catch with Coach. Parking lot lights. No work, just the toss.";
   return null;
 }
 

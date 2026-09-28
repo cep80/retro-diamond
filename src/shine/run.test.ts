@@ -146,9 +146,10 @@ describe("Aoi Rookie calendar", () => {
     applyGameResult(run, "first-light", false, true, false, false);
     assert.equal(run.pgMisses, 0);
     assert.equal(run.pgResults[1], "missed");
-    // The relief line names the smaller ask and reads as good news.
-    assert.match(run.coachWarning ?? "", /The smaller ask held: /);
+    // The relief line says what she did, and reads as good news.
+    assert.equal(run.coachWarning, "She put one in the outfield. That keeps her in it.");
     assert.equal(coachWarningTone(run.coachWarning ?? ""), "relief");
+    assert.equal(coachWarningTone("She didn't get what she came for. The smaller ask held: walk nobody. She's still in it."), "relief");
     assert.doesNotMatch(run.coachWarning ?? "", /\bgoal\b/i);
   });
 

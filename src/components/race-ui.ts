@@ -533,7 +533,7 @@ export function moundRead(game: {
     return `She got the innings. ${er} runs. She needed three or fewer.`;
   }
   if (game.kind === "gate") return "The Gate still opens.";
-  if ((game.outsRecorded ?? 0) > 0 && (game.strikeouts ?? 0) === 0) return "The outs are in. The punchouts weren't.";
+  if ((game.outsRecorded ?? 0) > 0 && (game.strikeouts ?? 0) === 0) return "The outs came. The punchouts didn't.";
   return MISSED_LINE;
 }
 

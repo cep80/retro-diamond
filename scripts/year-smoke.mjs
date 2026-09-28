@@ -896,7 +896,7 @@ async function act(s) {
     }
 
     case "curtain": {
-      const b = s.buttons.find((x) => /^Hold the still$/i.test(x.name));
+      const b = s.buttons.find((x) => /^Walk off$/i.test(x.name));
       if (!b) return wait(500); // the first Lantern Classic curtain holds 18 s on purpose
       return press(s, byName(b.name), b.name);
     }

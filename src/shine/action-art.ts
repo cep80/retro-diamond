@@ -297,7 +297,17 @@ export interface ActionView {
   resolvedAtMs: number | null;
   nowMs: number;
   reduced: boolean;
+  /**
+   * The done panel: the date is over and her still holds how it went, never a
+   * replay. "met" / "missed" puts the date's verdict on her face; true settles
+   * the closing beat as itself (a day with no verdict: the exhibition, the cage,
+   * the weekly look). Unset mid-date, and on the mound.
+   */
+  settled?: DateVerdict | true | null;
 }
+
+/** How a date ended, for her face at the done panel. */
+export type DateVerdict = "met" | "missed";
 
 export interface ActionPicture {
   pitcher: PitcherPose;
@@ -342,8 +352,16 @@ const AFTER_STAGES: ReadonlySet<Stage> = new Set(["field", "reaction", "idle"]);
  * CONTACT_HOLD_MS a home run is her watching it go, a strikeout is her
  * crushed, a walk is the bat down and the trot to first. Null keeps the
  * row's own pose.
+ *
+ * At the done panel a verdict wins over the beat: a date she got is her
+ * celebrating (a closing home run was reading as 達成 over the contact
+ * grimace), one she didn't is her crushed. A met date that closed on a walk
+ * or on the bases (the race hands a running close in as a walk) keeps the
+ * trot: how she got there is the picture.
  */
-export function settledBatterPose(beat: FieldBeat | null): BatterPose | null {
+export function settledBatterPose(beat: FieldBeat | null, verdict: DateVerdict | null = null): BatterPose | null {
+  if (verdict === "missed") return "crushed";
+  if (verdict === "met") return beat === "walk" ? "trot" : "celebrate";
   if (beat === "hr") return "celebrate";
   if (beat === "k") return "crushed";
   if (beat === "walk") return "trot";
@@ -393,6 +411,22 @@ export function swingShowing(view: Pick<ActionView, "u" | "tappedAtU">): boolean
 }
 
 export function pictureFor(view: ActionView, flags: StingFlags = {}, twoStrikeHold = false): ActionPicture {
+  const picture = playPicture(view, flags, twoStrikeHold);
+  if (!view.settled || view.stage === "prepare" || view.stage === "flight") return picture;
+  // The done panel. A closing beat swapped in there has no clock (no stamp, no replay) and is
+  // settled at once. The last pitch playing as itself keeps its contact hold, then its own
+  // settled still while its stamp is up, so she never celebrates under a "Strike three".
+  if (view.resolvedAtMs !== null) {
+    const since = view.nowMs - view.resolvedAtMs;
+    if (since < CONTACT_HOLD_MS) return picture;
+    if (view.settled !== true && since < STAMP_DELAY_MS + stampHoldMs(view.beat)) return pictureFor({ ...view, settled: true }, flags, twoStrikeHold);
+  }
+  const batter = settledBatterPose(view.beat, view.settled === true ? null : view.settled) ?? (picture.batter === "contact" ? "follow" : picture.batter);
+  return batter === picture.batter ? picture : { ...picture, batter };
+}
+
+/** The picture the pitch itself paints, before the done panel settles her. */
+function playPicture(view: ActionView, flags: StingFlags, twoStrikeHold: boolean): ActionPicture {
   const { stage, beat } = view;
   const tapped = swingShowing(view);
   if (stage === "prepare") {

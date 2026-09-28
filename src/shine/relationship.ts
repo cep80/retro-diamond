@@ -3,7 +3,7 @@
  * after the Gate, year-end — and every scene is allowed to quote only what the
  * bounded CoachMemory actually recorded. Nothing here invents a past.
  */
-import { firstLightStill, yearStillLine } from "./bible.ts";
+import { yearStillLine } from "./bible.ts";
 import { nextNamedBeat } from "./calendar.ts";
 import type { CharacterId, CoachMemory, TraineeRun } from "./types.ts";
 
@@ -85,7 +85,7 @@ function postGate(id: CharacterId, met: boolean, m: CoachMemory | null, wm: Retu
   switch (id) {
     case "aoi":
       return [
-        met ? "She reached. She's already writing it in the book, and she's smiling at the page." : "She didn't reach. She's replaying the pitch she swung at.",
+        met ? "She's already writing it in the book, and she's smiling at the page." : "She's replaying the pitch she swung at. Her pencil hasn't moved.",
         quote ?? "\"You didn't say anything in the dugout. That was right.\"",
         wm === "strained" ? "\"I know you were pushing. I'll tell you when it's too much.\"" : "\"Same thing tomorrow. The work, I mean. Not the game.\"",
       ];
@@ -139,18 +139,21 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
       const lightHeld = run.pgResults[1] === "met";
       const lanternHeld = run.pgResults[2] === "met";
       const nightHeld = run.pgResults[3] === "met";
+      // The Rookie year has played the Gate and First Light only: the Classics are next spring's.
       const open =
-        misses > 0
-          ? "She's keeping score of the big games that got away. Her mother does the same thing."
-          : rookie && !gateHeld && lightHeld
-            ? "The Gate didn't hold. First Light did."
-            : rookie && !lightHeld
-              ? "First Light slipped. She didn't reach."
-              : run.turn <= 40 && !gateHeld && lanternHeld && nightHeld
-                ? "The Gate didn't hold. Lantern Classic and Night Classic did."
-                : run.turn <= 40 && (!lanternHeld || !nightHeld)
-                  ? "Lantern Classic and Night Classic. One of them slipped."
-                  : "Every big game held. She hands you the lineup card from the last one; she kept it.";
+        rookie && gateHeld && lightHeld
+          ? "She's already written both in the book. In pen, this time."
+          : misses > 0
+            ? "She's keeping score of the big games that got away. Her mother does the same thing."
+            : rookie && !gateHeld && lightHeld
+              ? "The Gate didn't hold. First Light did."
+              : rookie && !lightHeld
+                ? "First Light slipped. She wrote it in the book anyway. Underlined."
+                : !rookie && run.turn <= 40 && !gateHeld && lanternHeld && nightHeld
+                  ? "The Gate didn't hold. Lantern Classic and Night Classic did."
+                  : !rookie && run.turn <= 40 && (!lanternHeld || !nightHeld)
+                    ? "Lantern Classic and Night Classic. One of them slipped."
+                    : "Every big game held. She hands you the lineup card from the last one; she kept it.";
       return [
         open,
         quote ?? "\"You saw things. You said them.\" That's the whole review.",
@@ -171,12 +174,21 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
       const rookie = run.turn <= 20;
       const classic = run.turn <= 40;
       const gateHeld = run.pgResults[0] === "met";
+      const lightHeld = run.pgResults[1] === "met";
       const lanternHeld = run.pgResults[2] === "met";
       const nightHeld = run.pgResults[3] === "met";
+      // A clean Rookie year can still have First Light's big ask slip (the smaller one kept her in it),
+      // so the Rookie lines name the two dates she played instead of "Everything held".
       const open =
-        clean && rookie && !gateHeld
-          ? "The Gate didn't hold. First Light did. Section 4 rang the bell both times."
-          : classic && !rookie && !lanternHeld && !nightHeld
+        rookie && gateHeld && lightHeld
+          ? "Section 4 bought a third cowbell. She says it's too loud. She doesn't ask them to stop."
+          : clean && rookie && !gateHeld && lightHeld
+            ? "Section 4 rang the bell both times. She only admits hearing it at First Light."
+            : clean && rookie && gateHeld
+              ? "The Gate held. First Light didn't. Section 4 rang the bell anyway."
+              : clean && rookie
+                ? "Section 4 rang the bell anyway. She says she didn't hear it. She did."
+                : classic && !rookie && !lanternHeld && !nightHeld
             ? "Lantern Classic and Night Classic. Neither one held. The cowbell never stopped."
             : classic && !rookie && !lanternHeld
               ? "Lantern Classic didn't hold. Night Classic did. She'll tell you about the fouls first."
@@ -199,12 +211,14 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
       const lanternHeld = run.pgResults[2] === "met";
       const nightHeld = run.pgResults[3] === "met";
       const open =
-        rookie && gateHeld && !lightHeld
-          ? `The Gate held. First Light didn't. ${firstLightStill(run.lightCard)}`
+        rookie && gateHeld && lightHeld
+          ? "All heat, both days. Luz says that's the problem. Sol says that's the point."
+          : rookie && gateHeld && !lightHeld
+          ? "The Gate held. First Light didn't. She's already counting pitches for next year."
           : rookie && !gateHeld && lightHeld
-            ? "The Gate didn't hold. First Light. The punchouts came."
+            ? "She doesn't talk about First Light. She talks about the Gate, twice."
             : rookie && !gateHeld
-              ? "She threw the Gate and First Light, and the punchouts weren't there for either."
+              ? "Neither one held. She'll give you the inning, not the excuse."
               : classic && !rookie && lanternHeld && !nightHeld
                 ? "Lantern Classic held. Night Classic didn't. The punchouts didn't come back to back."
                 : classic && !rookie && !lanternHeld && nightHeld
@@ -221,11 +235,23 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
       ];
     }
     case "kira": {
+      const rookie = run.turn <= 20;
       const classic = run.turn > 20 && run.turn <= 40;
+      const gateHeld = run.pgResults[0] === "met";
+      const lightHeld = run.pgResults[1] === "met";
       const lanternHeld = run.pgResults[2] === "met";
       const nightHeld = run.pgResults[3] === "met";
+      // The Gate never counts as a miss, so a clean Rookie year isn't always "every ninth held".
       const open =
-        classic && !lanternHeld && nightHeld
+        rookie && gateHeld && lightHeld
+          ? "She says you owe her a juice for each one. She's already picked the flavours."
+          : rookie && clean && !gateHeld && lightHeld
+            ? "She says you owe her a juice for First Light. The Gate she keeps to herself."
+            : rookie && clean && gateHeld
+              ? "The Gate held. First Light didn't. Her bag's by the door. It always is."
+              : rookie && clean
+                ? "She sat in the bullpen an hour after the lights went off. Then she asked when spring starts."
+                : classic && !lanternHeld && nightHeld
           ? "Night Classic held. Lantern Classic didn't. The side wasn't struck out."
           : classic && lanternHeld && !nightHeld
             ? "Lantern Classic held. Night Classic didn't."
@@ -267,7 +293,9 @@ function yearEnd(id: CharacterId, run: TraineeRun, m: CoachMemory | null, wm: Re
                   ? "The Gate didn't hold. First Light did."
                   : rookie && !lightHeld
                     ? "First Light slipped. The legs are still there."
-                    : "Every big game, she reached. Most of them, she kept going.";
+                    : rookie
+                      ? "She reached in both. She's already pacing off next year's lead. Two steps longer."
+                      : "Every big game, she reached. Most of them, she kept going.";
       return [
         open,
         quote ?? "\"You stopped holding me in May. That's when it started working.\"",
@@ -314,7 +342,9 @@ export function relationshipScene(run: TraineeRun, slot: SceneSlot): Relationshi
     return { slot, speaker: id, lines: postGate(id, met, m, wm), quoted: m, mood: met ? "elated" : "focused" };
   }
   const m = recall(run, ["catch", "keepsake", "first-light", "gate", "breakthrough", "rest-before-date", "pushed-tired"]);
-  return { slot, speaker: id, lines: yearEnd(id, run, m, wm), quoted: m, mood: run.pgMisses === 0 ? "elated" : "neutral" };
+  // A Rookie year whose First Light slipped isn't a grin, even when the smaller ask kept her miss off the book.
+  const slipped = run.turn <= 20 && run.pgResults[1] === "missed";
+  return { slot, speaker: id, lines: yearEnd(id, run, m, wm), quoted: m, mood: run.pgMisses === 0 && !slipped ? "elated" : "neutral" };
 }
 
 /**

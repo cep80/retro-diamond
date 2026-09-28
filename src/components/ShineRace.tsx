@@ -39,7 +39,7 @@ import type { Cell } from "@/shine/core/zone.ts";
 import { locCell } from "@/shine/core/zone.ts";
 import { track as trackEvent } from "@/lib/telemetry.ts";
 import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
-import { CONTACT_HOLD_MS, HR_STAMP_HOLD_MS, resultStamp, SCORE_STAMP, SCORE_STAMP_HOLD_MS, STAMP_DELAY_MS, stampHoldMs, stillFor } from "@/shine/action-art.ts";
+import { HR_STAMP_HOLD_MS, resultStamp, SCORE_STAMP, SCORE_STAMP_HOLD_MS, STAMP_DELAY_MS, stampHoldMs, stillFor } from "@/shine/action-art.ts";
 import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
@@ -848,6 +848,10 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const foulHeld = countDate && beat === "foul" && game.pgId === "foul-two-strike";
   const contactHeld = countDate && game.pgId === "contact-breaking" && game.pgMet;
   const swung = contactHeld || foulHeld ? true : beat === "walk" || takeMiss ? false : beat === "single" || beat === "hr" ? true : holdFilm && actionCue.swung;
+  // The done panel holds her settled still, never a replay. A career date puts its verdict on her
+  // face (celebrate when she got it, crushed when she didn't; a walk or a run keeps its trot); a day
+  // with no verdict (the exhibition, the cage, the weekly look) settles the closing beat as itself.
+  const settled: ActionView["settled"] = snap.phase !== "done" ? null : exhibition || practice || weekly ? true : game.pgMet ? "met" : "missed";
   const actionView: ActionView = {
     stage,
     beat,
@@ -856,9 +860,12 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     call: practice ? null : plate.call,
     u,
     tappedAtU: actionCue.tappedAtU,
-    resolvedAtMs: running || takeMiss ? null : contactHeld || foulHeld ? 0 : swapped ? null : actionCue.resolvedAtMs,
-    nowMs: contactHeld ? 0 : foulHeld ? CONTACT_HOLD_MS : stage === "field" || stage === "reaction" || clipMayShow || stampTick ? nowMs : clock(),
+    // No clock (so no stamp, no cut-in, no takeover) for a running close, a count date's picture
+    // (the goal, not the last pitch) or a swapped-in closing beat: each is a still at once.
+    resolvedAtMs: running || countDate || swapped ? null : actionCue.resolvedAtMs,
+    nowMs: stage === "field" || stage === "reaction" || clipMayShow || stampTick ? nowMs : clock(),
     reduced,
+    settled,
   };
   const twoStrikeHold = (() => {
     for (let i = game.events.length - 1; i >= 0; i--) {
@@ -915,7 +922,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const bug = snap.phase === "done" ? finalBug : playBug;
   // The date's name rides the bug's band (the exhibition, and the career date with her goal in gold).
   const bugTag = exhibition ? RACE_COPY.exhibitionChip : dateLabel(turnMeta(run.turn), who.style);
-  const bugGoal = ask ? `${who.pgVerb} · ${speakGoal(ask.verb)}` : undefined;
+  // Her ask in plain words ("Reach base once"), never the style's bare verb.
+  const bugGoal = ask ? speakGoal(ask.verb) : undefined;
   const hrUp = hrMomentUp(actionView);
 
   // The done panel: her stamp and the day's headline over the strip of at-bats.

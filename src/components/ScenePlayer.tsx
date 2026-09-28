@@ -16,6 +16,7 @@ import { placePlateSrc, sceneBustSrc, sheet } from "@/shine/bible.ts";
 import { kitAccent } from "@/shine/stage.ts";
 import { sfxTick, sfxVoice } from "@/shine/audio.ts";
 import { framedBust, splitPlace } from "@/shine/scene-frame.ts";
+import { eventChip } from "@/shine/training-events.ts";
 import type { Beat, SceneLike } from "@/shine/story.ts";
 import type { CharacterId } from "@/shine/types.ts";
 
@@ -132,6 +133,8 @@ export function ScenePlayer({
   return (
     <div
       className="shine-scene"
+      // Night scenes (the low point, Finale eve, an eleven-at-night event) get no morning sun.
+      data-hours={eventChip(scene.place) === "After hours" || (typeof chip === "string" && /\bnight\b/i.test(chip)) ? "night" : undefined}
       data-speaker={beat.who === "coach" ? "coach" : beat.who === "narration" ? "narration" : "girl"}
       data-scene={scene.id}
       data-scene-beat={index}

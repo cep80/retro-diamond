@@ -7,6 +7,20 @@ import { speakGoal } from "@/shine/goals.ts";
 import { morningSpeech } from "@/shine/culture.ts";
 import { liveStationIds, workLocked } from "@/shine/store.ts";
 import type { StationId, TraineeRun } from "@/shine/types.ts";
+import {
+  energyTone,
+  energyWords,
+  herMorning,
+  isTrainingTile,
+  moodFace,
+  morningAfter,
+  orderTiles,
+  stationLifts,
+  strained,
+  tileGrid,
+} from "@/components/work-day";
+
+export { MOOD_KANA } from "@/components/work-day";
 
 // Her main training leads: the Cage for a hitter, the Bullpen for a pitcher (each only shows for one).
 export const STATIONS: { id: StationId; label: string; kana: string; color: string }[] = [
@@ -23,12 +37,17 @@ export const STATIONS: { id: StationId; label: string; kana: string; color: stri
   { id: "hitch", label: "Hitch", kana: "ヒッチ", color: "#ffd166" },
 ];
 
-export const MOOD_KANA = ["絶不調", "不調", "普通", "好調", "絶好調"] as const;
-
+/**
+ * A work morning. She is the picture: her still fills the screen under the
+ * HUD, and the tiles sit on her. The HUD is the same every morning (who and
+ * which day, the buttons; her energy and mood; the next game). Yesterday's
+ * work floats up as chips, her own words go in her bubble, and the Coach's
+ * narration sits under it as a note with no name.
+ */
 export function ShineComplexWork({
   run,
   art,
-  meta,
+  meta: _meta,
   mood: _mood,
   moodIdx,
   lastLine,
@@ -55,94 +74,162 @@ export function ShineComplexWork({
   turnsAway: number;
 }) {
   const who = sheet(run.characterId);
+  const pitcher = isPitcherStyle(who.style);
   const ask = officialFor(run.characterId, next.turn);
-  const firstMorning = run.turn === 1;
   const empty = workLocked(run);
-  const stations = STATIONS.filter((s) => liveStationIds(run).includes(s.id));
+  const ids = orderTiles(liveStationIds(run), empty);
+  const stations = ids.flatMap((id) => STATIONS.filter((s) => s.id === id));
+  const grid = tileGrid(stations.length);
+  const face = moodFace(moodIdx);
+  const tone = energyTone(run.energy);
+  const tired = strained(run.energy) && !empty;
+  const after = morningAfter(run);
+  const landFrom = after.energyFrom !== null && after.energyFrom !== run.energy ? after.energyFrom : null;
+  const note = morningSpeech(lastLine, run.year, who.parkId, pitcher);
+  const words = herMorning(run.characterId, run.turn, run.energy, moodIdx);
+  const plate = art ?? "/bg/skyline-complex.png";
   return (
-    <main className="shine-stage">
-      <img src="/bg/skyline-complex.png" alt="" className="absolute inset-0 size-full object-cover" />
-      <div className="shine-stage-wash absolute inset-0" />
-      {/* Exactly one screen tall: her portrait takes what the tiles leave, so every tile stays above the fold. */}
-      <div className="relative z-10 flex h-dvh flex-col">
-        <div className="px-3 pt-3 sm:px-5">
-          <div className="shine-hud">
-            <p className="episode-chip w-fit">
-              {who.jp} · #{who.number} · {dateLabel(meta, who.style)}
+    <main className="shine-stage shine-work" data-energy={tone}>
+      {/* The same painting, blurred to light, behind the HUD and a wide screen's flanks. */}
+      <div className="shine-work-plate" aria-hidden>
+        <img src={plate} alt="" />
+      </div>
+      {/* Exactly one screen tall: the HUD takes what it needs, she fills the rest, and the tiles sit on her. */}
+      <div className="shine-work-frame">
+        <header className="shine-work-top">
+          <div className="shine-hud shine-work-hud">
+            <p className="episode-chip shine-work-day">
+              {who.jp} · #{who.number} · Day {run.turn}
             </p>
-            {firstMorning ? null : (
-              <p className="shine-kana text-sm text-gold">{MOOD_KANA[moodIdx]}</p>
-            )}
-            <div className="shine-goal-chip">
-              <p className="shine-kana text-[11px] text-gold">
-                {next.type === "forced-scene" || next.type === "year-start" ? "次へ" : "次の試合"}
-              </p>
-              <p className="mt-0.5 font-display text-xs font-bold uppercase">
-                {dateLabel(next, who.style)} · {daysAwayLabel(turnsAway)}
-              </p>
-              <p className="mt-0.5 font-ui text-[11px] text-cream/80">{ask ? `${who.pgVerb} · ${speakGoal(ask.verb)}` : who.pgVerb}</p>
-            </div>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="shine-work-btns">
               <ShineMute />
               <ShineRoundBtn icon="settings" label="Settings" onClick={openSettings} />
               <ShineBack onClick={openTitle} />
             </div>
+            <div className="shine-work-meters">
+              <div
+                className="shine-stat shine-work-energy"
+                role="meter"
+                aria-label="Energy"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={run.energy}
+                aria-valuetext={energyWords(run.energy)}
+                data-tone={tone}
+              >
+                <span className="shine-stat-kana" aria-hidden>
+                  体力
+                </span>
+                <span className="shine-stat-en" aria-hidden>
+                  Energy
+                </span>
+                <span className="shine-stat-track" aria-hidden>
+                  <span
+                    key={`fill-${run.turn}`}
+                    className="shine-stat-fill"
+                    data-land={landFrom === null ? undefined : landFrom < run.energy ? "up" : "down"}
+                    style={{ width: `${run.energy}%`, ["--from" as string]: `${landFrom ?? run.energy}%` } as CSSProperties}
+                  />
+                </span>
+              </div>
+              <p className="shine-mood" data-mood={moodIdx}>
+                <b className="shine-mood-arrow" aria-hidden>
+                  {face.arrow}
+                </b>
+                <span className="shine-mood-kana" aria-hidden>
+                  {face.kana}
+                </span>
+                <span className="shine-mood-en">
+                  <span className="sr-only">Mood: </span>
+                  {face.word}
+                </span>
+              </p>
+            </div>
+            <div className="shine-goal-chip shine-work-goal">
+              <p className="shine-work-goal-top">
+                <span className="shine-kana text-[11px] text-gold">
+                  {next.type === "forced-scene" || next.type === "year-start" ? "次へ" : "次の試合"}
+                </span>
+                <span className="shine-work-goal-name font-display text-xs font-bold uppercase">{dateLabel(next, who.style)}</span>
+                <span className="shine-work-goal-days">{daysAwayLabel(turnsAway)}</span>
+              </p>
+              {ask ? <p className="mt-0.5 truncate font-ui text-[11px] text-cream/80">{speakGoal(ask.verb)}</p> : null}
+            </div>
           </div>
-        </div>
+        </header>
 
-        <div className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-end px-3 py-3 sm:px-5">
-          {art ? (
-            <img
-              src={art}
-              alt=""
-              className={`shine-hero-stand min-h-0 w-full flex-1 object-contain object-bottom max-h-[min(52dvh,28rem)] sm:max-h-[min(64dvh,36rem)] ${run.altLook ? "shine-alt-look" : ""}`}
-            />
-          ) : null}
-          <div className="shine-speech relative z-[2] mb-2 max-w-md -mt-6">
-            <p className="shine-kana text-[11px] text-ink/50">
-              #{who.number} {who.jp}
-            </p>
-            <p className="mt-1 font-ui text-sm leading-relaxed">{morningSpeech(lastLine, run.year, who.parkId, isPitcherStyle(who.style))}</p>
-          </div>
-        </div>
-
-        <div className="relative z-10 px-3 pb-4 sm:px-5">
-          {/* Five tiles (a low day opens the Trainer's room) go three across, so there's never a third row. */}
-          <div className={`grid gap-2 sm:grid-cols-3 ${stations.length > 4 ? "grid-cols-3" : "grid-cols-2"}`}>
-            {stations.map((s) => {
-              const shut = empty && s.id !== "treatment";
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  disabled={shut}
-                  onClick={() => {
-                    if (shut) return;
-                    if (run.turn === 1 && (s.id === "cage" || s.id === "side")) {
-                      finishForcedCage();
-                      return;
+        <div className="shine-work-body">
+          {art ? <img src={art} alt="" className={`shine-work-art ${run.altLook ? "is-alt" : ""}`} /> : null}
+          <div className="shine-work-wash" aria-hidden />
+          <div key={`day-${run.turn}`} className="shine-work-stack">
+            {note ? <p className="shine-work-note">{note}</p> : null}
+            {after.chips.length ? (
+              <div className="shine-work-chips" aria-label="What yesterday's work did">
+                {after.chips.map((c, i) => (
+                  <span key={c.text} className={`shine-gain-chip ${c.cost ? "is-cost" : ""}`} style={{ ["--i" as string]: i } as CSSProperties}>
+                    {c.text}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <div className="shine-speech shine-work-speech">
+              <p className="shine-kana text-[11px] text-ink/50">
+                #{who.number} {who.jp}
+              </p>
+              <p className="mt-0.5 font-ui text-sm leading-snug">{words}</p>
+            </div>
+            <div className="shine-work-tiles" style={{ ["--cols" as string]: grid.cols } as CSSProperties}>
+              {stations.map((s, i) => {
+                const shut = empty && s.id !== "treatment";
+                const lifts = stationLifts(s.id, run);
+                const wide = i === 0 && grid.leadSpan > 1;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    disabled={shut}
+                    data-lead={i === 0 ? (wide ? "wide" : "true") : undefined}
+                    data-strain={tired && isTrainingTile(s.id) ? "true" : undefined}
+                    onClick={() => {
+                      if (shut) return;
+                      if (run.turn === 1 && (s.id === "cage" || s.id === "side")) {
+                        finishForcedCage();
+                        return;
+                      }
+                      if (s.id === "clubhouse") {
+                        setCatchBeat(true);
+                        return;
+                      }
+                      train(s.id);
+                    }}
+                    className="shine-station"
+                    style={
+                      {
+                        ["--station-color"]: s.color,
+                        ["--station-kana"]: `"${s.kana}"`,
+                        gridColumn: wide ? `span ${grid.leadSpan}` : undefined,
+                      } as CSSProperties
                     }
-                    if (s.id === "clubhouse") {
-                      setCatchBeat(true);
-                      return;
-                    }
-                    train(s.id);
-                  }}
-                  className={`shine-station ${shut ? "opacity-40" : ""}`}
-                  style={
-                    {
-                      ["--station-color"]: s.color,
-                      ["--station-kana"]: `"${s.kana}"`,
-                    } as CSSProperties
-                  }
-                >
-                  <p className="shine-kana text-[11px] text-cream/80">{s.kana}</p>
-                  <p className="mt-0.5 font-display text-xs font-bold uppercase tracking-wide">{s.label}</p>
-                </button>
-              );
-            })}
+                  >
+                    <span className="shine-station-kana">{s.kana}</span>
+                    <span className="shine-station-label font-display">{s.label}</span>
+                    {lifts.length ? (
+                      <span className="shine-station-lift">
+                        {lifts.map((l) => (
+                          <span key={l.en} className="shine-lift">
+                            <span className="shine-lift-kana">{l.kana}</span>
+                            <b aria-hidden>{"↑".repeat(l.up)}</b>
+                            <span className="shine-lift-en">{l.en}</span>
+                          </span>
+                        ))}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+            {empty ? <p className="shine-work-empty">She&apos;s empty. Trainer&apos;s room.</p> : null}
           </div>
-          {empty ? <p className="mt-2 font-ui text-sm text-coral">She&apos;s empty. Trainer&apos;s room.</p> : null}
         </div>
       </div>
     </main>

@@ -133,6 +133,8 @@ const SPOKEN_GOAL: Record<string, string> = {
   "Consecutive strikeouts": "Strikeouts back to back",
   "Escape a bases-loaded jam": "Get out of the bases loaded",
   "Escape a jam": "Get out of the jam",
+  "Strike out 2": "Two strikeouts",
+  "Strike out 3": "Three strikeouts",
 };
 
 export function speakGoal(verb: string): string {

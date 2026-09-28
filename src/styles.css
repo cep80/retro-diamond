@@ -1597,7 +1597,9 @@
   margin: 0 auto;
   padding: 0 0.85rem 0.85rem;
 }
-/* The place, blurred to light and weather; the plates are pixel parks and the busts are painted. */
+/* The place, blurred to light and weather; the plates are pixel parks and the busts are painted.
+   Lifted so the park reads as a lit place behind her, not a black smear (a warm key light from
+   the upper left sits over it: .shine-keylight, and .shine-scene::after in the scenes). */
 .shine-scene-plate {
   position: absolute;
   inset: -2rem;
@@ -1605,7 +1607,7 @@
   max-width: none;
   height: calc(100% + 4rem);
   object-fit: cover;
-  filter: blur(16px) brightness(0.42) saturate(0.8);
+  filter: blur(10px) brightness(0.62) saturate(1);
 }
 /* Her bust stands in front of the place: face at about a quarter of the screen, waist under the box. */
 .shine-scene-bust {
@@ -2395,9 +2397,12 @@
   transform: rotate(45deg);
 }
 
+/* A work tile. contain: paint keeps its kana watermark inside it (it used to spill
+   above the tiles and between the rows as clipped half-glyphs). */
 .shine-station {
   position: relative;
   overflow: hidden;
+  contain: paint;
   min-height: 4.6rem;
   padding: 0.55rem 0.65rem 0.6rem;
   border: 1px solid color-mix(in srgb, var(--station-color, var(--color-line)) 55%, rgb(255 255 255 / 0.14));
@@ -2410,14 +2415,17 @@
 
 .shine-station::before {
   position: absolute;
-  top: -1.2rem;
-  right: -0.8rem;
+  top: auto;
+  bottom: -0.4rem;
+  right: 0.3rem;
   font-family: var(--font-jp);
-  font-size: 1.55rem;
+  font-size: 2.1rem;
   font-weight: 800;
+  line-height: 1;
   letter-spacing: 0.04em;
-  color: rgb(255 255 255 / 0.09);
+  color: rgb(255 255 255 / 0.08);
   content: var(--station-kana, "");
+  pointer-events: none;
 }
 
 .shine-station:hover:not(:disabled) {
@@ -2639,6 +2647,16 @@
   .shine-mute:hover {
     border-color: var(--color-gold);
   }
+}
+/* The circle is 36 px; the thumb gets 44, like the round buttons beside it. */
+.shine-mute {
+  position: relative;
+}
+.shine-mute::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
 }
 .shine-mute:focus-visible {
   outline: 2px solid var(--shine-accent, var(--color-gold));
@@ -4299,4 +4317,1045 @@
 .shine-race-done[data-long-head] .shine-done-headline {
   font-size: 1.5rem;
   line-height: 1.15;
+}
+
+/* ===== Race builder (check-in 17): the bug's tag and the day strip ===== */
+
+/* 12 · The date's tag evens out its two lines, so the goal never leaves one word
+   alone on the second ("Reach base / once"). */
+.shine-bug-tag {
+  text-wrap: balance;
+}
+
+/* 12 · Past four chips the strip goes three across, and a short last row sits
+   centred under the full ones (two chips start half a cell in, one sits in the
+   middle), so a fifth chip is never alone on a row of its own at the left. Six
+   half-cells, each chip spanning two; the chip keeps its own width, so the marks
+   still ride its corner. The pop-in is the chip's own (reduced: none). */
+.shine-day-strip:has(> .shine-day-chip:nth-child(5)) {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  column-gap: 0;
+  justify-items: center;
+  width: min(100%, 20.5rem);
+  margin-inline: auto;
+}
+.shine-day-strip:has(> .shine-day-chip:nth-child(5)) > .shine-day-chip {
+  grid-column: span 2;
+}
+.shine-day-strip:has(> .shine-day-chip:nth-child(5)) > .shine-day-chip:nth-child(3n + 1):nth-last-child(2) {
+  grid-column: 2 / span 2;
+}
+.shine-day-strip:has(> .shine-day-chip:nth-child(5)) > .shine-day-chip:nth-child(3n + 1):last-child {
+  grid-column: 3 / span 2;
+}
+/* The mound's pills are broad (三振 STRIKE THREE, フォアボール BALL FOUR): four of them
+   never fit across a phone and wrapped three and one. Four batters go two by two. */
+[data-mound-done] .shine-day-strip:has(> .shine-day-chip:nth-child(4):last-child) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 0;
+  justify-items: center;
+  width: min(100%, 14rem);
+  margin-inline: auto;
+}
+
+/* ===== Complex-screens builder (check-in 17): the shells on the scene layout, the
+   postgame, the curtain call, the year end, the Clubhouse wall, one gold way on ===== */
+
+/* 6 · A warm key light from the upper left over the lifted park plate (.shine-scene-plate).
+   The shells, the pitchers' postgame and the wall draw it as a layer; a scene draws it
+   over its own stage, so the promise's "seven in the morning" has some sun in it. */
+.shine-keylight,
+.shine-scene:not([data-hours="night"])::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 70% at 0% 0%, rgb(255 178 96 / 0.5) 0%, rgb(255 150 84 / 0.2) 36%, transparent 68%),
+    linear-gradient(150deg, rgb(255 190 120 / 0.14) 0%, transparent 46%);
+  mix-blend-mode: screen;
+}
+.shine-scene:not([data-hours="night"])::after {
+  content: "";
+}
+
+/* The picture layer of a screen: fixed, so a long read scrolls over it instead of stretching it. */
+.shine-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.shine-shell,
+.shine-after {
+  position: relative;
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  overflow-x: clip;
+  background: var(--color-ink);
+  color: var(--color-cream);
+}
+
+.shine-shell-top,
+.shine-after-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: calc(1rem + env(safe-area-inset-top)) 1rem 0;
+}
+.shine-shell-heading {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+/* The next date, set the way a scene sets its place: the name in gold, the wait under it. */
+.shine-shell-next {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 0.8rem;
+  background: rgb(8 17 39 / 0.72);
+  font-family: var(--font-story);
+  line-height: 1.35;
+}
+.shine-shell-next-name {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--color-gold);
+}
+.shine-shell-next-when {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(245 248 255 / 0.72);
+}
+
+/* 6 · Her bust in front of the park, face in the upper third, waist behind the box. */
+.shine-shell-bust,
+.shine-after-bust {
+  position: absolute;
+  left: 50%;
+  width: auto;
+  max-width: none;
+  translate: -50% 0;
+  filter: drop-shadow(0 18px 30px rgb(0 0 0 / 0.45));
+  /* The cut-out ends at her waist: melt it into the shade instead of a hard edge. */
+  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 97%);
+  mask-image: linear-gradient(180deg, #000 70%, transparent 97%);
+  animation: shine-shell-bust-in 320ms ease-out both;
+}
+.shine-shell-bust {
+  top: calc(5.25rem + env(safe-area-inset-top));
+  height: min(78dvh, 150vw);
+}
+.shine-after-bust {
+  top: calc(3.75rem + env(safe-area-inset-top));
+  height: min(74dvh, 140vw);
+}
+@keyframes shine-shell-bust-in {
+  from {
+    opacity: 0.3;
+    transform: translateY(0.6rem);
+  }
+}
+.shine-shell-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(0deg, rgb(8 17 39 / 0.85) 0%, rgb(8 17 39 / 0.3) 28%, transparent 46%),
+    linear-gradient(180deg, rgb(8 17 39 / 0.35) 0%, transparent 16%);
+}
+
+/* The box: pinned to the foot, full-bleed on a phone, the pill on its top edge and the
+   one way on at its bottom (the scenes' box, holding its own button). */
+.shine-shell-box {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.75rem 1.25rem calc(1rem + env(safe-area-inset-bottom));
+  border-top: 2px solid var(--shine-accent, var(--color-gold));
+  border-radius: 20px 20px 0 0;
+  background: rgb(8 17 39 / 0.93);
+  box-shadow: 0 -12px 40px rgb(0 0 0 / 0.45);
+  backdrop-filter: blur(6px);
+  animation: shine-shell-box-in 280ms ease-out both;
+}
+.shine-shell-box:has(> .shine-vn-name.is-gold) {
+  border-top-color: var(--color-gold);
+}
+.shine-shell-box.is-narration {
+  padding-top: 1.35rem;
+  border-top-color: rgb(255 255 255 / 0.22);
+}
+@keyframes shine-shell-box-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+.shine-shell-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.shine-shell-line {
+  font-family: var(--font-story);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.7;
+}
+.shine-shell-aside {
+  font-family: var(--font-story);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.shine-shell-text .shine-vn-line {
+  font-size: 1rem;
+}
+.shine-shell-text .shine-vn-line + .shine-vn-line,
+.shine-shell-text .shine-vn-note {
+  margin-top: 0;
+}
+.shine-shell-go {
+  margin-top: 1rem;
+}
+
+/* 8 · The VN name pill: her kana and her name in her colour (a moment's name, in gold). */
+.shine-vn-name {
+  position: absolute;
+  top: -0.85rem;
+  left: 1rem;
+  display: inline-flex;
+  max-width: calc(100% - 2rem);
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.28rem 0.9rem;
+  border-radius: 999px;
+  background: var(--shine-accent, var(--color-gold));
+  box-shadow: 0 3px 0 rgb(0 0 0 / 0.3);
+  font-family: var(--font-story);
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+.shine-vn-name.is-gold {
+  background: var(--color-gold);
+}
+.shine-vn-name .shine-kana {
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+/* 8 · Her beat inside a screen that already shows her: the scenes' box, full width, no
+   second photo and no tail pointing at nothing. */
+.shine-vn-box {
+  position: relative;
+  margin-top: 1.5rem;
+  padding: 1.3rem 1rem 0.9rem;
+  border-top: 2px solid var(--shine-accent, var(--color-gold));
+  border-radius: 16px;
+  background: rgb(8 17 39 / 0.9);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+  backdrop-filter: blur(6px);
+}
+.shine-vn-line {
+  font-family: var(--font-story);
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--color-cream);
+}
+.shine-vn-line + .shine-vn-line {
+  margin-top: 0.45rem;
+}
+/* The narrator inside her box: the work screen's Coach's note, a caption on a gold rule. */
+.shine-vn-line.is-narration {
+  padding-left: 0.6rem;
+  border-left: 2px solid rgb(255 209 102 / 0.75);
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: rgb(245 248 255 / 0.82);
+}
+.shine-vn-note {
+  margin-top: 0.6rem;
+  font-family: var(--font-story);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: rgb(245 248 255 / 0.6);
+}
+
+/* 6 · The new year's card: the class in kana, the year's name in display type, the season. */
+.shine-year-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  margin: 0 0 1.4rem;
+  padding: 0.75rem 1rem 0.85rem;
+  border-block: 1px solid rgb(255 209 102 / 0.55);
+  background: linear-gradient(90deg, transparent, rgb(8 17 39 / 0.8) 16%, rgb(8 17 39 / 0.8) 84%, transparent);
+  text-align: center;
+  animation: shine-year-card-in 640ms cubic-bezier(0.2, 1, 0.3, 1) 120ms both;
+}
+.shine-year-card-kana {
+  font-size: 0.8rem;
+  letter-spacing: 0.32em;
+  color: var(--color-gold);
+}
+.shine-year-card-name {
+  padding-inline: 0.15em;
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 17vw, 4.6rem);
+  font-weight: 700;
+  font-style: italic;
+  line-height: 0.95;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #fff8e4 0%, #ffd166 58%, #f0ae33 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 0 rgb(8 17 39 / 0.9)) drop-shadow(0 0 18px rgb(255 209 102 / 0.35));
+}
+.shine-year-card-sub {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgb(245 248 255 / 0.82);
+}
+@keyframes shine-year-card-in {
+  from {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+
+/* The postgame, the curtain call and the year end: her picture full-bleed, the words at the foot. */
+.shine-after-film {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 18%;
+}
+.shine-after-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(0deg, var(--color-ink) 0%, rgb(8 17 39 / 0.9) 30%, rgb(8 17 39 / 0.45) 52%, transparent 72%),
+    linear-gradient(180deg, rgb(8 17 39 / 0.55) 0%, transparent 16%);
+}
+.shine-after-body {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+/* 8 · The head: the done panel's stamp, then the date's own name. */
+.shine-after-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  margin-bottom: 0.45rem;
+  animation: shine-after-rise 360ms cubic-bezier(0.2, 1, 0.3, 1) both;
+}
+@keyframes shine-after-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.shine-after-stamp {
+  margin: 0 0 0.15rem 0.25rem;
+}
+.shine-after-stamp .shine-stamp-jp {
+  font-size: clamp(2.2rem, 11vw, 2.9rem);
+  -webkit-text-stroke-width: 2.5px;
+}
+.shine-after-stamp .shine-stamp-en {
+  font-size: clamp(0.62rem, 2.7vw, 0.75rem);
+  letter-spacing: 0.26em;
+}
+.shine-after-name {
+  font-family: var(--font-story);
+  font-size: clamp(1.7rem, 8vw, 2.1rem);
+  font-weight: 800;
+  line-height: 1.1;
+  text-wrap: balance;
+  text-shadow: 0 2px 12px rgb(8 17 39 / 0.85);
+}
+.shine-after-line {
+  font-family: var(--font-story);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.6;
+  color: rgb(245 248 255 / 0.92);
+  text-shadow: 0 1px 8px rgb(8 17 39 / 0.8);
+}
+
+/* 9 · The curtain call moves: the still pushes in slowly toward her face (the title's
+   breathe), the 喝采 stamp slams in, and the Call, its caption and each verse the crowd
+   has earned come in one after another. */
+.shine-curtain-film {
+  transform-origin: 50% 22%;
+  animation: shine-title-breathe 9s ease-in-out infinite alternate;
+}
+.shine-curtain-stamp {
+  animation-delay: 240ms;
+}
+.shine-curtain-verse {
+  max-width: 28rem;
+  font-family: var(--font-story);
+  text-shadow: 0 1px 8px rgb(8 17 39 / 0.85);
+  animation: shine-curtain-verse-in 520ms ease-out calc(700ms + var(--i, 0) * 650ms) both;
+}
+.shine-curtain-verse.is-call {
+  margin-top: 0.4rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.55;
+  color: var(--color-cream);
+}
+.shine-curtain-verse.is-caption {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgb(245 248 255 / 0.72);
+}
+.shine-curtain-verse.is-verse {
+  margin-top: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--color-gold);
+}
+@keyframes shine-curtain-verse-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* 7 · The one way on: gold (.shine-go), full width, held at the foot of the screen like the
+   date's Leave. A long read scrolls under it; it never leaves the thumb. */
+.shine-dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  width: 100%;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  background: linear-gradient(0deg, var(--color-ink) 45%, rgb(8 17 39 / 0.85) 72%, rgb(8 17 39 / 0));
+}
+.shine-dock-wait {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-story);
+  font-size: 0.875rem;
+  text-align: center;
+  color: rgb(245 248 255 / 0.75);
+}
+
+/* 6 · The Clubhouse: the wall scrolls over its park, and an empty wall still shows its six
+   frames, one for each of them, dimmed until her year is done. */
+.shine-wall {
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  overflow-x: clip;
+}
+.shine-wall-frames {
+  display: grid;
+  max-width: 34rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.shine-wall-frame {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 3 / 4;
+  border: 1px dashed rgb(255 209 102 / 0.34);
+  border-radius: 0.9rem;
+  background: linear-gradient(180deg, rgb(20 35 68 / 0.55), rgb(8 17 39 / 0.82));
+  box-shadow: inset 0 0 0 4px rgb(8 17 39 / 0.35);
+}
+.shine-wall-frame img {
+  position: absolute;
+  top: 8%;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 0;
+  filter: grayscale(1) brightness(0.5);
+  opacity: 0.5;
+}
+.shine-wall-frame-tag {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1.2rem 0.3rem 0.45rem;
+  background: linear-gradient(0deg, rgb(8 17 39 / 0.94), transparent);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: rgb(245 248 255 / 0.55);
+}
+.shine-wall-frame-tag .shine-kana {
+  font-size: 0.68rem;
+  color: color-mix(in srgb, var(--face-accent, var(--color-gold)) 60%, rgb(245 248 255 / 0.35));
+}
+
+/* 7 · A heard scene's way on (Morning, To work) sits under the box at the foot of the screen,
+   like the shells' button; the choices and the chips stay above the box. The slot opens up
+   (display: contents) so each child takes its own place in the scene's column. */
+.shine-scene-actions:has(> .shine-scene-go) {
+  display: contents;
+}
+.shine-scene-actions:has(> .shine-scene-go) > :not(.shine-gain-floats, .shine-scene-go) {
+  position: relative;
+  z-index: 1;
+  order: 2;
+  width: 100%;
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 0.85rem 0.85rem;
+}
+.shine-scene-go {
+  position: relative;
+  z-index: 2;
+  order: 4;
+  width: 100%;
+  max-width: 46rem;
+  margin: -1px auto 0;
+  padding: 0.35rem 1.25rem calc(1rem + env(safe-area-inset-bottom));
+  background: rgb(8 17 39 / 0.93);
+}
+.shine-scene:has(.shine-scene-go) .shine-scene-box {
+  padding-bottom: 0.6rem;
+}
+
+/* Reduced motion: everything is simply there; the stamps set down still (their own rule). */
+.shine-root[data-reduced-motion="true"] :is(.shine-shell-bust, .shine-after-bust, .shine-shell-box, .shine-year-card, .shine-after-head, .shine-curtain-film, .shine-curtain-verse),
+.shine-curtain.is-reduced :is(.shine-curtain-film, .shine-curtain-verse, .shine-after-head) {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.shine-shell-bust, .shine-after-bust, .shine-shell-box, .shine-year-card, .shine-after-head, .shine-curtain-film, .shine-curtain-verse, .shine-curtain-stamp) {
+    animation: none;
+  }
+}
+
+/* ===== Work-screen builder (check-in 17): her still full-bleed with the tiles on her, the
+   fixed HUD (energy gauge, mood badge), what yesterday's work did, her words and the
+   Coach's note (ShineComplexWork.tsx, work-day.ts) ===== */
+
+/* 2 · She is the picture. The same still, blurred to light, fills the screen (the band
+   behind the HUD and a wide screen's flanks); the sharp one starts under the HUD, so her
+   face is never behind it, and runs to the foot, so the tiles sit on her. */
+.shine-work {
+  height: 100dvh;
+}
+.shine-work-plate {
+  position: absolute;
+  inset: -2rem;
+  overflow: hidden;
+  filter: blur(18px) brightness(0.5) saturate(0.95);
+  pointer-events: none;
+}
+.shine-work-plate img {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 15%;
+}
+.shine-work-frame {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  height: 100dvh;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.shine-work-top {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: calc(0.75rem + env(safe-area-inset-top)) 0.75rem 0;
+}
+.shine-work-body {
+  position: relative;
+  min-height: 0;
+  container-type: size;
+}
+/* Tucked a little under the HUD; the fade at its top hides the seam. A wide screen shows
+   her 3:4 column, its sides melting into the blurred plate. */
+.shine-work-art {
+  position: absolute;
+  top: -1rem;
+  left: 50%;
+  width: min(100%, 75cqh);
+  max-width: none;
+  height: calc(100% + 1rem);
+  translate: -50% 0;
+  object-fit: cover;
+  object-position: 50% 0;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 2rem);
+  mask-image: linear-gradient(180deg, transparent 0, #000 2rem);
+  pointer-events: none;
+  user-select: none;
+  animation: shine-work-art-in 420ms ease-out both;
+}
+@media (min-width: 640px) {
+  .shine-work-art {
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 2rem), linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    -webkit-mask-composite: source-in;
+    mask-image: linear-gradient(180deg, transparent 0, #000 2rem), linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    mask-composite: intersect;
+  }
+}
+@keyframes shine-work-art-in {
+  from {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+}
+/* Clear over her face, dark where the tiles sit. */
+.shine-work-wash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0%, transparent 30%, rgb(8 17 39 / 0.4) 50%, rgb(8 17 39 / 0.82) 72%, rgb(8 17 39 / 0.95) 100%);
+}
+/* The look the kids at the gate copied: a gold light around her. */
+.shine-work-art.is-alt + .shine-work-wash {
+  box-shadow: inset 0 0 3rem rgb(255 209 102 / 0.3);
+}
+.shine-work-stack {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  width: 100%;
+  max-width: 40rem;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0 auto;
+  padding: 0 0.75rem calc(1rem + env(safe-area-inset-bottom));
+}
+
+/* 10 · The HUD is the same every morning: who and which day with the buttons; her energy
+   and her mood; the next game, full width. Nothing moves when a line gets longer. */
+.shine-work-hud {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "day btns"
+    "meters meters"
+    "goal goal";
+  align-items: center;
+  gap: 0.5rem 0.6rem;
+  padding: 0.55rem 0.65rem 0.65rem;
+}
+.shine-work-day {
+  grid-area: day;
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.shine-work-btns {
+  grid-area: btns;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.shine-work-meters {
+  grid-area: meters;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.65rem;
+}
+.shine-work-goal {
+  grid-area: goal;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+}
+.shine-work-goal-top {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+}
+.shine-work-goal-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.shine-work-goal-days {
+  flex: none;
+  padding: 0.08rem 0.5rem;
+  border-radius: 999px;
+  background: rgb(255 209 102 / 0.16);
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+}
+
+/* 1 · The energy gauge (体力): its colour on the lines the work rolls against. The morning
+   after, it fills or drains from where yesterday's work found her. */
+.shine-work-energy {
+  --stat-color: #5fd9a0;
+  flex: 1;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 0.5rem;
+}
+.shine-work-energy[data-tone="tired"] {
+  --stat-color: var(--color-gold);
+}
+.shine-work-energy[data-tone="worn"] {
+  --stat-color: var(--color-coral);
+}
+.shine-work-energy[data-tone="empty"] {
+  --stat-color: var(--color-danger);
+}
+.shine-work-energy .shine-stat-kana {
+  font-size: 0.74rem;
+  line-height: 1.1;
+}
+.shine-work-energy[data-tone="worn"] .shine-stat-kana,
+.shine-work-energy[data-tone="empty"] .shine-stat-kana {
+  color: var(--color-coral);
+}
+.shine-work-energy .shine-stat-en {
+  font-size: 0.5rem;
+  line-height: 1.1;
+}
+.shine-work-energy .shine-stat-track {
+  height: 0.8rem;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.16);
+}
+.shine-work-energy .shine-stat-track {
+  display: block;
+}
+.shine-work-energy .shine-stat-fill {
+  display: block;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--stat-color) 62%, #fff), var(--stat-color) 60%);
+}
+.shine-work-energy .shine-stat-fill[data-land] {
+  animation: shine-work-land 900ms cubic-bezier(0.2, 0.8, 0.2, 1) 500ms both;
+}
+@keyframes shine-work-land {
+  from {
+    width: var(--from);
+  }
+}
+
+/* 10 · Her mood, readable without Japanese: an arrow, a colour ramp (purple, blue, gold,
+   orange, pink as it climbs) and the word. */
+.shine-mood {
+  --mood: var(--color-gold);
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.6rem 0.18rem 0.2rem;
+  border: 1px solid color-mix(in srgb, var(--mood) 60%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mood) 16%, rgb(8 17 39 / 0.8));
+}
+.shine-mood[data-mood="0"] {
+  --mood: #a58cff;
+}
+.shine-mood[data-mood="1"] {
+  --mood: #7ad7ff;
+}
+.shine-mood[data-mood="3"] {
+  --mood: #ff9f5a;
+}
+.shine-mood[data-mood="4"] {
+  --mood: #ff6fa8;
+}
+.shine-mood-arrow {
+  display: grid;
+  width: 1.3rem;
+  height: 1.3rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--mood);
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--color-ink);
+}
+.shine-mood-kana {
+  font-family: var(--font-jp);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--mood);
+}
+.shine-mood-en {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-cream);
+}
+
+/* 11 · The Coach's note: the narration as a caption, with no tail and no name. */
+.shine-work-note {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 0.3rem 0.7rem 0.32rem 0.6rem;
+  border-left: 2px solid rgb(255 209 102 / 0.75);
+  border-radius: 0 0.55rem 0.55rem 0;
+  background: rgb(8 17 39 / 0.66);
+  backdrop-filter: blur(8px);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: rgb(245 248 255 / 0.86);
+  text-wrap: pretty;
+}
+
+/* 1 · What yesterday's work did, floated over her above the bubble (the events' chips). */
+.shine-work-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.shine-work-chips .shine-gain-chip {
+  padding: 0.22rem 0.7rem;
+  font-size: 0.8rem;
+  box-shadow: 0 4px 12px rgb(1 5 16 / 0.35);
+}
+.shine-work-chips .shine-gain-chip.is-cost {
+  background: rgb(8 17 39 / 0.72);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+}
+
+/* 11 · Her bubble holds only her own words; its tail points up at her, not down at the tiles. */
+.shine-work .shine-work-speech {
+  align-self: flex-start;
+  max-width: min(100%, 22rem);
+  margin-top: 0.3rem;
+  padding: 0.5rem 0.85rem 0.55rem;
+  border-radius: 1.1rem;
+}
+.shine-work .shine-work-speech::after {
+  top: -0.36rem;
+  bottom: auto;
+  left: 2.4rem;
+  border-right: 0;
+  border-bottom: 0;
+  border-top: 1px solid rgb(255 255 255 / 0.16);
+  border-left: 1px solid rgb(255 255 255 / 0.16);
+}
+
+/* 3 · The tiles: one runs full width, four go two across, five three across with the lead
+   spanning two (no empty cell). A finished tile: its colour on a cap stripe and a soft
+   corner light, the kana watermark inside, and a third line that says what it trains. */
+.shine-work-tiles {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.shine-work .shine-station {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.06rem;
+  min-height: 4.5rem;
+  padding: 0.6rem 0.7rem 0.55rem;
+  background:
+    radial-gradient(110% 80% at 0% 0%, color-mix(in srgb, var(--station-color, var(--color-gold)) 32%, transparent), transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--station-color, var(--color-gold)) 14%, rgb(20 35 68 / 0.95)), rgb(10 20 44 / 0.96));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 6px 18px rgb(1 5 16 / 0.4);
+  container-type: inline-size;
+}
+.shine-work .shine-station::after {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--station-color, var(--color-gold)), color-mix(in srgb, var(--station-color, var(--color-gold)) 15%, transparent));
+  content: "";
+}
+.shine-work .shine-station:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.shine-work .shine-station:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 2px;
+}
+.shine-work .shine-station[data-lead] {
+  border-color: color-mix(in srgb, var(--station-color, var(--color-gold)) 80%, rgb(255 255 255 / 0.3));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.16),
+    0 0 0 1px color-mix(in srgb, var(--station-color, var(--color-gold)) 30%, transparent),
+    0 8px 22px color-mix(in srgb, var(--station-color, var(--color-gold)) 22%, rgb(1 5 16 / 0.4));
+}
+.shine-station-kana {
+  font-family: var(--font-jp);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgb(245 248 255 / 0.8);
+}
+.shine-station-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-cream);
+}
+.shine-work .shine-station[data-lead="wide"] .shine-station-label {
+  font-size: 0.92rem;
+}
+.shine-station-lift {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.05rem 0.55rem;
+  margin-top: 0.2rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: color-mix(in srgb, var(--station-color, var(--color-gold)) 45%, var(--color-cream));
+}
+.shine-lift {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.22rem;
+  white-space: nowrap;
+}
+.shine-lift-kana {
+  font-family: var(--font-jp);
+}
+.shine-lift b {
+  font-weight: 900;
+  letter-spacing: -0.12em;
+  color: var(--color-gold);
+}
+.shine-lift-en {
+  font-family: var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* A three-across tile on a small phone keeps the English and the arrow. */
+@container (max-width: 8.5rem) {
+  .shine-lift-kana {
+    display: none;
+  }
+}
+/* 1 · Under 40 the work goes wrong more often: the training tiles turn coral and hatched. */
+.shine-work .shine-station[data-strain] {
+  border-color: rgb(255 113 143 / 0.85);
+  background:
+    repeating-linear-gradient(135deg, rgb(255 113 143 / 0.12) 0 6px, transparent 6px 12px),
+    linear-gradient(180deg, rgb(96 32 60 / 0.95), rgb(42 16 36 / 0.96));
+}
+.shine-work .shine-station[data-strain]::after {
+  background: var(--color-coral);
+}
+.shine-work .shine-station[data-strain] .shine-station-lift {
+  color: var(--color-coral);
+}
+.shine-work-empty {
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--color-coral);
+}
+
+/* Reduced motion: she is simply there and the gauge sits at today's energy. */
+.shine-root[data-reduced-motion="true"] :is(.shine-work-art, .shine-work-energy .shine-stat-fill) {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.shine-work-art, .shine-work-energy .shine-stat-fill) {
+    animation: none;
+  }
+  .shine-work .shine-station {
+    transition: none;
+  }
+  .shine-work .shine-station:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ===== Check-in 17 fixes: the postgame on a short phone (375x667, 360x640). The stamp sits
+   beside the date's name, not over her face; her picture rides higher; the crowd's filler
+   line steps aside so the head and her box don't squeeze her face between them. ===== */
+@media (max-height: 720px) {
+  .shine-after:not(.shine-curtain) .shine-after-head {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .shine-after:not(.shine-curtain) .shine-after-stamp {
+    margin: 0;
+    scale: 0.8;
+    transform-origin: left center;
+  }
+  .shine-after:not(.shine-curtain) .shine-after-name {
+    font-size: clamp(1.3rem, 6.4vw, 1.6rem);
+  }
+  .shine-after .shine-after-film {
+    object-position: 50% 0;
+  }
+  .shine-after .shine-after-bust {
+    top: calc(3.25rem + env(safe-area-inset-top));
+    height: min(64dvh, 130vw);
+  }
+  .shine-after-recap {
+    display: none;
+  }
 }

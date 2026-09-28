@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { shineSwingWindow } from "./oracle.ts";
+import { BIBLE, isPitcherStyle, sceneBustSrc, sceneFilmSrc } from "./bible.ts";
 import {
   cheerLines,
   cowbellOn,
@@ -14,6 +15,7 @@ import {
   ouenSwell,
   parkCulture,
   pastBlurb,
+  postgamePicture,
   datePark,
   fanLetter,
   recapLine,
@@ -24,7 +26,16 @@ import {
   yearVoice,
   verseCount,
   verseTier,
+  yearCard,
+  CURTAIN_STAMP,
 } from "./culture.ts";
+import { FORBIDDEN_IN_STORY } from "./story.ts";
+import type { CharacterId } from "./types.ts";
+
+function shownFor(id: CharacterId, met: boolean, curtain: boolean) {
+  const p = postgamePicture(id, met, curtain);
+  return p.kind === "bust" ? sceneBustSrc(id, p.mood) : sceneFilmSrc(id, p.mood);
+}
 
 describe("culture presentation", () => {
   it("ships 18 応援歌 verses and a recap line for every park", () => {
@@ -70,7 +81,7 @@ describe("culture presentation", () => {
     assert.equal(curtainFilmSrc("yuki"), "/art/action/yuki/trot.webp");
     assert.equal(curtainFilmSrc("kira"), "/art/action/kira/follow.webp");
     assert.doesNotMatch(curtainFilmSrc("miki"), /follow|celebrate/);
-    assert.equal(curtainCaption("aoi"), "Cap in hand. No bat.");
+    assert.equal(curtainCaption("aoi"), "Cap in hand.");
     assert.equal(curtainCaption("yuki"), "She's going.");
     assert.equal(curtainCaption("miki"), "The bat is down.");
     assert.equal(curtainCaption("kira"), "The glove stays.");
@@ -96,6 +107,40 @@ describe("culture presentation", () => {
     const aoi = "お立ち台. She's already looking.";
     assert.equal(curtainCallLine(aoi, curtainSkin(datePark("lantern-classic", "koi"))), aoi);
     assert.equal(curtainCallLine(aoi, curtainSkin(datePark("night-classic", "koi"))), "Dugout. She's already looking.");
+  });
+
+  it("never shows the picture that was just on screen (the done panel's, or the Call's)", () => {
+    for (const c of BIBLE) {
+      const pitcher = isPitcherStyle(c.style);
+      const shown = (met: boolean, curtain: boolean) => {
+        const p = postgamePicture(c.id, met, curtain);
+        return p.kind === "bust" ? sceneBustSrc(c.id, p.mood) : sceneFilmSrc(c.id, p.mood);
+      };
+      // The done panel settles a pitcher on her bust, a hitter on her painted still (ShineMound, settledBatterPose).
+      const done = (met: boolean) =>
+        pitcher ? sceneBustSrc(c.id, met ? "elated" : "crushed") : `/art/action/${c.id}/${met ? "celebrate" : "crushed"}.webp`;
+      assert.notEqual(shown(false, false), done(false), `${c.id} missed`);
+      assert.notEqual(shown(true, false), done(true), `${c.id} met, no Call`);
+      assert.notEqual(shown(true, true), curtainFilmSrc(c.id), `${c.id} after the Call`);
+      assert.equal(postgamePicture(c.id, false, false).mood, "focused");
+      assert.equal(postgamePicture(c.id, true, true).mood, "elated");
+    }
+    assert.equal(shownFor("reina", true, true), "/art/busts/reina/elated.webp");
+    assert.equal(shownFor("reina", true, false), "/art/action/reina/follow.webp");
+    assert.equal(shownFor("aoi", true, true), "/art/action/aoi/celebrate.webp");
+    assert.equal(shownFor("aoi", true, false), "/art/busts/aoi/elated.webp");
+  });
+
+  it("opens a new year on a card with its name, and stamps the Call in gold", () => {
+    assert.deepEqual(yearCard(2), { kana: "クラシック級", name: "Classic", sub: "Year two · Spring" });
+    assert.equal(yearCard(3).name, "Senior");
+    assert.equal(yearCard(1).name, "Rookie");
+    for (const y of [1, 2, 3] as const) {
+      const c = yearCard(y);
+      assert.doesNotMatch(`${c.kana} ${c.name} ${c.sub}`, FORBIDDEN_IN_STORY);
+      assert.doesNotMatch(c.sub, /\d/);
+    }
+    assert.deepEqual(CURTAIN_STAMP, { jp: "喝采", en: "Curtain Call", tone: "gold" });
   });
 
   it("quotes the date she sat in the fan letter", () => {

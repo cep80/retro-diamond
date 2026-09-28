@@ -173,7 +173,7 @@ export function BasesDiamond({ bases, self }: { bases: Bases; self: 1 | 2 | 3 | 
  * outs, the bases. It floats in the top corner of the film, above her head.
  * `tag` names the game on a band along the bug's foot (the exhibition; the
  * mound and the career race with their date), so no loose label floats over
- * her cap; `tagGold` is the goal after it, in gold ("HOLD · Record 3 outs").
+ * her cap; `tagGold` is the goal after it, in gold ("Record 3 outs").
  * `done` keeps the score up under the done panel: the count and the bases step
  * off, and an empty `atBat` drops its cell. The inning stays the real one; her
  * date usually ends before the game does, so the bug never claims "Final".
