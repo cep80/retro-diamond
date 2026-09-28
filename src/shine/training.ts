@@ -1,5 +1,5 @@
 import { clamp } from "./core/rng.ts";
-import { sheet } from "./bible.ts";
+import { isPitcherStyle, sheet } from "./bible.ts";
 import type { StationId, TraineeRun, TraineeStatKey, TrainOutcome } from "./types.ts";
 
 export const TRAIN_STANDARD_ENERGY = -10;
@@ -50,7 +50,8 @@ export function hitchStat(run: TraineeRun): TraineeStatKey {
 export function stationStat(station: StationId, sideFocus: "stuff" | "control" = "stuff", run?: TraineeRun): TraineeStatKey | null {
   if (station === "hitch") return run ? hitchStat(run) : "contact";
   if (station === "cage") return "contact";
-  if (station === "poles") return "speed";
+  // A pitcher runs the poles for the arm's tank (the Coach's "Stamina work"); a hitter for her first step.
+  if (station === "poles") return run && isPitcherStyle(sheet(run.characterId).style) ? "stamina" : "speed";
   if (station === "looks") return "eye";
   if (station === "bp") return "power";
   if (station === "situational") return "guts";

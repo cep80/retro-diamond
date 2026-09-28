@@ -367,10 +367,17 @@ function satInningsOuts(game: PitchingGame): number | null {
   return null;
 }
 
+/**
+ * The tank level where the arm is gone and she comes out. Check-in 19 sim: at 0.22 a dominant
+ * start was pulled around pitch 48, so no innings ask (five, six) could be met; at 0.10, with
+ * stamina trainable at the Poles, the Lantern lands 86-92% and the Series 50-79%.
+ */
+export const ARM_GONE_TANK = 0.1;
+
 /** A pull only counts if it happens on a batter she faced. */
 function livePull(run: TraineeRun, game: PitchingGame): "arm" | "runs" | null {
   const p = traineePitcher(run, false, game.consecutiveInnings);
-  if (fatigue(p, game.pitchCount).tank < 0.22) return "arm";
+  if (fatigue(p, game.pitchCount).tank < ARM_GONE_TANK) return "arm";
   const ip = game.inningsOuts / 3;
   if (game.outs === 0 && ip >= 1 && game.earnedRuns / ip > 6) return "runs";
   return null;
@@ -474,7 +481,7 @@ export function resolveMiddle(run: TraineeRun, game: PitchingGame, r?: () => num
       if (game.pitchCount > 100 + 6 * sparkCount(run.carry, "stamina")) {
         /* Ace budget penalty after 100 */
       }
-      if (fat.tank < 0.22) {
+      if (fat.tank < ARM_GONE_TANK) {
         game.lifted = true;
         log.push(`Inn ${inn}: lifted. The arm is gone.`);
         break;

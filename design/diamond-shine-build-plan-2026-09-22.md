@@ -315,7 +315,38 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
       - "Two strikeouts" is said, not "Strike out 2".
       - Sol's sg blurb is corrected.
   - **Art note (user step):** Sol's crushed and elated busts are a little off-model (lighter skin, straighter hair, navy numbers). They now show on every Sol done panel and on the postgame after a First Light win. Add both to art brief §8.
+- **Check-in 18 (gameplay programmer): the whole career, played by machine (`208b366`).**
+  - `scripts/year-smoke.mjs --career` plays through Years 2–3, the Finale (or an early close), the ending, the Winning Live, the scrapbook and the wall. New checks: `clubhouse-lands-on-title`, `wall-missing-card`, `image-empty`. All six girls reach the Clubhouse, plus two reduced-motion runs.
+  - **Fixed:**
+    - "Clubhouse" landed on the title.
+    - The open scrapbook sat unreadable over her face.
+    - The Night Classic read counted the streak, not the punchouts.
+    - The "miss one more" warning showed after the Series, when nothing left could close her path.
+    - The ending line said "every big game held" over pages that said it got away (now "one big game cost her").
+    - Pitchers got batter recap lines.
+    - The scrapbook lost the whole Rookie year. The Gate and First Light are now pinned in the stored book, the Winning Live and the card.
+    - The wall card showed the bare style verb.
+    - Kira's Lantern said "Two punchouts" twice.
+    - Reina's First Light claimed the Gate's ball.
+  - **Not reproduced:** Sol's Winning Live picture was blank once. The new image-empty check watches for it.
+- **Check-in 19 (game designer): the starters can finish a start.**
+  - A sim of 400 starts per row through the engine's own training, games and MoundController found two causes:
+    - Stamina couldn't be trained: the Poles raised Speed for every girl, so the Coach's "Stamina work" did nothing for a pitcher.
+    - The arm-gone pull at tank 0.22 came around pitch 48, while five innings take about 57 pitches.
+    - Result: the Lantern Classic (five innings) was met 16–35% and the Skyline Series (six) 0–3%, for an even-training or Coach-following player.
+  - **Applied:**
+    - A pitcher's Poles trains Stamina (`training.ts` stationStat).
+    - `ARM_GONE_TANK = 0.1` (`pitching.ts`, used by both pull sites).
+    - Result: the Lantern goes to 86–92% and the Series to 50–79%. First Light and strikeouts per batter faced are unchanged.
+    - Neither change alone is enough.
+  - **Cost:** finished starts are longer (about 285 s for a five-inning start, about 350 s for six).
+  - **Next for the gameplay programmer:** play the middle innings as a summary (`resolveMiddle` in pitching.ts exists but isn't wired). The first six batters and the last inning live comes to about 3 minutes.
+  - **Closed:** the deferred Bullpen specialty bonus isn't needed. Stuff caps by Year 3 and innings are tank-bound.
+  - **Also found, open:**
+    - Kira's Lantern ("strike out the side") is met only 14–16% of the time.
+    - Control can't be trained, because the Bullpen tile never asks for a focus. Pitchers keep their starting Control all career.
 - **Open:**
+  - the long mound starts (the middle innings as a summary), Kira's Lantern band, trainable Control
   - a production deploy (needs the user's go-ahead)
   - the stranger playtest (M6, a user step)
   - server-side receipt verification before any real purchase

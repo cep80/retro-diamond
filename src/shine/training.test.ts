@@ -36,6 +36,11 @@ describe("work math", () => {
     assert.equal(stationStat("charting"), "wit");
   });
 
+  it("runs a pitcher's poles for Stamina, a hitter's for Speed", () => {
+    for (const id of ["reina", "sol", "kira"] as const) assert.equal(stationStat("poles", "stuff", newRun(id)), "stamina", id);
+    for (const id of ["aoi", "miki", "yuki"] as const) assert.equal(stationStat("poles", "stuff", newRun(id)), "speed", id);
+  });
+
   it("maps Her hitch to the parent's spark, then her style", () => {
     const run = newRun("aoi", [{ kind: "speed", power: 1 }], "yuki");
     assert.equal(hitchStat(run), "speed");
