@@ -119,9 +119,15 @@ export function daysAwayLabel(n: number): string {
   return `${n} days`;
 }
 
+/** The Finale's postgame: the last big date is behind her, and the way on is what comes after it. */
+export const FINALE_POSTGAME = {
+  next: "Three years. That was the last one.",
+  leave: "Afterward",
+} as const;
+
 /** After-PA / campus line: what happens next, in days. */
 export function nextDateLine(fromTurn: number, lastType?: TurnType): string {
-  if (lastType === "finale") return "The year is over.";
+  if (lastType === "finale") return FINALE_POSTGAME.next;
   const next = nextNamedBeat(fromTurn);
   const left = next.turn - fromTurn;
   if (next.type === "forced-scene") {

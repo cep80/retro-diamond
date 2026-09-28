@@ -1,11 +1,13 @@
-import type { CSSProperties, Dispatch, SetStateAction } from "react";
+import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
 import { ShineMute } from "@/components/ShineMute";
 import { ShineBack, ShineRoundBtn } from "@/components/ShineRoundBtn";
 import { dateLabel, daysAwayLabel, type CalendarBeat } from "@/shine/calendar.ts";
 import { isPitcherStyle, officialFor, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { morningSpeech } from "@/shine/culture.ts";
-import { liveStationIds, workLocked } from "@/shine/store.ts";
+import { sfxGain } from "@/shine/audio.ts";
+import { GRADES, STAT_EN, gradeIndex, roleStats, rookieSpringDue, sinceLastSpring, statGrade, type WithSpring } from "@/shine/grades.ts";
+import { liveStationIds, useShine, workLocked } from "@/shine/store.ts";
 import type { StationId, TraineeRun } from "@/shine/types.ts";
 import {
   energyTone,
@@ -15,12 +17,61 @@ import {
   moodFace,
   morningAfter,
   orderTiles,
+  bullpenFocus,
   stationLifts,
+  statStrip,
   strained,
+  stripWords,
   tileGrid,
 } from "@/components/work-day";
 
 export { MOOD_KANA } from "@/components/work-day";
+
+/**
+ * Mark this spring's stats on the run (right after the year card's Morning), so
+ * next spring's card can say which letters moved. Optional on the run: an old
+ * save simply has no mark, and its next card shows her letters with no "since".
+ */
+export function markSpring() {
+  useShine.setState((s) => {
+    if (!s.run) return {};
+    const run: TraineeRun & WithSpring = { ...s.run, springStats: { year: s.run.year, stats: { ...s.run.stats } } };
+    return { run };
+  });
+}
+
+/** The year card's growth line: the letters that moved since last spring, or her letters as they stand. */
+export function YearGrades({ run }: { run: TraineeRun }) {
+  const keys = roleStats(isPitcherStyle(sheet(run.characterId).style));
+  const moves = sinceLastSpring(run, keys);
+  if (moves && moves.length) {
+    return (
+      <div className="shine-year-grades" aria-label="Since last spring">
+        {moves.map((m, i) => (
+          <span key={m.stat} className="shine-year-grade" data-rank={GRADES.indexOf(m.to)} style={{ ["--i" as string]: i } as CSSProperties}>
+            {STAT_EN[m.stat]}
+            <b className="is-was">{m.from}</b>
+            <span aria-label="to">→</span>
+            <b>{m.to}</b>
+          </span>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <>
+      <div className="shine-year-grades" aria-label="Her grades">
+        {keys.map((k, i) => (
+          <span key={k} className="shine-year-grade" data-rank={gradeIndex(run.stats[k])} style={{ ["--i" as string]: i } as CSSProperties}>
+            {STAT_EN[k]}
+            <b>{statGrade(run.stats[k])}</b>
+          </span>
+        ))}
+      </div>
+      {moves ? <p className="shine-year-grade-quiet">The same letters as last spring.</p> : null}
+    </>
+  );
+}
 
 // Her main training leads: the Cage for a hitter, the Bullpen for a pitcher (each only shows for one).
 export const STATIONS: { id: StationId; label: string; kana: string; color: string }[] = [
@@ -74,6 +125,8 @@ export function ShineComplexWork({
   turnsAway: number;
 }) {
   const who = sheet(run.characterId);
+  // The Bullpen works Control when the Coach asks for it, otherwise Stuff; the tile says which.
+  const focus = bullpenFocus(run);
   const pitcher = isPitcherStyle(who.style);
   const ask = officialFor(run.characterId, next.turn);
   const empty = workLocked(run);
@@ -88,6 +141,30 @@ export function ShineComplexWork({
   const note = morningSpeech(lastLine, run.year, who.parkId, pitcher);
   const words = herMorning(run.characterId, run.turn, run.energy, moodIdx);
   const plate = art ?? "/bg/skyline-complex.png";
+  const cells = statStrip(run, pitcher);
+  const landed = cells.find((c) => c.land);
+  const [open, setOpen] = useState(false);
+  // A new morning starts with the strip folded.
+  useEffect(() => setOpen(false), [run.turn]);
+
+  // The Rookie spring, marked on her first morning before any work, so next spring's card can say what moved.
+  useEffect(() => {
+    if (!rookieSpringDue(run)) return;
+    useShine.setState((s) =>
+      s.run && s.run.id === run.id && rookieSpringDue(s.run)
+        ? { run: { ...s.run, springStats: { year: 1, stats: { ...s.run.stats } } } as TraineeRun & WithSpring }
+        : {},
+    );
+  }, [run]);
+
+  // The gain chime lands with the bar (the fill runs 500 ms in, for 900 ms). Once a morning.
+  const chimeKey = landed ? `${run.id}-${run.turn}-${landed.stat}` : null;
+  useEffect(() => {
+    if (!chimeKey) return;
+    const t = window.setTimeout(() => sfxGain(), 1100);
+    return () => window.clearTimeout(t);
+  }, [chimeKey]);
+
   return (
     <main className="shine-stage shine-work" data-energy={tone}>
       {/* The same painting, blurred to light, behind the HUD and a wide screen's flanks. */}
@@ -144,7 +221,43 @@ export function ShineComplexWork({
                   {face.word}
                 </span>
               </p>
+              <p className="shine-work-fans">
+                <span className="shine-work-fans-kana" aria-hidden>
+                  ファン
+                </span>
+                <span className="sr-only">Fans: </span>
+                <b className="shine-work-fans-n">{run.fans}</b>
+              </p>
             </div>
+            {/* Her five, as letters. A tap opens the bars; nothing here is a number. */}
+            <button
+              type="button"
+              className="shine-work-grades"
+              aria-expanded={open}
+              aria-controls="shine-work-grade-panel"
+              aria-label={`Her grades: ${stripWords(cells)}`}
+              onClick={() => setOpen((o) => !o)}
+            >
+              {cells.map((c) => (
+                <span
+                  key={`${c.stat}-${run.turn}`}
+                  className="shine-grade-cell"
+                  data-rank={c.rank}
+                  data-land={c.land ? (c.land.gradeFrom !== c.grade ? "grade" : "bar") : undefined}
+                  style={{ ["--fill" as string]: c.fill, ["--from" as string]: c.land ? c.land.from : c.fill } as CSSProperties}
+                  aria-hidden
+                >
+                  <span className="shine-grade-short">{c.short}</span>
+                  <b className="shine-grade-letter" data-grade={c.grade}>
+                    {c.land && c.land.gradeFrom !== c.grade ? <span className="shine-grade-was">{c.land.gradeFrom}</span> : null}
+                    <span className="shine-grade-now">{c.grade}</span>
+                  </b>
+                  <span className="shine-grade-bar">
+                    <span className="shine-grade-bar-fill" />
+                  </span>
+                </span>
+              ))}
+            </button>
             <div className="shine-goal-chip shine-work-goal">
               <p className="shine-work-goal-top">
                 <span className="shine-kana text-[11px] text-gold">
@@ -156,6 +269,28 @@ export function ShineComplexWork({
               {ask ? <p className="mt-0.5 truncate font-ui text-[11px] text-cream/80">{speakGoal(ask.verb)}</p> : null}
             </div>
           </div>
+          {open ? (
+            <div id="shine-work-grade-panel" className="shine-grade-panel" role="group" aria-label="Her grades">
+              {cells.map((c) => (
+                <div key={c.stat} className="shine-grade-row" data-rank={c.rank}>
+                  <span className="shine-grade-row-name">
+                    <span className="shine-grade-row-kana">{c.kana}</span>
+                    <span className="shine-grade-row-en">{c.en}</span>
+                  </span>
+                  <span className="shine-grade-row-track" style={{ ["--fill" as string]: c.fill, ["--cap" as string]: c.cap } as CSSProperties}>
+                    <span className="shine-grade-row-fill" />
+                    <span className="shine-grade-row-cap" title="As far as she can go" />
+                  </span>
+                  <b className="shine-grade-row-letter" data-grade={c.grade}>
+                    {c.grade}
+                  </b>
+                </div>
+              ))}
+              <button type="button" className="shine-grade-close" onClick={() => setOpen(false)}>
+                Close
+              </button>
+            </div>
+          ) : null}
         </header>
 
         <div className="shine-work-body">
@@ -181,7 +316,7 @@ export function ShineComplexWork({
             <div className="shine-work-tiles" style={{ ["--cols" as string]: grid.cols } as CSSProperties}>
               {stations.map((s, i) => {
                 const shut = empty && s.id !== "treatment";
-                const lifts = stationLifts(s.id, run);
+                const lifts = stationLifts(s.id, run, focus);
                 const wide = i === 0 && grid.leadSpan > 1;
                 return (
                   <button
@@ -200,7 +335,7 @@ export function ShineComplexWork({
                         setCatchBeat(true);
                         return;
                       }
-                      train(s.id);
+                      train(s.id, false, s.id === "side" ? focus : undefined);
                     }}
                     className="shine-station"
                     style={

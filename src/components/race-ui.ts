@@ -7,6 +7,11 @@
  */
 import { resultStamp } from "../shine/action-art.ts";
 import type { Stage } from "../shine/beats.ts";
+import { isPitcherStyle, sheet } from "../shine/bible.ts";
+import { parkById } from "../shine/core/parks.ts";
+import { recapLine } from "../shine/culture.ts";
+import { opposingArm, pitcherRivalBat } from "../shine/rivals.ts";
+import type { CharacterId, GoalMark } from "../shine/types.ts";
 import type { PlateEvent } from "../shine/events.ts";
 import type { FeaturedGame, FieldBeat } from "../shine/featured-game.ts";
 import { inningForPa } from "../shine/featured-game.ts";
@@ -128,7 +133,7 @@ export function dateHeadline(opts: {
   if (opts.exhibition || opts.practice) return opts.cardLine ?? opts.banner;
   if (opts.pgId === "foul-two-strike") return "Two strikes. You watched her.";
   if (opts.pgMet) return metHeadline(opts.verb, opts.read);
-  if (opts.banner === "HOLD slipped." && opts.pgId === "k-side") return opts.cardLine ?? "The punchouts weren't there.";
+  if (opts.banner === "HOLD slipped." && (opts.pgId === "k-side" || opts.pgId === "k-2")) return opts.cardLine ?? "The punchouts weren't there.";
   // A miss says what slipped (her read), under the 未達成 stamp that already says it did.
   if (opts.banner === "HOLD slipped." || opts.banner === MISSED_LINE) return opts.read || MISSED_LINE;
   return opts.banner || opts.cardLine || MISSED_LINE;
@@ -407,6 +412,12 @@ export const CHROME_MS = {
   lowerThird: 1400,
   /** The split card before a cast girl's at-bat. */
   vs: 1200,
+  /** The date's title card before Go (every big date but the Finale). */
+  title: 2200,
+  /** The Diamond Finale's entrance: title, both nameplates, the fanfare. */
+  entrance: 4200,
+  /** A won Finale's moment over the done panel. */
+  finaleWin: 3200,
 } as const;
 
 /** A steal, a trip home, or getting thrown out is the running still. */
@@ -485,7 +496,12 @@ export function moundRead(game: {
     if (game.pgId === "escape-loaded-jam") return "Bases loaded. The inning ended.";
     return "She got what she came for.";
   }
-  if (game.pgId === "k-2" && (game.strikeouts ?? 0) === 1) return "One punchout. She needed two.";
+  if (game.pgId === "k-2") {
+    // A Finale or a save asks her to keep the lead too; First Light never loses one.
+    if (game.blown) return "The lead is gone.";
+    if ((game.strikeouts ?? 0) === 1) return "One punchout. She needed two.";
+    if ((game.strikeouts ?? 0) === 0 && game.kind !== "first-light") return "No punchouts. She needed two.";
+  }
   if (game.pgId === "k-3") {
     const k = game.strikeouts ?? 0;
     if (k === 1) return "One punchout. She needed three.";
@@ -589,4 +605,173 @@ export function basepathRead(line: string | null | undefined): string | null {
     .map((s) => s.trim())
     .filter((s) => s.length > 0 && !s.startsWith("Left on ") && !s.startsWith("Stranded at "));
   return kept.length ? kept.join(" ") : null;
+}
+
+// ── The big dates, escalating (check-in 22, date presentation) ──────────────
+
+/** The seven official dates, in the order pgResults keeps them. */
+export type BigDate = "gate" | "first-light" | "lantern-classic" | "night-classic" | "stretch" | "series" | "finale";
+export const BIG_DATES: readonly BigDate[] = ["gate", "first-light", "lantern-classic", "night-classic", "stretch", "series", "finale"];
+
+export function isBigDate(kind: string): kind is BigDate {
+  return (BIG_DATES as readonly string[]).includes(kind);
+}
+
+/** The ladder: bronze for the Rookie year, silver for the Classic year, gold for the Senior year, and the Finale above it. */
+export type DateTier = "bronze" | "silver" | "gold" | "finale";
+
+export function dateTier(kind: string): DateTier | null {
+  if (kind === "gate" || kind === "first-light") return "bronze";
+  if (kind === "lantern-classic" || kind === "night-classic") return "silver";
+  if (kind === "stretch" || kind === "series") return "gold";
+  if (kind === "finale") return "finale";
+  return null;
+}
+
+/** The crowd's bed by date: it grows with the ladder. The cage and the weekly look keep the old level. */
+export function dateCrowdLevel(kind: string): number {
+  if (kind === "gate") return 0.04;
+  if (kind === "first-light") return 0.05;
+  if (kind === "lantern-classic" || kind === "night-classic") return 0.07;
+  if (kind === "stretch" || kind === "series") return 0.09;
+  if (kind === "finale") return 0.12;
+  return 0.05;
+}
+
+const DATE_NAMES: Record<BigDate, { en: string; jp: string }> = {
+  gate: { en: "Academy Gate", jp: "アカデミー・ゲート" },
+  "first-light": { en: "First Light", jp: "ファーストライト" },
+  "lantern-classic": { en: "Lantern Classic", jp: "ランタン・クラシック" },
+  "night-classic": { en: "Night Classic", jp: "ナイト・クラシック" },
+  stretch: { en: "The Stretch", jp: "ザ・ストレッチ" },
+  series: { en: "Skyline Series", jp: "スカイライン・シリーズ" },
+  finale: { en: "Diamond Finale", jp: "ダイヤモンド・フィナーレ" },
+};
+
+const YEAR_NAMES: Record<DateTier, string> = { bronze: "Rookie Year", silver: "Classic Year", gold: "Senior Year", finale: "Senior Year" };
+const YEAR_STEP: Record<BigDate, string> = {
+  gate: "1 of 2",
+  "first-light": "2 of 2",
+  "lantern-classic": "1 of 2",
+  "night-classic": "2 of 2",
+  stretch: "1 of 3",
+  series: "2 of 3",
+  finale: "the last one",
+};
+
+/**
+ * The Finale's own stadium plate (art brief §9.1). Until that art lands the page shows the
+ * best big park we have, without asking for a file that isn't there (a 404 on every Finale).
+ * Drop the file in public/art/plates/ and flip the flag.
+ */
+export const FINALE_PLATE_ART_READY = false;
+export const FINALE_PLATE_ART = "/art/plates/finale-stadium.webp";
+export const FINALE_PLATE = {
+  src: FINALE_PLATE_ART_READY ? FINALE_PLATE_ART : "/bg/stadium.jpg",
+  fallback: "/bg/stadium.jpg",
+} as const;
+
+export interface DateTitle {
+  jp: string;
+  en: string;
+  /** Where: the park, or the Finale's sold-out house. */
+  place: string;
+  /** "Classic Year · 2 of 2". */
+  step: string;
+  tier: DateTier;
+}
+
+/** The title card before a big date: its name in both languages, where it is, and how far up the ladder. */
+export function dateTitle(kind: BigDate, parkId: string): DateTitle {
+  const name = DATE_NAMES[kind];
+  const tier = dateTier(kind)!;
+  const park = parkById(parkId).name;
+  const place = kind === "finale" ? "Every seat is sold." : park === name.en ? "Under the lights." : `${park}.`;
+  return { jp: name.jp, en: name.en, place, step: `${YEAR_NAMES[tier]} · ${YEAR_STEP[kind]}`, tier };
+}
+
+/** Who she meets at a big date: a pitcher always faces her rival's bat; a hitter faces the day's starter. */
+export function dateRival(id: CharacterId, kind: string): CharacterId | null {
+  if (isPitcherStyle(sheet(id).style)) return pitcherRivalBat(id);
+  const arm = opposingArm({ characterId: id }, kind);
+  return arm === "academy" ? null : arm;
+}
+
+export interface HeadToHead {
+  rival: CharacterId;
+  /** This is the nth big date between them. */
+  meeting: number;
+  /** Earlier big dates between them she got what she came for. */
+  hers: number;
+  /** Earlier big dates between them that got away from her. */
+  theirs: number;
+}
+
+/** The record between her and today's rival, from the big dates already sat. */
+export function headToHead(id: CharacterId, kind: string, results: readonly GoalMark[]): HeadToHead | null {
+  const at = BIG_DATES.indexOf(kind as BigDate);
+  if (at < 0) return null;
+  const rival = dateRival(id, kind);
+  if (!rival) return null;
+  let hers = 0;
+  let theirs = 0;
+  for (let i = 0; i < at; i++) {
+    if (dateRival(id, BIG_DATES[i]!) !== rival) continue;
+    if (results[i] === "met") hers += 1;
+    else if (results[i] === "missed") theirs += 1;
+  }
+  return { rival, meeting: hers + theirs + 1, hers, theirs };
+}
+
+const ORDINALS = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh"];
+
+/** "Third meeting. Aoi leads 2–0." Null the first time they meet: there's nothing to count yet. */
+export function headToHeadLine(h: HeadToHead | null, herName: string): string | null {
+  if (!h || h.meeting < 2) return null;
+  const nth = ORDINALS[h.meeting - 1] ?? `${h.meeting}th`;
+  if (h.hers === h.theirs) return `${nth} meeting. Even at ${h.hers}–${h.theirs}.`;
+  const leader = h.hers > h.theirs ? herName : sheet(h.rival).name;
+  return `${nth} meeting. ${leader} leads ${Math.max(h.hers, h.theirs)}–${Math.min(h.hers, h.theirs)}.`;
+}
+
+/** The Finale's postgame line, hers alone, in place of the park's filler. */
+export const FINALE_NIGHT: Record<CharacterId, { met: string; missed: string }> = {
+  aoi: {
+    met: "Haruko calls the sign shop from the concourse.",
+    missed: "Row J stays in their seats until the lights go down. So does Aoi.",
+  },
+  reina: {
+    met: "She walks off counting under her breath. Nobody asks what.",
+    missed: "She sits on the bench with the scarf in her lap. She doesn't fix the stitch.",
+  },
+  miki: {
+    met: "Section 4 rings both cowbells until the ushers stop asking.",
+    missed: "The bell in Section 4 is still going when the lights come down.",
+  },
+  sol: {
+    met: "Luz throws a bag of churros over the rail in row one. It lands on the dugout roof.",
+    missed: "Luz stays in row one until the grounds crew pulls the tarp.",
+  },
+  kira: {
+    met: "She takes the seat in the dugout. Nobody asks her to move.",
+    missed: "She sits in the dugout anyway, bag at her feet, until the last bus.",
+  },
+  yuki: {
+    met: "She hands the stopwatch back. It's still running.",
+    missed: "After everyone's gone, she stretches the left leg on the grass, the way she does every morning.",
+  },
+};
+
+const FILLER_OFFSET: Record<CharacterId, number> = { aoi: 0, reina: 1, miki: 2, sol: 3, kira: 4, yuki: 5 };
+
+/**
+ * The postgame's quiet line under the verdict. The Finale gets hers. Every
+ * other big date steps through the park's booth pool by its place on the
+ * ladder, so two big dates in a row never say the same thing.
+ */
+export function postgameFiller(opts: { id: CharacterId; kind: string; parkId: string; turn: number; met: boolean }): string {
+  if (opts.kind === "finale") return FINALE_NIGHT[opts.id][opts.met ? "met" : "missed"];
+  const pitcher = isPitcherStyle(sheet(opts.id).style);
+  const at = BIG_DATES.indexOf(opts.kind as BigDate);
+  return recapLine(opts.parkId, at < 0 ? opts.turn : at + FILLER_OFFSET[opts.id], pitcher);
 }

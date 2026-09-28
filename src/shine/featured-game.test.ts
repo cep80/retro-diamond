@@ -4,7 +4,19 @@ import { cellLoc } from "./core/zone.ts";
 import { LEAD_DEFAULT_SIT } from "./oracle.ts";
 import { recapLine } from "./culture.ts";
 import { risp, type Bases } from "./events.ts";
-import { aoiHeat, dealPitch, inningForPa, maybeLastSpurt, resolveSwing, resolveTake, startFeaturedGame, type FeaturedGame } from "./featured-game.ts";
+import {
+  aoiHeat,
+  dealPitch,
+  FINALE_APPEARANCES,
+  FINALE_NINTH_MARGIN,
+  holdFinaleNinth,
+  inningForPa,
+  maybeLastSpurt,
+  resolveSwing,
+  resolveTake,
+  startFeaturedGame,
+  type FeaturedGame,
+} from "./featured-game.ts";
 import { newAoiRun, newRun } from "./run.ts";
 
 /** Re-seat the runners for the current PA, including the paStart record the goals read. */
@@ -387,6 +399,50 @@ describe("featured game", () => {
     resolveTake(run, game, heart);
     assert.equal(game.pgMet, true);
     assert.equal(game.sgMet, true);
+  });
+
+  it("plays a hitter's Finale as a full game: five at-bats, the last in the 9th, within a run", () => {
+    for (const id of ["aoi", "miki", "yuki"] as const) {
+      for (let s = 0; s < 12; s++) {
+        const run = newRun(id);
+        run.turn = 60;
+        run.rngSeed = `finale-full-${id}-${s}`;
+        const game = startFeaturedGame(run, "finale");
+        assert.equal(game.paTarget, FINALE_APPEARANCES);
+        const away = { type: "fastball" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const };
+        const heart = { type: "fastball" as const, loc: cellLoc({ row: 1, col: 1 }), inZone: true, speed: 2, recognizeAt: 0, family: "hard" as const };
+        let guard = 0;
+        // Every at-bat plays out (walks, then strikeouts looking): the game never ends early, even in a blowout.
+        while (!game.done && game.paIndex < 5 && guard++ < 80) {
+          if (game.paIndex % 2) resolveTake(run, game, away);
+          else resolveTake(run, game, heart);
+          if (game.paIndex === 3 && game.scoreDiff < 8) game.scoreDiff = 9;
+        }
+        assert.equal(game.done, false, `${id} ${s}: the Finale ended at at-bat ${game.paIndex}`);
+        assert.equal(game.paIndex, 5);
+        assert.equal(game.inning, 9);
+        assert.ok(Math.abs(game.scoreDiff) <= FINALE_NINTH_MARGIN, `${id} ${s}: into the 9th at ${game.scoreDiff}`);
+      }
+    }
+    assert.equal(inningForPa("finale", 5), 9);
+  });
+
+  it("keeps the Finale's goal on the record, not the score the 9th is held to", () => {
+    const run = newRun("aoi");
+    run.turn = 60;
+    const game = startFeaturedGame(run, "finale");
+    assert.ok(game.pgId);
+    const before = { rbi: game.rbi, runs: game.runs, pgMet: game.pgMet };
+    game.inning = 9;
+    game.scoreDiff = -6;
+    holdFinaleNinth(game);
+    assert.equal(game.scoreDiff, -1);
+    assert.deepEqual({ rbi: game.rbi, runs: game.runs, pgMet: game.pgMet }, before);
+    const series = startFeaturedGame(run, "series");
+    series.inning = 9;
+    series.scoreDiff = -6;
+    holdFinaleNinth(series);
+    assert.equal(series.scoreDiff, -6, "only the Finale is held");
   });
 
   it("counts Series quality ABs as contact even on outs, not as walks", () => {

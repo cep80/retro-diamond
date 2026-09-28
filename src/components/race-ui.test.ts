@@ -476,7 +476,8 @@ describe("the date's chrome copy", () => {
   });
 
   it("times each overlay the way the brief asks", () => {
-    assert.deepEqual({ ...CHROME_MS }, { skill: 1100, lowerThird: 1400, vs: 1200 });
+    // Check-in 22: the big date's title card (~2 s), the Finale's entrance (~4 s), and a won Finale's moment (the home run's length).
+    assert.deepEqual({ ...CHROME_MS }, { skill: 1100, lowerThird: 1400, vs: 1200, title: 2200, entrance: 4200, finaleWin: 3200 });
   });
 
   it("keeps every new word in the game's voice", () => {

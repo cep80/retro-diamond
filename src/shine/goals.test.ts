@@ -135,6 +135,9 @@ describe("goals", () => {
   it("strike out the side needs three in one inning, not three across innings", () => {
     assert.equal(evalPitcherPg("k-side", pitcherView({ strikeouts: 3, outsRecorded: 3, bestInningKs: 2 })), false);
     assert.equal(evalPitcherPg("k-side", pitcherView({ strikeouts: 3, outsRecorded: 3, bestInningKs: 3 })), true);
+    // A Finale or a save asks two punchouts AND the lead; First Light never sets blown.
+    assert.equal(evalPitcherPg("k-2", pitcherView({ strikeouts: 3, outsRecorded: 3, blown: true })), false);
+    assert.equal(evalPitcherPg("k-2", pitcherView({ strikeouts: 2, outsRecorded: 3 })), true);
   });
 
   it("bases-loaded jam is stricter than a jam", () => {

@@ -111,6 +111,34 @@ describe("audio exports", () => {
   });
 });
 
+describe("music between games (check-in 22)", () => {
+  it("plays the lantern bed under the complex and her walk-up as her theme and her Live", () => {
+    assert.equal(audio.screenMusicUrl({ kind: "complex" }), audio.COMPLEX_THEME_FILE ?? "/audio/lantern-field.mp3");
+    assert.equal(audio.screenMusicUrl({ kind: "theme", id: "sol" }), "/audio/walk-sol.mp3");
+    assert.equal(audio.screenMusicUrl({ kind: "live", id: "sol" }), audio.LIVE_SONG_FILE ?? "/audio/walk-sol.mp3");
+    assert.equal(audio.screenMusicUrl({ kind: "bow", rank: "B" }), null, "the Last Bow keeps the piano");
+    for (const cue of [{ kind: "complex" }, { kind: "theme", id: "aoi" }, { kind: "live", id: "aoi" }] as const) {
+      const url = audio.screenMusicUrl(cue)!;
+      assert.ok(existsSync(join(audioDir, url.replace("/audio/", ""))), url);
+    }
+  });
+
+  it("keys each cue so the same cue across a screen swap is one song, not two", () => {
+    assert.equal(audio.screenMusicKey(null), "");
+    assert.equal(audio.screenMusicKey({ kind: "complex" }), audio.screenMusicKey({ kind: "complex" }));
+    assert.notEqual(audio.screenMusicKey({ kind: "theme", id: "aoi" }), audio.screenMusicKey({ kind: "live", id: "aoi" }));
+    assert.ok(audio.SCREEN_MUSIC_LEVEL.complex < 0.5 && audio.SCREEN_MUSIC_LEVEL.theme < 0.5, "beds sit under the words");
+    assert.equal(audio.SCREEN_MUSIC_LEVEL.live, 1);
+  });
+
+  it("is safe without an AudioContext, and stopMusic clears the cue", () => {
+    if (typeof globalThis.AudioContext !== "undefined") return;
+    audio.playScreenMusic({ kind: "complex" });
+    audio.stopMusic();
+    assert.equal(audio.activeScreenMusic(), null);
+  });
+});
+
 it("the stamp chime names the mood: gold climbs, coral falls, teal lifts once", async () => {
   const { STAMP_SFX } = await import("./audio.ts");
   const rising = (xs: readonly number[]) => xs.every((f, i) => i === 0 || f > xs[i - 1]!);

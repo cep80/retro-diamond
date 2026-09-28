@@ -352,7 +352,8 @@ export function evalPitcherPg(id: PitcherPgId, g: PitcherGoalView): boolean {
     case "outs-3":
       return g.outsRecorded >= 3 && !g.blown;
     case "k-2":
-      return g.strikeouts >= 2;
+      // The lead has to hold too (a Finale or a save); First Light never sets blown.
+      return g.strikeouts >= 2 && !g.blown;
     case "k-3":
       return g.strikeouts >= 3;
     case "innings-5":

@@ -4,7 +4,8 @@
  */
 import { turnMeta } from "./calendar.ts";
 import { memoryLine } from "./relationship.ts";
-import { isPitcherStyle, sheet } from "./bible.ts";
+import { isPitcherStyle, parkSrc, sceneBustSrc, sheet, type PortraitMood } from "./bible.ts";
+import { datePark } from "./culture.ts";
 import { eventsOfPa, type PlateEvent } from "./events.ts";
 import { proofLine, type GoalId } from "./goals.ts";
 import type { RivalArmId } from "./rivals.ts";
@@ -242,6 +243,183 @@ export function keepPages(pages: readonly Highlight[], n: number): Highlight[] {
 /** The pages the scrapbook opens to: eight of them, her first big games among them. */
 export function scrapbookPages(pages: readonly Highlight[]): Highlight[] {
   return keepPages(pages, 8);
+}
+
+// ── The book (check-in 22, F6): one polaroid per big game, then her letter ──────────
+
+export type BigGame = "gate" | "first-light" | "lantern-classic" | "night-classic" | "stretch" | "series" | "finale";
+
+const BIG_GAMES: readonly BigGame[] = ["gate", "first-light", "lantern-classic", "night-classic", "stretch", "series", "finale"];
+
+function bigGameOf(turn: number): BigGame | null {
+  const type = turnMeta(turn).type as string;
+  return (BIG_GAMES as readonly string[]).includes(type) ? (type as BigGame) : null;
+}
+
+/**
+ * What each big game's page says, by how it went, for a hitter and a pitcher. The page's
+ * title already names the game, so the caption never does. Each game shows once in a
+ * career, so no caption repeats inside a book.
+ */
+export const PAGE_CAPTIONS: Record<BigGame, { met: [hitter: string, pitcher: string]; missed: [hitter: string, pitcher: string] }> = {
+  gate: {
+    met: ["Her first big game, and she got on.", "She took the ball before anyone offered it and gave it back with the inning done."],
+    missed: ["Nothing fell her way. She asked to hit again anyway.", "The outs didn't come. She sat on the bench until they turned the lights off."],
+  },
+  "first-light": {
+    met: ["She came to do one thing and did it before the lights warmed up.", "She finished what she started and walked off slow."],
+    missed: ["Nothing fell. She wrote the pitches down on the bus.", "It got loud, and for an inning the zone got small. She remembers which inning."],
+  },
+  "lantern-classic": {
+    met: ["The lanterns were up, and so was she.", "The lanterns came on in the fifth. She was still out there."],
+    missed: ["The lanterns stayed lit. It wasn't her night.", "She left before the lanterns did."],
+  },
+  "night-classic": {
+    met: ["Somebody else's park, a full house, and it went her way.", "A road crowd, loud from the first pitch. She quieted it."],
+    missed: ["A long ride home. She took the window seat and didn't talk.", "The road crowd got the last word."],
+  },
+  stretch: {
+    met: ["It came down to the late innings, and she came through.", "Every out was hard. She got the ones that mattered."],
+    missed: ["It got away late. She sat on the dugout step a long while.", "The arm ran out before the inning did."],
+  },
+  series: {
+    met: ["She put the Finale on the calendar herself.", "She pitched her way into the Finale."],
+    missed: ["It slipped. She kept the ticket stub anyway.", "She threw everything she had. It wasn't quite enough."],
+  },
+  finale: {
+    met: ["The biggest night of the three years, and she won it.", "The last out of three years was hers."],
+    missed: ["The last night of three years. She played every inning of it.", "She took the ball on the biggest night there is. She'd wanted that part most."],
+  },
+};
+
+const GAME_INDEX: Record<BigGame, number> = { gate: 0, "first-light": 1, "lantern-classic": 2, "night-classic": 3, stretch: 4, series: 5, finale: 6 };
+
+/** A page minted before the book kept its mark still says how it went. */
+function metFromLine(line: string): boolean {
+  return !/got away|slipped|did not reach|didn't|weren't/i.test(line);
+}
+
+function rivalFromLine(line: string): string | null {
+  const m = / vs (?!the Academy)([A-Z][a-z]+)\b/.exec(line);
+  return m ? m[1]! : null;
+}
+
+function meetingLine(name: string, n: number): string {
+  if (n === 1) return `First time across from ${name}.`;
+  if (n === 2) return `${name} again.`;
+  if (n === 3) return `${name}, a third time. They know each other's habits by now.`;
+  if (n === 4) return `${name}, a fourth time.`;
+  if (n === 5) return `${name} again. Neither of them was surprised.`;
+  return `${name}, one more time.`;
+}
+
+export interface BookPicture {
+  /** The still or the bust. */
+  src: string;
+  /** A bust stands on the park it happened in; a still is its own backdrop. */
+  plate: string | null;
+}
+
+/**
+ * The page's picture, from the stills for how it went. Pages that went the same way take
+ * turns, so two in a row never share a picture.
+ */
+export function pagePicture(id: CharacterId, game: BigGame, met: boolean, nth: number): BookPicture {
+  const pitcher = isPitcherStyle(sheet(id).style);
+  const plate = parkSrc(datePark(game, sheet(id).parkId));
+  const film = (stem: string): BookPicture => ({ src: `/art/action/${id}/${stem}.webp`, plate: null });
+  const bust = (mood: PortraitMood): BookPicture => ({ src: sceneBustSrc(id, mood), plate });
+  const pool: BookPicture[] = met
+    ? pitcher
+      ? [film("k"), bust("elated"), film("follow")]
+      : [film("celebrate"), bust("elated"), film("trot")]
+    : pitcher
+      ? [bust("focused"), bust("crushed"), film("set")]
+      : [bust("focused"), film("crushed"), bust("crushed")];
+  return pool[nth % pool.length]!;
+}
+
+export interface BookPage {
+  turn: number;
+  game: BigGame;
+  /** The game's name, as the page was minted. */
+  label: string;
+  met: boolean;
+  caption: string;
+  /** Who was across from her, counted over the career. */
+  meeting: string | null;
+  /** A keepsake or a memory from the same day, tucked in. */
+  notes: string[];
+  picture: BookPicture;
+}
+
+export type BookEntry = { kind: "page"; page: BookPage } | { kind: "note"; turn: number; label: string; line: string };
+
+/**
+ * The scrapbook as a book: a polaroid for each big game she played, in order, with the
+ * day's keepsake or memory tucked into its page. Memories from other days sit between
+ * pages as notes. Rival pages are folded into the page they happened on.
+ */
+export function scrapbookBook(id: CharacterId, highlights: readonly Highlight[], pgResults?: readonly string[]): BookEntry[] {
+  const pitcher = isPitcherStyle(sheet(id).style);
+  const games = new Map<number, Highlight>();
+  for (const h of highlights) if (h.kind === "game" && bigGameOf(h.turn)) games.set(h.turn, h);
+  const seen = new Map<string, number>();
+  const nth = { met: 0, missed: 0 };
+  const entries: BookEntry[] = [];
+  const pages = new Map<number, BookPage>();
+  const ordered = [...highlights].sort((a, b) => a.turn - b.turn);
+  for (const h of ordered) {
+    if (h.kind === "game") {
+      const game = bigGameOf(h.turn);
+      if (!game || games.get(h.turn) !== h) continue;
+      const mark = pgResults?.[GAME_INDEX[game]];
+      const met = mark === "met" ? true : mark === "missed" ? false : metFromLine(h.line);
+      const rival = rivalFromLine(scrapbookLine(id, h.line));
+      let meeting: string | null = null;
+      if (rival) {
+        const n = (seen.get(rival) ?? 0) + 1;
+        seen.set(rival, n);
+        meeting = meetingLine(rival, n);
+      }
+      const caption = PAGE_CAPTIONS[game][met ? "met" : "missed"][pitcher ? 1 : 0];
+      const smaller = !met && /smaller (ask|one) held/i.test(h.line) ? " She still got the little one." : "";
+      const page: BookPage = {
+        turn: h.turn,
+        game,
+        label: h.label,
+        met,
+        caption: `${caption}${smaller}`,
+        meeting,
+        notes: [],
+        picture: pagePicture(id, game, met, met ? nth.met++ : nth.missed++),
+      };
+      pages.set(h.turn, page);
+      entries.push({ kind: "page", page });
+    }
+  }
+  for (const h of ordered) {
+    if (h.kind === "game" || h.kind === "rival") continue;
+    const line = scrapbookLine(id, h.line);
+    const page = pages.get(h.turn);
+    if (page) {
+      if (!page.notes.includes(line)) page.notes.push(line);
+      continue;
+    }
+    // A memory from a working day sits between the pages, where it happened.
+    const at = entries.findIndex((e) => (e.kind === "page" ? e.page.turn : e.turn) > h.turn);
+    const note: BookEntry = { kind: "note", turn: h.turn, label: h.label, line };
+    if (at < 0) entries.push(note);
+    else entries.splice(at, 0, note);
+  }
+  return entries;
+}
+
+/** The last page, after the Finale: the letter every girl has had waiting in the bible. */
+export function letterPage(id: CharacterId, finalePlayed: boolean): { kicker: string; text: string } | null {
+  if (!finalePlayed) return null;
+  const text = sheet(id).letters.trim();
+  return text ? { kicker: "A letter from the stands.", text } : null;
 }
 
 export function addHighlight(run: TraineeRun, h: Highlight | null) {

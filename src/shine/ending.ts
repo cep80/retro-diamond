@@ -164,7 +164,10 @@ export function endingQuote(run: TraineeRun, rank: EndingRank) {
   if (rank === "S" || rank === "A") return who.endings.show;
   if (rank === "B") {
     const finale = officialFor(run.characterId, 60);
-    if (run.pgResults[6] === "met" && finale?.pgId === "k-side") return "Diamond Finale. She struck out the side.";
+    // Each pitcher's Finale ask, said as what she did.
+    if (run.pgResults[6] === "met" && finale?.pgId === "clean-ninth") return "Diamond Finale. Ball four to lead off, then nothing. She finished it.";
+    if (run.pgResults[6] === "met" && finale?.pgId === "k-2") return "Diamond Finale. Two punchouts in the ninth, and the lead held.";
+    if (run.pgResults[6] === "met" && finale?.pgId === "hold-one-run") return "Diamond Finale. The tying run stayed on first.";
     if (run.pgResults[6] === "met") return "She won the Diamond Finale. The top of the Academy takes more than one night.";
     // "One win away" only when winning the Finale is all that stood between her and A.
     if (run.pgResults[6] !== "pending")
@@ -457,6 +460,98 @@ export interface CareerStill {
   frame: string;
   /** How the rank was earned, and what the next one asks for. */
   why: string;
+}
+
+// ── The last screen of a career (check-in 22, F2) ───────────────────────────
+
+/**
+ * A won Finale (and S or A, which need one) gets the Winning Live: the stage, her song,
+ * the rank slammed in. A lost Finale or a career closed early gets the Last Bow, quieter,
+ * and it never calls itself a Live.
+ */
+export type EndingStage = "live" | "bow";
+
+export function endingStage(rank: EndingRank, finaleWon: boolean): EndingStage {
+  return finaleWon || rank === "S" || rank === "A" ? "live" : "bow";
+}
+
+export function endingStageLabel(stage: EndingStage): { jp: string; en: string } {
+  return stage === "live" ? { jp: "ウイニングライブ", en: "Winning Live" } : { jp: "最後の礼", en: "Last Bow" };
+}
+
+/** The button on the ending scene: "To the stage" only when there is one. */
+export function endingStageCta(stage: EndingStage): string {
+  return stage === "live" ? "To the stage" : "Walk off";
+}
+
+/** The rank as the reveal sets it: one big letter, and its name under it. */
+export function rankReveal(rank: EndingRank): { letter: string; name: string } {
+  if (rank === "never-quit") return { letter: "◆", name: "Never Quit" };
+  if (rank === "S") return { letter: "S", name: "Legend" };
+  if (rank === "A") return { letter: "A", name: "Diamond" };
+  if (rank === "B") return { letter: "B", name: "Finale Night" };
+  if (rank === "C") return { letter: "C", name: "Lantern" };
+  return { letter: "D", name: "Quiet Ending" };
+}
+
+/** The colour a rank wears, on the reveal and around her Clubhouse card: gold S, silver A, bronze B. */
+export type RankTone = "gold" | "silver" | "bronze" | "bell" | "plain";
+
+export function rankTone(rank: EndingRank): RankTone {
+  if (rank === "S") return "gold";
+  if (rank === "A") return "silver";
+  if (rank === "B") return "bronze";
+  if (rank === "never-quit") return "bell";
+  return "plain";
+}
+
+/**
+ * §9.2's stage still, per girl. Flip this when public/art/action/<id>/live.webp lands; until
+ * then the Live stands her in her curtain-call still (the caller passes it in).
+ */
+export const LIVE_STAGE_ART_READY = false;
+
+export function liveStageSrc(id: TraineeRun["characterId"], curtainStill: string): string {
+  return LIVE_STAGE_ART_READY ? `/art/action/${id}/live.webp` : curtainStill;
+}
+
+/**
+ * Her picture on the Clubhouse wall: her face, never her back. A hitter's celebrate still; a
+ * pitcher's bust on her home park (Reina's focused one, since her elated bust wears the old logo).
+ */
+export function wallCardPicture(id: TraineeRun["characterId"]): { kind: "film"; src: string } | { kind: "bust"; mood: "elated" | "focused" } {
+  if (LIVE_STAGE_ART_READY) return { kind: "film", src: `/art/action/${id}/live.webp` };
+  if (!isPitcherStyle(sheet(id).style)) return { kind: "film", src: `/art/action/${id}/celebrate.webp` };
+  return { kind: "bust", mood: id === "reina" ? "focused" : "elated" };
+}
+
+const SPARK_NAME: Record<SparkKind, string> = {
+  contact: "Contact",
+  speed: "Speed",
+  eye: "Eye",
+  power: "Power",
+  guts: "Guts",
+  wit: "Wit",
+  stuff: "Stuff",
+  control: "Control",
+  stamina: "Stamina",
+  legend: "Legend",
+  polish: "Polish",
+};
+
+/** What she passes on, once per kind: "Contact ×2 · Speed". */
+export function sparkSummary(sparks: Spark[], max = 3): string {
+  const order: SparkKind[] = [];
+  const counts = new Map<SparkKind, number>();
+  for (const s of sparks) {
+    if (s.kind === "polish") continue;
+    if (!counts.has(s.kind)) order.push(s.kind);
+    counts.set(s.kind, (counts.get(s.kind) ?? 0) + 1);
+  }
+  return order
+    .slice(0, max)
+    .map((k) => (counts.get(k)! > 1 ? `${SPARK_NAME[k]} ×${counts.get(k)}` : SPARK_NAME[k]))
+    .join(" · ");
 }
 
 export function careerStill(run: TraineeRun): CareerStill {

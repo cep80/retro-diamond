@@ -262,12 +262,12 @@ describe("Diamond Finale and endings", () => {
     assert.equal(careerStill(run).frame, "Three years, all the way to the Finale.");
   });
 
-  it("names a held strikeout Finale on the Rough still", () => {
+  it("names Sol's held Finale (two punchouts, the lead kept) on the Rough still", () => {
     const run = newRun("sol");
     run.pgResults[6] = "met";
     run.pgMisses = 1;
     run.fans = 33;
-    assert.equal(careerStill(run).quote, "Diamond Finale. She struck out the side.");
+    assert.equal(careerStill(run).quote, "Diamond Finale. Two punchouts in the ninth, and the lead held.");
     assert.equal(careerStill(run).frame, "Three years, all the way to the Finale.");
   });
 
@@ -538,5 +538,61 @@ describe("the ending says why", () => {
     assert.match(why, /^64 fans\. She played the Finale/);
     assert.doesNotMatch(why, /no Finale/);
     assert.doesNotMatch(endingQuote(run, "never-quit"), /brought a second cowbell/, "the second cowbell came in Year 1");
+  });
+});
+
+describe("the last screen: Winning Live or Last Bow (check-in 22)", () => {
+  it("gives the Live only to a won Finale, and never calls a loss a Live", async () => {
+    const { endingStage, endingStageLabel, endingStageCta } = await import("./ending.ts");
+    assert.equal(endingStage("S", true), "live");
+    assert.equal(endingStage("A", true), "live");
+    assert.equal(endingStage("B", true), "live");
+    assert.equal(endingStage("never-quit", true), "live");
+    for (const rank of ["B", "C", "D", "never-quit"] as const) {
+      const stage = endingStage(rank, false);
+      assert.equal(stage, "bow", rank);
+      assert.doesNotMatch(endingStageLabel(stage).en, /Winning Live/);
+      assert.equal(endingStageCta(stage), "Walk off");
+    }
+    assert.deepEqual(endingStageLabel("live"), { jp: "ウイニングライブ", en: "Winning Live" });
+    assert.deepEqual(endingStageLabel("bow"), { jp: "最後の礼", en: "Last Bow" });
+    assert.equal(endingStageCta("live"), "To the stage");
+  });
+
+  it("reveals one letter per rank and colours S gold, A silver, B bronze", async () => {
+    const { rankReveal, rankTone } = await import("./ending.ts");
+    assert.deepEqual(rankReveal("S"), { letter: "S", name: "Legend" });
+    assert.equal(rankReveal("B").letter, "B");
+    assert.equal(rankTone("S"), "gold");
+    assert.equal(rankTone("A"), "silver");
+    assert.equal(rankTone("B"), "bronze");
+    assert.equal(rankTone("D"), "plain");
+  });
+
+  it("stands the Live on her curtain still until the stage art lands", async () => {
+    const { liveStageSrc, LIVE_STAGE_ART_READY } = await import("./ending.ts");
+    assert.equal(liveStageSrc("aoi", "/art/curtain/aoi.png"), LIVE_STAGE_ART_READY ? "/art/action/aoi/live.webp" : "/art/curtain/aoi.png");
+  });
+
+  it("puts her face on the wall, never the back of her follow-through", async () => {
+    const { wallCardPicture } = await import("./ending.ts");
+    for (const id of ["aoi", "reina", "miki", "sol", "kira", "yuki"] as const) {
+      const pic = wallCardPicture(id);
+      if (pic.kind === "film") assert.doesNotMatch(pic.src, /follow|set|stance/, id);
+    }
+    assert.deepEqual(wallCardPicture("reina"), { kind: "bust", mood: "focused" });
+  });
+
+  it("names what she passes on once per kind", async () => {
+    const { sparkSummary } = await import("./ending.ts");
+    assert.equal(
+      sparkSummary([
+        { kind: "contact", power: 1 },
+        { kind: "speed", power: 1 },
+        { kind: "contact", power: 1 },
+      ]),
+      "Contact ×2 · Speed",
+    );
+    assert.equal(sparkSummary([{ kind: "polish", power: 0.5 }]), "");
   });
 });

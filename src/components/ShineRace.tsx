@@ -14,16 +14,23 @@ import { PixelBtn } from "@/components/pixel-btn";
 import { ActionStage, hrMomentUp, StampMark } from "@/components/action/ActionStage";
 import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
 import { DayStrip, DoneHeader, PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
-import { LowerThird, SkillBanner, VsSplash, type VsSide } from "@/components/DateChrome";
+import { castSide, DateTitleCard, FinaleWinMoment, LowerThird, SkillBanner, VsSplash, type VsSide } from "@/components/DateChrome";
 import { ShineMute } from "@/components/ShineMute";
 import { exhibitionAudioCue, type ExhibitionAudioIo } from "@/components/exhibition/audio-cues";
 import {
   basepathRead,
   CHROME_MS,
   dateCloseBeat,
+  dateCrowdLevel,
   dateHeadline,
+  dateTier,
+  dateTitle,
+  FINALE_PLATE,
   genericRead,
   goLabel,
+  headToHead,
+  headToHeadLine,
+  isBigDate,
   leaveLabel,
   pickPrompt,
   RACE_COPY,
@@ -34,13 +41,30 @@ import {
   showSitGrid,
   situationParts,
 } from "@/components/race-ui";
-import { duckCrowd, setCrowdLevel, sfxAnticipation, sfxCrowd, sfxCrowdBurst, sfxRelease, sfxSelect, sfxStamp, sfxWhoosh, startWalkUp, stopCrowd, stopMusic, unlockAudio } from "@/shine/audio.ts";
+import {
+  duckCrowd,
+  setCrowdLevel,
+  sfxAnticipation,
+  sfxCrowdBurst,
+  sfxCrowdForDate,
+  sfxCrowdSwell,
+  sfxFanfare,
+  sfxFinaleWin,
+  sfxRelease,
+  sfxSelect,
+  sfxStamp,
+  sfxWhoosh,
+  startWalkUp,
+  stopCrowd,
+  stopMusic,
+  unlockAudio,
+} from "@/shine/audio.ts";
 import type { Cell } from "@/shine/core/zone.ts";
 import { locCell } from "@/shine/core/zone.ts";
 import { track as trackEvent } from "@/lib/telemetry.ts";
 import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
 import { HR_STAMP_HOLD_MS, resultStamp, SCORE_STAMP, SCORE_STAMP_HOLD_MS, STAMP_DELAY_MS, stampHoldMs, stillFor } from "@/shine/action-art.ts";
-import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sheet } from "@/shine/bible.ts";
+import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sceneBustSrc, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { crowdStem } from "@/shine/culture.ts";
@@ -343,6 +367,57 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const who = sheet(run.characterId);
   const ask = practice || exhibition ? null : officialFor(run.characterId, run.turn);
   const parkId = featuredParkId({ weekly, kind: game.kind, homePark: who.parkId });
+  // The escalation ladder (check-in 22): a career big date's rung, its title card before the
+  // first Go, the Finale's entrance, and the record between her and today's arm.
+  const bigDate = mode === "career" && isBigDate(game.kind) ? game.kind : null;
+  const finale = bigDate === "finale";
+  const tier = bigDate ? dateTier(bigDate) : null;
+  const title = useMemo(() => (bigDate ? dateTitle(bigDate, parkId) : null), [bigDate, parkId]);
+  const h2h = useMemo(() => (bigDate ? headToHead(run.characterId, bigDate, run.pgResults) : null), [bigDate, run.characterId, run.pgResults]);
+  const record = headToHeadLine(h2h, who.name);
+  // A date picked up mid-game (a saved attempt) goes straight back in: the card is for the walk in.
+  const [titleUp, setTitleUp] = useState(() => bigDate !== null && game.pitchesSeen === 0 && game.paIndex === 1 && !game.done);
+  const titleUpRef = useRef(titleUp);
+  titleUpRef.current = titleUp;
+  const walkUp = useCallback(() => startWalkUp(run.characterId, useShine.getState().ownedCosmetics.includes("walk-up-alt")), [run.characterId]);
+  const endTitle = useCallback(() => {
+    if (!titleUpRef.current) return;
+    titleUpRef.current = false;
+    setTitleUp(false);
+    // Go takes the card's place under the thumb: re-arm the input guard.
+    useShine.getState().bumpView();
+    // The Finale's walk-up waits for its fanfare and the card, then plays her in.
+    if (finale) walkUp();
+  }, [finale, walkUp]);
+  useEffect(() => {
+    if (!titleUp) return;
+    const t = window.setTimeout(endTitle, finale ? CHROME_MS.entrance : CHROME_MS.title);
+    return () => window.clearTimeout(t);
+  }, [titleUp, finale, endTitle]);
+  // A won Finale: the home run's length of moment over the done panel, whatever the last pitch was.
+  const wonFinale = finale && snap.phase === "done" && game.pgMet;
+  const [winUp, setWinUp] = useState(false);
+  const winUpRef = useRef(false);
+  winUpRef.current = winUp;
+  const winPlayed = useRef(false);
+  const endWin = useCallback(() => {
+    if (!winUpRef.current) return;
+    winUpRef.current = false;
+    setWinUp(false);
+    // Leave the park takes its place under the thumb.
+    useShine.getState().bumpView();
+  }, []);
+  useEffect(() => {
+    if (!wonFinale || winPlayed.current) return;
+    winPlayed.current = true;
+    setWinUp(true);
+    sfxFinaleWin();
+  }, [wonFinale]);
+  useEffect(() => {
+    if (!winUp) return;
+    const t = window.setTimeout(endWin, CHROME_MS.finaleWin);
+    return () => window.clearTimeout(t);
+  }, [winUp, endWin]);
 
   // Film state fed to the stage.
   const [manifest, setManifest] = useState<ActionManifest | null>(null);
@@ -424,11 +499,12 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // Audio + film cues from the plate; sequencing cues from the race.
   useEffect(() => {
     unlockAudio();
-    sfxCrowd(0.05, crowdStem(parkId));
+    // The crowd grows with the ladder: the Gate's murmur up to the Finale's full house.
+    sfxCrowdForDate(dateCrowdLevel(game.kind), crowdStem(parkId));
     // step-in already fired in the race constructor, before this effect subscribed.
-    if (game.kind !== "practice" && game.kind !== "finale") {
-      startWalkUp(run.characterId, useShine.getState().ownedCosmetics.includes("walk-up-alt"));
-    }
+    // The Finale opens on its fanfare; her walk-up follows the entrance card (endTitle).
+    if (game.kind === "finale" && titleUpRef.current) sfxFanfare();
+    else if (game.kind !== "practice") walkUp();
     // The cue sounds' short follow-ups (the score sting, the crowd coming back up): cleared on
     // leaving the park, and dropped if a pause lands before they're due.
     const scheduled = new Set<number>();
@@ -461,6 +537,11 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         }
       }
       if (cue.t === "resolved") {
+        // Strike two on a big date: the park leans in (after the release cue's duck lets go).
+        const sg = race.plate.getSnapshot().game;
+        const lastEv = sg.events.at(-1);
+        const stillTwo = lastEv?.t === "foul" && lastEv.twoStrike;
+        if (dateTier(sg.kind) && !sg.done && sg.count.strikes === 2 && !stillTwo) io.schedule(sfxCrowdSwell, 360);
         const now = clock();
         setActionCue({
           tappedAtU: cue.swung ? decisionU.current : null,
@@ -495,9 +576,10 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       offRace();
       for (const id of scheduled) window.clearTimeout(id);
       stopCrowd();
-      if (game.kind !== "practice" && game.kind !== "finale") stopMusic();
+      if (game.kind !== "practice") stopMusic();
     };
-  }, [race, run.characterId, game.arm, parkId, kind, clock]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [race, run.characterId, game.arm, parkId, kind, clock, walkUp]);
 
   // The VS card's two stills (her set, the batter's stance): only for a cast arm with both drawn.
   const vsSides = useMemo<{ left: VsSide; right: VsSide } | null>(() => {
@@ -748,6 +830,15 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       }
       // Paused, the dialog's own buttons take Enter / Space.
       if (s.plate.paused) return;
+      // The date's title card is up: Enter / Space skips it, never Go under it.
+      if (titleUpRef.current || winUpRef.current) {
+        if (ev.code === "Enter" || ev.code === "Space") {
+          ev.preventDefault();
+          if (titleUpRef.current) endTitle();
+          else endWin();
+        }
+        return;
+      }
       if (ev.code === "Enter" || ev.code === "Space") {
         // A focused button (Mute, Time, a sit cell, the card) takes its own key.
         const t = ev.target instanceof Element ? ev.target : null;
@@ -759,7 +850,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [race, go, resumeRace]);
+  }, [race, go, resumeRace, endTitle, endWin]);
 
   // ?debug=1 hooks for the browser probes.
   useEffect(() => {
@@ -956,10 +1047,23 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       data-paused={paused ? "" : undefined}
       style={{
         ["--shine-accent" as string]: kitAccent(run.characterId),
-        // A wide screen fills the flanks with the park, blurred (styles.css C11).
-        ["--race-backdrop" as string]: `url("${parkSrc(parkId)}")`,
+        // A wide screen fills the flanks with the park, blurred (styles.css C11). The Finale's is its stadium.
+        ["--race-backdrop" as string]: `url("${finale ? FINALE_PLATE.fallback : parkSrc(parkId)}")`,
       }}
+      data-date-tier={tier ?? undefined}
     >
+      {title && titleUp ? (
+        <DateTitleCard
+          title={title}
+          plate={finale ? FINALE_PLATE : null}
+          her={finale ? castSide(run.characterId) : null}
+          rival={finale && h2h ? castSide(h2h.rival) : null}
+          record={finale ? record : null}
+          reduced={reduced}
+          onSkip={endTitle}
+        />
+      ) : null}
+      {winUp ? <FinaleWinMoment bust={sceneBustSrc(run.characterId, "elated")} name={who.name} jp={who.jp} reduced={reduced} onSkip={endWin} /> : null}
       {paused ? (
         <PauseOverlay
           reason={plate.pauseReason}
@@ -1005,7 +1109,9 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         {/* The broadcast chrome over the film, none of it taking a tap: the VS card at
             the day's first Go, her skill's band, the pitcher's nameplate at each at-bat's
             first wind-up, and her 得点 over the card when she comes around. */}
-        {vs ? <VsSplash key={vs.key} left={vs.left} right={vs.right} reduced={reduced} paused={paused} /> : null}
+        {vs ? (
+          <VsSplash key={vs.key} left={vs.left} right={vs.right} line={h2h && h2h.rival === game.arm ? record : null} reduced={reduced} paused={paused} />
+        ) : null}
         {skill ? <SkillBanner key={skill.key} text={skill.text} jp={skill.jp} tone={skill.tone} reduced={reduced} paused={paused} /> : null}
         {lower ? (
           <LowerThird key={lower.key} name={lower.name} jp={lower.jp} number={lower.number} line={lower.line} accent={lower.accent} reduced={reduced} paused={paused} />
@@ -1031,6 +1137,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
                 // The date rides the bug's band instead of floating over her cap; her goal in gold.
                 tag={bugTag}
                 tagGold={bugGoal}
+                tier={tier}
                 done={snap.phase === "done"}
               />
             ) : (

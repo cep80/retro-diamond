@@ -11,12 +11,16 @@ import {
   isTrainingTile,
   moodFace,
   morningAfter,
+  morningGain,
   orderTiles,
   stationLifts,
+  statStrip,
   strained,
+  stripWords,
   tileGrid,
   type MoodIdx,
 } from "./work-day.ts";
+import { statGrade } from "../shine/grades.ts";
 
 const GIRLS: CharacterId[] = ["aoi", "reina", "miki", "sol", "kira", "yuki"];
 
@@ -204,6 +208,68 @@ describe("the morning after", () => {
     run.energy += 15; // a morning event gave her some back
     assert.equal(morningAfter(run).energyFrom, null);
     assert.ok(morningAfter(run).chips.some((c) => c.text === "Energy +25"));
+  });
+});
+
+describe("the stat strip", () => {
+  it("shows her role's five as letters, on the stats she has", () => {
+    const hitter = workRun("aoi", 80, 2, "strip-h");
+    const cells = statStrip(hitter, false);
+    assert.deepEqual(cells.map((c) => c.stat), ["contact", "power", "eye", "speed", "guts"]);
+    for (const c of cells) {
+      assert.equal(c.grade, statGrade(hitter.stats[c.stat]));
+      assert.equal(c.land, null, "no work yesterday, nothing fills");
+    }
+    const pitcher = workRun("sol", 80, 2, "strip-p");
+    assert.deepEqual(statStrip(pitcher, true).map((c) => c.en), ["Stuff", "Control", "Stamina", "Guts", "Wit"]);
+  });
+
+  it("fills the bar the morning after only for a point she got, from where it was", () => {
+    let filled = 0;
+    let quiet = 0;
+    for (const girl of GIRLS) {
+      const pitcher = girl === "reina" || girl === "sol" || girl === "kira";
+      for (const station of (pitcher ? ["side", "poles"] : ["cage", "poles"]) as StationId[]) {
+        for (let seed = 0; seed < 12; seed++) {
+          const run = workRun(girl, 80, 2, `fill-${girl}-${station}-${seed}`);
+          const before = { ...run.stats };
+          resolveTrainingTurn(run, station);
+          const cells = statStrip(run, pitcher);
+          const moved = cells.filter((c) => run.stats[c.stat] !== before[c.stat]);
+          const landing = cells.filter((c) => c.land);
+          if (moved.length === 0) {
+            assert.equal(landing.length, 0, `${girl} ${station}: a failed rep filled a bar`);
+            quiet++;
+            continue;
+          }
+          assert.equal(landing.length, 1);
+          const c = landing[0]!;
+          assert.equal(c.stat, moved[0]!.stat);
+          assert.equal(c.land!.from, before[c.stat] / 20);
+          assert.equal(c.land!.gradeFrom, statGrade(before[c.stat]));
+          filled++;
+        }
+      }
+    }
+    assert.ok(filled > 20 && quiet > 5, `filled ${filled}, quiet ${quiet}`);
+  });
+
+  it("drops the fill when something moved the stat since the work", () => {
+    for (let seed = 0; seed < 30; seed++) {
+      const run = workRun("aoi", 80, 3, `moved-${seed}`);
+      resolveTrainingTurn(run, "cage");
+      if (!morningGain(run)) continue;
+      run.stats.contact += 1; // an event on top of it
+      assert.equal(statStrip(run, false).some((c) => c.land), false);
+      assert.ok(morningAfter(run).chips.some((c) => c.text.startsWith("Contact +")), "the chip still says what the work did");
+      return;
+    }
+    assert.fail("the cage never landed");
+  });
+
+  it("reads the letters out for a screen reader", () => {
+    const run = workRun("aoi", 80, 2, "words");
+    assert.match(stripWords(statStrip(run, false)), /^Contact [GFEDCBAS], Power [GFEDCBAS]/);
   });
 });
 

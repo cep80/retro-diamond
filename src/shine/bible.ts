@@ -137,7 +137,7 @@ const RAW_BIBLE: RawSheet[] = [
       { turn: 33, verb: "Consecutive strikeouts", sgVerb: "Strike out 2", resultsPg: false },
       { turn: 50, verb: "Escape a bases-loaded jam", sgVerb: "Strike out 3", resultsPg: false },
       { turn: 55, verb: "Quality start", sgVerb: "Walk nobody", resultsPg: false },
-      { turn: 60, verb: "Strike out the side", sgVerb: "Record 3 outs", resultsPg: false },
+      { turn: 60, verb: "Clean ninth", sgVerb: "Record 3 outs", resultsPg: false },
     ],
   },
   {
@@ -218,7 +218,7 @@ const RAW_BIBLE: RawSheet[] = [
       { turn: 33, verb: "Consecutive strikeouts", sgVerb: "Strike out 2", resultsPg: false },
       { turn: 50, verb: "Escape a jam", sgVerb: "Strike out 3", resultsPg: false },
       { turn: 55, verb: "Quality start", sgVerb: "Record 3 outs", resultsPg: false },
-      { turn: 60, verb: "Strike out the side", sgVerb: "Strike out 3", resultsPg: false },
+      { turn: 60, verb: "Strike out 2", sgVerb: "Record 3 outs", resultsPg: false },
     ],
   },
   {
@@ -254,11 +254,11 @@ const RAW_BIBLE: RawSheet[] = [
     official: [
       { turn: 5, verb: "Record 3 outs", sgVerb: "Record 1 out", resultsPg: false },
       { turn: 18, verb: "Hold a one-run lead", sgVerb: "Record 3 outs", resultsPg: false },
-      { turn: 28, verb: "Strike out the side", sgVerb: "Strike out 2", resultsPg: false },
+      { turn: 28, verb: "Strike out 2", sgVerb: "Record 3 outs", resultsPg: false },
       { turn: 33, verb: "Enter with inherited runners and strand", sgVerb: "Strand inherited runners", resultsPg: false },
       { turn: 50, verb: "Four-out save", sgVerb: "Record 3 outs", resultsPg: false },
       { turn: 55, verb: "Clean ninth", sgVerb: "Strike out 2", resultsPg: false },
-      { turn: 60, verb: "Strike out the side", sgVerb: "Record 3 outs", resultsPg: false },
+      { turn: 60, verb: "Hold a one-run lead", sgVerb: "Record 3 outs", resultsPg: false },
     ],
   },
   {
@@ -436,10 +436,10 @@ export function yearStillLine(
   if (id === "kira" && turn <= 40) {
     const lantern = results[2] === "met";
     const night = results[3] === "met";
-    if (lantern && night) return "Lantern Classic. She struck out the side. Night Classic. She came in with runners and stranded them.";
-    if (night) return "Lantern Classic. The side wasn't struck out. Night Classic. She came in with runners and stranded them.";
-    if (lantern) return "Lantern Classic. She struck out the side. Night Classic. The runners scored.";
-    return "Lantern Classic. The side wasn't struck out. Night Classic. The runners scored.";
+    if (lantern && night) return "Lantern Classic. Two punchouts, and the lead held. Night Classic. She came in with runners and stranded them.";
+    if (night) return "Lantern Classic. The two punchouts didn't come. Night Classic. She came in with runners and stranded them.";
+    if (lantern) return "Lantern Classic. Two punchouts, and the lead held. Night Classic. The runners scored.";
+    return "Lantern Classic. The two punchouts didn't come. Night Classic. The runners scored.";
   }
   if (id === "miki" && turn <= 20) {
     const gate = results[0] === "met";

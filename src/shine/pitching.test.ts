@@ -187,38 +187,33 @@ describe("Ace / Closer mound", () => {
     assert.equal(loaded.banner, "Bases loaded. The inning has to end.");
   });
 
-  it("Diamond Finale sits an ace in the ninth to strike out the side", () => {
-    const run = newRun("sol");
-    run.turn = 60;
-    const game = startPitchingGame(run, "finale");
-    assert.equal(game.pgId, "k-side");
-    assert.equal(game.inning, 9);
-    assert.equal(game.outs, 0);
-    assert.equal(game.runners, 0);
-    assert.equal(game.banner, "Ninth. Strike out the side.");
+  it("gives each pitcher her own Finale ask in the ninth (check-in 22)", () => {
+    const sit = (id: "reina" | "sol" | "kira") => {
+      const run = newRun(id);
+      run.turn = 60;
+      return startPitchingGame(run, "finale");
+    };
+    // Reina: the leadoff walk has happened; only a run fails it.
+    const reina = sit("reina");
+    assert.deepEqual([reina.pgId, reina.inning, reina.outs, reina.scoreDiff, reina.runners, reina.inherited], ["clean-ninth", 9, 0, 1, 1, 0]);
+    assert.equal(reina.banner, "Ninth. Ball four to lead off. The next one.");
+    // Sol: two punchouts, and the two-run lead has to hold.
+    const sol = sit("sol");
+    assert.deepEqual([sol.pgId, sol.inning, sol.scoreDiff, sol.runners], ["k-2", 9, 2, 0]);
+    assert.equal(sol.banner, "Ninth. Two punchouts. Keep the lead.");
+    // Kira: the save, with the tying run already on first.
+    const kira = sit("kira");
+    assert.deepEqual([kira.pgId, kira.inning, kira.scoreDiff, kira.runners, kira.inherited], ["hold-one-run", 9, 1, 1, 1]);
+    assert.equal(kira.banner, "Ninth. The tying run is on first.");
+    assert.equal(kira.sgId, "outs-3");
   });
 
-  it("a closer k-side sits the ninth to strike out the side", () => {
-    for (const turn of [28, 60]) {
-      const run = newRun("kira");
-      run.turn = turn;
-      const game = startPitchingGame(run, turn === 28 ? "lantern-classic" : "finale");
-      assert.equal(game.pgId, "k-side");
-      assert.equal(game.inning, 9);
-      assert.equal(game.outs, 0);
-      assert.equal(game.scoreDiff, 1);
-      assert.equal(game.runners, 0);
-      assert.equal(game.inherited, 0);
-      assert.equal(game.banner, "Ninth. Strike out the side.");
-    }
-  });
-
-  it("gives Kira's Finale a support goal she can reach (no inherited runners to strand)", () => {
+  it("sits Kira's Lantern in the ninth for two punchouts on a three-run lead", () => {
     const run = newRun("kira");
-    run.turn = 60;
-    const game = startPitchingGame(run, "finale");
-    assert.equal(game.inherited, 0);
-    assert.equal(game.sgId, "outs-3");
+    run.turn = 28;
+    const game = startPitchingGame(run, "lantern-classic");
+    assert.deepEqual([game.pgId, game.inning, game.scoreDiff, game.runners, game.inherited], ["k-2", 9, 3, 0, 0]);
+    assert.equal(game.banner, "Ninth. Two punchouts. Keep the lead.");
   });
 
   it("a third out with runners on doesn't un-score an inherited runner", () => {

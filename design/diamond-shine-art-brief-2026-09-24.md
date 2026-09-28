@@ -109,6 +109,26 @@ The work screen is what a player sees 15+ times a year, and it shows one stance 
 - **Catch with Coach, one picture per girl (6, minor).** Parking-lot lights, the complex going quiet, a ball in the air between her glove and the Coach's (the Coach off-frame or only an arm).
 - **The Clubhouse wall plate (1, minor).** A cork board with empty frames, warm light, for the empty state and behind the card wall.
 
+## 9. The whole career: Finale, Winning Live, Years 2–3 (creative director, check-in 21, 2026-09-28)
+
+The Finale is played in front of the same backdrop as Day 2's cage practice, and the Winning Live reuses her ordinary action still. The code for both is being built (a Finale venue, an entrance card, a rank reveal); these pictures are what make them land.
+
+1. **The Finale stadium (blocker for the Finale).** `public/art/plates/finale-stadium.webp`, 1080×1920: a big night stadium with full stands, gold bunting on the rails and card stunts in the upper deck. No text or logos. Then each girl's Finale action stills on that backdrop:
+   - Hitters (aoi, miki, yuki): `public/art/action/<id>/finale/{stance,celebrate,crushed}.webp`
+   - Pitchers (reina, sol, kira): `public/art/action/<id>/finale/{set,follow,celebrate}.webp`
+   - 3:4, same kit and light as her select bust.
+2. **The Winning Live stage (blocker for the ending), 6 images.** `public/art/action/<id>/live.webp`, 3:4: her on a small stadium stage after the Finale, coloured spotlights, confetti in the air, cap in hand or mic up, open smile. Same kit as her select bust. Until these land, the Live uses the §8 curtain-call still.
+3. **A Senior-year work still (major), 6 images.** `public/art/action/<id>/senior.webp`: her work-screen pose in autumn light with a small captain's "C" patch on the chest, so Year 3's morning looks different from Year 1's at a glance.
+4. **Music (major, audio, not image).**
+   - A complex theme, day and night (60–90 s loops, piano plus light strings): `public/audio/complex-day.mp3` and `complex-night.mp3`
+   - A Finale anthem (brass and drums, a 60–90 s loop, with a 3 s intro sting cut separately): `finale-anthem.mp3` and `finale-sting.mp3`
+   - One Winning Live song (upbeat, can be instrumental, 60–90 s): `winning-live.mp3`
+5. **Off-model fixes seen at the biggest moments (major):**
+   - **Reina's rival-intro bust.** The Skyline Series intro shows 恋ヶ崎 kanji on the chest and the horse badge on cap and sleeve. Regenerate her `neutral` and `elated` busts per §1 with a plain navy cap and no chest text.
+   - **Aoi's curtain-call bust** has a different kit and skin tone from her select bust. Regenerate it against the select bust.
+   - **Sol's `elated` and `crushed` busts:** navy numbers and orange trim instead of red and navy (see §8).
+6. **The 6-4-3 shop interior (major, plate 13).** `public/art/plates/643-shop.webp`: Haruko's okonomiyaki counter after close, a flat-top grill, a stool, the "6-4-3" sign seen backwards through the window. Aoi's promise, Finale eve and ending scenes all happen here. Priority among the §2 plates for the endings: `643-shop`, `koi-dugout`, `dorm-lounge`, `luz-truck`, `stars-bullpen-door`.
+
 ## Also still open from earlier
 
 - Generated action stills for the stranger read test: HR and walk still fail (see `design/diamond-shine-action-art-handoff-2026-09-18.md`).

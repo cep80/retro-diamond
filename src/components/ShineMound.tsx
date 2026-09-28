@@ -16,11 +16,28 @@
  */
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type MutableRefObject } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
-import { dateHeadline, genericRead, leaveLabel, middleRead, moundDayChips, moundRead, RACE_COPY, scorePhrase } from "@/components/race-ui";
+import {
+  CHROME_MS,
+  dateCrowdLevel,
+  dateHeadline,
+  dateTier,
+  dateTitle,
+  FINALE_PLATE,
+  genericRead,
+  headToHead,
+  headToHeadLine,
+  isBigDate,
+  leaveLabel,
+  middleRead,
+  moundDayChips,
+  moundRead,
+  RACE_COPY,
+  scorePhrase,
+} from "@/components/race-ui";
 import { moundBug, settleMoundBug } from "@/components/race-bug";
 import { ActionStage, hrMomentUp } from "@/components/action/ActionStage";
 import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
-import { LowerThird, SkillBanner, VsSplash } from "@/components/DateChrome";
+import { castSide, DateTitleCard, FinaleWinMoment, LowerThird, SkillBanner, VsSplash } from "@/components/DateChrome";
 import { moundCaption, moundPitchReadout, MOUND_MIDDLE_HEAD, pitchCountLine } from "@/components/mound-chrome";
 import { ShineMute } from "@/components/ShineMute";
 import { DayStrip, DoneHeader, PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
@@ -28,8 +45,11 @@ import {
   duckCrowd,
   setCrowdLevel,
   sfxAnticipation,
-  sfxCrowd,
   sfxCrowdBurst,
+  sfxCrowdForDate,
+  sfxCrowdSwell,
+  sfxFanfare,
+  sfxFinaleWin,
   sfxRelease,
   sfxSelect,
   sfxStamp,
@@ -42,7 +62,7 @@ import type { Cell } from "@/shine/core/zone.ts";
 import type { PitchType } from "@/shine/core/zone.ts";
 import { moundBeatSpec, PREPARE_MS_REDUCED } from "@/shine/beats.ts";
 import { cheerLines, crowdStem, ouenSwell } from "@/shine/culture.ts";
-import { featuredParkId, kitAccent, parkSkyClass } from "@/shine/stage.ts";
+import { featuredParkId, kitAccent } from "@/shine/stage.ts";
 import { parkSrc, portraitMood, portraitSrc, officialFor, sceneBustSrc, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
@@ -84,6 +104,28 @@ export function ShineMound() {
   // One controller per date, made in an effect so StrictMode's mount → unmount → mount
   // hands a fresh controller instead of a destroyed one.
   const [mound, setMound] = useState<MoundController | null>(null);
+  // The date whose title card is up (`runId:turn`), or null once it's gone.
+  const [titleFor, setTitleFor] = useState<string | null>(null);
+  const titleKey = run ? `${run.id}:${run.turn}` : "";
+  const titleUp = titleFor !== null && titleFor === titleKey;
+  const titleKind = run ? kindFor(run.turn) : "practice";
+  const titleUpRef = useRef(titleUp);
+  titleUpRef.current = titleUp;
+  const endTitle = useCallback(() => {
+    if (!titleUpRef.current) return;
+    titleUpRef.current = false;
+    setTitleFor(null);
+    // Go takes the card's place under the thumb: re-arm the input guard.
+    useShine.getState().bumpView();
+    const r = useShine.getState().run;
+    // The Finale's walk-up waits for its fanfare and the card, then plays her in.
+    if (r && kindFor(r.turn) === "finale") startWalkUp(r.characterId, useShine.getState().ownedCosmetics.includes("walk-up-alt"));
+  }, []);
+  useEffect(() => {
+    if (!titleUp) return;
+    const t = window.setTimeout(endTitle, titleKind === "finale" ? CHROME_MS.entrance : CHROME_MS.title);
+    return () => window.clearTimeout(t);
+  }, [titleUp, titleKind, endTitle]);
 
   useEffect(() => {
     let live = true;
@@ -118,10 +160,14 @@ export function ShineMound() {
     setMound(c);
     unlockAudio();
     const parkId = featuredParkId({ kind, homePark: sheet(run.characterId).parkId });
-    sfxCrowd(0.05, crowdStem(parkId));
-    if (kind !== "practice" && kind !== "finale") {
-      startWalkUp(run.characterId, useShine.getState().ownedCosmetics.includes("walk-up-alt"));
-    }
+    // The crowd grows with the ladder: the Gate's murmur up to the Finale's full house.
+    sfxCrowdForDate(dateCrowdLevel(kind), crowdStem(parkId));
+    // A big date walked into fresh opens on its title card; a saved attempt goes straight back in.
+    const fresh = !saved && isBigDate(kind);
+    setTitleFor(fresh ? `${run.id}:${run.turn}` : null);
+    // The Finale opens on its fanfare; her walk-up follows the entrance card (endTitle).
+    if (kind === "finale" && fresh) sfxFanfare();
+    else if (kind !== "practice") startWalkUp(run.characterId, useShine.getState().ownedCosmetics.includes("walk-up-alt"));
     return () => {
       c.destroy();
       setMound(null);
@@ -132,10 +178,25 @@ export function ShineMound() {
   }, [run?.id, run?.turn]);
 
   if (!run || !mound) return null;
-  return <MoundFrame mound={mound} run={run} manifest={manifest} aimRef={aimRef} />;
+  return <MoundFrame mound={mound} run={run} manifest={manifest} aimRef={aimRef} titleUp={titleUp} onEndTitle={endTitle} />;
 }
 
-function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; run: TraineeRun; manifest: ActionManifest | null; aimRef: MutableRefObject<Cell> }) {
+function MoundFrame({
+  mound,
+  run,
+  manifest,
+  aimRef,
+  titleUp,
+  onEndTitle,
+}: {
+  mound: MoundController;
+  run: TraineeRun;
+  manifest: ActionManifest | null;
+  aimRef: MutableRefObject<Cell>;
+  /** The big date's title card (or the Finale's entrance) is over the mound. */
+  titleUp: boolean;
+  onEndTitle: () => void;
+}) {
   const finishGame = useShine((s) => s.finishGame);
   const openTitle = useShine((s) => s.openTitle);
   const openSettings = useShine((s) => s.openSettings);
@@ -167,8 +228,12 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
     setCrowdHold(false);
     const { id: runId, turn } = mound.run;
     let chip = 0;
+    // Strikes at the wind-up, so the landing knows when a pitch made it strike two.
+    let strikesAtWindup = 0;
+    const swells = new Set<number>();
     const off = mound.onCue((cue: MoundCue) => {
       if (cue.t === "windup") {
+        strikesAtWindup = mound.getSnapshot().game.count.strikes;
         setU(0);
         sfxSelect();
         sfxAnticipation(cue.guts);
@@ -181,6 +246,15 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
         setU(0);
         duckCrowd(false);
         if (!cue.practice) sfxRelease(cue.spec.cue);
+        // Strike two on a big date: the park leans in, once the release's own sound has landed.
+        const g = mound.getSnapshot().game;
+        if (dateTier(g.kind) && !g.done && strikesAtWindup < 2 && g.count.strikes === 2) {
+          const id = window.setTimeout(() => {
+            swells.delete(id);
+            if (!mound.getSnapshot().paused) sfxCrowdSwell();
+          }, 360);
+          swells.add(id);
+        }
       } else if (cue.t === "resolved") {
         setNowMs(cue.at);
       } else if (cue.t === "stamp") {
@@ -206,6 +280,7 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
     return () => {
       off();
       window.clearTimeout(chip);
+      for (const id of swells) window.clearTimeout(id);
     };
   }, [mound, saveLive]);
 
@@ -255,13 +330,29 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
     return () => cancelAnimationFrame(id);
   }, [stage, paused, doneNow, clock, mound]);
 
+  // A won Finale: once the done panel is up, the home run's length of moment over it (FinaleWinMoment).
+  const winReady = game.done && game.kind === "finale" && game.pgMet && (closed || stage === "idle" || stage === "dead" || stage === "situation");
+  const winPlayed = useRef(false);
   useEffect(() => {
-    if (!game.done || game.kind !== "finale" || !game.pgMet) return;
+    if (!winReady || winPlayed.current) return;
+    winPlayed.current = true;
     setCrowdHold(true);
     setCrowdLevel(0.18);
-    const t = window.setTimeout(() => setCrowdHold(false), reduced ? 1500 : 4000);
+    sfxFinaleWin();
+  }, [winReady]);
+  useEffect(() => {
+    if (!crowdHold) return;
+    const t = window.setTimeout(() => {
+      setCrowdHold(false);
+      useShine.getState().bumpView();
+    }, CHROME_MS.finaleWin);
     return () => window.clearTimeout(t);
-  }, [game.done, game.kind, game.pgMet, reduced]);
+  }, [crowdHold]);
+  const endWin = useCallback(() => {
+    setCrowdHold(false);
+    // Leave the park takes its place under the thumb.
+    useShine.getState().bumpView();
+  }, []);
 
   // Settings open on top pauses the mound (and keeps it paused under it).
   useEffect(() => {
@@ -284,6 +375,15 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
       return;
     }
     if (paused) return;
+    // The date's title card or a won Finale's moment is up: Enter / Space skips it, never throws under it.
+    if (titleUp || crowdHold) {
+      if (e.code === "Enter" || e.code === "Space") {
+        e.preventDefault();
+        if (titleUp) onEndTitle();
+        else endWin();
+      }
+      return;
+    }
     if (e.code === "Enter" || e.code === "Space") {
       // A focused button (Leave, Mute, Time, a glove cell) takes its own key.
       const t = e.target instanceof Element ? e.target : null;
@@ -407,15 +507,14 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
     reduced,
   };
   const hrUp = hrMomentUp(actionView);
-
-  if (crowdHold) {
-    return (
-      <main className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream">
-        <img src={park} alt="" className={`absolute inset-0 size-full object-cover object-[center_70%] ${parkSkyClass(parkId)}`} />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-ink/10" />
-      </main>
-    );
-  }
+  // The escalation ladder (check-in 22): the date's rung on the bug, its title card, the record
+  // between her and her rival's bat on the VS card.
+  const bigDate = isBigDate(game.kind) ? game.kind : null;
+  const finale = bigDate === "finale";
+  const tier = bigDate ? dateTier(bigDate) : null;
+  const title = bigDate ? dateTitle(bigDate, parkId) : null;
+  const h2h = bigDate ? headToHead(run.characterId, bigDate, run.pgResults) : null;
+  const record = headToHeadLine(h2h, who.name);
 
   function leave() {
     if (!game.done) return;
@@ -449,7 +548,7 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
         verb: who.pgVerb,
         banner: game.banner,
         // The bullpen closes on its own banner, not on the last look's "Ball."
-        cardLine: practice ? null : game.pgId === "k-side" && !game.pgMet ? moundRead(game) : (spec?.label ?? null),
+        cardLine: practice ? null : (game.pgId === "k-side" || game.pgId === "k-2") && !game.pgMet ? moundRead(game) : (spec?.label ?? null),
         pgId: game.pgId,
         // A met goal says her verb, then what she did, never the tag's gold verb alone (C3).
         read: closeRead,
@@ -509,10 +608,23 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
       data-done-up={doneUp ? (reduced ? "still" : "") : undefined}
       style={{
         ["--shine-accent" as string]: kitAccent(run.characterId),
-        // A wide screen: the park fills the flanks, blurred (C11).
-        ["--race-backdrop" as string]: `url("${park}")`,
+        // A wide screen: the park fills the flanks, blurred (C11). The Finale's is its stadium.
+        ["--race-backdrop" as string]: `url("${finale ? FINALE_PLATE.fallback : park}")`,
       }}
+      data-date-tier={tier ?? undefined}
     >
+      {title && titleUp ? (
+        <DateTitleCard
+          title={title}
+          plate={finale ? FINALE_PLATE : null}
+          her={finale ? castSide(run.characterId) : null}
+          rival={finale && h2h ? castSide(h2h.rival) : null}
+          record={finale ? record : null}
+          reduced={reduced}
+          onSkip={onEndTitle}
+        />
+      ) : null}
+      {crowdHold ? <FinaleWinMoment bust={sceneBustSrc(run.characterId, "elated")} name={who.name} jp={who.jp} reduced={reduced} onSkip={endWin} /> : null}
       {paused ? (
         <PauseOverlay
           reason={pauseReason}
@@ -567,7 +679,16 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
 
         {/* The broadcast chrome, at the wind-up, never at the aim: the VS card when a cast hitter
             steps in, the new batter's nameplate, her skill or the last spurt across the film. */}
-        {vs ? <VsSplash key={vs.key} left={vs.left} right={vs.right} reduced={reduced} paused={paused} /> : null}
+        {vs ? (
+          <VsSplash
+            key={vs.key}
+            left={vs.left}
+            right={vs.right}
+            line={h2h && sheet(h2h.rival).name === vs.right.name ? record : null}
+            reduced={reduced}
+            paused={paused}
+          />
+        ) : null}
         {lowerThird ? (
           <LowerThird
             key={lowerThird.key}
@@ -597,6 +718,7 @@ function MoundFrame({ mound, run, manifest, aimRef }: { mound: MoundController; 
               self={null}
               tag={dateLabel(turnMeta(run.turn), who.style)}
               tagGold={ask ? speakGoal(ask.verb) : undefined}
+              tier={tier}
             />
           </div>
           <div className="flex items-center gap-1.5">

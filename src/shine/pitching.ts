@@ -131,6 +131,10 @@ function closerSit(kind: GameKind, r: () => number, pgId: PitcherPgId | null) {
   if (kind === "gate" || kind === "first-light") {
     return { inning: 9, outs: 0, scoreDiff: 1, runners: 0, inherited: 0 };
   }
+  // Check-in 22 sim: the closer's Finale is the save with the tying run already on (61-65% met);
+  // her Lantern is two punchouts on a three-run lead (51-62%).
+  if (kind === "finale" && pgId === "hold-one-run") return { inning: 9, outs: 0, scoreDiff: 1, runners: 1, inherited: 1 };
+  if (kind === "lantern-classic" && pgId === "k-2") return { inning: 9, outs: 0, scoreDiff: 3, runners: 0, inherited: 0 };
   if (pgId === "strand-inherited") {
     if (r() < 0.67) return { inning: 9, outs: 0, scoreDiff: 1, runners: 1, inherited: 1 };
     return { inning: 8, outs: 0, scoreDiff: 2, runners: 2, inherited: 2 };
@@ -144,7 +148,11 @@ function closerSit(kind: GameKind, r: () => number, pgId: PitcherPgId | null) {
   return { inning: 8, outs: 0, scoreDiff: 2, runners: 2, inherited: 2 };
 }
 
-function aceSit(pgId: PitcherPgId | null) {
+function aceSit(kind: GameKind, pgId: PitcherPgId | null) {
+  // The starters' Finale is the ninth with the lead on the line: Reina after a leadoff walk
+  // ("If it's ball four, don't come out"), Sol with two punchouts to get (check-in 22 sim: 56-71%).
+  if (kind === "finale" && pgId === "clean-ninth") return { inning: 9, outs: 0, scoreDiff: 1, runners: 1, inherited: 0 };
+  if (kind === "finale" && pgId === "k-2") return { inning: 9, outs: 0, scoreDiff: 2, runners: 0, inherited: 0 };
   if (pgId === "escape-jam") return { inning: 7, outs: 0, scoreDiff: 0, runners: 2, inherited: 0 };
   if (pgId === "escape-loaded-jam") return { inning: 7, outs: 0, scoreDiff: 0, runners: 3, inherited: 0 };
   if (pgId === "k-side") return { inning: 9, outs: 0, scoreDiff: 1, runners: 0, inherited: 0 };
@@ -162,7 +170,7 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
   const r = makeRng(hashId(`${run.rngSeed}|${kind}|mound`));
   const official = officialFor(run.characterId, run.turn);
   const pgId = official && isPitcherPg(official.pgId) ? official.pgId : null;
-  const sit = role === "closer" ? closerSit(kind, r, pgId) : (aceSit(pgId) ?? { inning: 1, outs: 0, scoreDiff: 0, runners: 0, inherited: 0 });
+  const sit = role === "closer" ? closerSit(kind, r, pgId) : (aceSit(kind, pgId) ?? { inning: 1, outs: 0, scoreDiff: 0, runners: 0, inherited: 0 });
   const sgId = official && isPitcherSg(official.sgId) ? official.sgId : null;
   const tells = run.tells ?? EMPTY_TELLS;
   const batter = rivalLineup({ characterId: run.characterId, year: run.year }, 0);
@@ -203,6 +211,12 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
     banner:
       kind === "practice"
         ? "Sit the glove. Then Go."
+        : kind === "finale" && pgId === "clean-ninth"
+          ? "Ninth. Ball four to lead off. The next one."
+          : kind === "finale" && pgId === "hold-one-run"
+            ? "Ninth. The tying run is on first."
+            : pgId === "k-2" && sit.inning === 9
+              ? "Ninth. Two punchouts. Keep the lead."
         : role === "closer"
           ? pgId === "k-side"
             ? "Ninth. Strike out the side."
@@ -399,7 +413,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   const closerDone = game.role === "closer" && (game.outsRecorded >= (game.pgId === "four-out" ? 4 : 3) || game.blown);
   const satOuts = satInningsOuts(game);
   const jamDate = game.pgId === "escape-jam" || game.pgId === "escape-loaded-jam";
-  const aceSide = game.role === "ace" && game.pgId === "k-side";
+  const aceSide = game.role === "ace" && (game.pgId === "k-side" || game.kind === "finale");
 
   if (practiceDone || gateDone || kGoalDone || closerDone) {
     game.done = true;
@@ -444,7 +458,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
     return;
   }
 
-  if (aceSide && game.outsRecorded >= 3) {
+  if (aceSide && (game.outsRecorded >= 3 || game.blown)) {
     game.done = true;
     game.pgMet = evaluatePg(run, game);
     game.banner = game.pgMet ? "COMMAND." : "It got away from her.";
@@ -636,7 +650,7 @@ export function resolveDelivery(
         game.earnedRuns += 1;
         game.scoreDiff -= 1;
         push(game.events, { t: "pitcherRun", runs: 1, earned: true });
-        if (game.role === "closer" && game.scoreDiff <= 0) game.blown = true;
+        if ((game.role === "closer" || game.kind === "finale") && game.scoreDiff <= 0) game.blown = true;
       }
       game.banner = "Walk.";
       finishBatter(run, game, r);
@@ -685,7 +699,7 @@ export function resolveDelivery(
     game.runners = 0;
     push(game.events, { t: "pitcherRun", runs: scored, earned: true });
     if (game.inherited > 0) game.inheritedStranded = false;
-    if (game.role === "closer" && game.scoreDiff <= 0) game.blown = true;
+    if ((game.role === "closer" || game.kind === "finale") && game.scoreDiff <= 0) game.blown = true;
     game.banner = "Gone.";
     finishBatter(run, game, r);
     return;
@@ -698,7 +712,7 @@ export function resolveDelivery(
       if (game.inherited > 0) game.inheritedStranded = false;
     }
     game.runners = Math.min(3, game.runners + 1);
-    if (game.role === "closer" && game.scoreDiff <= 0) game.blown = true;
+    if ((game.role === "closer" || game.kind === "finale") && game.scoreDiff <= 0) game.blown = true;
     game.banner = "In play — hit.";
     finishBatter(run, game, r);
     return;

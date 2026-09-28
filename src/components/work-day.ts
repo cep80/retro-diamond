@@ -16,7 +16,18 @@ import {
   moodLevel,
   stationStat,
 } from "../shine/training.ts";
+import {
+  STAT_EN,
+  STAT_KANA,
+  STAT_SHORT,
+  gradeIndex,
+  roleStats,
+  statFill,
+  statGrade,
+  type Grade,
+} from "../shine/grades.ts";
 import type { CalendarEntry, CharacterId, StationId, TraineeRun, TraineeStatKey } from "../shine/types.ts";
+import { coachBrief } from "../shine/coach.ts";
 
 export type MoodIdx = 0 | 1 | 2 | 3 | 4;
 
@@ -56,29 +67,6 @@ export function strained(energy: number): boolean {
   return energy < 40;
 }
 
-const STAT_KANA: Record<TraineeStatKey, string> = {
-  contact: "コンタクト",
-  speed: "スピード",
-  eye: "選球眼",
-  power: "パワー",
-  guts: "根性",
-  wit: "賢さ",
-  stuff: "球威",
-  control: "制球",
-  stamina: "スタミナ",
-};
-
-const STAT_EN: Record<TraineeStatKey, string> = {
-  contact: "Contact",
-  speed: "Speed",
-  eye: "Eye",
-  power: "Power",
-  guts: "Guts",
-  wit: "Wit",
-  stuff: "Stuff",
-  control: "Control",
-  stamina: "Stamina",
-};
 
 /** One thing a tile raises. Two arrows: more of it than the other tile that raises it. */
 export interface Lift {
@@ -95,11 +83,19 @@ const MOOD = (up: 1 | 2): Lift => ({ kana: "やる気", en: "Mood", up });
  * for a focus). Rest: the Off day gives energy and a little mood, the Trainer's
  * room more energy (+35 to +25), the Clubhouse a whole mood step (+1 to +0.5).
  */
-export function stationLifts(id: StationId, run?: Pick<TraineeRun, "carry" | "parentId" | "characterId">): Lift[] {
+/**
+ * What the Bullpen works today: Control when the Coach's brief asks for it (the out, the clean
+ * ninth and the hold asks lean on it), otherwise Stuff. Before this, nothing trained Control.
+ */
+export function bullpenFocus(run: TraineeRun): "stuff" | "control" {
+  return coachBrief(run).choice.stat === "control" ? "control" : "stuff";
+}
+
+export function stationLifts(id: StationId, run?: Pick<TraineeRun, "carry" | "parentId" | "characterId">, sideFocus: "stuff" | "control" = "stuff"): Lift[] {
   if (id === "off-day") return [ENERGY(1), MOOD(1)];
   if (id === "treatment") return [ENERGY(2)];
   if (id === "clubhouse") return [MOOD(2)];
-  const stat = stationStat(id, "stuff", run as TraineeRun | undefined);
+  const stat = stationStat(id, sideFocus, run as TraineeRun | undefined);
   return stat ? [{ kana: STAT_KANA[stat], en: STAT_EN[stat], up: 1 }] : [];
 }
 
@@ -170,10 +166,8 @@ export function morningAfter(run: Pick<TraineeRun, "turn" | "calendar" | "lastWo
   let full = false;
   const chips: DayChip[] = [];
   if (last.statTrained && isWorkOutcome(last.outcome)) {
-    const w = run.lastWork;
-    if (w && w.turn === last.turn && w.stat === last.statTrained && w.to > w.from) {
-      chips.push({ text: `${STAT_EN[w.stat]} +${w.to - w.from}`, cost: false });
-    }
+    const w = morningGain(run);
+    if (w) chips.push({ text: `${STAT_EN[w.stat]} +${w.to - w.from}`, cost: false });
     energy = TRAIN_STANDARD_ENERGY + (last.outcome === "bad-fail" ? -2 : 0);
     mood =
       last.outcome === "bad-fail"
@@ -212,6 +206,74 @@ export function morningAfter(run: Pick<TraineeRun, "turn" | "calendar" | "lastWo
   if (moodChip && moodChip.cost) chips.push(moodChip);
   const energyFrom = energy !== null && run.energy === last.energyAfter ? Math.max(0, Math.min(100, last.energyAfter - energy)) : null;
   return { chips, energyFrom };
+}
+
+export interface MorningGain {
+  stat: TraineeStatKey;
+  from: number;
+  to: number;
+}
+
+/**
+ * The point yesterday's work put on a stat, when it put one: the Coach's pick
+ * was the day right before today, it was a training tile, and it landed. A
+ * failed rep, a rest or a game is null; so is a gain a cap swallowed.
+ */
+export function morningGain(run: Pick<TraineeRun, "turn" | "calendar" | "lastWork">): MorningGain | null {
+  const last = run.calendar.at(-1);
+  if (!last || last.turn !== run.turn - 1) return null;
+  if (!last.statTrained || !isWorkOutcome(last.outcome)) return null;
+  const w = run.lastWork;
+  if (!w || w.turn !== last.turn || w.stat !== last.statTrained || w.to <= w.from) return null;
+  return { stat: w.stat, from: w.from, to: w.to };
+}
+
+export interface StripCell {
+  stat: TraineeStatKey;
+  kana: string;
+  en: string;
+  short: string;
+  grade: Grade;
+  /** 0..7, G to S, for the letter's colour. */
+  rank: number;
+  /** The bar, 0..1 on the games' scale. */
+  fill: number;
+  /** Her potential on the same scale: the bar can't go past it. */
+  cap: number;
+  /** The morning after a gain: where the bar starts, and whether the letter moved. */
+  land: { from: number; gradeFrom: Grade } | null;
+}
+
+/**
+ * The stat strip: her role's five, as letters and bars. The gain fills in only
+ * when it is exactly yesterday's work (the stat still reads what the work left
+ * it at), so the bar never animates a point she didn't get.
+ */
+export function statStrip(run: Pick<TraineeRun, "turn" | "calendar" | "lastWork" | "stats" | "potential">, pitcher: boolean): StripCell[] {
+  const gain = morningGain(run);
+  return roleStats(pitcher).map((stat) => {
+    const value = run.stats[stat];
+    const land = gain && gain.stat === stat && gain.to === value ? { from: statFill(gain.from), gradeFrom: statGrade(gain.from) } : null;
+    return {
+      stat,
+      kana: STAT_KANA[stat],
+      en: STAT_EN[stat],
+      short: STAT_SHORT[stat],
+      grade: statGrade(value),
+      rank: gradeIndex(value),
+      fill: statFill(value),
+      cap: statFill(run.potential),
+      land,
+    };
+  });
+}
+
+/** What a screen reader hears for the strip: the letters, and yesterday's move if one landed. */
+export function stripWords(cells: readonly StripCell[]): string {
+  const parts = cells.map((c) => `${c.en} ${c.grade}`);
+  const moved = cells.find((c) => c.land);
+  const tail = moved ? (moved.land!.gradeFrom !== moved.grade ? `. ${moved.en} up to ${moved.grade}` : `. ${moved.en} up`) : "";
+  return `${parts.join(", ")}${tail}`;
 }
 
 type Voice = { first: string; ready: [string, string]; high: string; tired: [string, string]; worn: string; empty: string; low: string };

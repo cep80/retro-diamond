@@ -200,10 +200,21 @@ export interface FeaturedGame {
   runnerLine: string | null;
 }
 
+/** A hitter's Diamond Finale: always five at-bats, so her last one comes in the 9th. */
+export const FINALE_APPEARANCES = 5;
+/** Going into the Finale's 9th the game is within this many runs: her last at-bat is on the line. */
+export const FINALE_NINTH_MARGIN = 1;
+
 function paCount(kind: GameKind, r: () => number): number {
   if (kind === "practice") return 3;
   if (kind === "weekly") return 1;
   if (kind === "gate") return 2;
+  // The Finale is a full game: five trips, the last one in the 9th (inningForPa).
+  // The roll still happens so every other date keeps its seeded draws.
+  if (kind === "finale") {
+    r();
+    return FINALE_APPEARANCES;
+  }
   const roll = r();
   if (roll < 0.25) return 3;
   if (roll < 0.75) return 4;
@@ -356,8 +367,19 @@ function tickScore(game: FeaturedGame, r: () => number) {
   else if (roll < 0.42) game.scoreDiff += 1;
 }
 
+/**
+ * The Finale's 9th is on the line: the innings she didn't bat in are the
+ * broadcast's to tell, so they bring the game within a run before her last
+ * at-bat. Her own runs and RBI are untouched; only the score around her moves.
+ */
+export function holdFinaleNinth(game: Pick<FeaturedGame, "kind" | "inning" | "scoreDiff">) {
+  if (game.kind !== "finale" || game.inning < 9) return;
+  game.scoreDiff = Math.max(-FINALE_NINTH_MARGIN, Math.min(FINALE_NINTH_MARGIN, game.scoreDiff));
+}
+
 function skipBlowout(game: FeaturedGame) {
-  if (game.kind === "practice" || game.kind === "weekly" || game.kind === "gate") return false;
+  // The Finale plays all nine: its 9th is held close (holdFinaleNinth), so there's no blowout to leave.
+  if (game.kind === "practice" || game.kind === "weekly" || game.kind === "gate" || game.kind === "finale") return false;
   return game.inning >= 7 && Math.abs(game.scoreDiff) >= 8 && game.pgMet;
 }
 
@@ -659,6 +681,7 @@ function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedT
   game.paIndex += 1;
   const prevInning = game.inning;
   game.inning = inningForPa(game.kind, game.paIndex);
+  holdFinaleNinth(game);
   if (game.inning !== prevInning) push(game.events, { t: "inning", inning: game.inning });
   game.count = { balls: 0, strikes: 0 };
   game.outs = reachedThisPa ? game.outs : Math.min(2, game.outs + 1);

@@ -22,7 +22,7 @@ let sfx: GainNode | null = null;
 let music: GainNode | null = null;
 let musicTimer: number | null = null;
 let crowd: { src: AudioBufferSourceNode; gain: GainNode; cowbell?: number; bed: number } | null = null;
-let fileMusic: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
+let fileMusic: { src: AudioBufferSourceNode; gain: GainNode; url?: string; bed: number } | null = null;
 let fieldBed: { src: AudioBufferSourceNode; gain: GainNode; bed: number } | null = null;
 const fieldBufs = new Map<string, AudioBuffer>();
 let fieldBedGen = 0;
@@ -269,6 +269,7 @@ export function sfxGain() {
 export function sfxVoice(freq: number) {
   if (!enabled.sfx) return;
   tone(freq * (0.97 + Math.random() * 0.06), 0.035, "triangle", 0.025);
+  dipScreenMusic();
 }
 
 export function sfxSelect() {
@@ -436,7 +437,7 @@ export function duckCrowd(on: boolean) {
   }
   if (fileMusic) {
     fileMusic.gain.gain.cancelScheduledValues(now());
-    fileMusic.gain.gain.setTargetAtTime(on ? 0.06 : 1, now(), 0.06);
+    fileMusic.gain.gain.setTargetAtTime(on ? 0.06 * fileMusic.bed : fileMusic.bed, now(), 0.06);
   }
   if (fieldBed) {
     fieldBed.gain.gain.cancelScheduledValues(now());
@@ -548,17 +549,22 @@ function stopFileMusic() {
   fileMusic = null;
 }
 
-function playWalkBuffer(buf: AudioBuffer) {
+function playWalkBuffer(buf: AudioBuffer, level = 1, url?: string, fadeIn = 0) {
   if (!ctx || !music || !enabled.music) return;
   const src = ctx.createBufferSource();
   src.buffer = buf;
   src.loop = true;
   const g = ctx.createGain();
-  g.gain.value = 1;
+  if (fadeIn > 0) {
+    g.gain.setValueAtTime(0.0001, now());
+    g.gain.linearRampToValueAtTime(level, now() + fadeIn);
+  } else {
+    g.gain.value = level;
+  }
   src.connect(g);
   g.connect(music);
   src.start();
-  fileMusic = { src, gain: g };
+  fileMusic = { src, gain: g, url, bed: level };
 }
 
 function stopFieldBed() {
@@ -570,13 +576,18 @@ function stopFieldBed() {
   fieldBed = null;
 }
 
-function playFieldBuffer(buf: AudioBuffer, level = 0.55) {
+function playFieldBuffer(buf: AudioBuffer, level = 0.55, fadeIn = 0) {
   if (!ctx || !music || !enabled.music) return;
   const src = ctx.createBufferSource();
   src.buffer = buf;
   src.loop = true;
   const g = ctx.createGain();
-  g.gain.value = level;
+  if (fadeIn > 0) {
+    g.gain.setValueAtTime(0.0001, now());
+    g.gain.linearRampToValueAtTime(level, now() + fadeIn);
+  } else {
+    g.gain.value = level;
+  }
   src.connect(g);
   g.connect(music);
   src.start();
@@ -668,6 +679,97 @@ function startPiano(rank: "S" | "A" | "B" | "C" | "D" | "never-quit") {
 
 export function startEnding(rank: "S" | "A" | "B" | "C" | "D" | "never-quit") {
   startPiano(rank);
+}
+
+// ── Music between games (check-in 22, F9) ───────────────────────────────────
+// The complex, her big scenes and the end of a career each have a bed. ShineApp picks
+// one cue per screen; a cue that is already playing never restarts, so swapping screens
+// under the same cue (the work screen, an event, the work screen again) is seamless.
+
+/** The §9.4 files. Null until they land in public/audio; the stand-ins play until then. */
+export const COMPLEX_THEME_FILE: string | null = null; // "/audio/complex-day.mp3"
+export const LIVE_SONG_FILE: string | null = null; // "/audio/winning-live.mp3"
+
+export type ScreenMusic =
+  | { kind: "complex" }
+  | { kind: "theme"; id: WalkId }
+  | { kind: "live"; id: WalkId }
+  | { kind: "bow"; rank: "S" | "A" | "B" | "C" | "D" | "never-quit" };
+
+/** Gain of each bed on the music bus (before the player's Music volume and the mute). */
+export const SCREEN_MUSIC_LEVEL = { complex: 0.3, theme: 0.2, live: 1 } as const;
+
+export function screenMusicKey(cue: ScreenMusic | null): string {
+  if (!cue) return "";
+  if (cue.kind === "complex") return "complex";
+  if (cue.kind === "bow") return `bow:${cue.rank}`;
+  return `${cue.kind}:${cue.id}`;
+}
+
+/** The file a cue plays. Her theme and her Live are the same walk-up until the Live song lands. */
+export function screenMusicUrl(cue: ScreenMusic): string | null {
+  if (cue.kind === "complex") return COMPLEX_THEME_FILE ?? fieldBedUrl("lantern");
+  if (cue.kind === "theme") return walkUpUrl(cue.id);
+  if (cue.kind === "live") return LIVE_SONG_FILE ?? walkUpUrl(cue.id);
+  return null;
+}
+
+let screenKey: string | null = null;
+let screenGen = 0;
+const screenBufs = new Map<string, AudioBuffer>();
+
+/** The cue the screen music is playing, or null (a race or another engine owns the bus). */
+export function activeScreenMusic(): string | null {
+  return screenKey;
+}
+
+export function playScreenMusic(cue: ScreenMusic) {
+  if (!ctx || !music || !enabled.music) return;
+  const key = screenMusicKey(cue);
+  if (key === screenKey) return;
+  const url = screenMusicUrl(cue);
+  // Her theme rising into her Live is one song: ride the level up, never restart it.
+  if (url && screenKey && fileMusic && fileMusic.url === url && (cue.kind === "theme" || cue.kind === "live")) {
+    const level = SCREEN_MUSIC_LEVEL[cue.kind];
+    const g = fileMusic.gain.gain;
+    g.cancelScheduledValues(now());
+    g.setValueAtTime(g.value, now());
+    g.linearRampToValueAtTime(level, now() + 1.6);
+    fileMusic.bed = level;
+    screenKey = key;
+    return;
+  }
+  stopMusic();
+  if (cue.kind === "bow") {
+    startPiano(cue.rank);
+    screenKey = key;
+    return;
+  }
+  screenKey = key;
+  const gen = ++screenGen;
+  if (!url) return;
+  const kind = cue.kind;
+  const level = SCREEN_MUSIC_LEVEL[kind];
+  void (async () => {
+    const buf = screenBufs.get(url) ?? (await decodeUrl(url));
+    if (buf) screenBufs.set(url, buf);
+    if (gen !== screenGen || screenKey !== key || !buf) return;
+    if (kind === "complex") playFieldBuffer(buf, level, 1.2);
+    else playWalkBuffer(buf, level, url, kind === "live" ? 0.4 : 1.2);
+  })();
+}
+
+/** A spoken line dips the quiet beds for a breath so the voice sits on top. The race's walk-up is left alone. */
+function dipScreenMusic() {
+  if (!ctx || !screenKey) return;
+  const t = now();
+  for (const b of [fieldBed, fileMusic]) {
+    if (!b || b.bed >= 0.9) continue;
+    const g = b.gain.gain;
+    g.cancelScheduledValues(t);
+    g.setTargetAtTime(b.bed * 0.55, t, 0.03);
+    g.setTargetAtTime(b.bed, t + 0.2, 0.25);
+  }
 }
 
 export function sfxWhiff() {
@@ -901,6 +1003,8 @@ export function startMusic(track: MusicTrack = "office") {
 export function stopMusic() {
   walkGen += 1;
   fieldBedGen += 1;
+  screenGen += 1;
+  screenKey = null;
   stopFileMusic();
   stopFieldBed();
   stopChip();
@@ -908,4 +1012,108 @@ export function stopMusic() {
     clearTimeout(pianoTimer);
     pianoTimer = null;
   }
+}
+
+// ── Date-presentation builder (check-in 22): the Finale's fanfare, the crowd by date tier ──
+
+/**
+ * The live crowd stem's bed for a date's level (race-ui dateCrowdLevel). The
+ * old floor (0.12) is First Light's bed; the ladder scales around it, so the
+ * Gate sits under it and the Finale well over it.
+ */
+export function liveCrowdBed(level: number): number {
+  return Math.max(0.1, Math.min(0.26, (0.12 * level) / 0.05));
+}
+
+/** The date's crowd, at its rung on the ladder: the park's stem, with the bed scaled by the date. */
+export function sfxCrowdForDate(level: number, stem: CrowdStemId | "us" = "east") {
+  if (!ctx || !sfx || !enabled.sfx) return;
+  const id = crowdId(stem);
+  const gen = ++crowdGen;
+  stopCrowdInternal();
+  void crowdFromFile(id).then((file) => {
+    if (gen !== crowdGen || !ctx || !sfx || !enabled.sfx) return;
+    if (file) {
+      playCrowdBuffer(file, id, level, true);
+      if (crowd) {
+        const bed = liveCrowdBed(level);
+        crowd.gain.gain.value = bed;
+        crowd.bed = bed;
+      }
+      return;
+    }
+    const buf = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate);
+    buf.getChannelData(0).set(fillCrowd(id, ctx.sampleRate));
+    playCrowdBuffer(buf, id, level);
+  });
+}
+
+/** Strike two: the park leans in, then settles back to its bed. Smaller than a burst. */
+export function sfxCrowdSwell() {
+  if (!crowd || !ctx || !enabled.sfx) return;
+  const bed = crowd.bed;
+  crowd.gain.gain.cancelScheduledValues(now());
+  crowd.gain.gain.setValueAtTime(Math.max(0.0001, crowd.gain.gain.value), now());
+  crowd.gain.gain.linearRampToValueAtTime(Math.max(0.08, bed * 1.45), now() + 0.35);
+  crowd.gain.gain.exponentialRampToValueAtTime(Math.max(0.02, bed), now() + 1.5);
+}
+
+/** One brass voice: three detuned saws through a lowpass that opens on the attack. */
+function brass(freq: number, at: number, dur: number, vol: number) {
+  if (!ctx || !sfx) return;
+  const f = ctx.createBiquadFilter();
+  f.type = "lowpass";
+  f.Q.value = 1.4;
+  f.frequency.setValueAtTime(freq * 1.2, at);
+  f.frequency.linearRampToValueAtTime(freq * 6, at + 0.05);
+  f.frequency.exponentialRampToValueAtTime(freq * 2.4, at + Math.max(0.1, dur));
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(vol, at + 0.035);
+  g.gain.setValueAtTime(vol * 0.8, at + dur * 0.7);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  f.connect(g);
+  g.connect(sfx);
+  for (const detune of [-8, 0, 7]) {
+    const o = ctx.createOscillator();
+    o.type = "sawtooth";
+    o.frequency.value = freq;
+    o.detune.value = detune;
+    o.connect(f);
+    o.start(at);
+    o.stop(at + dur + 0.05);
+  }
+}
+
+/** The Finale's call to the post: a triplet pickup, the tonic, a climb, and the held chord. [freq Hz, start s, length s]. */
+export const FINALE_FANFARE: readonly (readonly [number, number, number])[] = [
+  [392.0, 0, 0.11],
+  [392.0, 0.13, 0.11],
+  [392.0, 0.26, 0.11],
+  [523.25, 0.4, 0.46],
+  [329.63, 0.4, 0.46],
+  [440.0, 0.9, 0.14],
+  [493.88, 1.06, 0.14],
+  [523.25, 1.22, 1.35],
+  [659.25, 1.22, 1.35],
+  [783.99, 1.22, 1.35],
+  [261.63, 1.22, 1.35],
+];
+
+let lastFanfare = -1;
+
+/** The Finale's brass sting. A second call inside half a second (StrictMode's double mount) is the same sting. */
+export function sfxFanfare() {
+  if (!ctx || !sfx || !enabled.sfx) return;
+  const t0 = now();
+  if (lastFanfare >= 0 && t0 - lastFanfare < 0.5) return;
+  lastFanfare = t0;
+  for (const [f, at, dur] of FINALE_FANFARE) brass(f, t0 + at, dur, f < 300 ? 0.03 : 0.024);
+}
+
+/** A won Finale: the fanfare again over the park coming out of its seats. */
+export function sfxFinaleWin() {
+  sfxFanfare();
+  sfxCrowdBurst();
+  if (typeof window !== "undefined") window.setTimeout(sfxCrowdBurst, 1300);
 }

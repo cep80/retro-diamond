@@ -215,10 +215,10 @@ describe("1.0 bible", () => {
       /before the catcher/,
     );
   });
-  it("names Kira's classic still from the side and the inherited runners", () => {
+  it("names Kira's classic still from the two punchouts and the inherited runners", () => {
     assert.equal(
       yearStillLine("kira", 40, ["met", "met", "missed", "met", "pending", "pending", "pending"]),
-      "Lantern Classic. The side wasn't struck out. Night Classic. She came in with runners and stranded them.",
+      "Lantern Classic. The two punchouts didn't come. Night Classic. She came in with runners and stranded them.",
     );
     assert.doesNotMatch(
       yearStillLine("kira", 40, ["met", "met", "missed", "met", "pending", "pending", "pending"]),

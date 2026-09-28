@@ -12,7 +12,10 @@
  * it is live: show them at the wind-up, not at the aim.
  */
 import type React from "react";
-import { CHROME_MS } from "@/components/race-ui";
+import { CHROME_MS, FINALE_PLATE, type DateTitle } from "@/components/race-ui";
+import { sheet } from "@/shine/bible.ts";
+import { kitAccent } from "@/shine/stage.ts";
+import type { CharacterId } from "@/shine/types.ts";
 
 export { CHROME_MS };
 
@@ -127,11 +130,14 @@ export interface VsSide {
 export function VsSplash({
   left,
   right,
+  line,
   reduced,
   paused = false,
 }: {
   left: VsSide;
   right: VsSide;
+  /** The head-to-head from the big dates already sat ("Third meeting. Aoi leads 2–0."), under VS. */
+  line?: string | null;
   reduced: boolean;
   paused?: boolean;
 }) {
@@ -141,8 +147,9 @@ export function VsSplash({
       data-dc-paused={paused ? "" : undefined}
       style={timing(CHROME_MS.vs)}
       role="img"
-      aria-label={`${left.name} against ${right.name}`}
+      aria-label={`${left.name} against ${right.name}${line ? `. ${line}` : ""}`}
       data-vs={`${left.name}|${right.name}`}
+      data-vs-record={line ?? undefined}
     >
       <div className="shine-vs-side shine-vs-a" aria-hidden>
         <img src={left.src} alt="" draggable={false} />
@@ -157,7 +164,197 @@ export function VsSplash({
         <div className="shine-stamp shine-stamp-gold shine-stamp-still">
           <span className="shine-stamp-jp">VS</span>
         </div>
+        {line ? <p className="shine-vs-record">{line}</p> : null}
       </div>
     </div>
   );
 }
+
+// ── The big dates' escalation (check-in 22, date presentation) ────────────
+
+export interface TitleSide {
+  name: string;
+  jp: string | null;
+  number: number | null;
+  accent: string | null;
+}
+
+/** A cast girl's nameplate for the entrance, trimmed in her kit colour. */
+export function castSide(id: CharacterId): TitleSide {
+  const s = sheet(id);
+  return { name: s.name, jp: s.jp, number: s.number, accent: kitAccent(id) };
+}
+
+/**
+ * The card before a big date's first Go, letterboxed over the film: the date's
+ * name in kana and English, where it is, and its rung ("Classic Year · 2 of 2").
+ * The Finale's entrance is the same card grown: its own stadium plate, both
+ * nameplates, and the head-to-head. Unlike the rest of the chrome it takes a
+ * tap: anywhere on it skips it. The caller times it (CHROME_MS.title or
+ * .entrance) and plays the fanfare; `reduced` sets it down still.
+ */
+export function DateTitleCard({
+  title,
+  plate,
+  her,
+  rival,
+  record,
+  reduced,
+  onSkip,
+}: {
+  title: DateTitle;
+  /** The Finale's stadium; other dates keep the film under the bars. */
+  plate?: { src: string; fallback: string } | null;
+  her?: TitleSide | null;
+  rival?: TitleSide | null;
+  record?: string | null;
+  reduced: boolean;
+  onSkip: () => void;
+}) {
+  const finale = title.tier === "finale";
+  const side = (s: TitleSide, at: "a" | "b") => (
+    <span className={`shine-title-plate shine-title-plate-${at}`} style={s.accent ? ({ ["--shine-accent" as string]: s.accent } as React.CSSProperties) : undefined}>
+      {s.number !== null ? <span className="shine-lt-num">#{s.number}</span> : null}
+      <span className="shine-title-plate-name">
+        {s.jp ? (
+          <span className="shine-kana" lang="ja">
+            {s.jp}
+          </span>
+        ) : null}
+        {s.name}
+      </span>
+    </span>
+  );
+  return (
+    <button
+      type="button"
+      className={`shine-title-card ${reduced ? "is-reduced" : ""}`}
+      data-tier={title.tier}
+      data-title-card={title.en}
+      style={timing(finale ? CHROME_MS.entrance : CHROME_MS.title)}
+      onClick={onSkip}
+      aria-label={`${title.en}. ${title.place} ${title.step}.${record ? ` ${record}` : ""} Tap to go on.`}
+    >
+      {plate ? (
+        <img
+          src={plate.src}
+          alt=""
+          draggable={false}
+          className="shine-title-plate-img"
+          onError={(e) => {
+            const img = e.currentTarget;
+            if (!img.src.endsWith(plate.fallback)) img.src = plate.fallback;
+          }}
+          aria-hidden
+        />
+      ) : null}
+      <span className="shine-title-shade" aria-hidden />
+      <span className="shine-title-bar shine-title-bar-top" aria-hidden />
+      <span className="shine-title-bar shine-title-bar-bottom" aria-hidden />
+      <span className="shine-title-body" aria-hidden>
+        <span className="shine-title-step">{title.step}</span>
+        <span className="shine-title-jp" lang="ja">
+          {title.jp}
+        </span>
+        <span className="shine-title-en">{title.en}</span>
+        <span className="shine-title-rule" />
+        <span className="shine-title-place">{title.place}</span>
+        {her && rival ? (
+          <span className="shine-title-match">
+            {side(her, "a")}
+            <span className="shine-title-vs">VS</span>
+            {side(rival, "b")}
+          </span>
+        ) : null}
+        {record ? <span className="shine-title-record">{record}</span> : null}
+      </span>
+    </button>
+  );
+}
+
+/**
+ * A won Finale's moment, as long as a home run's, over the done panel whatever
+ * the last pitch was: the stadium behind her joy, gold rays turning around her
+ * face, streamers, and 優勝 CHAMPION landing kana by kana. A tap skips it. The
+ * caller times it (CHROME_MS.finaleWin); `reduced` sets it all down still.
+ */
+export function FinaleWinMoment({ bust, name, jp, reduced, onSkip }: { bust: string; name: string; jp: string | null; reduced: boolean; onSkip: () => void }) {
+  const still = reduced ? "shine-hr-still" : "";
+  const hold = { ["--hr-hold" as string]: `${CHROME_MS.finaleWin}ms` } as React.CSSProperties;
+  return (
+    <>
+      <button type="button" className={`shine-finale-win ${reduced ? "is-reduced" : ""}`} style={hold} onClick={onSkip} aria-label={`${FINALE_WIN_STAMP.en}. ${name} won the Diamond Finale. Tap to go on.`} data-finale-win="">
+        <img
+          src={FINALE_PLATE.src}
+          alt=""
+          draggable={false}
+          className="shine-finale-win-park"
+          onError={(e) => {
+            const img = e.currentTarget;
+            if (!img.src.endsWith(FINALE_PLATE.fallback)) img.src = FINALE_PLATE.fallback;
+          }}
+          aria-hidden
+        />
+        <img src={bust} alt="" draggable={false} className="shine-finale-win-bust" aria-hidden />
+      </button>
+      <div className={`shine-hr-bloom ${still}`} style={hold} aria-hidden />
+      <div className={`shine-hr-rays ${still}`} style={hold} aria-hidden />
+      <div className={`shine-hr-moment shine-finale-win-top ${still}`} style={hold} data-action-stamp="finale-win" aria-hidden>
+        {reduced
+          ? null
+          : WIN_STREAMERS.map((s, i) => (
+              <span
+                key={i}
+                className="shine-hr-streamer"
+                style={{
+                  ["--x" as string]: `${s.x}%`,
+                  ["--d" as string]: `${s.d}ms`,
+                  ["--r" as string]: `${s.r}deg`,
+                  ["--fall" as string]: `${s.fall}ms`,
+                  ["--flap" as string]: `${s.flap}ms`,
+                  ["--drift" as string]: `${s.drift}rem`,
+                  ["--c" as string]: s.c,
+                }}
+              />
+            ))}
+        <div className="shine-hr-bar shine-hr-bar-top" />
+        <div className="shine-hr-bar shine-hr-bar-bottom" />
+        <div className="shine-hr">
+          <div className="shine-stamp shine-stamp-gold shine-stamp-hr">
+            <span className="shine-stamp-jp">
+              {[...FINALE_WIN_STAMP.jp].map((ch, i) => (
+                <span key={i} className="shine-hr-kana" style={{ ["--i" as string]: i }}>
+                  {ch}
+                </span>
+              ))}
+            </span>
+            <span className="shine-stamp-en">{FINALE_WIN_STAMP.en}</span>
+          </div>
+          <p className="shine-hr-name">
+            {jp ? (
+              <>
+                <span className="shine-kana">{jp}</span>{" "}
+              </>
+            ) : null}
+            {name} · Diamond Finale
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** 優勝, the Finale won. */
+export const FINALE_WIN_STAMP = { jp: "優勝", en: "Champion" } as const;
+
+const WIN_COLORS = ["#ffd166", "#fff3c4", "#ff7a6b", "#78eadc", "#ffffff"];
+/** Fixed spots, like the home run's, so every win falls the same way (no random in render). */
+const WIN_STREAMERS = Array.from({ length: 48 }, (_, i) => ({
+  x: (7 + i * 41) % 100,
+  d: (i * 67) % 1100,
+  r: ((i * 47) % 120) - 60,
+  fall: 2400 + ((i * 43) % 900),
+  flap: 340 + ((i * 31) % 260),
+  drift: ((i * 13) % 7) - 3,
+  c: WIN_COLORS[i % WIN_COLORS.length]!,
+}));

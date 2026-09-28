@@ -350,8 +350,50 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
   - The middle innings are thrown pitch by pitch, silently, by the same engine and to the same glove (`mound-summary.ts`). Every roll is hashed from the seed and the pitch count, so the date comes out identical, not just statistically the same. Tests compare it with a date played pitch by pitch, 48 seeds, deepEqual. `resolveMiddle`'s separate model stays unwired.
   - Pause, saves (one save at each row; a reload resumes the montage) and short dates (timeline unchanged) are all tested.
   - Career smoke, Go to done: Sol Lantern 177 s and Series 182 s; Reina Lantern 162 and 195 s, Series 262 s (the ask was lost in the 4th, so four innings were live). Before this, it was 288–371 s. With reduced motion: 88 and 97 s.
+- **Check-in 21 (creative director): the whole career is about 38% of the way to Uma.**
+  - **By area:** race view 50%, mound 40%, work and complex 30%, VN scenes 50%, Years 2–3 escalation 30%, Finale and ending payoff 30% (the ending scenes about 65%, the Finale as a G1 and the Winning Live about 15% each), title and select 60%, audio 25%.
+  - **Main finding:** Years 2–3 escalate only in the writing. The Finale looked like Day 2, and the Winning Live was a text card.
+  - **13 findings**, in `scratchpad/ci21/cd-findings.md`. Art brief §9 covers the Finale stadium, the Live stages, Senior work stills, music and off-model fixes.
+- **Check-in 22 (build: CD findings F1–F9, plus the designer's Finale asks).** Three parallel builders:
+  - **Dates (F1, F4, F5):**
+    - **The Finale is a G1:**
+      - an entrance card with a brass fanfare
+      - her walk-up restored
+      - a hitter's Finale is always five at-bats ending in the 9th, held to within one run
+      - a gold scorebug with 決勝
+      - a 優勝 / CHAMPION win moment on the plate and the mound
+      - the stadium plate behind one constant (`FINALE_PLATE`) for the §9 art
+    - **Ladder:**
+      - a title card before every big date
+      - the scorebug in bronze, silver or gold by year
+      - the head-to-head on the VS splash ("Sixth meeting. Aoi leads 3–2.")
+      - crowd volume by tier (0.04 up to 0.12)
+    - **Finale postgame:** "Three years. That was the last one." and "Afterward". The reassurance line is gone, and the filler lines don't repeat within a career.
+  - **Growth (F3, part of F4):**
+    - **The stat strip:** five stats for her role, with Uma letter grades (`grades.ts`: two points per letter on the 1–20 scale, G up to S). It opens to a panel with her potential.
+    - **Morning after:** the trained bar fills and the letter re-stamps.
+    - **Year cards:** Classic and Senior spring show grade moves since last spring (`springStats`).
+    - **Fans:** a ファン counter. Every tile stays above the fold at all three sizes.
+  - **Payoff (F2, F6, F7, F9):**
+    - **The Winning Live** is only for a won Finale: stage lights, confetti, a rank-letter slam and her walk-up at full volume. Otherwise it's the Last Bow (最後の礼): no confetti, the piano. "To the stage" shows only when there is a stage. The stage art and song hooks are `liveStageSrc` and `LIVE_SONG_FILE`.
+    - **The scrapbook** is polaroids, one per big date, with a picture per outcome and 28 captions. It counts the rival meetings and ends on her authored fan letter.
+    - **The wall card** has merged skills, no "Next" line, her face, and a border coloured by rank. Empty frames open Select on that girl.
+    - **Music:** a bed per screen (the lantern bed at the complex, her walk-up quiet in her scenes, silence at the low point) with no double starts.
+  - **Designer sim (F8, 400 dates per row, `ci22/design`):** each pitcher has her own Finale ask. All three had "strike out the side", met 11–21%.
+    - Reina: a clean ninth after a leadoff walk, 63–71%. Her Finale eve is "If it's ball four, don't come out."
+    - Sol: two punchouts on a 2-run lead, and the lead holds, 56–63%.
+    - Kira: hold a one-run lead with the tying run on first, 60–65%.
+    - Kira's Lantern: two punchouts on a 3-run lead, 51–62%, up from 9–16%.
+    - Engine changes:
+      - `aceSit(kind, pgId)` and closerSit sit each ask in the ninth.
+      - An ace can blow a Finale lead.
+      - "k-2" also needs the lead to hold.
+      - This fixes a bug: an ace's "k-side" counted as met after she lost the lead.
+    - **Control is trainable:** the Bullpen works Control when the Coach's brief asks for it (`bullpenFocus`), and the tile says so.
+  - **Tests:** 738 pass.
 - **Open:**
-  - Kira's Lantern band, trainable Control
+  - the narrative director on the ci22 copy (scrapbook captions, the Finale lines, the new asks' reads)
+  - `datePark("finale")` is still her home park (park factors and crowd sound); the stadium shows only in the chrome
   - a production deploy (needs the user's go-ahead)
   - the stranger playtest (M6, a user step)
   - server-side receipt verification before any real purchase

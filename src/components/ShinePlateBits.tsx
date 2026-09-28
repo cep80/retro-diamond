@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
-import { dayChipLabel, doneStamp, scorebugLabel, type DayChip } from "@/components/race-ui";
+import { dayChipLabel, doneStamp, scorebugLabel, type DateTier, type DayChip } from "@/components/race-ui";
 import { portraitSrc } from "@/shine/bible.ts";
 import type { Cell } from "@/shine/core/zone.ts";
 import type { Bases } from "@/shine/events.ts";
@@ -188,6 +188,7 @@ export function Scorebug({
   self,
   tag,
   tagGold,
+  tier = null,
   done = false,
 }: {
   inning: string | null;
@@ -199,6 +200,8 @@ export function Scorebug({
   self: 1 | 2 | 3 | null;
   tag?: string;
   tagGold?: string;
+  /** The date's rung (race-ui dateTier): the bug's rule goes bronze, silver, gold; the Finale adds its 決勝 mark. */
+  tier?: DateTier | null;
   done?: boolean;
 }) {
   const lamps = (n: number, of: number, on: string) =>
@@ -210,9 +213,15 @@ export function Scorebug({
       className="shine-scorebug"
       data-final={final ? "" : undefined}
       data-tagged={tagged ? "" : undefined}
+      data-tier={tier ?? undefined}
       aria-label={scorebugLabel({ tag, tagGold, inning, score, atBat, count, outs, done })}
     >
       <span className="shine-bug-cells">
+        {tier === "finale" ? (
+          <span className="shine-bug-cell shine-bug-finale" aria-hidden>
+            決勝
+          </span>
+        ) : null}
         {inning ? (
           <span className="shine-bug-cell shine-bug-inning">
             <b>{inning}</b>

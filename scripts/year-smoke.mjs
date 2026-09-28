@@ -359,7 +359,7 @@ function readResult(mound) {
 /** The pictures behind a settled screen (its backdrop, the wall's cards) that have not painted. */
 function emptyImages() {
   return [...document.querySelectorAll(".shine-backdrop img, .shine-backdrop video, [data-clubhouse-film]")]
-    .filter((el) => el.getClientRects().length > 0 && getComputedStyle(el).display !== "none")
+    .filter((el) => (el.tagName === "IMG" || el.tagName === "VIDEO") && el.getClientRects().length > 0 && getComputedStyle(el).display !== "none")
     .filter((el) => (el.tagName === "VIDEO" ? el.readyState < 2 && !el.poster : !(el.complete && el.naturalWidth > 0)))
     .map((el) => `${el.tagName.toLowerCase()} ${el.getAttribute("src")}${el.tagName === "IMG" ? ` (complete=${el.complete}, ${el.naturalWidth}px)` : ` (readyState ${el.readyState})`}`);
 }
@@ -951,7 +951,7 @@ async function act(s) {
     case "postgame": {
       if (date && !date.postgame) date.postgame = s.text.replace(/\s+/g, " ").slice(0, 600);
       if (date) date.pgResultsAfter = s.pgResults;
-      const b = s.buttons.find((x) => /^(Back to the complex|The year)$/i.test(x.name));
+      const b = s.buttons.find((x) => /^(Back to the complex|The year|Afterward)$/i.test(x.name));
       if (!b) return stuckAt(s, "a tap finds no enabled primary action", s.buttons.map((x) => x.name).join(", "));
       return press(s, byName(b.name), b.name);
     }

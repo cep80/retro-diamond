@@ -1,12 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
 import { ShineMute } from "@/components/ShineMute";
 import { ROUND_ICON_PATHS, ShineBack, ShineRoundBtn } from "@/components/ShineRoundBtn";
-import { careerMuteAppliesToScreen, setMasterMuted, setMix, sfxCowbell, sfxGain, sfxSelect, sfxTitleSting, startEnding, startMusic, stopMusic, unlockAudio } from "@/shine/audio.ts";
+import {
+  careerMuteAppliesToScreen,
+  playScreenMusic,
+  screenMusicKey,
+  setMasterMuted,
+  setMix,
+  sfxCowbell,
+  sfxGain,
+  sfxSelect,
+  sfxStamp,
+  sfxTitleSting,
+  startMusic,
+  stopMusic,
+  unlockAudio,
+  type ScreenMusic,
+} from "@/shine/audio.ts";
 import { ShineHelp, ShineSettings } from "@/components/ShineSettings";
-import { nextNamedBeat, nextDateLine, turnMeta, dateLabel, daysAwayLabel, yearOf, PLATE_TURNS } from "@/shine/calendar.ts";
+import { nextNamedBeat, nextDateLine, turnMeta, dateLabel, daysAwayLabel, yearOf, PLATE_TURNS, FINALE_POSTGAME } from "@/shine/calendar.ts";
 import { BIBLE, careerFilmSrc, endingClipSrc, endingFilmSrc, isPitcherStyle, parkSrc, sceneBustSrc, sceneFilmSrc, sheet, yearStillLine, type PortraitMood } from "@/shine/bible.ts";
 import { NEVER_SOLD, SKUS, cosmeticClasses, previewClaimable } from "@/shine/commerce.ts";
 import { kitAccent } from "@/shine/stage.ts";
@@ -22,13 +37,33 @@ import {
   endingRankLabel,
   fanLetter,
   postgamePicture,
-  recapLine,
   shouldCurtainCall,
   yearCard,
 } from "@/shine/culture.ts";
-import { doneStamp } from "@/components/race-ui";
-import { ShineComplexWork } from "./ShineComplexWork";
-import { careerStill, cardAltLook, cardBanner, cardGold, nextGirlId, nextGirlName, parentEligible, pickInheritSparks, postgameLeaveLabel, seriesFinaleLine, sparkEffectLine, sparkGapLine, yearFoldLine } from "@/shine/ending.ts";
+import { doneStamp, postgameFiller } from "@/components/race-ui";
+import { ShineComplexWork, YearGrades, markSpring } from "./ShineComplexWork";
+import {
+  careerStill,
+  cardAltLook,
+  cardBanner,
+  endingStage,
+  endingStageCta,
+  endingStageLabel,
+  liveStageSrc,
+  nextGirlId,
+  nextGirlName,
+  parentEligible,
+  pickInheritSparks,
+  postgameLeaveLabel,
+  rankReveal,
+  rankTone,
+  seriesFinaleLine,
+  sparkEffectLine,
+  sparkGapLine,
+  sparkSummary,
+  wallCardPicture,
+  yearFoldLine,
+} from "@/shine/ending.ts";
 import { coachWarningTone, PG_INDEX } from "@/shine/run.ts";
 import { ShineExhibition, ShinePlate } from "./ShineRace";
 import { loadActionManifest, warmActionExhibition } from "./action/action-manifest";
@@ -46,8 +81,11 @@ function isRivalKind(t: string | null): t is RivalKind {
 }
 import { ScenePlayer } from "./ScenePlayer";
 import { catchWithCoachScene, memoryLine, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
-import { keepsakeWallLine, replayLines, scrapbookLine, scrapbookPages } from "@/shine/scrapbook.ts";
+import { keepsakeWallLine, letterPage, replayLines, scrapbookBook } from "@/shine/scrapbook.ts";
 import type { CharacterId, DefiningPa, Highlight, Spark } from "@/shine/types.ts";
+
+/** A layout effect in the browser; the server render has no layout to wait for. */
+const useScreenLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 type TitleIcon = "exhibition" | "clubhouse" | "shop" | "settings";
 
@@ -241,6 +279,9 @@ function Title() {
   );
 }
 
+/** A tap on an empty Clubhouse frame opens Select on her. Select reads it once, on its first render. */
+let wallPick: CharacterId | null = null;
+
 function Wall() {
   const clubhouse = useShine((s) => s.clubhouse);
   const run = useShine((s) => s.run);
@@ -248,6 +289,36 @@ function Wall() {
   const openSelect = useShine((s) => s.openSelect);
   const nextHook = sparkGapLine(clubhouse);
   const liveQuote = run?.clubhouseCard ? careerStill(run).quote : null;
+  // Six frames, one for each of them: a card once her career is done, an empty frame until then.
+  const coached = new Set(clubhouse.map((c) => c.characterId));
+  const waiting = BIBLE.filter((c) => !coached.has(c.id));
+  const lastCard = clubhouse.at(-1)?.characterId;
+  const nextUp: CharacterId = lastCard ? nextGirlId(lastCard) : "aoi";
+  const frames = (
+    <ul className="shine-wall-frames is-waiting">
+      {waiting.map((c) => (
+        <li key={c.id}>
+          <button
+            type="button"
+            className={`shine-wall-frame ${c.id === nextUp ? "is-next" : ""}`}
+            style={{ ["--face-accent" as string]: kitAccent(c.id) }}
+            aria-label={`Coach ${c.name}`}
+            onClick={() => {
+              sfxSelect();
+              wallPick = c.id;
+              openSelect();
+            }}
+          >
+            <img src={sceneBustSrc(c.id, "neutral")} alt="" onError={(e) => fallBackTo(e.currentTarget, careerFilmSrc(c.id))} />
+            <span className="shine-wall-frame-tag">
+              <span className="shine-kana">{c.jp}</span>
+              {c.name}
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
   return (
     <main className="shine-stage shine-wall text-cream">
       <div className="shine-backdrop" aria-hidden>
@@ -271,42 +342,39 @@ function Wall() {
           <>
             <p className="mt-6 font-ui text-sm text-muted">No cards yet. Finish a Rookie year.</p>
             {/* The wall already has a frame for each of them, dimmed until her year is done. */}
-            <ul className="shine-wall-frames" aria-hidden>
-              {BIBLE.map((c) => (
-                <li key={c.id} className="shine-wall-frame" style={{ ["--face-accent" as string]: kitAccent(c.id) }}>
-                  <img src={sceneBustSrc(c.id, "neutral")} alt="" onError={(e) => fallBackTo(e.currentTarget, careerFilmSrc(c.id))} />
-                  <span className="shine-wall-frame-tag">
-                    <span className="shine-kana">{c.jp}</span>#{c.number}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {frames}
           </>
         ) : (
+          <>
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {clubhouse.map((c) => {
               const who = sheet(c.characterId);
-              const art = endingFilmSrc(c.characterId, c.ending);
+              const pic = wallCardPicture(c.characterId);
               const rank = endingRankLabel(c.ending);
               const keepsake = keepsakeWallLine(c.characterId, c.keepsake);
+              const passes = sparkSummary(c.sparks);
               return (
                 <article
                   key={c.id}
-                  className={`shine-clubhouse-card club-nav-tile overflow-hidden px-0 py-0 ${cardGold(c) ? "border-gold shadow-[0_0_0_1px_rgb(255_209_102/0.8)]" : ""} ${
+                  className={`shine-clubhouse-card shine-wall-card is-rank-${rankTone(c.ending)} club-nav-tile overflow-hidden px-0 py-0 ${
                     c.ending === "S" || c.ending === "A" ? "shine-dohage-card" : c.ending === "never-quit" ? "shine-never-quit" : ""
                   }`}
+                  data-rank={c.ending}
                 >
                   <div className="relative bg-ink/90 px-4 pb-3 pt-4">
-                    <p className="font-display text-[10px] uppercase tracking-widest text-gold">{rank}</p>
+                    <p className="shine-wall-card-rank font-display text-[10px] uppercase tracking-widest">{rank}</p>
                     <p className="shine-kana text-sm text-gold">{who.jp}</p>
-                    {art ? (
-                      <img
-                        src={art}
-                        alt=""
-                        className={`mx-auto mt-2 aspect-[3/4] h-44 w-auto object-cover ${cardAltLook(c) ? "shine-alt-look" : ""}`}
-                        data-clubhouse-film={c.characterId}
-                      />
-                    ) : null}
+                    {/* Her face, never her back: a hitter's celebrate still, a pitcher's bust on her home park. */}
+                    <div className={`shine-wall-card-photo ${cardAltLook(c) ? "shine-alt-look" : ""}`} data-clubhouse-film={c.characterId}>
+                      {pic.kind === "bust" ? (
+                        <>
+                          <img src={parkSrc(who.parkId)} alt="" className="shine-wall-card-plate" />
+                          <img src={sceneBustSrc(c.characterId, pic.mood)} alt="" className="shine-wall-card-bust" onError={(e) => fallBackTo(e.currentTarget, endingFilmSrc(c.characterId, c.ending))} />
+                        </>
+                      ) : (
+                        <img src={pic.src} alt="" className="shine-wall-card-film" onError={(e) => fallBackTo(e.currentTarget, endingFilmSrc(c.characterId, c.ending))} />
+                      )}
+                    </div>
                     <p className="mt-3 font-display text-sm font-bold uppercase tracking-wide">
                       #{who.number} {who.name}
                     </p>
@@ -326,15 +394,20 @@ function Wall() {
                   </div>
                   <div className="border-t border-white/10 bg-panel/80 px-4 py-3">
                     <p className="font-display text-[10px] uppercase tracking-widest text-muted">What she passes on</p>
-                    <p className="mt-1 font-ui text-xs text-gold">
-                      {c.sparks.slice(0, 3).map((s) => s.kind).join(" · ") || "Nothing yet"}
-                    </p>
-                    <p className="mt-2 font-ui text-xs text-cream/70">Next: Coach {nextGirlName(c.characterId)}.</p>
+                    <p className="mt-1 font-ui text-xs text-gold">{passes || "Nothing yet"}</p>
                   </div>
                 </article>
               );
             })}
           </div>
+          {waiting.length ? (
+            <>
+              {/* The girls not coached yet wait in their frames, dimmed. A tap opens her Rookie year. */}
+              <p className="mt-6 font-display text-[10px] uppercase tracking-widest text-muted">Waiting on the wall</p>
+              {frames}
+            </>
+          ) : null}
+          </>
         )}
       </div>
       {clubhouse.length > 0 ? (
@@ -443,9 +516,14 @@ function Select() {
   const importCarry = useShine((s) => s.importCarry);
   const clubhouse = useShine((s) => s.clubhouse);
   const [pick, setPick] = useState<CharacterId>(() => {
+    if (wallPick) return wallPick;
     const last = clubhouse.at(-1)?.characterId;
     return last ? nextGirlId(last) : "aoi";
   });
+  // The frame's pick is spent once Select has opened on her.
+  useEffect(() => {
+    wallPick = null;
+  }, []);
   const [carryNote, setCarryNote] = useState<string | null>(null);
   const [parentId, setParentId] = useState<string | null>(null);
   const [sparks, setSparks] = useState<Spark[]>([]);
@@ -734,9 +812,17 @@ function Complex() {
             <span className="shine-year-card-kana shine-kana">{card.kana}</span>
             <span className="shine-year-card-name">{card.name}</span>
             <span className="shine-year-card-sub">{card.sub}</span>
+            {/* Growth since last spring, letter to letter: the year's work, in one line. */}
+            <YearGrades run={run} />
           </div>
         }
-        action={{ label: "Morning", onClick: finishYearStart }}
+        action={{
+          label: "Morning",
+          onClick: () => {
+            finishYearStart();
+            markSpring();
+          },
+        }}
       >
         {/* The card already names the year, and the Coach's note next morning carries the new coach: this is her. */}
         <p className="shine-shell-line">
@@ -923,11 +1009,11 @@ function Postgame() {
               {isPitcherStyle(who.style) ? "No ball in her pocket this time." : "The baseline stayed. No keepsake this time."}
             </p>
           ) : null}
-          <p className="shine-after-recap mt-2 font-ui text-sm text-cream/70">{recapLine(parkId, run.turn, isPitcherStyle(who.style))}</p>
+          {/* The Finale says her own line; every other big date steps through the park's booth, never twice running. */}
+          <p className="shine-after-recap mt-2 font-ui text-sm text-cream/70">
+            {postgameFiller({ id: run.characterId, kind: last?.type ?? "", parkId, turn: run.turn, met })}
+          </p>
           {seriesFinale ? <p className="mt-3 font-ui text-sm text-gold">{seriesFinale}</p> : null}
-          {last?.type === "finale" && !met ? (
-            <p className="mt-3 font-ui text-sm text-cream/70">Losing the Finale doesn&apos;t take anything away from her.</p>
-          ) : null}
           {run.coachWarning && last?.type !== "finale" ? (
             <p className={`mt-4 font-ui text-sm ${coachWarningTone(run.coachWarning) === "relief" ? "text-gold" : "text-coral"}`}>{run.coachWarning}</p>
           ) : null}
@@ -937,7 +1023,7 @@ function Postgame() {
         </div>
       </section>
       <GoDock>
-        <GoButton onClick={dismissPostgame}>{postgameLeaveLabel(run, last?.type === "finale")}</GoButton>
+        <GoButton onClick={dismissPostgame}>{last?.type === "finale" ? FINALE_POSTGAME.leave : postgameLeaveLabel(run, false)}</GoButton>
       </GoDock>
     </main>
   );
@@ -949,50 +1035,115 @@ function YearEnd() {
   const finishCareer = useShine((s) => s.finishCareer);
   const bumpView = useShine((s) => s.bumpView);
   const dismissYearEnd = useShine((s) => s.dismissYearEnd);
+  const reduced = useShine((s) => s.settings.reducedMotion);
   const card = run.clubhouseCard;
   const [pages, setPages] = useState(false);
   const still = card ? careerStill(run) : null;
-  const film = card ? endingFilmSrc(run.characterId, card.ending) : careerFilmSrc(run.characterId);
-  const clip = card ? endingClipSrc(run.characterId, card.ending) : null;
+  const finalePlayed = run.pgResults[6] !== "pending";
+  const stage = card ? endingStage(card.ending, run.pgResults[6] === "met") : "bow";
+  // The Winning Live stands her on the stage (her curtain still until §9.2's stage art lands);
+  // the Last Bow keeps her bow, or the quiet still of a career that closed early.
+  const film = card
+    ? stage === "live"
+      ? liveStageSrc(run.characterId, curtainFilmSrc(run.characterId))
+      : card.ending === "C" || card.ending === "D"
+        ? endingFilmSrc(run.characterId, card.ending)
+        : curtainFilmSrc(run.characterId)
+    : careerFilmSrc(run.characterId);
+  const [revealed, setRevealed] = useState(false);
 
+  // The rank slams in once the stage has had a moment. Her song is ShineApp's screen music.
   useEffect(() => {
     if (!card) return;
-    startEnding(card.ending);
     if (card.ending === "never-quit") sfxCowbell();
-    return () => stopMusic();
-  }, [card?.id, card?.ending]);
+    const t = window.setTimeout(
+      () => {
+        setRevealed(true);
+        sfxStamp(stage === "live" ? "gold" : card.ending === "C" || card.ending === "D" ? "coral" : "teal");
+      },
+      reduced ? 250 : stage === "live" ? 1800 : 1100,
+    );
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card?.id]);
 
   if (card && still) {
-    const rankLabel = endingRankLabel(card.ending);
+    const label = endingStageLabel(stage);
+    const reveal = rankReveal(card.ending);
+    const tone = rankTone(card.ending);
+    const book = run.highlights.length ? run.highlights : (card.highlights ?? []);
+    // The Winning Live / Last Bow: the stage, the rank, her quote and one frame line. The numbers wait in the scrapbook.
     return (
-      <main className={`shine-after ${pages ? "is-pages" : ""}`} data-winning-live={card.ending}>
+      <main
+        className={`shine-after shine-live is-${stage} ${pages ? "is-pages" : ""} ${reduced ? "is-reduced" : ""}`}
+        data-winning-live={card.ending}
+        data-stage={stage}
+      >
         <div className="shine-backdrop" aria-hidden>
-          <img src={film} alt="" className="shine-after-film" />
-          {clip ? <video key={clip} src={clip} poster={film} autoPlay loop muted playsInline className="shine-after-film" data-winning-clip={clip} /> : null}
+          <img src={film} alt="" className="shine-after-film shine-live-film" data-live-still={run.characterId} />
+          {stage === "live" ? (
+            <>
+              <div className="shine-live-lights" />
+              <div className="shine-live-confetti">
+                {Array.from({ length: 14 }, (_, i) => (
+                  <span key={i} style={{ ["--i" as string]: i }} />
+                ))}
+              </div>
+            </>
+          ) : null}
           <div className="shine-after-shade" />
         </div>
         <header className="shine-after-top">
           <div className="flex min-w-0 flex-col items-start gap-1.5">
-            <p className="episode-chip w-fit">{rankLabel}</p>
-            <p className="font-display text-[10px] uppercase tracking-widest text-gold">Winning Live</p>
+            <p className="episode-chip w-fit">{label.jp}</p>
+            <p className="font-display text-[10px] uppercase tracking-widest text-gold">
+              {label.en}
+              {pages ? ` · ${endingRankLabel(card.ending)}` : ""}
+            </p>
           </div>
           <TopButtons />
         </header>
         <div className="flex-1" />
         <section className="shine-after-body">
-          <p className="max-w-md font-ui text-base leading-relaxed text-cream/90 sm:text-lg">{still.quote}</p>
-          <p className="mt-3 font-ui text-sm text-gold">{still.trained}</p>
-          <p className="mt-2 font-ui text-sm text-gold">{still.mentor}</p>
-          <p className={`mt-4 font-display text-lg font-bold text-gold ${still.rank === "never-quit" ? "shine-cowbell-line" : ""}`}>{still.frame}</p>
-          <p className="mt-1 max-w-md font-ui text-xs text-cream/70" data-ending-why>
-            {still.why}
-          </p>
-          {pages ? (
+          {!pages ? (
             <>
-              <p className="mt-4 max-w-md font-ui text-sm text-gold">{sparkGapLine([card]) ?? `Next: Coach ${nextGirlName(run.characterId)}.`}</p>
-              <Scrapbook highlights={card.highlights ?? run.highlights} pa={card.definingPa ?? run.definingPa} who={run.characterId} />
+              <div
+                className={`shine-rank shine-rank-${tone} ${revealed ? "is-in" : ""}`}
+                role="img"
+                aria-label={revealed ? `Rank ${reveal.letter}, ${reveal.name}` : undefined}
+                aria-hidden={revealed ? undefined : true}
+                data-rank={card.ending}
+              >
+                <span className="shine-rank-letter" aria-hidden>
+                  {reveal.letter}
+                </span>
+                <span className="shine-rank-name" aria-hidden>
+                  {reveal.name}
+                </span>
+              </div>
+              <div className={`shine-live-words ${revealed ? "is-in" : ""}`}>
+                <p className="shine-after-line max-w-md">{still.quote}</p>
+                <p className={`mt-3 font-display text-lg font-bold text-gold ${still.rank === "never-quit" ? "shine-cowbell-line" : ""}`}>{still.frame}</p>
+              </div>
             </>
-          ) : null}
+          ) : (
+            <>
+              <p className="max-w-md font-ui text-sm text-gold">{still.trained}</p>
+              <p className="mt-2 max-w-md font-ui text-sm text-gold">{still.mentor}</p>
+              <p className="mt-2 max-w-md font-ui text-xs text-cream/70" data-ending-why>
+                {still.why}
+              </p>
+              <p className="mt-3 max-w-md font-ui text-sm text-gold">{sparkGapLine([card]) ?? `Next: Coach ${nextGirlName(run.characterId)}.`}</p>
+              <Scrapbook
+                highlights={book}
+                pgResults={run.pgResults}
+                pa={card.definingPa ?? run.definingPa}
+                who={run.characterId}
+                finalePlayed={finalePlayed}
+                finaleClip={stage === "live" && !reduced && card.ending !== "B" ? endingClipSrc(run.characterId, card.ending) : null}
+              />
+            </>
+          )}
         </section>
         <GoDock>
           {pages ? (
@@ -1089,20 +1240,81 @@ function SceneBlock({ scene }: { scene: RelationshipScene }) {
   );
 }
 
-function Scrapbook({ highlights, pa, who }: { highlights: Highlight[]; pa: DefiningPa | null | undefined; who: CharacterId }) {
+/**
+ * The scrapbook as a book: a polaroid for each big game (her picture from how it went, the
+ * game's name, 達成 or 未達成, a caption of what happened), and after the Finale, her letter.
+ */
+function Scrapbook({
+  highlights,
+  pgResults,
+  pa,
+  who,
+  finalePlayed,
+  finaleClip,
+}: {
+  highlights: Highlight[];
+  pgResults?: readonly string[];
+  pa: DefiningPa | null | undefined;
+  who: CharacterId;
+  finalePlayed: boolean;
+  finaleClip?: string | null;
+}) {
   const [replay, setReplay] = useState(false);
-  if (!highlights.length && !pa) return null;
+  const entries = scrapbookBook(who, highlights, pgResults);
+  const letter = letterPage(who, finalePlayed);
+  const style = sheet(who).style;
+  if (!entries.length && !pa && !letter) return null;
   return (
-    <div className="mt-4 rounded-2xl border border-line bg-panel/80 p-4" data-testid="scrapbook">
+    <div className="shine-book" data-testid="scrapbook">
       <p className="font-display text-[10px] uppercase tracking-widest text-gold">Scrapbook</p>
-      <ul className="mt-2 space-y-1 font-ui text-sm">
-        {scrapbookPages(highlights).map((h, i) => (
-          <li key={`${h.turn}-${i}`} className="flex gap-2">
-            <span className="shrink-0 font-display text-[10px] uppercase text-muted">{h.label}</span>
-            <span className="text-cream/90">{scrapbookLine(who, h.line)}</span>
+      <ol className="shine-book-pages">
+        {entries.map((e, i) => {
+          if (e.kind === "note") {
+            return (
+              <li key={`n-${e.turn}-${i}`} className="shine-book-note">
+                {e.line}
+              </li>
+            );
+          }
+          const p = e.page;
+          const stamp = doneStamp(p.met);
+          const clip = p.game === "finale" && p.met ? finaleClip : null;
+          return (
+            <li key={`p-${p.turn}`} className={`shine-polaroid ${p.met ? "is-met" : "is-missed"}`} style={{ ["--tilt" as string]: `${i % 2 ? 1.4 : -1.2}deg` }} data-book-page={p.game}>
+              <div className="shine-polaroid-photo">
+                {p.picture.plate ? (
+                  <img src={p.picture.plate} alt="" className="shine-polaroid-plate" loading="lazy" onError={(ev) => fallBackTo(ev.currentTarget, parkSrc(sheet(who).parkId))} />
+                ) : null}
+                <img
+                  src={p.picture.src}
+                  alt=""
+                  className={p.picture.plate ? "shine-polaroid-bust" : "shine-polaroid-film"}
+                  loading="lazy"
+                  onError={(ev) => fallBackTo(ev.currentTarget, careerFilmSrc(who))}
+                />
+                {clip ? <video src={clip} poster={p.picture.src} autoPlay loop muted playsInline className="shine-polaroid-film" /> : null}
+                <span className={`shine-polaroid-sticker is-${stamp.tone}`} aria-label={stamp.en}>
+                  {stamp.jp}
+                </span>
+              </div>
+              <p className="shine-polaroid-title">{dateLabel(turnMeta(p.turn), style)}</p>
+              <p className="shine-polaroid-caption">{p.caption}</p>
+              {p.meeting ? <p className="shine-polaroid-aside">{p.meeting}</p> : null}
+              {p.notes.map((n) => (
+                <p key={n} className="shine-polaroid-aside is-note">
+                  {n}
+                </p>
+              ))}
+            </li>
+          );
+        })}
+        {letter ? (
+          <li className="shine-letter" data-fan-letter={who}>
+            <p className="shine-letter-kicker">{letter.kicker}</p>
+            <p className="shine-letter-text">{letter.text}</p>
           </li>
-        ))}
-      </ul>
+        ) : null}
+      </ol>
       {pa ? (
         <div className="mt-3">
           <button
@@ -1581,6 +1793,8 @@ export function ShineApp() {
   }, [inputGuard]);
 
   let view: ReactNode;
+  // The screen's music (F9). Null leaves the bus to whoever owns it (the title, a game, a postgame).
+  let musicCue: ScreenMusic | null = null;
   const turnType = run ? turnMeta(run.turn).type : null;
   const resuming = Boolean(run && liveGame && liveGame.runId === run.id && liveGame.turn === run.turn);
   const dueEvent = run ? eventDue(run, EVENT_LIBRARY) : null;
@@ -1609,26 +1823,69 @@ export function ShineApp() {
   else if (!run) view = <Title />;
   else if (establishing && run.turn === 1 && run.calendar.length === 0) view = <Establishing />;
   // Story beats never interrupt a saved game being resumed.
-  else if (screen === "plate" && !resuming && turnType === "finale" && !run.finaleEveHeard)
+  else if (screen === "plate" && !resuming && turnType === "finale" && !run.finaleEveHeard) {
     view = <StoryScreen scene={finaleEveScene(run.characterId)} chip="Diamond Finale · the night before" cta="To the park" onDone={hearFinaleEve} />;
-  else if (screen === "plate" && !resuming && isRivalKind(turnType) && !run.arcsHeard?.includes(`rival:${turnType}`))
+    musicCue = { kind: "theme", id: run.characterId };
+  } else if (screen === "plate" && !resuming && isRivalKind(turnType) && !run.arcsHeard?.includes(`rival:${turnType}`)) {
     view = <StoryScreen scene={rivalIntro(run.characterId, turnType)} chip={RIVAL_CHIP[turnType]} cta="To the park" onDone={() => hearArc(`rival:${turnType}`)} />;
-  else if (screen === "complex" && run.phase === "complex" && run.pgMisses >= 1 && !run.arcsHeard?.includes("low-point"))
+    musicCue = { kind: "theme", id: run.characterId };
+  } else if (screen === "complex" && run.phase === "complex" && run.pgMisses >= 1 && !run.arcsHeard?.includes("low-point"))
+    // The low point plays in silence.
     view = <StoryScreen scene={lowPointScene(run.characterId)} chip="That night" cta="Tomorrow" onDone={() => hearArc("low-point")} />;
-  else if (screen === "complex" && run.phase === "complex" && dueEvent) view = <EventScreen key={eventKey(dueEvent)} event={dueEvent} />;
-  else if (screen === "plate") view = <ShinePlate />;
+  else if (screen === "complex" && run.phase === "complex" && dueEvent) {
+    view = <EventScreen key={eventKey(dueEvent)} event={dueEvent} />;
+    musicCue = { kind: "complex" };
+  } else if (screen === "plate") view = <ShinePlate />;
   else if (screen === "postgame") view = <Postgame />;
-  else if (screen === "year-end" && run.clubhouseCard && !run.arcsHeard?.includes("ending"))
+  else if (screen === "year-end" && run.clubhouseCard && !run.arcsHeard?.includes("ending")) {
+    const stage = endingStage(run.clubhouseCard.ending, run.pgResults[6] === "met");
     view = (
       <StoryScreen
         scene={endingScene(run.characterId, run.clubhouseCard.ending)}
         chip={endingChip(endingTier(run.characterId, run.clubhouseCard.ending))}
-        cta="To the stage"
+        cta={endingStageCta(stage)}
         onDone={() => hearArc("ending")}
       />
     );
-  else if (screen === "year-end") view = <YearEnd />;
-  else view = <Complex />;
+    musicCue = { kind: "theme", id: run.characterId };
+  } else if (screen === "year-end") {
+    view = <YearEnd />;
+    const card = run.clubhouseCard;
+    // A won Finale's Live sings her song at full voice; the Last Bow keeps the piano.
+    musicCue = !card
+      ? { kind: "theme", id: run.characterId }
+      : endingStage(card.ending, run.pgResults[6] === "met") === "live"
+        ? { kind: "live", id: run.characterId }
+        : { kind: "bow", rank: card.ending };
+  } else {
+    view = <Complex />;
+    musicCue = { kind: "complex" };
+  }
+
+  // One cue per screen: the same cue across a swap keeps playing (never a double start); a
+  // screen with no cue stops only the music this effect started, before the next screen's own
+  // effects run (a layout effect), so a game's walk-up is never cut by it.
+  const musicKey = hydrated ? screenMusicKey(musicCue) : "";
+  const musicCueRef = useRef(musicCue);
+  musicCueRef.current = musicCue;
+  const ownsMusic = useRef(false);
+  useScreenLayoutEffect(() => {
+    if (musicKey || !ownsMusic.current) return;
+    ownsMusic.current = false;
+    stopMusic();
+  }, [musicKey]);
+  useEffect(() => {
+    const cue = musicCueRef.current;
+    if (!musicKey || !cue) return;
+    ownsMusic.current = true;
+    playScreenMusic(cue);
+  }, [musicKey]);
+  useEffect(
+    () => () => {
+      if (ownsMusic.current) stopMusic();
+    },
+    [],
+  );
 
   const style: CSSProperties = { ["--text-scale" as string]: String(settings.textScale) };
   if (accent) (style as Record<string, string>)["--shine-accent"] = accent;
