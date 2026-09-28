@@ -64,10 +64,10 @@ import { moundBeatSpec, PREPARE_MS_REDUCED } from "@/shine/beats.ts";
 import { cheerLines, crowdStem, ouenSwell } from "@/shine/culture.ts";
 import { featuredParkId, kitAccent } from "@/shine/stage.ts";
 import { parkSrc, portraitMood, portraitSrc, officialFor, sceneBustSrc, sheet } from "@/shine/bible.ts";
-import { speakGoal } from "@/shine/goals.ts";
+import { finaleTeamWon, speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { HR_STAMP_HOLD_MS, STAMP_DELAY_MS, stillFor, type ActionManifest, type ActionView, type StingFlags } from "@/shine/action-art.ts";
-import { ARM_GONE_TANK, moundFieldBeat, type MoundBeat } from "@/shine/pitching.ts";
+import { ARM_GONE_TANK, leadoffWalkPending, moundFieldBeat, type MoundBeat } from "@/shine/pitching.ts";
 import { batterInBox, MoundController, MOUND_LAND_U, moundGutsOn, type MiddleUp, type MoundCue } from "@/shine/mound-controller.ts";
 import { RACE_PACE } from "@/shine/race.ts";
 import { hitterAdaptation, pitcherRivalBat, rivalBatSlot } from "@/shine/rivals.ts";
@@ -525,6 +525,7 @@ function MoundFrame({
       inning: game.inning,
       scoreDiff: game.scoreDiff,
       walks: game.walks,
+      teamWon: finaleTeamWon(game),
     });
   }
 
@@ -567,7 +568,8 @@ function MoundFrame({
   // Her rival's read on this pitcher, said out loud before it's used: the first-strike read
   // at 0-0, the two-strike read at two strikes. Both are about where the glove sits, so the
   // Coach can answer them.
-  const castUp = !practice && !game.done && game.battersFaced % 6 === rivalBatSlot(run.characterId);
+  // The scripted leadoff walk's batter is the bottom of the order, never the cast hitter.
+  const castUp = !practice && !game.done && !leadoffWalkPending(game) && game.battersFaced % 6 === rivalBatSlot(run.characterId);
   const castRead = castUp ? hitterAdaptation(game.tells, game.rivalBat) : null;
   // Watching throws every pitch after Go, so the gap before a pitch is also the wait after
   // the last one (the beat cleared, the game already on the next count) and her wind-up.

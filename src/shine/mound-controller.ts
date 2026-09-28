@@ -32,6 +32,8 @@ import {
   decidePitch,
   DELIVERY_DUR,
   lastPitchSwung,
+  LEADOFF_WALK_PA,
+  leadoffWalkPending,
   maybePitchLastSpurt,
   moundBeatFor,
   moundFieldBeat,
@@ -79,14 +81,27 @@ export interface InTheBox {
 }
 
 export function batterInBox(run: TraineeRun, game: PitchingGame): InTheBox {
-  // The bullpen faces the lineup's first bat (pitching.ts batterFor).
-  const index = game.kind === "practice" ? 0 : game.battersFaced;
-  if (index % 6 === rivalBatSlot(run.characterId)) {
+  // The bullpen faces the lineup's first bat (pitching.ts batterFor); Reina's Finale walk, the
+  // bottom of the order just before it.
+  const index = game.kind === "practice" ? 0 : leadoffWalkPending(game) ? LEADOFF_WALK_PA : game.battersFaced;
+  if (index >= 0 && index % 6 === rivalBatSlot(run.characterId)) {
     const id = pitcherRivalBat(run.characterId);
     const s = sheet(id);
     return { id, plate: { name: s.name, jp: s.jp, number: s.number } };
   }
   return { id: "academy", plate: { name: game.batterName, jp: null, number: null } };
+}
+
+/** The card under Reina's scripted Finale walk, after "<name> takes first.": the Coach doesn't come out. */
+export const LEADOFF_WALK_CARD = "You stay in the dugout.";
+
+/** The batter the last pitch was thrown to, on the record (null before the first pitch). */
+function lastPitchPa(events: PitchingGame["events"]): number | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i]!;
+    if (e.t === "pitch") return e.pa;
+  }
+  return null;
 }
 
 /** Her Guts is up for this pitch: the leverage, or the closer's floor, or the last spurt. */
@@ -279,7 +294,7 @@ export class MoundController {
   private flight: { t0: number; ms: number; aim: Cell } | null = null;
   private landHandle: unknown = null;
   /** Who has had her nameplate (battersFaced), whether the last spurt has had its band, the chrome's keys. */
-  private introduced = -1;
+  private introduced: number | null = null;
   private spurtShown = false;
   private chromeKey = 0;
 
@@ -398,7 +413,7 @@ export class MoundController {
    */
   private checkSave(force: boolean) {
     const g = this.game;
-    const key = `${g.battersFaced}|${g.count.balls}|${g.count.strikes}|${g.act}|${this.stage === "idle"}`;
+    const key = `${g.battersFaced}|${g.count.balls}|${g.count.strikes}|${g.act}|${this.stage === "idle"}|${g.leadoffWalk ?? "-"}`;
     if (!force && key === this.saveKey) return;
     this.saveKey = key;
     // The landing that ends the date saves too, so a reload over the done panel reopens the
@@ -530,10 +545,12 @@ export class MoundController {
     // to the wind-up (the nameplate, the skill) lands as the card clears.
     const practiceNow = live.kind === "practice";
     const fresh = live.count.balls === 0 && live.count.strikes === 0;
-    const newBatter = !practiceNow && this.introduced !== live.battersFaced;
+    // Who's in the box, by her place on the record: the scripted leadoff walk's batter is her own.
+    const slot = leadoffWalkPending(live) ? LEADOFF_WALK_PA : live.battersFaced;
+    const newBatter = !practiceNow && this.introduced !== slot;
     const vsNow = newBatter && fresh && by.id !== "academy";
     const introMs = vsNow ? CHROME_MS.vs : 0;
-    if (newBatter) this.introduced = live.battersFaced;
+    if (newBatter) this.introduced = slot;
     if (vsNow && by.id !== "academy") {
       const key = ++this.chromeKey;
       this.vs = {
@@ -556,7 +573,7 @@ export class MoundController {
       }, introMs);
     };
     if (newBatter) {
-      const index = live.battersFaced;
+      const index = slot;
       atWindup(() => {
         const key = ++this.chromeKey;
         this.lowerThird = {
@@ -661,7 +678,10 @@ export class MoundController {
     // to the next wind-up and becomes her card (C8, C15).
     const held = this.atThrow;
     const end = !practice && held ? moundPaEnd(next.events, held.bug.outs) : null;
-    this.paEnd = end && held ? { key: ++this.chromeKey, ...moundCard(held.by.plate.name, end) } : null;
+    const card = end && held ? moundCard(held.by.plate.name, end) : null;
+    // Reina's Finale walk: her eve line holds ("If it's ball four, don't come out").
+    if (card && end?.result === "walk" && lastPitchPa(next.events) === LEADOFF_WALK_PA) card.line = `${card.line} ${LEADOFF_WALK_CARD}`;
+    this.paEnd = card ? { key: ++this.chromeKey, ...card } : null;
     if (!practice) {
       // The stamp's slam lands with the stamp, on the pause-aware timers, in her side's tone
       // (her strikeout gold, an out teal). A walk or a hit against her is slate, set down, not

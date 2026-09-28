@@ -45,7 +45,7 @@ import {
   type PlateEvent,
   type ReachKind,
 } from "./events.ts";
-import { evalHitterPg, evalHitterSg, isHitterPg, isHitterSg, type HitterGoalView, type HitterPgId, type HitterSgId } from "./goals.ts";
+import { evalHitterPg, evalHitterSg, FINALE_WON_BANNER, finaleTeamWon, isHitterPg, isHitterSg, type HitterGoalView, type HitterPgId, type HitterSgId } from "./goals.ts";
 import {
   isHit,
   LEAD_DEFAULT_SIT,
@@ -668,7 +668,8 @@ function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedT
     else if (game.pgMet) game.banner = `${verb}.`;
     else if (game.kind === "gate") game.banner = "The Gate still opens.";
     else if (game.kind === "practice") game.banner = "That's the look. Back to the complex.";
-    else game.banner = "It got away from her.";
+    // Her side can win the Finale while her ask misses: the banner says they won.
+    else game.banner = finaleTeamWon(game) ? FINALE_WON_BANNER : "It got away from her.";
     return;
   }
 

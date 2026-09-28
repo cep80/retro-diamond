@@ -34,6 +34,8 @@ export function gameHighlight(run: TraineeRun, kind: string, pgMet: boolean, sgM
   if (record?.summary) line = `${record.summary}${vs}.`;
   else if (pgMet && proof) line = `She got what she came for${vs}. ${proof}`;
   else if (pgMet) line = `She got what she came for${vs}.`;
+  // A Finale her side won without her ask: never "it got away" about a night they won.
+  else if (kind === "finale" && run.finaleTeamWon) line = `They won${vs}. What she came for didn't come.`;
   else if (sgMet) line = `It got away from her${vs}. The smaller ask held.`;
   else line = `It got away from her${vs}.`;
   return { turn: run.turn, label, line, kind: "game" };
@@ -482,6 +484,20 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
   },
 };
 
+/**
+ * The Finale page when her side won it and her ask didn't come (check-in 24): the win first,
+ * then what she wanted. Reina's and Kira's asks can't miss on a won night (any run ties it);
+ * theirs are here so no girl's page can say the night was lost when it wasn't.
+ */
+export const FINALE_WON_SHORT_CAPTIONS: Record<CharacterId, string> = {
+  aoi: "They won, and she still circled the at-bat with runners on that she wanted back.",
+  reina: "They won, and she went over the ninth in the ruled notebook anyway, one row at a time.",
+  miki: "They won, and Section 4 rang both cowbells for a look that never got to three pitches.",
+  sol: "They won, and she held up one finger to Luz in row one. She'd wanted two.",
+  kira: "They won, and she took the seat in the dugout without the save she'd come for.",
+  yuki: "They won, and she told you the steal would have been there if you'd said go sooner.",
+};
+
 /** Her own caption for the page when she has one, else the role's. */
 export function pageCaption(id: CharacterId, game: BigGame, met: boolean): string {
   const own = GIRL_CAPTIONS[id]?.[game]?.[met ? "met" : "missed"];
@@ -578,7 +594,9 @@ export function scrapbookBook(id: CharacterId, highlights: readonly Highlight[],
         seen.set(rival, n);
         meeting = meetingLine(rival, n);
       }
-      const caption = pageCaption(id, game, met);
+      // A Finale her side won short of her ask (gameHighlight's "They won") says they won.
+      const wonShort = game === "finale" && !met && /^They won\b/.test(h.line);
+      const caption = wonShort ? FINALE_WON_SHORT_CAPTIONS[id] : pageCaption(id, game, met);
       const smaller = !met && /smaller (ask|one) held/i.test(h.line) ? " She still got the little one." : "";
       const page: BookPage = {
         turn: h.turn,

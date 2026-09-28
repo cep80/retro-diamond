@@ -443,6 +443,8 @@ export interface GameCarry {
   scoreDiff?: number;
   /** Walks she issued. The plate box is the hitter's. */
   walks?: number;
+  /** The Finale on the mound: her side won it (finaleTeamWon), whatever the ask. The plate's is box.won. */
+  teamWon?: boolean;
 }
 
 export function applyGameResult(
@@ -468,6 +470,8 @@ export function applyGameResult(
   run.pgResults[idx] = pgMet ? "met" : "missed";
   run.sgResults[idx] = sgMet ? "met" : "missed";
   run.fanBeat = null;
+  // The Finale's scoreboard, kept apart from the ask: every line after it says whether they won.
+  if (kind === "finale") run.finaleTeamWon = carry?.teamWon ?? box?.won ?? pgMet;
 
   if (carry?.record && carry.record.arm !== "academy") {
     run.faced = { ...run.faced, [carry.record.arm]: (run.faced[carry.record.arm] ?? 0) + 1 };

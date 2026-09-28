@@ -347,6 +347,24 @@ export interface PitcherGoalView {
   bestInningKs: number;
 }
 
+/**
+ * The Diamond Finale's scoreboard, apart from her ask (check-in 24): her side won it. On
+ * the mound the lead held to the last out (never blown); at the plate her side was ahead
+ * when her last at-bat, in the 9th, was over. A Finale can be won while her ask misses
+ * (Sol's two punchouts, a hitter's steal), and every line after it has to say both.
+ */
+export function finaleTeamWon(g: { kind: string; scoreDiff: number; blown?: boolean; done?: boolean }): boolean {
+  return g.kind === "finale" && g.done !== false && !g.blown && g.scoreDiff > 0;
+}
+
+/** The Finale was won and her ask wasn't met: the lines say "They won." first. */
+export function finaleWonShort(g: { kind: string; scoreDiff: number; blown?: boolean; done?: boolean; pgMet: boolean }): boolean {
+  return !g.pgMet && finaleTeamWon(g);
+}
+
+/** The done banner for a Finale won short of her ask (the headline reads her read under it). */
+export const FINALE_WON_BANNER = "They won.";
+
 export function evalPitcherPg(id: PitcherPgId, g: PitcherGoalView): boolean {
   switch (id) {
     case "outs-3":

@@ -25,7 +25,7 @@ import { officialFor, sheet } from "./bible.ts";
 import { datePark } from "./culture.ts";
 import { sparkCount } from "./ending.ts";
 import { push, type PlateEvent } from "./events.ts";
-import { evalPitcherPg, evalPitcherSg, isPitcherPg, isPitcherSg, type PitcherGoalView, type PitcherPgId, type PitcherSgId } from "./goals.ts";
+import { evalPitcherPg, evalPitcherSg, FINALE_WON_BANNER, finaleTeamWon, isPitcherPg, isPitcherSg, type PitcherGoalView, type PitcherPgId, type PitcherSgId } from "./goals.ts";
 import {
   CLOSER_WINDOW_BONUS,
   GUTS_WINDOW_BONUS,
@@ -91,7 +91,57 @@ export interface PitchingGame {
   callback: string | null;
   /** Name of the batter in the box. */
   batterName: string;
+  /**
+   * Reina's Finale opens on the walk her ask is built around (check-in 24): the balls of
+   * the scripted leadoff walk thrown so far (0-3), while it is still to play; absent or
+   * null once ball four is in (and on every other date, and on saves from before it).
+   */
+  leadoffWalk?: number | null;
 }
+
+/**
+ * The scripted leadoff walk's batter, on the record: before the lineup's first bat
+ * (pa 0), so her pitches never share a batter with the real ninth's.
+ */
+export const LEADOFF_WALK_PA = -1;
+
+/** Reina's Finale ask ("Clean ninth") is the ninth after a leadoff walk: the walk plays on screen first. */
+export function opensOnLeadoffWalk(role: PitchingGame["role"], kind: GameKind, pgId: PitcherPgId | null): boolean {
+  return role === "ace" && kind === "finale" && pgId === "clean-ninth";
+}
+
+/** The scripted walk is still to play (or mid-count). */
+export function leadoffWalkPending(game: Pick<PitchingGame, "leadoffWalk" | "done">): boolean {
+  return game.leadoffWalk != null && !game.done;
+}
+
+/**
+ * One ball of the scripted leadoff walk. It moves only what the screen shows (the count,
+ * then the runner on first) and the record (a pitch, a take, the walk): never her pitch
+ * count, her walks, the batters she's faced or a single roll. Every roll of the date is
+ * hashed from the pitch count, so the ninth after it is the ninth the check-in 22 sim
+ * played from "runner on first, nobody out, pitch 0" (63-71% met), pitch for pitch.
+ */
+function throwLeadoffBall(run: TraineeRun, game: PitchingGame, type: PitchType) {
+  const thrown = (game.leadoffWalk ?? 0) + 1;
+  push(game.events, { t: "pitch", pa: LEADOFF_WALK_PA, n: thrown, type, inZone: false });
+  push(game.events, { t: "take", pa: LEADOFF_WALK_PA, strike: false });
+  game.count = { balls: game.count.balls + 1, strikes: game.count.strikes };
+  game.banner = "Ball.";
+  if (thrown < 4) {
+    game.leadoffWalk = thrown;
+    return;
+  }
+  push(game.events, { t: "pitcherWalk", outs: game.outs });
+  game.runners = Math.min(3, game.runners + 1);
+  game.count = { balls: 0, strikes: 0 };
+  game.leadoffWalk = null;
+  game.batterName = batterFor(run, game).name;
+  game.banner = LEADOFF_WALK_BANNER;
+}
+
+/** Ball four is in (the card under it says the Coach stays in the dugout): the ninth her ask is about. */
+export const LEADOFF_WALK_BANNER = "Ball four to lead off. The next one.";
 
 function goalView(game: PitchingGame): PitcherGoalView {
   return game;
@@ -176,6 +226,10 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
   const batter = rivalLineup({ characterId: run.characterId, year: run.year }, 0);
   const hot = who.stats.wit >= 8 ? hottestCell(batter) : null;
   const rivalBat = sheet(pitcherRivalBat(run.characterId)).name;
+  // Reina's Finale: the runner on first is the leadoff walk, and it plays on screen before
+  // the ninth her ask is about. The bottom of the order draws it (never the cast hitter).
+  const walkFirst = opensOnLeadoffWalk(role, kind, pgId);
+  const walker = walkFirst ? rivalLineup({ characterId: run.characterId, year: run.year }, 5) : null;
   const game: PitchingGame = {
     kind,
     role,
@@ -183,7 +237,7 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
     inning: sit.inning,
     outs: sit.outs,
     scoreDiff: sit.scoreDiff,
-    runners: sit.runners,
+    runners: walkFirst ? sit.runners - 1 : sit.runners,
     inherited: sit.inherited,
     count: { balls: 0, strikes: 0 },
     battersFaced: 0,
@@ -211,8 +265,8 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
     banner:
       kind === "practice"
         ? "Sit the glove. Then Go."
-        : kind === "finale" && pgId === "clean-ninth"
-          ? "Ninth. Ball four to lead off. The next one."
+        : walkFirst
+          ? "Ninth. A one-run lead. Nobody on."
           : kind === "finale" && pgId === "hold-one-run"
             ? "Ninth. The tying run is on first."
             : pgId === "k-2" && sit.inning === 9
@@ -259,7 +313,8 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
     rivalBat,
     rivalLine: kind === "practice" ? null : hitterAdaptation(tells, rivalBat).line,
     callback: null,
-    batterName: batter.name,
+    batterName: walker ? walker.name : batter.name,
+    ...(walkFirst ? { leadoffWalk: 0 } : {}),
   };
   push(game.events, { t: "inning", inning: game.inning });
   return game;
@@ -427,8 +482,12 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
         : game.role === "closer"
           ? game.blown
             ? "Blown. The lead is gone."
-            : "HOLD slipped."
-          : "It got away from her.";
+            : finaleTeamWon(game)
+              ? FINALE_WON_BANNER
+              : "HOLD slipped."
+          : finaleTeamWon(game)
+            ? FINALE_WON_BANNER
+            : "It got away from her.";
     tickPitcherSg(run, game);
     return;
   }
@@ -461,7 +520,8 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   if (aceSide && (game.outsRecorded >= 3 || game.blown)) {
     game.done = true;
     game.pgMet = evaluatePg(run, game);
-    game.banner = game.pgMet ? "COMMAND." : "It got away from her.";
+    // A Finale can be won short of her ask (Sol's lead held, one punchout): it says they won.
+    game.banner = game.pgMet ? "COMMAND." : finaleTeamWon(game) ? FINALE_WON_BANNER : "It got away from her.";
     tickPitcherSg(run, game);
     return;
   }
@@ -579,6 +639,8 @@ export function resolveDelivery(
   releaseT: number,
 ) {
   if (game.done) return;
+  // Reina's Finale: the scripted walk comes first, whatever was thrown (no roll, no count).
+  if (leadoffWalkPending(game)) return throwLeadoffBall(run, game, type);
   const r = makeRng(hashId(`${run.rngSeed}|${game.kind}|p${game.pitchCount}|${type}`));
   const first = game.count.balls === 0 && game.count.strikes === 0;
   const p = traineePitcher(run, first, game.consecutiveInnings);

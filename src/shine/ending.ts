@@ -114,11 +114,17 @@ export function endingRank(run: TraineeRun, finalePlayed: boolean, finalePg: boo
  */
 export function rankGap(run: TraineeRun, target: "S" | "A", finalePlayed: boolean, finalePg: boolean): string[] {
   const gap: string[] = [];
-  if (!(finalePlayed && finalePg)) gap.push("a Finale win");
+  // A Finale her side won short of her ask isn't "a Finale win" away: it's the ask.
+  if (!(finalePlayed && finalePg)) gap.push(finaleWonShortRun(run, finalePlayed, finalePg) ? "the Finale she came for" : "a Finale win");
   if (target === "S" ? run.pgMisses > 0 : run.pgMisses > 1) gap.push(target === "S" ? "no big game lost" : "no more than one big game lost");
   const need = target === "S" ? RANK_FANS.S : RANK_FANS.A;
   if (run.fans < need) gap.push(`${need} fans`);
   return gap;
+}
+
+/** The Finale was played, her side won it, and her ask missed (check-in 24; finaleTeamWon). */
+export function finaleWonShortRun(run: Pick<TraineeRun, "finaleTeamWon">, finalePlayed: boolean, finalePg: boolean): boolean {
+  return finalePlayed && !finalePg && run.finaleTeamWon === true;
 }
 
 function listed(items: string[]): string {
@@ -144,7 +150,13 @@ export function endingWhy(run: TraineeRun, rank: EndingRank, finalePlayed: boole
     return `${fans}. ${finale} before she'd grown all the way into it, and Section 4 stayed anyway. A needs ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
   }
   if (rank === "B") {
-    const finale = !finalePlayed ? "" : finalePg ? " She won the Finale." : " She played the Finale and came up short.";
+    const finale = !finalePlayed
+      ? ""
+      : finalePg
+        ? " She won the Finale."
+        : finaleWonShortRun(run, finalePlayed, finalePg)
+          ? " They won the Finale, short of what she came for."
+          : " She played the Finale and came up short.";
     return `${fans}, ${lost}.${finale} A needs ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
   }
   if (rank === "C") return `Her Academy days ended early. ${fans}. B needs her to reach the Diamond Finale.`;
@@ -169,6 +181,11 @@ export function endingQuote(run: TraineeRun, rank: EndingRank) {
     if (run.pgResults[6] === "met" && finale?.pgId === "k-2") return "Diamond Finale. Two punchouts in the ninth, and the lead held.";
     if (run.pgResults[6] === "met" && finale?.pgId === "hold-one-run") return "Diamond Finale. The tying run started on first. It never got home.";
     if (run.pgResults[6] === "met") return "She won the Diamond Finale. The top of the Academy takes more than one night.";
+    // Her side won the Finale and her ask missed: say both, never "one win away" (check-in 24).
+    if (finaleWonShortRun(run, run.pgResults[6] !== "pending", false)) {
+      const read = run.finaleRead?.startsWith("They won.") ? run.finaleRead : "They won. What she came for didn't come.";
+      return `Diamond Finale. ${read}`;
+    }
     // "One win away" only when winning the Finale is all that stood between her and A.
     if (run.pgResults[6] !== "pending")
       return rankGap(run, "A", true, true).length === 0

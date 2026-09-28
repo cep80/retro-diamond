@@ -238,7 +238,8 @@ const RAW_BIBLE: RawSheet[] = [
     yearStills: {
       rookie: "Gate. First out recorded before the catcher settled.",
       classic: "Night Classic. Inherited runners, both stranded. The door stayed shut.",
-      senior: "Ninth Light. Three up. Three down.",
+      // A fallback only (yearStillLine reads her senior results); the Finale starts with the tying run on.
+      senior: "Ninth Light. The tying run started on first. It never got home.",
     },
     unique: "Ninth Light.",
     walkUp: "Closer entrance",
@@ -345,6 +346,8 @@ export function yearStillLine(
   results: readonly GoalMark[],
   defining?: { kind: string; outcome: string; pitches: { result: string }[] } | null,
   lightCard?: string | null,
+  /** The Finale's scoreboard (TraineeRun.finaleTeamWon): a won Finale short of her ask says they won. */
+  finaleTeamWon?: boolean,
 ) {
   const who = sheet(id);
   if (id === "yuki" && turn <= 20) {
@@ -457,9 +460,94 @@ export function yearStillLine(
     if (night) return "Night Classic. She took it to 3-2. Lantern Classic. The two-strike foul didn't come.";
     return "Lantern Classic. The two-strike foul didn't come. Night Classic. The count never got to 3-2.";
   }
+  if (turn > 40 && SENIOR_STILLS[id]) return seniorStill(SENIOR_STILLS[id]!, results, finaleTeamWon);
   if (turn <= 20) return who.yearStills.rookie;
   if (turn <= 40) return who.yearStills.classic;
   return who.yearStills.senior;
+}
+
+/** What each senior big game says, met or missed, after its name. */
+interface SeniorStills {
+  stretch: { met: string; missed: string };
+  series: { met: string; missed: string };
+  /** `lost`: a missed ask whose lead is known to be gone (finaleTeamWon false), when that's a different line. */
+  finale: { met: string; missed: string; lost?: string };
+  /** Before any senior big game is sat: claims none of them. */
+  none: string;
+}
+
+/**
+ * The senior still, from the results (check-in 24): the old authored lines claimed a date
+ * whatever happened ("Ninth Light. Three up. Three down."). Each big game she sat says how it
+ * went; a Finale her side won short of her ask says they won first.
+ */
+const SENIOR_STILLS: Partial<Record<CharacterId, SeniorStills>> = {
+  aoi: {
+    stretch: { met: "She hit late.", missed: "The late hit didn't come." },
+    series: { met: "Three quality at-bats. The third one was for her.", missed: "The quality at-bats didn't add up to three." },
+    finale: { met: "A hit with runners on.", missed: "The hit with runners on didn't come." },
+    none: "Senior year. The pencil stub is down to an inch.",
+  },
+  reina: {
+    stretch: { met: "Bases loaded. She got out of it.", missed: "Bases loaded. A run came in." },
+    series: { met: "Six innings. Three runs or fewer.", missed: "The six innings didn't hold." },
+    finale: { met: "Ball four to lead off. Nobody scored.", missed: "Ball four to lead off. A run came in." },
+    none: "Senior year. The notebook is on its last ruled page.",
+  },
+  miki: {
+    stretch: { met: "She put the bat on a breaking ball.", missed: "The breaking ball never met the bat." },
+    series: { met: "She came up with runners on.", missed: "She never came up with runners on." },
+    finale: { met: "Three pitches in the at-bat. Every one counted.", missed: "The at-bat never got to three pitches." },
+    none: "Senior year. Gary still clanks.",
+  },
+  sol: {
+    stretch: { met: "Runners on. She got out of it.", missed: "A run scored out of the jam." },
+    series: { met: "Six innings. Three runs or fewer.", missed: "The six innings didn't hold." },
+    finale: { met: "Two punchouts in the ninth, and the lead held.", missed: "The two punchouts didn't come.", lost: "The lead didn't hold." },
+    none: "Senior year. Ninety-six, she says, and means it.",
+  },
+  kira: {
+    stretch: { met: "She asked for the eighth and got four outs.", missed: "She asked for the eighth. The lead didn't last." },
+    series: { met: "A clean ninth. Nobody scored.", missed: "A run got in." },
+    finale: { met: "The tying run started on first. It never got home.", missed: "The tying run came around." },
+    none: "Senior year. The bag by the bullpen door is still packed.",
+  },
+  // Yuki's own branch in yearStillLine says the games she sat; this is her line before any.
+  yuki: {
+    stretch: { met: "She stole late.", missed: "The late steal didn't come." },
+    series: { met: "She scored without a hit.", missed: "The run without a hit didn't come." },
+    finale: { met: "She stole with a runner in scoring position.", missed: "The steal with a runner in scoring position didn't come." },
+    none: "Senior year. Already stretched. Already on her way.",
+  },
+};
+
+const SENIOR_NAMES = ["The Stretch", "Skyline Series", "Diamond Finale"] as const;
+
+function seniorStill(lines: SeniorStills, results: readonly GoalMark[], finaleTeamWon?: boolean): string {
+  const marks = [results[4], results[5], results[6]];
+  const sat = marks.map((m) => m === "met" || m === "missed");
+  const played = sat.filter(Boolean).length;
+  if (played === 0) return lines.none;
+  // Short in every one she sat (two or three): one line, the way Yuki's says it. A won Finale
+  // keeps its own line, so the win is never folded into "came up short".
+  const allMissed = marks.every((m, i) => !sat[i] || m === "missed") && !(results[6] === "missed" && finaleTeamWon === true);
+  if (allMissed && played >= 2) {
+    const names = SENIOR_NAMES.filter((_, i) => sat[i]);
+    return played === 3
+      ? "The Stretch, Skyline Series, and Diamond Finale. She came up short in all three."
+      : `${names[0]} and ${names[1]}. She came up short in both.`;
+  }
+  const keys = ["stretch", "series", "finale"] as const;
+  const bits: string[] = [];
+  keys.forEach((k, i) => {
+    const m = marks[i];
+    if (m !== "met" && m !== "missed") return;
+    const lost = k === "finale" && m === "missed" && finaleTeamWon === false ? lines.finale.lost : undefined;
+    const tail = lost ?? lines[k][m];
+    const won = k === "finale" && m === "missed" && finaleTeamWon === true ? "They won. " : "";
+    bits.push(`${SENIOR_NAMES[i]}. ${won}${tail}`);
+  });
+  return bits.join(" ");
 }
 
 /** The official date on this turn, if any. */

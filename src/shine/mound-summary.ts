@@ -23,6 +23,7 @@ import {
   ACE_ACT1_BATTERS,
   decideDelivery,
   decidePitch,
+  leadoffWalkPending,
   resolveDelivery,
   type PitchingGame,
 } from "./pitching.ts";
@@ -81,6 +82,8 @@ export function summaryDue(game: PitchingGame): boolean {
  * in step so the band can't fire late, out of place.
  */
 export function uniqueDue(run: TraineeRun, game: PitchingGame): boolean {
+  // Reina's Perfect Sequence waits out her scripted leadoff walk: it's the next batter's.
+  if (leadoffWalkPending(game)) return false;
   return uniqueShouldFire(run.characterId, {
     already: game.uniqueFired,
     kind: game.kind,

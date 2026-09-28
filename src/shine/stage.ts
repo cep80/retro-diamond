@@ -5,6 +5,7 @@
 import type { CharacterId, TraineeRun } from "./types.ts";
 import type { FeaturedGame, GameKind } from "./featured-game.ts";
 import { datePark } from "./culture.ts";
+import { FINALE_WON_BANNER, finaleWonShort } from "./goals.ts";
 
 export type ParkSky = "day" | "dusk" | "night";
 export type ParkWind = "offshore" | "variable" | "calm" | "still" | "cross" | "light";
@@ -100,6 +101,13 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
     if (game.hits === 1) return "She reached on a hit.";
     return "She got what she came for.";
   }
+  const miss = plateMissRead(run, game);
+  // Her side won the Finale without her ask: say they won, then what she didn't get.
+  return finaleWonShort(game) ? `${FINALE_WON_BANNER} ${miss}` : miss;
+}
+
+/** What a missed ask says at the plate: what she did, and what didn't come. */
+function plateMissRead(run: TraineeRun, game: FeaturedGame): string {
   if (game.pgId === "see-3-one-pa") {
     const n = game.maxPaPitches;
     if (n >= 2) return "Two pitches in the look. She needed three.";

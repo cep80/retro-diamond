@@ -357,6 +357,8 @@ export const useShine = create<ShineState>()(
         if (!run) return;
         const next = structuredClone(run);
         applyGameResult(next, kind, pg, sg, reached, hr, lastSpurt, box, carry);
+        // The ending quote says the Finale the way its done panel did.
+        if (kind === "finale") next.finaleRead = read ?? null;
         if (kind === "first-light") {
           const card = lightCardFrom(read);
           if (card) next.lightCard = card;

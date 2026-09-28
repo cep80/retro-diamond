@@ -1011,7 +1011,7 @@ function Postgame() {
           ) : null}
           {/* The Finale says her own line; every other big date steps through the park's booth, never twice running. */}
           <p className="shine-after-recap mt-2 font-ui text-sm text-cream/70">
-            {postgameFiller({ id: run.characterId, kind: last?.type ?? "", parkId, turn: run.turn, met })}
+            {postgameFiller({ id: run.characterId, kind: last?.type ?? "", parkId, turn: run.turn, met, teamWon: run.finaleTeamWon })}
           </p>
           {seriesFinale ? <p className="mt-3 font-ui text-sm text-gold">{seriesFinale}</p> : null}
           {run.coachWarning && last?.type !== "finale" ? (
@@ -1180,7 +1180,7 @@ function YearEnd() {
       <div className="flex-1" />
       <section className="shine-after-body">
         <div className="max-w-md">
-          <p className="shine-after-line">{yearStillLine(run.characterId, run.turn, run.pgResults, run.definingPa, run.lightCard)}</p>
+          <p className="shine-after-line">{yearStillLine(run.characterId, run.turn, run.pgResults, run.definingPa, run.lightCard, run.finaleTeamWon)}</p>
           <p className="mt-3 font-ui text-sm text-cream/80">
             {run.turn <= 20
               ? "Next spring: the Classic year. The Lantern Classic is always at Lantern Field."

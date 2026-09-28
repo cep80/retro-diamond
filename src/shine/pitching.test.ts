@@ -193,10 +193,10 @@ describe("Ace / Closer mound", () => {
       run.turn = 60;
       return startPitchingGame(run, "finale");
     };
-    // Reina: the leadoff walk has happened; only a run fails it.
+    // Reina: the leadoff walk plays on screen first (check-in 24, leadoff-walk.test.ts); only a run fails it.
     const reina = sit("reina");
-    assert.deepEqual([reina.pgId, reina.inning, reina.outs, reina.scoreDiff, reina.runners, reina.inherited], ["clean-ninth", 9, 0, 1, 1, 0]);
-    assert.equal(reina.banner, "Ninth. Ball four to lead off. The next one.");
+    assert.deepEqual([reina.pgId, reina.inning, reina.outs, reina.scoreDiff, reina.runners, reina.inherited, reina.leadoffWalk], ["clean-ninth", 9, 0, 1, 0, 0, 0]);
+    assert.equal(reina.banner, "Ninth. A one-run lead. Nobody on.");
     // Sol: two punchouts, and the two-run lead has to hold.
     const sol = sit("sol");
     assert.deepEqual([sol.pgId, sol.inning, sol.scoreDiff, sol.runners], ["k-2", 9, 2, 0]);

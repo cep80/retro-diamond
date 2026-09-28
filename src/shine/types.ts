@@ -188,6 +188,13 @@ export interface TraineeRun {
   walks: number;
   /** Gate, First Light, Lantern Classic, Night Classic, Stretch, Series, Finale */
   pgResults: [GoalMark, GoalMark, GoalMark, GoalMark, GoalMark, GoalMark, GoalMark];
+  /**
+   * The Finale's scoreboard, apart from her ask (check-in 24): her side won it. Unset before
+   * the Finale and on saves from before it (read as "won" only when the ask was met).
+   */
+  finaleTeamWon?: boolean;
+  /** The Finale's read as the done panel said it ("They won. One punchout. She wanted two."). */
+  finaleRead?: string | null;
   sgResults: [GoalMark, GoalMark, GoalMark, GoalMark, GoalMark, GoalMark, GoalMark];
   failStreak: FailStreak;
   mentorARelationship: number;

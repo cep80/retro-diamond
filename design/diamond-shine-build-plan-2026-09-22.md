@@ -391,8 +391,24 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
       - This fixes a bug: an ace's "k-side" counted as met after she lost the lead.
     - **Control is trainable:** the Bullpen works Control when the Coach's brief asks for it (`bullpenFocus`), and the tile says so.
   - **Tests:** 738 pass.
+- **Check-in 23 (narrative director, `8245fec`): 84 per-girl scrapbook captions.**
+  - Six girls × seven big dates × won/lost, each in her own world and tied to that date's ask, with the role captions as a fallback. A test covers story rules, he/him, stats speak, length and uniqueness.
+  - Four lines the new asks contradicted were fixed: Kira's bag on the Finale night; Reina's and Kira's met-Finale quotes; Kira's Classic year-end.
+- **Check-in 24 (gameplay programmer): the narrative director's three structural items.**
+  - **Reina's leadoff walk plays on screen.** After Go her Finale opens with four scripted balls to the sixth hitter, ending on "Ito takes first. You stay in the dugout.", then the real ninth with a runner on and a 1-run lead.
+    - The walk counts toward nothing: no pitch count, tank, walks, batters faced or smaller ask. So the ninth is pitch-for-pitch the one the check-in 22 sim measured (tested over 48 seeds), and pause, save mid-walk and reduced motion are tested.
+    - It adds about 17 s.
+  - **A won Finale never reads as a loss.** `finaleTeamWon(game)` checks that the lead held and her side is ahead. When her ask missed but her side won:
+    - the banner reads "They won."
+    - the read: "They won. One punchout. She wanted two."
+    - per-girl Finale-night lines (Sol: "Luz throws the churros anyway. Sol holds up one finger, not two.")
+    - the ending quote and the rank's why line (e.g. "They won the Finale, short of what she came for")
+    - won-short scrapbook captions
+    - This covers hitters too. Reina and Kira can't hit this case (tested, 200 seeds). The Winning Live still needs the ask met.
+  - **Senior stills follow the results** for Aoi, Reina, Miki, Sol and Kira (the Stretch, Series and Finale), with a neutral line before any senior date. Tested over all 27 combinations × 3 scoreboard states.
+  - Tests: 756 pass. Career smoke for Reina and Sol reaches the Clubhouse clean; Sol hit the won-short case and read it right.
+  - **Open (narrative):** a hitter whose ask is met while her side trails still gets 優勝 / CHAMPION.
 - **Open:**
-  - the narrative director on the ci22 copy (scrapbook captions, the Finale lines, the new asks' reads)
   - `datePark("finale")` is still her home park (park factors and crowd sound); the stadium shows only in the chrome
   - a production deploy (needs the user's go-ahead)
   - the stranger playtest (M6, a user step)

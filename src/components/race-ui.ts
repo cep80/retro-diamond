@@ -8,6 +8,7 @@
 import { resultStamp } from "../shine/action-art.ts";
 import type { Stage } from "../shine/beats.ts";
 import { isPitcherStyle, sheet } from "../shine/bible.ts";
+import { FINALE_WON_BANNER, finaleTeamWon } from "../shine/goals.ts";
 import { parkById } from "../shine/core/parks.ts";
 import { recapLine } from "../shine/culture.ts";
 import { opposingArm, pitcherRivalBat } from "../shine/rivals.ts";
@@ -136,6 +137,8 @@ export function dateHeadline(opts: {
   if (opts.banner === "HOLD slipped." && (opts.pgId === "k-side" || opts.pgId === "k-2")) return opts.cardLine ?? "The punchouts weren't there.";
   // A miss says what slipped (her read), under the 未達成 stamp that already says it did.
   if (opts.banner === "HOLD slipped." || opts.banner === MISSED_LINE) return opts.read || MISSED_LINE;
+  // A Finale won short of her ask: the read says both ("They won. One punchout. She wanted two.").
+  if (opts.banner === FINALE_WON_BANNER) return opts.read || FINALE_WON_BANNER;
   return opts.banner || opts.cardLine || MISSED_LINE;
 }
 
@@ -475,8 +478,13 @@ export function moundRead(game: {
   inherited?: number;
   inheritedStranded?: boolean;
   blown?: boolean;
+  /** The Finale's lead as it stood at the end (a won Finale can still miss her ask). */
+  scoreDiff?: number;
 }): string {
   if (game.kind === "practice") return "Three looks. The glove is real.";
+  if (!game.pgMet && game.scoreDiff !== undefined && finaleTeamWon({ kind: game.kind, scoreDiff: game.scoreDiff, blown: game.blown })) {
+    return `${FINALE_WON_BANNER} ${finaleShortOf(game)}`;
+  }
   if (game.pgMet) {
     if (game.kind === "gate") return "Three outs. The Gate opened.";
     // The punchouts she got, which can be more than the ask.
@@ -553,6 +561,25 @@ export function moundRead(game: {
   if (game.kind === "gate") return "The Gate still opens.";
   if ((game.outsRecorded ?? 0) > 0 && (game.strikeouts ?? 0) === 0) return "The outs came. The punchouts didn't.";
   return MISSED_LINE;
+}
+
+/**
+ * What a won Finale didn't give her, after "They won.": the punchouts she got against the ones
+ * she wanted, never that the night was lost.
+ */
+function finaleShortOf(game: { pgId?: string | null; strikeouts?: number; bestInningKs?: number }): string {
+  const k = game.strikeouts ?? 0;
+  if (game.pgId === "k-2" || game.pgId === "k-3") {
+    const want = game.pgId === "k-2" ? "two" : "three";
+    const got = k === 0 ? "No punchouts." : k === 1 ? "One punchout." : `${capital(countWord(k))} punchouts.`;
+    return `${got} She wanted ${want}.`;
+  }
+  if (game.pgId === "k-side") {
+    const best = game.bestInningKs ?? 0;
+    return best === 0 ? "No punchouts. She wanted the side." : `${best === 1 ? "One punchout" : `${capital(countWord(best))} punchouts`}. She wanted the side.`;
+  }
+  if (game.pgId === "clean-ninth") return "A run got in. She wanted it clean.";
+  return "What she came for didn't come.";
 }
 
 /** The unseen middle of a Derby start, in one sentence. The inning log stays off the card. */
@@ -734,31 +761,41 @@ export function headToHeadLine(h: HeadToHead | null, herName: string): string | 
   return `${nth} meeting. ${leader} leads ${Math.max(h.hers, h.theirs)}–${Math.min(h.hers, h.theirs)}.`;
 }
 
-/** The Finale's postgame line, hers alone, in place of the park's filler. */
-export const FINALE_NIGHT: Record<CharacterId, { met: string; missed: string }> = {
+/**
+ * The Finale's postgame line, hers alone, in place of the park's filler. `wonShort` is the
+ * night her side won and her ask didn't come (check-in 24): the read above it already says
+ * "They won.", so this is the won night with what she didn't get in it, never a loss.
+ */
+export const FINALE_NIGHT: Record<CharacterId, { met: string; missed: string; wonShort: string }> = {
   aoi: {
     met: "Haruko calls the sign shop from the concourse.",
     missed: "Row J stays in their seats until the lights go down. So does Aoi.",
+    wonShort: "Row J is on its feet, and Aoi circles the at-bat she wanted back.",
   },
   reina: {
     met: "She walks off counting under her breath. Nobody asks what.",
     missed: "She sits on the bench with the scarf in her lap. She doesn't fix the stitch.",
+    wonShort: "She walks off counting under her breath, and starts the count over.",
   },
   miki: {
     met: "Section 4 rings both cowbells until the ushers stop asking.",
     missed: "The bell in Section 4 is still going when the lights come down.",
+    wonShort: "Section 4 rings both cowbells, and she looks for you before she looks up at them.",
   },
   sol: {
     met: "Luz throws a bag of churros over the rail in row one. It lands on the dugout roof.",
     missed: "Luz stays in row one until the grounds crew pulls the tarp.",
+    wonShort: "Luz throws the churros anyway. Sol holds up one finger, not two.",
   },
   kira: {
     met: "She takes the seat in the dugout. Nobody asks her to move.",
     missed: "She sits in the dugout anyway, the tin of transfers in her lap, until the last bus.",
+    wonShort: "She takes the seat in the dugout and doesn't say the save wasn't hers.",
   },
   yuki: {
     met: "She hands the stopwatch back. It's still running.",
     missed: "After everyone's gone, she stretches the left leg on the grass, the way she does every morning.",
+    wonShort: "She hands the stopwatch back and says the time was wrong.",
   },
 };
 
@@ -769,8 +806,8 @@ const FILLER_OFFSET: Record<CharacterId, number> = { aoi: 0, reina: 1, miki: 2, 
  * other big date steps through the park's booth pool by its place on the
  * ladder, so two big dates in a row never say the same thing.
  */
-export function postgameFiller(opts: { id: CharacterId; kind: string; parkId: string; turn: number; met: boolean }): string {
-  if (opts.kind === "finale") return FINALE_NIGHT[opts.id][opts.met ? "met" : "missed"];
+export function postgameFiller(opts: { id: CharacterId; kind: string; parkId: string; turn: number; met: boolean; teamWon?: boolean }): string {
+  if (opts.kind === "finale") return FINALE_NIGHT[opts.id][opts.met ? "met" : opts.teamWon ? "wonShort" : "missed"];
   const pitcher = isPitcherStyle(sheet(opts.id).style);
   const at = BIG_DATES.indexOf(opts.kind as BigDate);
   return recapLine(opts.parkId, at < 0 ? opts.turn : at + FILLER_OFFSET[opts.id], pitcher);
