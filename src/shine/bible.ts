@@ -129,7 +129,7 @@ const RAW_BIBLE: RawSheet[] = [
       show: "Her cap sits crooked through the handshake line. She leaves it.",
     },
     stats: { contact: 4, speed: 5, eye: 8, power: 3, guts: 8, wit: 8, stuff: 8, control: 10, stamina: 11 },
-    potential: 18,
+    potential: 17,
     official: [
       { turn: 5, verb: "Record 3 outs", sgVerb: "Record 1 out", resultsPg: false },
       // First Light is a rookie's debut: two punchouts, not three (simulated at a Day-18 rookie's
@@ -212,7 +212,7 @@ const RAW_BIBLE: RawSheet[] = [
       show: "She finds Luz in row one and holds up four fingers.",
     },
     stats: { contact: 4, speed: 5, eye: 7, power: 4, guts: 9, wit: 7, stuff: 9, control: 9, stamina: 12 },
-    potential: 18,
+    potential: 17,
     official: [
       { turn: 5, verb: "Record 3 outs", sgVerb: "Record 1 out", resultsPg: false },
       // First Light is a rookie's debut: two punchouts (about 80% met at Day 18), and she walks nobody.
@@ -282,7 +282,7 @@ const RAW_BIBLE: RawSheet[] = [
     yearStills: {
       rookie: "First Light. She stole second and kept going.",
       classic: "Lantern Classic. She scored from first and kept going.",
-      senior: "Finale. Stolen third in the ninth. She was past it before anyone called it.",
+      senior: "Finale. She went late, and she was gone before the 'o' in go.",
     },
     unique: "First-to-third green light.",
     walkUp: "Palm steal",
@@ -300,11 +300,13 @@ const RAW_BIBLE: RawSheet[] = [
       // "Reach base", not "Reach base once": the smaller ask resolves to `reach`, a Support Goal id
       // (`reach-once` is a Primary Goal and could never be met as the smaller ask; check-in 25).
       { turn: 18, verb: "Steal a base", sgVerb: "Reach base", resultsPg: false },
-      { turn: 28, verb: "Score from first on a single", sgVerb: "Reach base", resultsPg: false },
+      // Check-in 29: any route home from first counts, not only a teammate's single.
+      { turn: 28, verb: "Score from first", sgVerb: "Reach base", resultsPg: false },
       { turn: 33, verb: "Reach base twice", sgVerb: "Reach base", resultsPg: false },
       // Check-in 25: the runner-in-scoring-position steal comes first, the late steal is the Finale.
       { turn: 50, verb: "Steal with RISP", sgVerb: "Draw a walk", resultsPg: false },
-      { turn: 55, verb: "Score without a hit", sgVerb: "Reach base", resultsPg: false },
+      // Check-in 29: the Series is third base (she gets a second go from second on this date).
+      { turn: 55, verb: "Steal third", sgVerb: "Reach base", resultsPg: false },
       { turn: 60, verb: "Steal in the 7th+", sgVerb: "Work a full count", resultsPg: false },
     ],
   },
@@ -378,8 +380,8 @@ export function yearStillLine(
     const bits: string[] = [];
     if (stretch === "met") bits.push("The Stretch. She stole with a runner in scoring position.");
     else if (stretch === "missed") bits.push("The Stretch. The steal with a runner in scoring position didn't come.");
-    if (series === "met") bits.push("Skyline Series. She scored without a hit.");
-    else if (series === "missed") bits.push("Skyline Series. The run without a hit didn't come.");
+    if (series === "met") bits.push("Skyline Series. She stole third.");
+    else if (series === "missed") bits.push("Skyline Series. The steal of third didn't come.");
     if (finale === "met") bits.push("Diamond Finale. She stole late.");
     else if (finale === "missed") bits.push("Diamond Finale. The late steal didn't come.");
     if (bits.length) return bits.join(" ");
@@ -522,7 +524,7 @@ const SENIOR_STILLS: Partial<Record<CharacterId, SeniorStills>> = {
   // Yuki's own branch in yearStillLine says the games she sat; this is her line before any.
   yuki: {
     stretch: { met: "She stole with a runner in scoring position.", missed: "The steal with a runner in scoring position didn't come." },
-    series: { met: "She scored without a hit.", missed: "The run without a hit didn't come." },
+    series: { met: "She stole third.", missed: "The steal of third didn't come." },
     finale: { met: "She stole late.", missed: "The late steal didn't come." },
     none: "Senior year. Already stretched. Already on her way.",
   },

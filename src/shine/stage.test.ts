@@ -133,6 +133,35 @@ describe("style sit and miss read", () => {
     assert.equal(plateRead(run, game), "She stole a base.");
     game.pgMet = false;
     assert.equal(plateRead(run, game), "The steal didn't come.");
+    // Check-in 29: Yuki's Lantern is any trip home from first, her Series is third base.
+    game.pgId = "score-from-first";
+    game.kind = "lantern-classic";
+    game.pgMet = true;
+    assert.equal(plateRead(run, game), "She scored from first.");
+    game.pgMet = false;
+    game.events = [];
+    assert.equal(plateRead(run, game), "She never got on at first.");
+    game.events.push({ t: "reach", pa: 1, via: "walk", base: 1 });
+    assert.equal(plateRead(run, game), "She got on at first. Home never came.");
+    game.events = [
+      { t: "reach", pa: 1, via: "hit", base: 2 },
+      { t: "score", pa: 1, runner: "self", from: 2, on: "single", selfReachedBy: "hit" },
+    ];
+    assert.equal(plateRead(run, game), "She scored. She didn't start from first.");
+    game.pgId = "steal-third";
+    game.kind = "series";
+    game.pgMet = true;
+    assert.equal(plateRead(run, game), "She stole third.");
+    game.pgMet = false;
+    game.events = [];
+    assert.equal(plateRead(run, game), "The steal of third didn't come.");
+    game.events.push({ t: "stealResult", pa: 1, from: 1, safe: true, inning: 3, risp: false });
+    assert.equal(plateRead(run, game), "She stole second. Third didn't come.");
+    game.events.push({ t: "stealResult", pa: 1, from: 2, safe: false, inning: 3, risp: false });
+    assert.equal(plateRead(run, game), "She stole second, then got caught stealing third.");
+    game.events = [{ t: "stealResult", pa: 1, from: 2, safe: false, inning: 3, risp: false }];
+    assert.equal(plateRead(run, game), "Caught stealing third.");
+    // Retired asks (older saves) keep their reads.
     game.pgId = "score-from-first-single";
     game.kind = "lantern-classic";
     game.pgMet = true;

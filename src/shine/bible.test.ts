@@ -173,6 +173,7 @@ describe("1.0 bible", () => {
       "Lantern Classic and Night Classic. She came up short in both.",
     );
     assert.match(yearStillLine("yuki", 40, ["missed", "met", "met", "missed", "pending", "pending", "pending"]), /scored from first/);
+    assert.doesNotMatch(yearStillLine("yuki", 40, ["missed", "met", "met", "missed", "pending", "pending", "pending"]), /on a single/);
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "missed", "missed", "pending"]),
       "The Stretch and Skyline Series. She came up short in both.",
@@ -183,13 +184,39 @@ describe("1.0 bible", () => {
     );
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "met", "met", "met"]),
-      "The Stretch. She stole with a runner in scoring position. Skyline Series. She scored without a hit. Diamond Finale. She stole late.",
+      "The Stretch. She stole with a runner in scoring position. Skyline Series. She stole third. Diamond Finale. She stole late.",
     );
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "missed", "met", "missed"]),
-      "The Stretch. The steal with a runner in scoring position didn't come. Skyline Series. She scored without a hit. Diamond Finale. The late steal didn't come.",
+      "The Stretch. The steal with a runner in scoring position didn't come. Skyline Series. She stole third. Diamond Finale. The late steal didn't come.",
     );
-    assert.doesNotMatch(yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "met", "missed", "pending"]), /Stolen third|ninth/);
+    assert.equal(
+      yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "met", "missed", "pending"]),
+      "The Stretch. She stole with a runner in scoring position. Skyline Series. The steal of third didn't come.",
+    );
+    assert.doesNotMatch(yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "met", "missed", "pending"]), /Stolen third|ninth|She stole third/);
+  });
+
+  it("pins Yuki's check-in 29 asks: Lantern is any trip home from first, Series is third base", () => {
+    const yuki = sheet("yuki").official;
+    assert.equal(yuki.find((g) => g.turn === 28)?.verb, "Score from first");
+    assert.equal(yuki.find((g) => g.turn === 28)?.pgId, "score-from-first");
+    assert.equal(yuki.find((g) => g.turn === 55)?.verb, "Steal third");
+    assert.equal(yuki.find((g) => g.turn === 55)?.pgId, "steal-third");
+    assert.equal(yuki.find((g) => g.turn === 55)?.sgId, "reach");
+    assert.equal(sheet("reina").potential, 17);
+    assert.equal(sheet("sol").potential, 17);
+    // Her senior still belongs to the Finale now; "stolen third" is the Series's.
+    assert.doesNotMatch(sheet("yuki").yearStills.senior, /third/i);
+  });
+
+  it("says Yuki's three senior steals in different sentences: scoring position, third, and late", () => {
+    const met = yearStillLine("yuki", 60, ["met", "met", "met", "met", "met", "met", "met"]);
+    const missed = yearStillLine("yuki", 60, ["met", "met", "met", "met", "missed", "missed", "met"]);
+    for (const line of [met, missed]) {
+      const sentences = line.split(/(?<=\.)\s+/);
+      assert.equal(new Set(sentences).size, sentences.length, line);
+    }
   });
 
   it("names Aoi's rookie still from the plate she sat", () => {

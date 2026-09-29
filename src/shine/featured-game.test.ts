@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { describe, it } from "node:test";
 import { cellLoc } from "./core/zone.ts";
 import { LEAD_DEFAULT_SIT } from "./oracle.ts";
@@ -71,11 +72,13 @@ describe("featured game", () => {
     assert.ok(heat.every((h) => h >= -1 && h <= 1));
   });
 
-  it("holds Yuki on first at Lantern Classic instead of stealing", () => {
+  it("holds Yuki on first on the retired score-from-first-on-a-single ask", () => {
     const run = newRun("yuki");
     run.turn = 28;
     const game = startFeaturedGame(run, "lantern-classic");
-    assert.equal(game.pgId, "score-from-first-single");
+    // Check-in 29: her Lantern is "Score from first" now, and she runs on it like any date.
+    assert.equal(game.pgId, "score-from-first");
+    game.pgId = "score-from-first-single";
     setBases(game, { first: false, second: false, third: false });
     game.count = { balls: 3, strikes: 0 };
     resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
@@ -98,6 +101,60 @@ describe("featured game", () => {
     assert.ok(steal && steal.t === "stealAttempt");
     assert.equal(steal.from, 1);
     assert.equal(steal.risp, true);
+  });
+
+  it("goes again from second on the steal-third date only (check-in 29)", () => {
+    const run = newRun("yuki");
+    run.turn = 55;
+    run.stats.speed = 16;
+    let doubles = 0;
+    for (let s = 0; s < 40; s++) {
+      run.rngSeed = `third-${s}`;
+      const game = startFeaturedGame(run, "series");
+      assert.equal(game.pgId, "steal-third");
+      for (let n = 0; n < 400 && !game.done; n++) resolveTake(run, game, dealPitch(run, game));
+      const steals = game.events.filter((e) => e.t === "stealResult");
+      for (let i = 1; i < steals.length; i++) {
+        const [a, b] = [steals[i - 1]!, steals[i]!];
+        if (a.t === "stealResult" && b.t === "stealResult" && a.pa === b.pa && a.from === 1 && a.safe && b.from === 2) doubles += 1;
+      }
+    }
+    assert.ok(doubles > 0, "second then third in one trip");
+  });
+
+  it("makes exactly the draws it always made on every date but steal-third (check-in 29)", () => {
+    // Digests of seeded take-only games, recorded from HEAD b1c91ae before the second steal
+    // attempt existed. Yuki's Lantern and Series are forced back to the ids they had then.
+    const GOLDEN: Record<string, string> = {
+      "aoi|gate": "7bb90f1f20ba", "aoi|first-light": "16d6ebda36b2", "aoi|lantern-classic": "0aab7f271587",
+      "aoi|night-classic": "4a579d2c82d1", "aoi|stretch": "e40a3d86e398", "aoi|series": "f6239f381a38", "aoi|finale": "01316aaf9fd0",
+      "miki|gate": "06e6a6048ec8", "miki|first-light": "68f4f3aa5295", "miki|lantern-classic": "f3f5465fd053",
+      "miki|night-classic": "bfcf122d61d8", "miki|stretch": "4502359f1c2a", "miki|series": "4c1c96cb164a", "miki|finale": "095211bf260a",
+      "yuki|gate": "64580adbb2bc", "yuki|first-light": "694af7a54cb3", "yuki|lantern-classic": "25fcd5b074dd",
+      "yuki|night-classic": "6258ca8a400c", "yuki|stretch": "49814e322cfb", "yuki|series": "7ba64b7c6049", "yuki|finale": "c71f65c70770",
+    };
+    const OLD: Record<string, "score-from-first-single" | "score-no-hit"> = { "yuki|28": "score-from-first-single", "yuki|55": "score-no-hit" };
+    const DATES = [[5, "gate"], [18, "first-light"], [28, "lantern-classic"], [33, "night-classic"], [50, "stretch"], [55, "series"], [60, "finale"]] as const;
+    let attempts = 0;
+    for (const girl of ["aoi", "miki", "yuki"] as const) {
+      for (const [turn, kind] of DATES) {
+        const h = createHash("sha1");
+        for (let s = 0; s < 6; s++) {
+          const run = newRun(girl);
+          run.rngSeed = `golden-${girl}-${s}`;
+          run.turn = turn;
+          run.stats.speed = 12 + s;
+          const g = startFeaturedGame(run, kind);
+          const old = OLD[`${girl}|${turn}`];
+          if (old) g.pgId = old;
+          for (let n = 0; n < 400 && !g.done; n++) resolveTake(run, g, dealPitch(run, g));
+          attempts += g.events.filter((e) => e.t === "stealAttempt").length;
+          h.update(JSON.stringify([g.events, g.runs, g.scoreDiff, g.outs, g.inning, g.runnerLine]));
+        }
+        assert.equal(h.digest("hex").slice(0, 12), GOLDEN[`${girl}|${kind}`], `${girl} ${kind}`);
+      }
+    }
+    assert.ok(attempts > 0, "the seeded games do run");
   });
 
   it("opens The Stretch in the seventh, and her Finale's late steal gets three late trips", () => {

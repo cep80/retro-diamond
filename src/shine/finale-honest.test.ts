@@ -198,7 +198,8 @@ describe("senior stills say only what she met (check-in 24)", () => {
     sol: [/She got out of it/, /Three runs or fewer/, /Two punchouts in the ninth/],
     miki: [/She put the bat on a breaking ball/, /She came up with runners on/, /She never went down on strikes/],
     // Check-in 25: the scoring-position steal is her Stretch, the late steal her Finale.
-    yuki: [/She stole with a runner in scoring position/, /She scored without a hit/, /She stole late/],
+    // Check-in 29: her Series is third base.
+    yuki: [/She stole with a runner in scoring position/, /She stole third/, /She stole late/],
     // Check-in 28: her Finale is "Drive in a run".
     aoi: [/She hit late/, /Three quality at-bats/, /A run came home on her/],
   };

@@ -198,10 +198,11 @@ describe("race sitelines", () => {
       "Two strikes. You watched her.",
     );
     assert.equal(runningClose("She stole second. She scored."), true);
-    assert.equal(runningClose("She scored from first on a single."), true);
+    assert.equal(runningClose("She scored from first."), true);
     assert.equal(runningClose("Caught stealing."), true);
     assert.equal(runningClose("She stole late."), true);
-    assert.equal(runningClose("She scored without a hit."), true);
+    assert.equal(runningClose("She stole third."), true);
+    assert.equal(runningClose("Caught stealing third."), true);
     assert.equal(runningClose("The late steal didn't come."), false);
   });
 });

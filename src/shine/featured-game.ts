@@ -498,25 +498,30 @@ function runSelfBetweenPas(run: TraineeRun, game: FeaturedGame, r: () => number)
 
   // Steal attempt: armed by style and outs; the roll is speed.
   const holdFirst = game.pgId === "score-from-first-single" && base === 1;
-  if (game.stealArmed && base <= 2 && outs < 3 && !holdFirst) {
-    const from = base as 1 | 2;
-    const rispNow = from === 1 ? mates.second || mates.third : mates.third;
-    const blocked = from === 1 ? mates.second : mates.third;
-    if (!blocked) {
-      push(game.events, { t: "stealAttempt", pa, from, inning: game.inning, risp: rispNow });
-      const safe = r() < sbSuccessP(run.stats.speed, run.carry, who.style, run.stats.wit);
-      push(game.events, { t: "stealResult", pa, from, safe, inning: game.inning, risp: rispNow });
-      if (safe) {
-        base = (from + 1) as 2 | 3;
-        game.selfOnBase = base;
-        push(game.events, { t: "advance", pa, runner: "self", from, to: base, on: "steal" });
-        lines.push(from === 1 ? "She stole second." : "She stole third.");
-        noteCallback(run, game, "speed");
-      } else {
-        outs += 1;
-        push(game.events, { t: "out", pa, how: "caught-stealing" });
-        game.selfOnBase = null;
-        lines.push("Caught stealing.");
+  // Check-in 29: on the steal-third date she goes again from second once she's stolen it.
+  // Every other date gets the one attempt, with exactly the draws it always made.
+  const attempts = game.pgId === "steal-third" ? 2 : 1;
+  for (let att = 0; att < attempts; att++) {
+    if (game.selfOnBase != null && game.stealArmed && base <= 2 && outs < 3 && !holdFirst) {
+      const from = base as 1 | 2;
+      const rispNow = from === 1 ? mates.second || mates.third : mates.third;
+      const blocked = from === 1 ? mates.second : mates.third;
+      if (!blocked) {
+        push(game.events, { t: "stealAttempt", pa, from, inning: game.inning, risp: rispNow });
+        const safe = r() < sbSuccessP(run.stats.speed, run.carry, who.style, run.stats.wit);
+        push(game.events, { t: "stealResult", pa, from, safe, inning: game.inning, risp: rispNow });
+        if (safe) {
+          base = (from + 1) as 2 | 3;
+          game.selfOnBase = base;
+          push(game.events, { t: "advance", pa, runner: "self", from, to: base, on: "steal" });
+          lines.push(from === 1 ? "She stole second." : "She stole third.");
+          noteCallback(run, game, "speed");
+        } else {
+          outs += 1;
+          push(game.events, { t: "out", pa, how: "caught-stealing" });
+          game.selfOnBase = null;
+          lines.push("Caught stealing.");
+        }
       }
     }
   }

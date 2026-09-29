@@ -279,7 +279,7 @@ const RIVAL_INTROS: Record<CharacterId, Record<RivalKind, RivalIntroScene>> = {
       { who: "yuki", text: "And the rest of the time I'm on second, looking at you. And you never look back.", mood: "focused" },
       { who: "reina", text: "Last one. I'll look at you tonight. Once.", mood: "neutral" },
       { who: "coach", text: "Once is a lot, from her." },
-      { who: "yuki", text: "Once is all I need. When she looks, Stopwatch, I'm already gone.", mood: "elated" },
+      { who: "yuki", text: "Once is all I need. When she looks, Stopwatch, I'm already halfway to third.", mood: "elated" },
     ]),
   },
 };

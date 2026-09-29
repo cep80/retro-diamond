@@ -207,15 +207,15 @@ describe("Diamond Finale and endings", () => {
     assert.equal(parentEligible(aoi, "reina", 5), false);
   });
 
-  it("caps S-rank when Finale PG is met, no misses, and fans 75", () => {
+  it("caps S-rank when Finale PG is met, no misses, and fans 78 for a hitter", () => {
     const run = newAoiRun();
     floorsForAoi(run);
-    run.fans = 74;
+    run.fans = 77;
     run.finaleUnlocked = true;
     run.pgResults = ["met", "met", "met", "met", "met", "met", "met"];
     run.pgMisses = 0;
-    assert.equal(endingRank(run, true, true), "A", "one fan short of the S bar (check-in 25: 75)");
-    run.fans = 75;
+    assert.equal(endingRank(run, true, true), "A", "one fan short of a hitter's S bar (check-in 29: 78)");
+    run.fans = 78;
     assert.equal(endingRank(run, true, true), "S");
     const card = mintClubhouseCard(run);
     assert.equal(card.ending, "S");
@@ -438,11 +438,18 @@ describe("the ending says why", () => {
     run.fans = 70;
     const a = endingRank(run, true, true);
     assert.equal(a, "A");
-    assert.equal(endingWhy(run, a, true, true), "70 fans, one big game cost her, and she won the Finale. S needs no big game lost and 75 fans.");
+    assert.equal(endingWhy(run, a, true, true), "70 fans, one big game cost her, and she won the Finale. S needs no big game lost and 78 fans.");
     assert.equal(RANK_FANS.S, 75);
+    assert.equal(RANK_FANS.sHitter, 78);
     run.pgMisses = 0;
-    run.fans = RANK_FANS.S;
+    run.fans = 77;
+    assert.equal(endingRank(run, true, true), "A", "a hitter's S asks 78 (check-in 29)");
+    run.fans = RANK_FANS.sHitter;
     assert.equal(endingRank(run, true, true), "S", "doing what A's line asked for makes it S");
+    const sol = newRun("sol");
+    sol.pgMisses = 0;
+    sol.fans = RANK_FANS.S;
+    assert.equal(endingRank(sol, true, true), "S", "a pitcher's S still asks 75");
     run.fans = 45;
     const b = endingRank(run, false, false);
     assert.equal(b, "B");
@@ -475,7 +482,7 @@ describe("the ending says why", () => {
     const { newRun } = await import("./run.ts");
     const ORDER = ["D", "C", "B", "never-quit", "A", "S"] as const;
     for (const id of ["aoi", "miki", "sol"] as const) {
-      for (const fans of [0, 19, 20, 45, 59, 60, 74, 75, 79, 80, 100]) {
+      for (const fans of [0, 19, 20, 45, 59, 60, 74, 75, 77, 78, 79, 80, 100]) {
         for (const misses of [0, 1, 2]) {
           for (const [played, won] of [[true, true], [true, false], [false, false]] as const) {
             for (const floor of [false, true]) {
@@ -490,7 +497,8 @@ describe("the ending says why", () => {
                 // Grant exactly what the gap names, and nothing else.
                 const lifted = newRun(id);
                 lifted.stats = { ...run.stats };
-                lifted.fans = gap.some((g) => g.endsWith(" fans")) ? (target === "S" ? 75 : 60) : run.fans;
+                const fansGap = gap.find((g) => g.endsWith(" fans"));
+                lifted.fans = fansGap ? Number.parseInt(fansGap, 10) : run.fans;
                 lifted.pgMisses = gap.includes("no big game lost") ? 0 : gap.includes("no more than one big game lost") ? 1 : run.pgMisses;
                 const finaleWon = gap.includes("a Finale win") ? true : won;
                 const got = endingRank(lifted, finaleWon || played, finaleWon);

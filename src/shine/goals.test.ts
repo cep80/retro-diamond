@@ -111,6 +111,53 @@ describe("goals", () => {
     assert.equal(evalHitterPg("score-no-hit", hitterView(walked)), true);
   });
 
+  it("scores from first by any route, as long as the trip started on first (check-in 29)", () => {
+    assert.equal(goalIdForVerb("Score from first"), "score-from-first");
+    assert.equal(goalIdForVerb("Score from first on a single"), "score-from-first-single", "old saves still resolve");
+    const walkThenSteal: PlateEvent[] = [
+      { t: "paStart", pa: 2, inning: 3, outs: 0, bases: emptyBases() },
+      { t: "reach", pa: 2, via: "walk", base: 1 },
+      { t: "stealResult", pa: 2, from: 1, safe: true, inning: 3, risp: false },
+      { t: "score", pa: 2, runner: "self", from: 2, on: "single", selfReachedBy: "walk" },
+    ];
+    assert.equal(evalHitterPg("score-from-first", hitterView(walkThenSteal)), true);
+    assert.equal(evalHitterPg("score-from-first-single", hitterView(walkThenSteal)), false, "the old ask wanted the single from first");
+    assert.match(proofLine("score-from-first", walkThenSteal) ?? "", /second time up: on at first/);
+    const double: PlateEvent[] = [
+      { t: "paStart", pa: 1, inning: 1, outs: 0, bases: emptyBases() },
+      { t: "reach", pa: 1, via: "hit", base: 2 },
+      { t: "score", pa: 1, runner: "self", from: 2, on: "single", selfReachedBy: "hit" },
+    ];
+    assert.equal(evalHitterPg("score-from-first", hitterView(double)), false, "she started on second");
+    const hr: PlateEvent[] = [
+      { t: "reach", pa: 1, via: "hit", base: 4 },
+      { t: "score", pa: 1, runner: "self", from: 0, on: "hr", selfReachedBy: "hit" },
+    ];
+    assert.equal(evalHitterPg("score-from-first", hitterView(hr)), false);
+    // On first in one trip, scoring in another trip (from second) is not it.
+    const split: PlateEvent[] = [
+      { t: "reach", pa: 1, via: "walk", base: 1 },
+      { t: "reach", pa: 2, via: "hit", base: 2 },
+      { t: "score", pa: 2, runner: "self", from: 2, on: "double", selfReachedBy: "hit" },
+    ];
+    assert.equal(evalHitterPg("score-from-first", hitterView(split)), false);
+    assert.equal(proofLine("score-from-first", split), null);
+  });
+
+  it("steals third only from second, and the proof names that steal (check-in 29)", () => {
+    assert.equal(goalIdForVerb("Steal third"), "steal-third");
+    assert.equal(goalIdForVerb("Score without a hit"), "score-no-hit", "old saves still resolve");
+    const second: PlateEvent[] = [{ t: "stealResult", pa: 1, from: 1, safe: true, inning: 2, risp: false }];
+    assert.equal(evalHitterPg("steal-third", hitterView(second)), false);
+    const caught: PlateEvent[] = [...second, { t: "stealResult", pa: 1, from: 2, safe: false, inning: 2, risp: false }];
+    assert.equal(evalHitterPg("steal-third", hitterView(caught)), false);
+    const both: PlateEvent[] = [...second, { t: "stealResult", pa: 3, from: 2, safe: true, inning: 6, risp: false }];
+    assert.equal(evalHitterPg("steal-third", hitterView(both)), true);
+    assert.equal(proofLine("steal-third", both), "Stole 3rd in the 6th.");
+    assert.ok(goalDefinition("steal-third").length > 10);
+    assert.ok(goalDefinition("score-from-first").length > 10);
+  });
+
   it("reads steals with inning and RISP from the steal result", () => {
     const ev: PlateEvent[] = [{ t: "stealResult", pa: 3, from: 1, safe: true, inning: 8, risp: false }];
     assert.equal(evalHitterPg("steal", hitterView(ev)), true);

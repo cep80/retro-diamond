@@ -24,7 +24,9 @@ export type HitterPgId =
   | "score-from-first-single"
   | "steal-late"
   | "score-no-hit"
-  | "steal-risp";
+  | "steal-risp"
+  | "score-from-first"
+  | "steal-third";
 
 export type HitterSgId =
   | "see-4"
@@ -85,6 +87,10 @@ const VERB_TO_ID: [RegExp, GoalId][] = [
   [/^make contact on a breaking ball$/i, "contact-breaking"],
   [/^come to bat with runners on$/i, "runners-on-at-bat"],
   [/^steal a base$/i, "steal"],
+  // Check-in 29: Yuki's Lantern is "Score from first" (any route home) and her Series is
+  // "Steal third". The retired verbs stay resolvable so older saves and tests still read.
+  [/^score from first$/i, "score-from-first"],
+  [/^steal third$/i, "steal-third"],
   [/^score from first on a single$/i, "score-from-first-single"],
   [/^steal in the 7th\+$/i, "steal-late"],
   [/^score without a hit$/i, "score-no-hit"],
@@ -171,6 +177,10 @@ export function goalDefinition(id: GoalId): string {
       return "Start a plate appearance with any runner aboard.";
     case "steal":
       return "Steal a base safely.";
+    case "score-from-first":
+      return "She reaches 1st and comes all the way around to score in the same trip. Any route home counts.";
+    case "steal-third":
+      return "Steal 3rd safely. She has to be standing on 2nd first.";
     case "score-from-first-single":
       return "She is on 1st, a teammate singles, and she comes all the way around.";
     case "steal-late":
@@ -275,6 +285,11 @@ export function evalHitterPg(id: HitterPgId, g: HitterGoalView): boolean {
       return ev.some((e) => e.t === "paStart" && runnersOn(e.bases));
     case "steal":
       return ev.some((e) => e.t === "stealResult" && e.safe);
+    case "score-from-first":
+      // A trip that started on 1st (single, walk or bunt) and came all the way home, any route.
+      return ev.some((e) => e.t === "score" && e.runner === "self" && ev.some((x) => x.t === "reach" && x.pa === e.pa && x.base === 1));
+    case "steal-third":
+      return ev.some((e) => e.t === "stealResult" && e.safe && e.from === 2);
     case "score-from-first-single":
       return ev.some((e) => e.t === "score" && e.runner === "self" && e.from === 1 && e.on === "single");
     case "steal-late":
@@ -523,6 +538,8 @@ const HITTER_PG = new Set<GoalId>([
   "steal-late",
   "score-no-hit",
   "steal-risp",
+  "score-from-first",
+  "steal-third",
 ]);
 const HITTER_SG = new Set<GoalId>(["see-4", "see-3", "see-2-one-pa", "see-3-one-pa", "outfield-ball", "full-count", "reach", "draw-walk"]);
 const PITCHER_PG = new Set<GoalId>([
@@ -577,6 +594,14 @@ export function proofLine(id: GoalId, ev: PlateEvent[]): string | null {
     case "steal-risp": {
       const e = find("stealResult", (x) => x.safe);
       return e ? `Stole ${e.from === 1 ? "2nd" : "3rd"} in the ${ordinal(e.inning)}.` : null;
+    }
+    case "steal-third": {
+      const e = find("stealResult", (x) => x.safe && x.from === 2);
+      return e ? `Stole 3rd in the ${ordinal(e.inning)}.` : null;
+    }
+    case "score-from-first": {
+      const e = find("score", (x) => x.runner === "self" && ev.some((r) => r.t === "reach" && r.pa === x.pa && r.base === 1));
+      return e ? `Her ${timeUp(e.pa)} time up: on at first, and all the way around to score.` : null;
     }
     case "score-from-first-single": {
       const e = find("score", (x) => x.runner === "self" && x.from === 1 && x.on === "single");

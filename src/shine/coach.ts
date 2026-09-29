@@ -95,7 +95,12 @@ export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeSt
     case "steal-risp":
     case "score-from-first-single":
     case "score-no-hit":
-      return { stat: "speed", need: "Run. Speed is the steal and the extra base; Eye gets her on without a hit." };
+      return { stat: "speed", need: "Run. Speed is the steal and the extra base; Eye gets her on so there's a base to take." };
+    case "score-from-first":
+    case "steal-third":
+      // Check-in 29: both start with her on base, and a Coach who sends her to the poles for
+      // them costs her more trips than it wins (simulated: Contact first is the better week).
+      return { stat: "contact", need: "Get on, then run. Contact puts her on base; Speed takes the next one." };
     case "outs-3":
     case "out-1":
     case "four-out":
@@ -243,6 +248,9 @@ function secondNeed(id: GoalId | null, pitcher: boolean): TraineeStatKey | null 
     case "steal-late":
     case "steal-risp":
       return "eye";
+    case "score-from-first":
+    case "steal-third":
+      return "speed";
     case "k-2":
     case "k-3":
     case "k-side":

@@ -462,7 +462,7 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "The steal didn't come, and she hid the leg from you all the way to the bus.",
     },
     "lantern-classic": {
-      met: "She waited for your sign for once, then scored from first on a single.",
+      met: "She waited for your sign for once, then went from first all the way home.",
       missed: "She didn't score from first, and she told you the leg had grabbed before you had to ask.",
     },
     "night-classic": {
@@ -474,12 +474,12 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "The scoring-position steal didn't come, and Kira won the juice bet for once and didn't look happy about it.",
     },
     series: {
-      met: "She scored without a hit, and Reina looked at her once, too late.",
-      missed: "She never got around without a hit, and the lighthouse box stayed shut on the trunk.",
+      met: "She took third standing up, and Reina looked at her once, too late.",
+      missed: "She never stole third, and the lighthouse box stayed shut on the trunk.",
     },
     finale: {
       met: "She stole late and was gone before you finished saying go.",
-      missed: "The steal didn't come, and that night she did a thousand-piece puzzle, slowly.",
+      missed: "The late steal never came, and that night she did a thousand-piece puzzle, slowly.",
     },
   },
 };

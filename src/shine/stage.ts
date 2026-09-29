@@ -84,6 +84,8 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
     if (game.pgId === "steal") return "She stole a base.";
     if (game.pgId === "steal-late") return "She stole late.";
     if (game.pgId === "steal-risp") return "She stole with a runner in scoring position.";
+    if (game.pgId === "score-from-first") return "She scored from first.";
+    if (game.pgId === "steal-third") return "She stole third.";
     if (game.pgId === "score-from-first-single") return "She scored from first on a single.";
     if (game.pgId === "score-no-hit") return "She scored without a hit.";
     if (game.pgId === "reach-twice") return "She reached twice.";
@@ -127,6 +129,18 @@ function plateMissRead(run: TraineeRun, game: FeaturedGame): string {
   if (game.pgId === "steal-risp") {
     const plain = game.events.some((e) => e.t === "stealResult" && e.safe && !e.risp);
     return plain ? "She stole, but nobody was in scoring position yet." :"The steal with a runner in scoring position didn't come.";
+  }
+  if (game.pgId === "score-from-first") {
+    const scored = game.events.some((e) => e.t === "score" && e.runner === "self");
+    const onFirst = game.events.some((e) => e.t === "reach" && e.base === 1);
+    if (scored) return "She scored. She didn't start from first.";
+    return onFirst ? "She got on at first. Home never came." : "She never got on at first.";
+  }
+  if (game.pgId === "steal-third") {
+    const second = game.events.some((e) => e.t === "stealResult" && e.safe && e.from === 1);
+    const caught = game.events.some((e) => e.t === "stealResult" && !e.safe && e.from === 2);
+    if (caught) return second ? "She stole second, then got caught stealing third." : "Caught stealing third.";
+    return second ? "She stole second. Third didn't come." : "The steal of third didn't come.";
   }
   if (game.pgId === "score-from-first-single") return "She didn't score from first.";
   if (game.pgId === "score-no-hit") {

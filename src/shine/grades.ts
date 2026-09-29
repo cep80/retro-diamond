@@ -13,8 +13,8 @@
  *   a letter every one or two good mornings: the strip visibly changes.
  * - The starting sheets (bible.ts) run 3-12: off-role skills start at G or F
  *   (a hitter's Stuff, a pitcher's Contact), her own at E to B.
- * - Potential runs 14-18 (clampStat caps there, and work at potential-2 lands
- *   less often). S is 16 and up: the 16s and 18s can earn it at the top of
+ * - Potential runs 14-17 (clampStat caps there, and work at potential-2 lands
+ *   less often). S is 16 and up: the 16s and 17s can earn it at the top of
  *   their range, Miki's 14 tops out at A. S is the grade you have to finish.
  */
 import type { TraineeRun, TraineeStatKey, TraineeStats } from "./types.ts";

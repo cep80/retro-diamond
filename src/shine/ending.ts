@@ -90,7 +90,15 @@ export function postgameLeaveLabel(run: TraineeRun, finale: boolean) {
  * The fan counts each rank asks for. endingRank and endingWhy both read these.
  * neverQuit is A's bar on purpose: never-quit is A-level devotion without the A-level year.
  */
-export const RANK_FANS = { S: 75, A: 60, C: 20, neverQuit: 60 } as const;
+export const RANK_FANS = { S: 75, sHitter: 78, A: 60, C: 20, neverQuit: 60 } as const;
+
+/**
+ * The fans S asks of her (check-in 29): a hitter's crowd grows faster than a pitcher's, so a
+ * hitter's S asks a little more. Every "S needs N fans" line reads this.
+ */
+export function sFans(run: Pick<TraineeRun, "characterId">): number {
+  return isPitcherStyle(sheet(run.characterId).style) ? RANK_FANS.S : RANK_FANS.sHitter;
+}
 
 /**
  * A career ends one of two ways: it closes early at the second big date lost
@@ -100,7 +108,7 @@ export const RANK_FANS = { S: 75, A: 60, C: 20, neverQuit: 60 } as const;
  */
 export function endingRank(run: TraineeRun, finalePlayed: boolean, finalePg: boolean): EndingRank {
   if (careerClosesEarly(run)) return run.fans >= RANK_FANS.C ? "C" : "D";
-  if (finalePlayed && finalePg && run.pgMisses === 0 && run.fans >= RANK_FANS.S) return "S";
+  if (finalePlayed && finalePg && run.pgMisses === 0 && run.fans >= sFans(run)) return "S";
   if (finalePlayed && finalePg && run.pgMisses <= 1 && run.fans >= RANK_FANS.A) return "A";
   if (isMikiPath(run) && run.fans >= RANK_FANS.neverQuit && !finaleFloorMet(run)) return "never-quit";
   return "B";
@@ -117,7 +125,7 @@ export function rankGap(run: TraineeRun, target: "S" | "A", finalePlayed: boolea
   // A Finale her side won short of her ask isn't "a Finale win" away: it's the ask.
   if (!(finalePlayed && finalePg)) gap.push(finaleWonShortRun(run, finalePlayed, finalePg) ? "the Finale she came for" : "a Finale win");
   if (target === "S" ? run.pgMisses > 0 : run.pgMisses > 1) gap.push(target === "S" ? "no big game lost" : "no more than one big game lost");
-  const need = target === "S" ? RANK_FANS.S : RANK_FANS.A;
+  const need = target === "S" ? sFans(run) : RANK_FANS.A;
   if (run.fans < need) gap.push(`${need} fans`);
   return gap;
 }
