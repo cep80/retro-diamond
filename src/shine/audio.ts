@@ -76,9 +76,8 @@ export function fieldBedUrl(id: FieldBedId = "lantern"): string {
   return `/audio/${id}-field.mp3`;
 }
 
+/** Synth stand-ins. The title and the office play the lantern bed now (screen music "title"). */
 export type MusicTrack =
-  | "title"
-  | "office"
   | "tension"
   | "victory"
   | "legend"
@@ -97,8 +96,6 @@ const TRACK_CONFIG: Record<
   MusicTrack,
   { interval: number; chords: number[][]; octaveEvery: number; vol: number; type: OscillatorType }
 > = {
-  title: { interval: 320, chords: [[196, 247, 294], [174, 220, 261], [164, 196, 246], [196, 246, 293]], octaveEvery: 8, vol: 0.045, type: "square" },
-  office: { interval: 280, chords: [[196, 247, 294], [174, 220, 261], [164, 196, 246], [196, 246, 293]], octaveEvery: 8, vol: 0.045, type: "square" },
   tension: { interval: 210, chords: [[110, 131, 165], [98, 117, 147], [104, 131, 156], [117, 139, 175]], octaveEvery: 6, vol: 0.055, type: "sawtooth" },
   victory: { interval: 240, chords: [[262, 330, 392], [294, 370, 440], [330, 415, 494], [262, 349, 440]], octaveEvery: 4, vol: 0.05, type: "triangle" },
   legend: { interval: 420, chords: [[196, 247, 330], [220, 262, 330], [247, 294, 392], [262, 330, 440]], octaveEvery: 5, vol: 0.05, type: "triangle" },
@@ -114,7 +111,7 @@ const TRACK_CONFIG: Record<
   "walk-yuki": { interval: 230, chords: [[247, 311, 370], [277, 330, 415], [233, 311, 392], [261, 330, 392]], octaveEvery: 4, vol: 0.046, type: "triangle" },
 };
 
-let _activeTrack: MusicTrack = "office";
+let _activeTrack: MusicTrack = "quiet";
 
 export function isMuted() {
   return muted;
@@ -691,16 +688,19 @@ export const COMPLEX_THEME_FILE: string | null = null; // "/audio/complex-day.mp
 export const LIVE_SONG_FILE: string | null = null; // "/audio/winning-live.mp3"
 
 export type ScreenMusic =
+  /** The title, Select and her promise scene: the lantern bed, one start across all three (check-in 27, N9). */
+  | { kind: "title" }
   | { kind: "complex" }
   | { kind: "theme"; id: WalkId }
   | { kind: "live"; id: WalkId }
   | { kind: "bow"; rank: "S" | "A" | "B" | "C" | "D" | "never-quit" };
 
 /** Gain of each bed on the music bus (before the player's Music volume and the mute). */
-export const SCREEN_MUSIC_LEVEL = { complex: 0.3, theme: 0.2, live: 1 } as const;
+export const SCREEN_MUSIC_LEVEL = { title: 0.3, complex: 0.3, theme: 0.2, live: 1 } as const;
 
 export function screenMusicKey(cue: ScreenMusic | null): string {
   if (!cue) return "";
+  if (cue.kind === "title") return "title";
   if (cue.kind === "complex") return "complex";
   if (cue.kind === "bow") return `bow:${cue.rank}`;
   return `${cue.kind}:${cue.id}`;
@@ -708,6 +708,7 @@ export function screenMusicKey(cue: ScreenMusic | null): string {
 
 /** The file a cue plays. Her theme and her Live are the same walk-up until the Live song lands. */
 export function screenMusicUrl(cue: ScreenMusic): string | null {
+  if (cue.kind === "title") return fieldBedUrl("lantern");
   if (cue.kind === "complex") return COMPLEX_THEME_FILE ?? fieldBedUrl("lantern");
   if (cue.kind === "theme") return walkUpUrl(cue.id);
   if (cue.kind === "live") return LIVE_SONG_FILE ?? walkUpUrl(cue.id);
@@ -754,7 +755,7 @@ export function playScreenMusic(cue: ScreenMusic) {
     const buf = screenBufs.get(url) ?? (await decodeUrl(url));
     if (buf) screenBufs.set(url, buf);
     if (gen !== screenGen || screenKey !== key || !buf) return;
-    if (kind === "complex") playFieldBuffer(buf, level, 1.2);
+    if (kind === "complex" || kind === "title") playFieldBuffer(buf, level, 1.2);
     else playWalkBuffer(buf, level, url, kind === "live" ? 0.4 : 1.2);
   })();
 }
@@ -968,7 +969,7 @@ function stopChip() {
   }
 }
 
-export function startMusic(track: MusicTrack = "office") {
+export function startMusic(track: MusicTrack = "quiet") {
   if (!ctx || !music || !enabled.music) return;
   _activeTrack = track;
   stopMusic();

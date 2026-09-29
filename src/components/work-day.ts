@@ -28,6 +28,8 @@ import {
 } from "../shine/grades.ts";
 import type { CalendarEntry, CharacterId, StationId, TraineeRun, TraineeStatKey } from "../shine/types.ts";
 import { coachBrief } from "../shine/coach.ts";
+import { isBustSrc, isPitcherStyle, sceneBustSrc, sheet, stillSrc, type PortraitMood } from "../shine/bible.ts";
+import { yearOf } from "../shine/calendar.ts";
 
 export type MoodIdx = 0 | 1 | 2 | 3 | 4;
 
@@ -355,4 +357,77 @@ export function herMorning(id: CharacterId, turn: number, energy: number, mood: 
 /** Every line she can say here, for the voice checks. */
 export function allMorningLines(): string[] {
   return Object.values(VOICE).flatMap((v) => [v.first, ...v.ready, v.high, ...v.tired, v.worn, v.empty, v.low]);
+}
+
+// ---- The work still across the career (check-in 26, N7) ----
+
+export type WorkSeason = "spring" | "summer" | "autumn";
+
+/** Where the morning falls in her year: every year opens on its spring card and closes in autumn. */
+export function workSeason(turn: number): WorkSeason {
+  const day = ((Math.max(1, Math.floor(turn)) - 1) % 20) + 1;
+  if (day <= 7) return "spring";
+  if (day <= 14) return "summer";
+  return "autumn";
+}
+
+/** The season's grade on her still and the plate: a warm spring, a bright summer, an amber autumn. */
+export function seasonGrade(season: WorkSeason): string {
+  if (season === "spring") return "sepia(0.14) saturate(1.06) hue-rotate(-8deg) brightness(1.05)";
+  if (season === "summer") return "saturate(1.22) contrast(1.05) brightness(1.08)";
+  return "sepia(0.34) saturate(1.12) hue-rotate(-14deg) brightness(0.95)";
+}
+
+/** Her last big date before this morning, as it went. Null before the Gate. */
+function lastBigDateMet(run: Pick<TraineeRun, "pgResults">): boolean | null {
+  const played = run.pgResults.filter((m) => m !== "pending");
+  if (!played.length) return null;
+  return played.at(-1) === "met";
+}
+
+export interface WorkStill {
+  /** Her painted still, or her bust when every fitting still wears a banned mark. */
+  src: string;
+  /** A bust is a cut-out: it stands on `plate`. A still is its own plate. */
+  bust: boolean;
+  plate: string;
+  year: 1 | 2 | 3;
+  season: WorkSeason;
+  /** The CSS filter for the season (set as --work-grade). */
+  grade: string;
+}
+
+/** The complex behind a bust: the painted practice plate. */
+const WORK_BUST_PLATE = "/bg/skyline-complex.png";
+
+function yearPick(id: CharacterId, pitcher: boolean, year: 1 | 2 | 3, met: boolean | null): string {
+  if (year === 1) return stillSrc(id, pitcher ? "set" : "stance", "neutral");
+  if (year === 2) return stillSrc(id, pitcher ? "follow" : "load", "focused");
+  if (met) return stillSrc(id, pitcher ? "release" : "celebrate", "elated");
+  return stillSrc(id, pitcher ? "windup" : "trot", "focused");
+}
+
+/**
+ * The work screen's picture by year: Rookie stands her in her stance (set), Classic in her
+ * load (follow-through), Senior in her celebrate (release) when her last big date was met, or
+ * her trot (windup) when it wasn't. A still that wears a banned mark gives way to a clean
+ * one; a Senior still that would repeat an earlier year's picture becomes her bust instead,
+ * so no two years share a picture.
+ */
+export function workStill(run: Pick<TraineeRun, "characterId" | "turn" | "pgResults">): WorkStill {
+  const id = run.characterId;
+  const pitcher = isPitcherStyle(sheet(id).style);
+  const year = yearOf(run.turn);
+  const met = lastBigDateMet(run);
+  const earlier: string[] = [];
+  for (let y = 1; y < year; y++) earlier.push(yearPick(id, pitcher, y as 1 | 2, met));
+  let src = yearPick(id, pitcher, year, met);
+  if (earlier.includes(src)) {
+    // Never her crushed face: she's about to be told what to work on, and her line says so.
+    const moods: PortraitMood[] = year === 3 ? (met ? ["elated", "neutral", "focused"] : ["focused", "neutral", "elated"]) : ["focused", "neutral"];
+    src = moods.map((m) => sceneBustSrc(id, m)).find((s) => !earlier.includes(s)) ?? src;
+  }
+  const season = workSeason(run.turn);
+  const bust = isBustSrc(src);
+  return { src, bust, plate: bust ? WORK_BUST_PLATE : src, year, season, grade: seasonGrade(season) };
 }

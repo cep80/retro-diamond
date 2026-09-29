@@ -19,7 +19,9 @@ export type ParkId =
   | "north"
   | "mags"
   | "forges"
-  | "smoke";
+  | "smoke"
+  /** The Diamond Finale's own house: no one's home park, so it plays honest. */
+  | "diamond";
 
 export interface Park {
   id: ParkId;
@@ -50,7 +52,11 @@ export const PARKS: Park[] = [
   { id: "mags", name: "Magnolia", hr: 1.1, doubles: 0.96, triples: 0.9, hits: 1.03 },
   { id: "forges", name: "The River", hr: 0.9, doubles: 1.1, triples: 0.96, hits: 0.99 },
   { id: "smoke", name: "Fountain Yard", hr: 0.96, doubles: 1.08, triples: 1.12, hits: 1.01 },
+  { id: "diamond", name: "Diamond Stadium", hr: 1, doubles: 1, triples: 1, hits: 1 },
 ];
+
+/** Where the Diamond Finale is played. Neutral for everyone: it is nobody's home. */
+export const FINALE_PARK: ParkId = "diamond";
 
 const BY_ID = Object.fromEntries(PARKS.map((p) => [p.id, p])) as Record<ParkId, Park>;
 

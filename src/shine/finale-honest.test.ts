@@ -61,7 +61,8 @@ describe("Sol's Finale: the lead held, the punchouts didn't come", () => {
       if (finaleWonShort(g)) {
         short += 1;
         assert.equal(g.banner, FINALE_WON_BANNER);
-        assert.match(read, /^They won\. (No punchouts|One punchout)\. She wanted two\.$/);
+        // Check-in 27: a lead blown to a tie is played out, and a won extra-innings night says the tie got in on her.
+        assert.match(read, g.extras ? /^They won\. The tying run scored on her\.$/ : /^They won\. (No punchouts|One punchout)\. She wanted two\.$/);
         assert.equal(head, read);
         assert.doesNotMatch(`${g.banner} ${read} ${head}`, LOSS);
       } else if (!g.pgMet) {
@@ -79,6 +80,12 @@ describe("Sol's Finale: the lead held, the punchouts didn't come", () => {
     for (const id of ["reina", "kira"] as const) {
       for (let s = 0; s < 200; s++) {
         const { g } = pitchFinale(id, `${id}-won-${s}`);
+        // Check-in 27: a tie is played out in extras, and her side can win it after her ask is gone.
+        if (g.extras) {
+          assert.equal(g.pgMet, false, `${id} ${s}`);
+          assert.equal(finaleWonShort(g), g.extras.won, `${id} ${s}`);
+          continue;
+        }
         assert.equal(finaleWonShort(g), false, `${id} ${s}`);
         assert.equal(g.pgMet, finaleTeamWon(g), `${id} ${s}`);
       }

@@ -142,18 +142,23 @@ function gamesLost(run: TraineeRun): string {
 export function endingWhy(run: TraineeRun, rank: EndingRank, finalePlayed: boolean, finalePg: boolean): string {
   const fans = `${run.fans} fans`;
   const lost = gamesLost(run);
-  if (rank === "S") return `${fans}, ${lost}, and she won the Finale. There's nothing above this.`;
-  if (rank === "A") return `${fans}, ${lost}, and she won the Finale. S needs ${listed(rankGap(run, "S", finalePlayed, finalePg))}.`;
+  // "Won the Finale" only when her side did (check-in 27, N1); a save from before the scoreboard reads her ask.
+  const teamWon = finalePlayed && (run.finaleTeamWon ?? finalePg);
+  const finaleSaid = teamWon ? "she won the Finale" : "she did what she came for in the Finale, and they lost it";
+  if (rank === "S") return `${fans}, ${lost}, and ${finaleSaid}. There's nothing above this.`;
+  if (rank === "A") return `${fans}, ${lost}, and ${finaleSaid}. S needs ${listed(rankGap(run, "S", finalePlayed, finalePg))}.`;
   if (rank === "never-quit") {
     // Miki always plays the Finale (finaleUnlocked); this rank is the one where she never grew all the way into it.
-    const finale = finalePg ? "She won the Finale" : "She played the Finale";
+    const finale = finalePg && teamWon ? "She won the Finale" : teamWon ? "They won the Finale" : finalePg ? "She did what she came for in a Finale they lost" : "She played the Finale";
     return `${fans}. ${finale} before she'd grown all the way into it, and Section 4 stayed anyway. A needs ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
   }
   if (rank === "B") {
     const finale = !finalePlayed
       ? ""
       : finalePg
-        ? " She won the Finale."
+        ? teamWon
+          ? " She won the Finale."
+          : " She did what she came for in the Finale. They lost it."
         : finaleWonShortRun(run, finalePlayed, finalePg)
           ? " They won the Finale, short of what she came for."
           : " She played the Finale and came up short.";
@@ -162,6 +167,16 @@ export function endingWhy(run: TraineeRun, rank: EndingRank, finalePlayed: boole
   if (rank === "C") return `Her Academy days ended early. ${fans}. B needs her to reach the Diamond Finale.`;
   return `Her Academy days ended early. ${fans}. C needs ${RANK_FANS.C} fans.`;
 }
+
+/** Her quote when she got what she came for and her side lost the Finale (check-in 27, N1). */
+export const FINALE_LOST_MET_QUOTES: Record<TraineeRun["characterId"], string> = {
+  aoi: "Diamond Finale. She reached, like she said she would. Koi lost it, and she wrote the score down anyway, in pencil.",
+  reina: "Diamond Finale. She did her part to the pitch. They lost it, and she wrote the count in the notebook anyway.",
+  miki: "Diamond Finale. Five trips, never on strikes. They lost, and Section 4 rang the cowbell anyway.",
+  sol: "Diamond Finale. She did her part. They lost it, and she iced the arm on Luz's tailgate and called it ninety-six.",
+  kira: "Diamond Finale. She held up her end of the deal. They lost it, and she still caught the last bus.",
+  yuki: "Diamond Finale. She did what she came for. They lost it, and she was stretching again before the lights went off.",
+};
 
 function closingDateLabel(run: TraineeRun): string | null {
   const type = turnMeta(run.turn).type;
@@ -173,6 +188,8 @@ export function endingQuote(run: TraineeRun, rank: EndingRank) {
   const who = sheet(run.characterId);
   if (rank === "never-quit") return "She peels the price tag off the second cowbell and hands it to you.";
   // The chip already says S or A, and the frame line carries the 胴上げ; the quote is hers alone.
+  // Her ask met and her side lost the Finale (check-in 27, N1): the quote says both, never a win.
+  if (finaleLostMetRun(run) && (rank === "S" || rank === "A" || rank === "B")) return FINALE_LOST_MET_QUOTES[run.characterId];
   if (rank === "S" || rank === "A") return who.endings.show;
   if (rank === "B") {
     const finale = officialFor(run.characterId, 60);
@@ -348,8 +365,23 @@ export function sparkGapLine(cards: ClubhouseCard[]) {
   if (!floor) return `Next: Coach ${next}.`;
   const spark = last.sparks.find((s) => s.kind === floor.key);
   if (!spark) return `Next: Coach ${next}. ${WAITING[nextGirlId(last.characterId)]}`;
-  return `${who.name} passes on what she learned about ${spark.kind}. Next: Coach ${next}.`;
+  return `${who.name} passes on what she learned about ${SPARK_LESSON[spark.kind]}. Next: Coach ${next}.`;
 }
+
+/** What a passed-on habit is about, in baseball words: "her fastball", never the bare "stuff". */
+export const SPARK_LESSON: Record<SparkKind, string> = {
+  contact: "finding the barrel",
+  speed: "the first step",
+  eye: "reading the hand",
+  power: "driving the ball",
+  guts: "the big spots",
+  wit: "the count",
+  stuff: "her fastball",
+  control: "hitting the glove",
+  stamina: "the late innings",
+  legend: "a habit nobody taught her",
+  polish: "the little things",
+};
 
 /** Where the next girl already is when the title names her. */
 const WAITING: Record<TraineeRun["characterId"], string> = {
@@ -447,19 +479,98 @@ export function secondTrainedStat(run: TraineeRun, skip: TraineeStatKey | null):
   return best;
 }
 
+/** The work behind each stat, as the complex names it. Lower case; `capFirst` starts a sentence with it. */
+export const TRAINED_WORK: Record<TraineeStatKey, string> = {
+  contact: "the cage",
+  speed: "the basepaths",
+  eye: "the take drill",
+  power: "the long tee",
+  guts: "the two-strike rounds",
+  wit: "the scouting tape",
+  stuff: "the fastball",
+  control: "the target drill",
+  stamina: "the long bullpens",
+};
+
+function capFirst(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * The two header lines of her ending, in her own world (check-in 27, N5): what the work was
+ * (no favourite, two things, or one thing over and over) and whether her mentor stayed late.
+ */
+interface HeaderLines {
+  /** No work logged, or nothing won out. */
+  none: string;
+  /** Two kinds of work, close to even. */
+  split: (a: string, b: string) => string;
+  /** One kind of work, far ahead of the rest. */
+  same: (work: string) => string;
+  mentor: string;
+  noMentor: string;
+}
+
+export const HEADER_LINES: Record<TraineeRun["characterId"], HeaderLines> = {
+  aoi: {
+    none: "No drill won out. Her scorebook has a little of everything, in pencil.",
+    split: (a, b) => `${capFirst(a)} and ${b}, most days. She scored them like a doubleheader.`,
+    same: (w) => `${capFirst(w)}, most days. Her scorebook says so, in pencil.`,
+    mentor: "The Cage Coach stayed late at Koi with her. She wrote it in the margin: stayed late.",
+    noMentor: "The Cage Coach never got her after dark. Haruko kept the grill on anyway.",
+  },
+  reina: {
+    none: "You never gave her one drill to own. She ruled a page for it and left it blank.",
+    split: (a, b) => `${capFirst(a)} and ${b}, in two columns. She kept both counts in the notebook, and they ran close.`,
+    same: (w) => `${capFirst(w)}, day after day. She has the exact count. She won't say it out loud.`,
+    mentor: "The Bullpen Coach stayed past dark with her. She wrote down every arm slot they found.",
+    noMentor: "The Bullpen Coach never got a late night with her. She counted her own pitches in the dark.",
+  },
+  miki: {
+    none: "You never pushed one drill on her. Cool, she said, and for once she meant it.",
+    split: (a, b) => `${capFirst(a)} and ${b}, back and forth. Gary clanked through all of it.`,
+    same: (w) => `${capFirst(w)}, week after week. She showed up for every one of them.`,
+    mentor: "The Cage Coach stayed late at North, well past week eleven. Gary kept them warm, mostly.",
+    noMentor: "The Cage Coach never got a late night with her. Gary did. Gary always does.",
+  },
+  sol: {
+    none: "No one drill won. Ninety-six, she said, when you asked how that felt.",
+    split: (a, b) => `${capFirst(a)} and ${b}, in the heat. Luz fed her elote off the tailgate in between.`,
+    same: (w) => `${capFirst(w)}, again and again. She iced after every one and called it ninety-six.`,
+    mentor: "The Bullpen Coach stayed late in the Dusters' pen. They split the ice from Luz's truck.",
+    noMentor: "The Bullpen Coach went home at dark. She iced the arm alone on Luz's tailgate.",
+  },
+  kira: {
+    none: "You never made one drill the deal. She liked that. Nothing to pack.",
+    split: (a, b) => `${capFirst(a)} and ${b}: two deals, she called them. She kept both.`,
+    same: (w) => `${capFirst(w)}, every day. The one deal she never tried to change.`,
+    mentor: "The Bullpen Coach stayed late with her by the door. Nobody missed the last bus.",
+    noMentor: "The Bullpen Coach never caught her after the ninth. She always made the last bus.",
+  },
+  yuki: {
+    none: "No drill ever held her long. She'd already done them all by six.",
+    split: (a, b) => `${capFirst(a)} and ${b}, at a run. She timed you walking between them.`,
+    same: (w) => `${capFirst(w)}, every morning. Already done before you got there.`,
+    mentor: "The Cage Coach stayed late at the Palms. The stopwatch ran until the shaved-ice stand closed.",
+    noMentor: "The Cage Coach never got to keep her late. She was already gone.",
+  },
+};
+
 export function rememberedChoice(run: TraineeRun) {
   const lead = mostTrainedStat(run);
   const next = secondTrainedStat(run, lead);
   const leadN = run.calendar.filter((e) => e.statTrained === lead).length;
   const nextN = run.calendar.filter((e) => e.statTrained === next).length;
-  const pitcher = isPitcherStyle(sheet(run.characterId).style);
-  if (!lead || leadN === 0) return "You split the work down the middle. She noticed.";
-  if (next && nextN > 0 && leadN < nextN * 2) {
-    return pitcher ? "The pen and the poles. She felt both." : "Cage and the poles. She felt both.";
-  }
-  return pitcher
-    ? "You kept sending her to the same work. She felt that on the rubber."
-    : "You kept sending her to the same work. She felt that at the plate.";
+  const lines = HEADER_LINES[run.characterId];
+  if (!lead || leadN === 0) return lines.none;
+  if (next && nextN > 0 && leadN < nextN * 2) return lines.split(TRAINED_WORK[lead], TRAINED_WORK[next]);
+  return lines.same(TRAINED_WORK[lead]);
+}
+
+/** Her mentor line: the Cage Coach or the Bullpen Coach, in her park. */
+export function mentorLine(run: TraineeRun) {
+  const lines = HEADER_LINES[run.characterId];
+  return mentorTurn(run) != null ? lines.mentor : lines.noMentor;
 }
 
 export function mentorTurn(run: TraineeRun) {
@@ -488,8 +599,29 @@ export interface CareerStill {
  */
 export type EndingStage = "live" | "bow";
 
-export function endingStage(rank: EndingRank, finaleWon: boolean): EndingStage {
-  return finaleWon || rank === "S" || rank === "A" ? "live" : "bow";
+export function endingStage(_rank: EndingRank, finaleWon: boolean): EndingStage {
+  // The Live is for the result, as in Pretty Derby (check-in 27, N1): her side won the Finale.
+  // An S or A whose side lost it takes the Last Bow, with her rank letter all the same.
+  return finaleWon ? "live" : "bow";
+}
+
+/**
+ * Her side won the Finale: the scoreboard (TraineeRun.finaleTeamWon), not her ask. A save
+ * from before check-in 24 has no scoreboard, so it falls back to her ask, as it read then.
+ */
+export function finaleWonRun(run: Pick<TraineeRun, "finaleTeamWon" | "pgResults">): boolean {
+  if (run.pgResults[6] === "pending") return false;
+  return run.finaleTeamWon ?? run.pgResults[6] === "met";
+}
+
+/** Her ask was met in a Finale her side lost. */
+export function finaleLostMetRun(run: Pick<TraineeRun, "finaleTeamWon" | "pgResults">): boolean {
+  return run.pgResults[6] === "met" && !finaleWonRun(run);
+}
+
+/** The Live or the Bow for a finished career, off the scoreboard. */
+export function runEndingStage(run: Pick<TraineeRun, "finaleTeamWon" | "pgResults" | "clubhouseCard">): EndingStage {
+  return endingStage(run.clubhouseCard?.ending ?? "B", finaleWonRun(run));
 }
 
 export function endingStageLabel(stage: EndingStage): { jp: string; en: string } {
@@ -576,15 +708,15 @@ export function careerStill(run: TraineeRun): CareerStill {
   const finalePg = run.pgResults[6] === "met";
   const rank = endingRank(run, finalePlayed, finalePg);
   const trained = rememberedChoice(run);
-  const mentor = mentorTurn(run);
+  const mentor = mentorLine(run);
   const pitcher = isPitcherStyle(sheet(run.characterId).style);
-  const coach = pitcher ? "Bullpen Coach" : "Cage Coach";
-  const mentorLine = mentor != null ? `${coach} stayed late. She kept what they found.` : `${coach} never got a late night with her.`;
   // Each line on the results screen says something the others don't: the quote is her, the
   // frame is the moment, the why line is the numbers.
   let frame = "A crowd stayed for her.";
-  if (rank === "S") frame = "胴上げ. Up she goes, and up again.";
-  else if (rank === "A") frame = "胴上げ. Up she goes.";
+  // The 胴上げ is for a won Finale (check-in 27, N1): an S or A whose side lost it bows with her letter.
+  const lostMet = finaleLostMetRun(run);
+  if (rank === "S") frame = lostMet ? "They lost the Finale. The park stood for her anyway." : "胴上げ. Up she goes, and up again.";
+  else if (rank === "A") frame = lostMet ? "They lost the Finale. She did what she came for." : "胴上げ. Up she goes.";
   else if (rank === "never-quit") frame = "The bell is still going.";
   else if (rank === "B") frame = "Three years, all the way to the Finale.";
   else if (rank === "D") frame = pitcher ? "She still took the ball." : "The bat stays up.";
@@ -592,7 +724,7 @@ export function careerStill(run: TraineeRun): CareerStill {
     rank,
     quote: endingQuote(run, rank),
     trained,
-    mentor: mentorLine,
+    mentor,
     frame,
     why: endingWhy(run, rank, finalePlayed, finalePg),
   };

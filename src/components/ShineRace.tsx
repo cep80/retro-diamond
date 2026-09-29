@@ -65,7 +65,7 @@ import { track as trackEvent } from "@/lib/telemetry.ts";
 import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
 import { HR_STAMP_HOLD_MS, resultStamp, SCORE_STAMP, SCORE_STAMP_HOLD_MS, STAMP_DELAY_MS, stampHoldMs, stillFor } from "@/shine/action-art.ts";
 import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sceneBustSrc, sheet } from "@/shine/bible.ts";
-import { speakGoal } from "@/shine/goals.ts";
+import { finaleExtrasBug, finaleResultLine, finaleTeamWon, speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { crowdStem } from "@/shine/culture.ts";
 import { settleBug, type BugState } from "@/components/race-bug";
@@ -395,7 +395,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     return () => window.clearTimeout(t);
   }, [titleUp, finale, endTitle]);
   // A won Finale: the home run's length of moment over the done panel, whatever the last pitch was.
-  const wonFinale = finale && snap.phase === "done" && game.pgMet;
+  // It follows the scoreboard, not her ask (check-in 27, N1): her side won the G1.
+  const wonFinale = finale && snap.phase === "done" && finaleTeamWon(game);
   const [winUp, setWinUp] = useState(false);
   const winUpRef = useRef(false);
   winUpRef.current = winUp;
@@ -892,7 +893,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         hits: game.hits,
         walks: game.walks,
         ks: game.ks,
-        won: game.kind !== "practice" && game.kind !== "gate" && game.kind !== "weekly" && game.scoreDiff > 0,
+        // The Finale's result is its scoreboard, extras included (N2).
+        won: game.kind === "finale" ? finaleTeamWon(game) : game.kind !== "practice" && game.kind !== "gate" && game.kind !== "weekly" && game.scoreDiff > 0,
       },
       {
         tells: game.tells,
@@ -931,9 +933,12 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // The date's closing beat (an earlier home run, hit or walk) takes the film only once the
   // done panel is up: the last pitch plays as itself first, with its own stamp.
   const closing = snap.phase === "done" ? dateCloseBeat(game, lastBeat) : lastBeat;
-  const beat = running ? "walk" : closing;
+  // A met Finale settles on her celebrate still, never the trot: the trot is the curtain call's
+  // picture, next on screen (check-in 27, N4).
+  const finaleMetDone = finale && snap.phase === "done" && game.pgMet;
+  const beat = finaleMetDone ? (closing === "walk" ? null : closing) : running ? "walk" : closing;
   // A swapped-in beat is her settled still, not a replay: no stamp, no takeover over the finish.
-  const swapped = snap.phase === "done" && closing !== lastBeat;
+  const swapped = snap.phase === "done" && (closing !== lastBeat || beat !== closing);
   const takeMiss =
     countDate && !game.pgMet && (game.pgId === "foul-two-strike" || game.pgId === "contact-breaking");
   const foulHeld = countDate && beat === "foul" && game.pgId === "foul-two-strike";
@@ -998,11 +1003,13 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // The finish keeps the score up: the inning her last at-bat was in and the score, the
   // count and the bases stepped off. Her day ends before the game does, so never "Final".
   // The cage has no score to keep, so its tag stands alone.
+  // A Finale tied after her last at-bat was played out (N2): the bug shows the inning it ended in.
+  const extrasBug = game.done && game.extras ? finaleExtrasBug(game.extras) : null;
   const finalBug: BugState | null =
     snap.phase !== "done" || practice
       ? null
       : {
-          inning: playBug?.inning ?? null,
+          inning: extrasBug ? extrasBug.inning : (playBug?.inning ?? null),
           score: game.kind === "weekly" ? null : game.scoreDiff,
           atBat: "",
           count: { ...game.count },
@@ -1036,6 +1043,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // The line under it: the exhibition's close, or her read when the headline didn't already say it.
   const closeLine = !doneUp ? null : exhibition ? RACE_COPY.exhibitionClose(exhibitionArmName(game)) : readLine && !headline.includes(readLine) && !(game.pgMet && genericRead(readLine)) ? readLine : null;
   const dayChips = doneUp ? raceDayChips(game.events) : [];
+  const resultLine = doneUp && mode === "career" ? finaleResultLine(game, "hitter") : null;
 
   return (
     <main
@@ -1128,7 +1136,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
             {bug ? (
               <Scorebug
                 inning={bug.inning}
-                score={bug.score === null ? null : scorePhrase(bug.score)}
+                score={bug.score === null ? null : snap.phase === "done" && extrasBug ? extrasBug.score : scorePhrase(bug.score)}
                 atBat={bug.atBat}
                 count={bug.count}
                 outs={bug.outs}
@@ -1217,6 +1225,12 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
               {/* The exhibition's headline already told the whole day, runs and steals included. */}
               {basepath && !countDate && !exhibition ? <p className="text-center font-story text-sm text-gold">{basepath}</p> : null}
               {closeLine ? <p className="text-center font-story text-sm text-cream/85">{closeLine}</p> : null}
+              {/* The scoreboard under her read (N1, N2): how a tie came out, or "They lost." on a met ask. */}
+              {resultLine ? (
+                <p className="text-center font-story text-sm text-gold" data-finale-result>
+                  {resultLine}
+                </p>
+              ) : null}
               {exhibition ? (
                 <>
                   {/* The way forward is the date's one action colour: Go's gold. */}

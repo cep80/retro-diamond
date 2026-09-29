@@ -119,8 +119,10 @@ describe("1.0 bible", () => {
       assert.ok(existsSync(join(ART, rough.replace(/^\//, ""))), rough);
       assert.ok(existsSync(join(ART, quiet.replace(/^\//, ""))), quiet);
       if (isPitcherStyle(c.style)) {
-        assert.match(live, /follow\.webp$/);
-        assert.match(quiet, /follow\.webp$/);
+        // Her follow-through, or (a girl whose every still wears a banned mark) her bust.
+        assert.match(live, /follow\.webp$|\/art\/busts\//);
+        assert.match(quiet, /follow\.webp$|\/art\/busts\//);
+        assert.doesNotMatch(rough, /\/set\.webp$/);
         assert.doesNotMatch(live, /celebrate/);
         assert.doesNotMatch(quiet, /\/k\.webp$/);
         assert.match(endingClipSrc(c.id, "D") ?? "", /walk\.webm$/);

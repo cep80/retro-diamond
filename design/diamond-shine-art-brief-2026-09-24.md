@@ -129,6 +129,29 @@ The Finale is played in front of the same backdrop as Day 2's cage practice, and
    - **Sol's `elated` and `crushed` busts:** navy numbers and orange trim instead of red and navy (see §8).
 6. **The 6-4-3 shop interior (major, plate 13).** `public/art/plates/643-shop.webp`: Haruko's okonomiyaki counter after close, a flat-top grill, a stool, the "6-4-3" sign seen backwards through the window. Aoi's promise, Finale eve and ending scenes all happen here. Priority among the §2 plates for the endings: `643-shop`, `koi-dugout`, `dorm-lounge`, `luz-truck`, `stars-bullpen-door`.
 
+## 10. The climax, re-scored (creative director, check-in 26, 2026-09-28)
+
+The Finale entrance, the 優勝 moment, the Live and the scrapbook are built in code. What they show is now the gap.
+
+1. **The Finale stadium is now a blocker (was major in §9.1).**
+   - Today's placeholder is `/bg/stadium.jpg`, a low-res pixel-art stand. Painted girls are cut out over it on the entrance card and the 優勝 frame, the only pixel art in the career, at its biggest moment.
+   - The spec is the same as §9.1: `public/art/plates/finale-stadium.webp`, 1080×1920, a painted night stadium with full stands and gold bunting, no text or logos, in the same painted style as the select busts.
+   - Flip `FINALE_PLATE_ART_READY` in `src/components/race-ui.ts` when it lands.
+2. **A logo and kit consistency pass for the last night (major).**
+   - **Reina:** the horse badge is on the cap in her work, mound set and Last Bow stills, and her Finale eve bust also has 恋ヶ崎 on the chest plus the sleeve badge.
+     - Regenerate her `set`, `follow` and work stills with a plain navy cap.
+     - Regenerate every bust mood without chest text (§1 and §5 rules).
+   - **Sol:** her kit changes on every screen of her last night: a navy "21" with an orange raglan, a red 21 with orange trim, a square sleeve patch, triangle sleeve blocks. Her `set` still also has the horse on the cap.
+     - Pick one kit, her select bust's: white, red 21, navy sleeves.
+     - Regenerate `set`, `follow`, `elated` and `crushed` to match.
+   - **Yuki:** her `elated` bust (used for 優勝) wears a sleeved button-front jersey, but her action stills are sleeveless with green piping.
+     - Regenerate the bust to match the action kit.
+3. **Training-cut stills for four more facilities (major, only if the five-facility change ships).** The game designer is looking at opening On-field BP (Power), Live looks (Eye), Situational (Guts) and Charting (Wit) next to the Cage, Bullpen and Poles.
+   - Each needs one still per girl who uses it, in the §8 spec (same kit and light as her stance still, 3:4): `public/art/action/<id>/train/{bp,looks,situational,charting}.webp`.
+   - Hitters take BP, looks and situational; pitchers take charting and situational.
+   - Charting is her in the video booth with a clipboard. Looks is her in the box taking pitches with the bat on her shoulder. Situational is a two-strike drill with the Coach's hand up.
+4. **Plate priority for the endings, restated.** The Finale eve now shows its place tag ("Koi Park Dugout · the night before") over the blurred green field. The order is: `koi-dugout`, `643-shop`, `dorm-lounge`, `luz-truck`, `stars-bullpen-door` (§2, §9.6).
+
 ## Also still open from earlier
 
 - Generated action stills for the stranger read test: HR and walk still fail (see `design/diamond-shine-action-art-handoff-2026-09-18.md`).

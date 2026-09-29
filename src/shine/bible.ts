@@ -111,7 +111,7 @@ const RAW_BIBLE: RawSheet[] = [
     sg: "Record the outs. The Gate still opens if COMMAND slips.",
     past: "She has never walked a batter in the Lantern Classic, and it is starting to break her.",
     letters:
-      "I keep the scorecard from your second Lantern Classic — eighteen columns, not one walk. My uncle coached Koi juniors for forty years and said you were the second pitcher he had ever seen who never looked at the runners. The third batter that night was Watanabe, cleanup, who had taken you deep in July — you threw her five fastballs and she watched three of them. That is not a game story. That is a lesson.",
+      "My aunt coached Koi juniors for forty years. She says you are the second pitcher she has ever seen who never looks at the runners, and she won't tell me who the first one was. We sit behind the plate at Koi. Every time the glove pops you check it, like you're reading a receipt. My aunt keeps her own scorecard on your nights and gives it to me after. I keep them in a drawer with the good pens.",
     yearStills: {
       rookie: "Gate. She took the ball before the umpire offered it.",
       classic: "Lantern Classic. No walks. The sequence was perfect. That is the part that costs her.",
@@ -153,7 +153,7 @@ const RAW_BIBLE: RawSheet[] = [
     sg: "See 3 pitches in one PA at the Gate. Don't strike out at First Light.",
     past: "North has not won a Cup in living memory. She is 0-for-the-Classic in the record we wrote.",
     letters:
-      "We bring the cowbell to every home game, section 4, left-field concourse, the one that sounds like a radiator. Last Classic you fouled off seven pitches with two strikes before the ball that hit the line and bounced foul by four inches. My kid asked why the crowd was cheering for an out, and I said it was not an out, it was a foul, and he asked what the difference was. You did not win. The fight was still worth watching.",
+      "We bring the cowbell to every home game, section 4, left-field concourse, the one that sounds like a radiator. My daughter asked once why the whole section was cheering a foul ball. I said because you were still up there, and that was the whole point. She started counting your fouls after that. Most nights she runs out of fingers and borrows mine. Whatever the scoreboard said, the fight was always worth watching.",
     yearStills: {
       rookie: "Gate. She worked the 3-2 before it was called.",
       classic: "Lantern Classic. 0-for-4. Two fouls on the last at-bat. The cowbell did not stop.",
@@ -194,7 +194,7 @@ const RAW_BIBLE: RawSheet[] = [
     sg: "Record an out at the Gate. Walk nobody at First Light.",
     past: "Sol from the Dusters. Throws a hundred and one and apologizes to nobody.",
     letters:
-      "The Dusters played in a hundred-and-two degrees the afternoon you struck out eight and walked none in five innings against Academy Central. My grandfather runs the grounds crew and said the dirt was so dry your cleat prints disappeared between batters. The battery was Fuentes, your junior catcher, who caught everything back-handed when it ran inside. The only batter who touched you was number seven, who fouled a fastball off her forearm and stayed in.",
+      "My grandmother runs the grounds crew at the Dusters. She waters your mound at dawn and it's dust again by the anthem, so dry your cleat prints disappear between batters. I watch from the rail by Luz's truck, and most afternoons my elote goes cold because I forget to eat it. The hitters step in like they already know what's coming. It doesn't help them. My grandmother rakes your footprints last, and slower than the rest.",
     yearStills: {
       rookie: "Gate. The opener. Fastball after fastball, and nobody caught up.",
       classic: "Night Classic. Consecutive strikeouts. The crowd was quiet because it was that clean.",
@@ -235,7 +235,7 @@ const RAW_BIBLE: RawSheet[] = [
     sg: "Record an out at the Gate. Hold the ninth at First Light.",
     past: "She only pitches the ninth, and she thinks that's the only inning that counts.",
     letters:
-      "I got to Stars on the Metro because I missed the last bus, walked in during the eighth, one-run lead, you already warming in the pen. My seat was behind the bullpen and you were seven feet away, bouncing on your toes, and the ninth was not even set yet. When you came out they played the walk-up and you pointed at the bullpen door — not the crowd, not the camera, the door. I did not understand it until someone told me that is where you go back to.",
+      "I got to Stars on the Metro because I missed the last bus, and walked in during the eighth with you already warming in the pen. My seat was behind the bullpen, seven feet from you. You bounced on your toes the whole inning, before anyone had told you it was yours. When you came out they played your walk-up, and you turned and pointed at the bullpen door. I did not understand it until someone told me that is where you go back to.",
     yearStills: {
       rookie: "Gate. First out recorded before the catcher settled.",
       classic: "Night Classic. Inherited runners, both stranded. The door stayed shut.",
@@ -276,7 +276,7 @@ const RAW_BIBLE: RawSheet[] = [
     sg: "See 4 pitches at the Gate. Reach once at First Light.",
     past: "The steal is the lesson. She does not wait on a walk.",
     letters:
-      "My daughter has been to the Palms seventeen times this summer because of you specifically and she keeps a chart: your at-bats, the count when you first looked at the coach, the count when you went. On a 1-1 in the sixth you went anyway — two outs, runner on third — and Bernardi, the catcher, did not throw. She asked why. I said because she knew.",
+      "My daughter has been to the Palms seventeen times this summer because of you specifically and she keeps a chart: your at-bats, the count when you first looked at the coach, the count when you went. One night you went before anyone in our section saw it coming, and the catcher never even threw. She asked me why. I said because the catcher knew she was already too late.",
     yearStills: {
       rookie: "First Light. She stole second and kept going.",
       classic: "Lantern Classic. She scored from first and kept going.",
@@ -594,30 +594,85 @@ export function practiceSrc(id: CharacterId, mood: PortraitMood = "neutral") {
   return `/characters/${stem}-${mood}.png`;
 }
 
-/** The year stands her on film, not a practice portrait. */
-export function careerFilmSrc(id: CharacterId) {
-  return `/art/action/${id}/${isPitcherStyle(sheet(id).style) ? "set" : "stance"}.webp`;
+/**
+ * Art on disk that must never show (art brief §1, §5, §10.2): the old horse badge on the cap,
+ * 恋ヶ崎 on the chest, the sleeve crest. Until the regenerated files land, every picture helper
+ * routes around these. Checked by eye on 2026-09-28:
+ * - Reina: her neutral bust (恋ヶ崎, the sleeve crest and the cap badge; it was her Finale eve);
+ *   her set and release stills (the cap badge). Her windup, follow, k and walk are clean.
+ * - Sol: the cap badge on every pitching still (set, windup, release, follow, k, walk).
+ *   Her four busts are clean.
+ * Drop an entry when its file is regenerated.
+ */
+export const OFF_MODEL_ART: Partial<Record<CharacterId, { busts?: readonly PortraitMood[]; stills?: readonly string[] }>> = {
+  reina: { busts: ["neutral"], stills: ["set", "release"] },
+  sol: { stills: ["set", "windup", "release", "follow", "k", "walk"] },
+};
+
+/** Whether a picture path is one of the listed off-model files. */
+export function isOffModel(src: string): boolean {
+  const m = /^\/art\/(busts|action)\/([a-z]+)\/([a-z-]+)\.webp$/.exec(src);
+  if (!m) return false;
+  const bad = OFF_MODEL_ART[m[2] as CharacterId];
+  if (!bad) return false;
+  return m[1] === "busts" ? (bad.busts ?? []).includes(m[3] as PortraitMood) : (bad.stills ?? []).includes(m[3]!);
 }
 
-/** A talking beat uses the same plate stills as the year, never a cutout. */
+/** A cut-out bust (it needs a plate behind it), not a painted still. */
+export function isBustSrc(src: string) {
+  return src.startsWith("/art/busts/");
+}
+
+/** Which clean still stands in for an off-model one: the nearest pose she has. */
+const STILL_STAND_INS: Record<string, readonly string[]> = {
+  set: ["windup", "follow"],
+  windup: ["follow"],
+  release: ["follow", "windup"],
+  follow: ["k", "windup"],
+  k: ["follow", "windup"],
+  walk: ["follow", "windup"],
+};
+
+/**
+ * Her painted still for a pose, or the nearest clean one when that file wears a banned mark,
+ * or (a girl with no clean still at all, Sol today) her bust in `bustMood`.
+ */
+export function stillSrc(id: CharacterId, pose: string, bustMood: PortraitMood = "neutral"): string {
+  for (const p of [pose, ...(STILL_STAND_INS[pose] ?? [])]) {
+    const src = `/art/action/${id}/${p}.webp`;
+    if (!isOffModel(src)) return src;
+  }
+  return sceneBustSrc(id, bustMood);
+}
+
+/** The year stands her on film, not a practice portrait. */
+export function careerFilmSrc(id: CharacterId) {
+  return stillSrc(id, isPitcherStyle(sheet(id).style) ? "set" : "stance", "neutral");
+}
+
+/**
+ * A talking beat uses the same plate stills as the year, never a cutout (unless every still
+ * she has wears a banned mark). The stand-in busts never repeat the done panel's face: an
+ * elated still falls back to her calm bust, since the done panel just showed the elated one.
+ */
 export function sceneFilmSrc(id: CharacterId, mood: PortraitMood = "neutral") {
   const pitcher = isPitcherStyle(sheet(id).style);
-  if (mood === "elated") return `/art/action/${id}/${pitcher ? "follow" : "celebrate"}.webp`;
-  if (mood === "crushed") return `/art/action/${id}/${pitcher ? "follow" : "crushed"}.webp`;
-  if (mood === "focused") return `/art/action/${id}/${pitcher ? "set" : "load"}.webp`;
+  if (mood === "elated") return stillSrc(id, pitcher ? "follow" : "celebrate", "neutral");
+  if (mood === "crushed") return stillSrc(id, pitcher ? "follow" : "crushed", "crushed");
+  if (mood === "focused") return stillSrc(id, pitcher ? "set" : "load", "focused");
   return careerFilmSrc(id);
 }
 
-/** Winning Live still. Authored film, not a portrait cutout. */
+/** Winning Live still. Authored film, not a portrait cutout, and never the set still (N8). */
 export function endingFilmSrc(id: CharacterId, ending: "S" | "A" | "B" | "C" | "D" | "never-quit") {
   const pitcher = isPitcherStyle(sheet(id).style);
   if (ending === "S" || ending === "A" || ending === "never-quit") {
-    return `/art/action/${id}/${pitcher ? "follow" : "celebrate"}.webp`;
+    return stillSrc(id, pitcher ? "follow" : "celebrate", "elated");
   }
   if (ending === "D" || ending === "C") {
-    return `/art/action/${id}/${pitcher ? "follow" : "crushed"}.webp`;
+    return stillSrc(id, pitcher ? "follow" : "crushed", "crushed");
   }
-  return `/art/action/${id}/${pitcher ? "set" : "follow"}.webp`;
+  return stillSrc(id, pitcher ? "windup" : "follow", "focused");
 }
 
 /**
@@ -665,13 +720,30 @@ export function workMood(mood: number): PortraitMood {
   return "neutral";
 }
 
+/**
+ * The Diamond Finale's plate until art brief §9.1's stadium lands (race-ui FINALE_PLATE is
+ * the swap point and falls back to this): the grandest painted night plate we have. The
+ * pixel-art /bg/stadium.jpg is retired; the park plates are pixel art too.
+ */
+export const FINALE_PARK_PLATE = "/bg/skyline-complex.png";
+
 export function parkSrc(parkId: string) {
+  if (parkId === "diamond") return FINALE_PARK_PLATE;
   return `/bg/park-${parkId}.jpg`;
 }
 
-/** A scene's bust: her game-kit portrait, cut out, in the mood of her line (scripts/key-busts.py). */
+/** Her clean busts, calmest first: the stand-ins for a mood whose file is off-model. */
+const BUST_STAND_INS: readonly PortraitMood[] = ["focused", "neutral", "elated", "crushed"];
+
+/**
+ * A scene's bust: her game-kit portrait, cut out, in the mood of her line (scripts/key-busts.py).
+ * A mood whose file wears a banned mark (OFF_MODEL_ART) shows her clean focused bust instead.
+ */
 export function sceneBustSrc(id: CharacterId, mood: PortraitMood = "neutral") {
-  return `/art/busts/${id}/${mood}.webp`;
+  const src = `/art/busts/${id}/${mood}.webp`;
+  if (!isOffModel(src)) return src;
+  const alt = BUST_STAND_INS.map((m) => `/art/busts/${id}/${m}.webp`).find((s) => !isOffModel(s));
+  return alt ?? src;
 }
 
 const HOME_PARK: Record<CharacterId, string> = { aoi: "koi", reina: "koi", miki: "north", sol: "dusters", kira: "stars", yuki: "palms" };

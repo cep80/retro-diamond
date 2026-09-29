@@ -78,7 +78,7 @@ describe("culture presentation", () => {
     assert.match(pastBlurb("aoi"), /mother/i);
     assert.doesNotMatch(pastBlurb("aoi"), /Contact/);
     assert.equal(curtainStillSrc("otachidai"), "/bg/park-koi.jpg");
-    assert.equal(curtainStillSrc("dugout"), "/bg/stadium.jpg");
+    assert.equal(curtainStillSrc("dugout"), "/bg/skyline-complex.png");
     assert.equal(curtainFilmSrc("aoi"), "/art/curtain/aoi.png");
     assert.doesNotMatch(curtainFilmSrc("aoi"), /celebrate/);
     assert.equal(curtainFilmSrc("miki"), "/art/action/miki/trot.webp");

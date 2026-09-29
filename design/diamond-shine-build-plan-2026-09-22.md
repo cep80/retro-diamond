@@ -433,6 +433,34 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
   - **Open (balance):**
     - Aoi's Finale ("Hit with RISP", her 1981 story) is met 39–46%.
     - Yuki's Lantern ("Score from first") is met 10%. The designer measured "Steal a base" at 61–73%, but it repeats her First Light verb.
+- **Check-in 26 (creative director): about 48%, up from 38%.**
+  - By area: race 55%, mound 45%, work 40%, VN 52%, escalation 45%, Finale and payoff 50%, title 60%, audio 40%.
+  - Closed: F3, F5, F6, F7, F8, and most of F4. Partly closed: F1, F2, F9. Open (art): F10–F13.
+  - **New findings:**
+    - N1 (blocker): 優勝 and the Live followed her ask, not the scoreboard. Miki's side lost and she got CHAMPION.
+    - N2 (blocker): a blown Finale ended tied.
+    - N3: only two of five letters could be trained.
+    - N4–N12: repeated ending pictures, template ending lines, home-park Finale, the same work still all career, logo'd busts, chiptune title, and more.
+  - **Launch readiness:** a stranger playtest is about one build away. The walk and HR stills, the production go-ahead and receipts are the user's. Code alone reaches about 58%; the rest is the art in brief §9–10.
+- **Check-in 27 (build: N1, N2, N4–N12). Three builders.**
+  - **Finale truth:**
+    - 優勝, the Live or Bow, the ending CTA and the music all follow `finaleTeamWon` (`runEndingStage`). The rank rules are unchanged, so an A or S whose side lost gets the Bow with her letter ("They lost the Finale. She did what she came for."). A met ask in a lost game reads "They lost."
+    - A Finale level after her part plays out from the seed: the pitcher's side's 9th, up to three extras, then a seeded 12th. One line says so ("Tied in the 9th. They lost it in the 11th.").
+    - `ending-pictures.ts`: no repeated picture across the ending screens.
+  - **Stills and places:**
+    - The Finale is at a neutral `diamond` park (factors 1.0, its own booth lines) on the painted skyline plate with CSS bunting.
+    - `workStill(run)` picks her still by year and tints it by season.
+    - `OFF_MODEL_ART`: Reina's neutral bust, set and release, and all of Sol's pitching stills route to clean pictures. Sol has no clean painted still; that's for the art.
+  - **Voice:**
+    - 30 per-girl ending header lines.
+    - Fan letters rewritten as memories, with no box scores.
+    - The wall: "Coach Sol next".
+    - The title plays the lantern bed; the square-wave tracks are gone.
+    - The rank numbers fold to the bottom ("How she earned her rank").
+  - Tests: 787 pass. Career smoke: Miki A and Sol A, clean.
+  - **Open:**
+    - For an A or S whose side lost, the ending scene still claims "the top" (story-endings.ts).
+    - The N3 five facilities: the designer's plan is at `scratchpad/ci27/design/APPLY.md`.
 - **Open:**
   - `datePark("finale")` is still her home park (park factors and crowd sound); the stadium shows only in the chrome
   - a production deploy (needs the user's go-ahead)

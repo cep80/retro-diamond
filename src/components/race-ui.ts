@@ -8,7 +8,7 @@
 import { resultStamp } from "../shine/action-art.ts";
 import type { Stage } from "../shine/beats.ts";
 import { isPitcherStyle, sheet } from "../shine/bible.ts";
-import { FINALE_WON_BANNER, finaleTeamWon } from "../shine/goals.ts";
+import { FINALE_WON_BANNER, finaleTeamWon, type FinaleExtras } from "../shine/goals.ts";
 import { parkById } from "../shine/core/parks.ts";
 import { recapLine } from "../shine/culture.ts";
 import { opposingArm, pitcherRivalBat } from "../shine/rivals.ts";
@@ -480,9 +480,13 @@ export function moundRead(game: {
   blown?: boolean;
   /** The Finale's lead as it stood at the end (a won Finale can still miss her ask). */
   scoreDiff?: number;
+  /** A Finale blown to a tie and played out (check-in 27, N2). */
+  extras?: FinaleExtras | null;
 }): string {
   if (game.kind === "practice") return "Three looks. The glove is real.";
-  if (!game.pgMet && game.scoreDiff !== undefined && finaleTeamWon({ kind: game.kind, scoreDiff: game.scoreDiff, blown: game.blown })) {
+  if (!game.pgMet && game.scoreDiff !== undefined && finaleTeamWon({ kind: game.kind, scoreDiff: game.scoreDiff, blown: game.blown, extras: game.extras })) {
+    // Won in extras after the tie got in on her: that's what she didn't get, whatever the punchouts.
+    if (game.blown) return `${FINALE_WON_BANNER} The tying run scored on her.`;
     return `${FINALE_WON_BANNER} ${finaleShortOf(game)}`;
   }
   if (game.pgMet) {
@@ -693,9 +697,10 @@ const YEAR_STEP: Record<BigDate, string> = {
  */
 export const FINALE_PLATE_ART_READY = false;
 export const FINALE_PLATE_ART = "/art/plates/finale-stadium.webp";
+// The fallback is the painted plate (bible FINALE_PARK_PLATE, the diamond park's), never the pixel stadium.jpg.
 export const FINALE_PLATE = {
-  src: FINALE_PLATE_ART_READY ? FINALE_PLATE_ART : "/bg/stadium.jpg",
-  fallback: "/bg/stadium.jpg",
+  src: FINALE_PLATE_ART_READY ? FINALE_PLATE_ART : "/bg/skyline-complex.png",
+  fallback: "/bg/skyline-complex.png",
 } as const;
 
 export interface DateTitle {
@@ -799,6 +804,16 @@ export const FINALE_NIGHT: Record<CharacterId, { met: string; missed: string; wo
   },
 };
 
+/** The Finale's postgame line when she got what she came for and her side lost (check-in 27, N1). */
+export const FINALE_NIGHT_LOST_MET: Record<CharacterId, string> = {
+  aoi: "They lost. Row J stays anyway, and Aoi writes the final in the scorebook before she looks up.",
+  reina: "They lost. She walks off counting under her breath, and gets the count right.",
+  miki: "They lost. Section 4 rings both cowbells anyway, and she lets them.",
+  sol: "They lost. Luz throws the churros anyway, and Sol catches one.",
+  kira: "They lost. She kept her end of the deal, and sits in the dugout with the tin of transfers until the last bus.",
+  yuki: "They lost. She hands the stopwatch back and says the time was good.",
+};
+
 const FILLER_OFFSET: Record<CharacterId, number> = { aoi: 0, reina: 1, miki: 2, sol: 3, kira: 4, yuki: 5 };
 
 /**
@@ -807,7 +822,11 @@ const FILLER_OFFSET: Record<CharacterId, number> = { aoi: 0, reina: 1, miki: 2, 
  * ladder, so two big dates in a row never say the same thing.
  */
 export function postgameFiller(opts: { id: CharacterId; kind: string; parkId: string; turn: number; met: boolean; teamWon?: boolean }): string {
-  if (opts.kind === "finale") return FINALE_NIGHT[opts.id][opts.met ? "met" : opts.teamWon ? "wonShort" : "missed"];
+  if (opts.kind === "finale") {
+    // Her ask met and her side lost (check-in 27, N1): the night says they lost, never the win.
+    if (opts.met && opts.teamWon === false) return FINALE_NIGHT_LOST_MET[opts.id];
+    return FINALE_NIGHT[opts.id][opts.met ? "met" : opts.teamWon ? "wonShort" : "missed"];
+  }
   const pitcher = isPitcherStyle(sheet(opts.id).style);
   const at = BIG_DATES.indexOf(opts.kind as BigDate);
   return recapLine(opts.parkId, at < 0 ? opts.turn : at + FILLER_OFFSET[opts.id], pitcher);

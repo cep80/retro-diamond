@@ -56,8 +56,20 @@ describe("audio exports", () => {
     audio.sfxSlide();
     audio.setCrowdLevel(0.5);
     audio.sfxCrowd(0.04, "desert");
-    audio.startMusic("title");
+    audio.startMusic("quiet");
     audio.stopMusic();
+  });
+
+  it("plays the lantern bed on the title, keyed once for the title, Select and her promise scene (check-in 27)", () => {
+    assert.equal(audio.screenMusicUrl({ kind: "title" }), "/audio/lantern-field.mp3");
+    assert.equal(audio.SCREEN_MUSIC_LEVEL.title, 0.3);
+    assert.equal(audio.screenMusicKey({ kind: "title" }), "title");
+    assert.notEqual(audio.screenMusicKey({ kind: "title" }), audio.screenMusicKey({ kind: "complex" }));
+    if (typeof globalThis.AudioContext === "undefined") {
+      audio.playScreenMusic({ kind: "title" });
+      audio.stopMusic();
+      assert.equal(audio.activeScreenMusic(), null);
+    }
   });
 
   it("ships walk-up, lantern bed, and crowd mp3 stems", () => {

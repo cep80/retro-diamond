@@ -23,6 +23,7 @@ import {
   strained,
   stripWords,
   tileGrid,
+  workStill,
 } from "@/components/work-day";
 
 export { MOOD_KANA } from "@/components/work-day";
@@ -140,7 +141,11 @@ export function ShineComplexWork({
   const landFrom = after.energyFrom !== null && after.energyFrom !== run.energy ? after.energyFrom : null;
   const note = morningSpeech(lastLine, run.year, who.parkId, pitcher);
   const words = herMorning(run.characterId, run.turn, run.energy, moodIdx);
-  const plate = art ?? "/bg/skyline-complex.png";
+  // Her still changes by year and takes the season's grade (N7); `art` is only the old caller's fallback.
+  const still = workStill(run);
+  const pic = art ? still.src : null;
+  const plate = art ? still.plate : "/bg/skyline-complex.png";
+  const grade = { ["--work-grade" as string]: still.grade } as CSSProperties;
   const cells = statStrip(run, pitcher);
   const landed = cells.find((c) => c.land);
   const [open, setOpen] = useState(false);
@@ -169,7 +174,7 @@ export function ShineComplexWork({
     <main className="shine-stage shine-work" data-energy={tone}>
       {/* The same painting, blurred to light, behind the HUD and a wide screen's flanks. */}
       <div className="shine-work-plate" aria-hidden>
-        <img src={plate} alt="" />
+        <img src={plate} alt="" data-season={still.season} style={grade} />
       </div>
       {/* Exactly one screen tall: the HUD takes what it needs, she fills the rest, and the tiles sit on her. */}
       <div className="shine-work-frame">
@@ -294,7 +299,17 @@ export function ShineComplexWork({
         </header>
 
         <div className="shine-work-body">
-          {art ? <img src={art} alt="" className={`shine-work-art ${run.altLook ? "is-alt" : ""}`} /> : null}
+          {pic ? (
+            <img
+              key={pic}
+              src={pic}
+              alt=""
+              className={`shine-work-art ${run.altLook ? "is-alt" : ""} ${still.bust ? "is-bust" : ""}`}
+              data-work-still={still.year}
+              data-season={still.season}
+              style={grade}
+            />
+          ) : null}
           <div className="shine-work-wash" aria-hidden />
           <div key={`day-${run.turn}`} className="shine-work-stack">
             {note ? <p className="shine-work-note">{note}</p> : null}

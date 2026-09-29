@@ -25,7 +25,7 @@ import { officialFor, sheet } from "./bible.ts";
 import { datePark } from "./culture.ts";
 import { sparkCount } from "./ending.ts";
 import { push, type PlateEvent } from "./events.ts";
-import { evalPitcherPg, evalPitcherSg, FINALE_WON_BANNER, finaleTeamWon, isPitcherPg, isPitcherSg, type PitcherGoalView, type PitcherPgId, type PitcherSgId } from "./goals.ts";
+import { evalPitcherPg, evalPitcherSg, FINALE_WON_BANNER, finaleTeamWon, resolveFinaleTie, type FinaleExtras, isPitcherPg, isPitcherSg, type PitcherGoalView, type PitcherPgId, type PitcherSgId } from "./goals.ts";
 import {
   CLOSER_WINDOW_BONUS,
   GUTS_WINDOW_BONUS,
@@ -97,6 +97,20 @@ export interface PitchingGame {
    * null once ball four is in (and on every other date, and on saves from before it).
    */
   leadoffWalk?: number | null;
+  /**
+   * A Finale whose lead was blown to a tie, played out silently (check-in 27): who won it and
+   * in which inning. Absent on every other date and on saves from before it.
+   */
+  extras?: FinaleExtras | null;
+}
+
+/**
+ * A Finale never ends level (check-in 27, N2): a lead blown to a tie is played out from the
+ * seed (her side's half of the 9th, then extras), before the banner reads the result.
+ */
+export function settleFinaleTie(run: Pick<TraineeRun, "rngSeed">, game: PitchingGame) {
+  if (game.kind !== "finale" || !game.done || game.scoreDiff !== 0 || game.extras) return;
+  game.extras = resolveFinaleTie(`${run.rngSeed}|finale|mound`, true);
 }
 
 /**
@@ -473,6 +487,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   if (practiceDone || gateDone || kGoalDone || closerDone) {
     game.done = true;
     game.pgMet = evaluatePg(run, game);
+    settleFinaleTie(run, game);
     game.banner = game.pgMet
       ? game.role === "closer"
         ? "HOLD."
@@ -480,10 +495,10 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
       : game.kind === "gate"
         ? "The Gate still opens."
         : game.role === "closer"
-          ? game.blown
-            ? "Blown. The lead is gone."
-            : finaleTeamWon(game)
-              ? FINALE_WON_BANNER
+          ? finaleTeamWon(game)
+            ? FINALE_WON_BANNER
+            : game.blown
+              ? "Blown. The lead is gone."
               : "HOLD slipped."
           : finaleTeamWon(game)
             ? FINALE_WON_BANNER
@@ -520,6 +535,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   if (aceSide && (game.outsRecorded >= 3 || game.blown)) {
     game.done = true;
     game.pgMet = evaluatePg(run, game);
+    settleFinaleTie(run, game);
     // A Finale can be won short of her ask (Sol's lead held, one punchout): it says they won.
     game.banner = game.pgMet ? "COMMAND." : finaleTeamWon(game) ? FINALE_WON_BANNER : "It got away from her.";
     tickPitcherSg(run, game);

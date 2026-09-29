@@ -3,6 +3,7 @@
  * display only; nothing here reads them. Adding a goal means adding an id, a
  * verb mapping in the bible, and one evaluator branch.
  */
+import { hashId, makeRng } from "./core/rng.ts";
 import type { PitchType } from "./core/zone.ts";
 import { type Bases, type PlateEvent, risp, runnersOn } from "./events.ts";
 
@@ -353,17 +354,98 @@ export interface PitcherGoalView {
  * when her last at-bat, in the 9th, was over. A Finale can be won while her ask misses
  * (Sol's two punchouts, a hitter's steal), and every line after it has to say both.
  */
-export function finaleTeamWon(g: { kind: string; scoreDiff: number; blown?: boolean; done?: boolean }): boolean {
-  return g.kind === "finale" && g.done !== false && !g.blown && g.scoreDiff > 0;
+export function finaleTeamWon(g: { kind: string; scoreDiff: number; blown?: boolean; done?: boolean; extras?: FinaleExtras | null }): boolean {
+  if (g.kind !== "finale" || g.done === false) return false;
+  // A Finale tied when her part ended was played out (check-in 27): the extras decide it.
+  if (g.extras) return g.extras.won;
+  return !g.blown && g.scoreDiff > 0;
 }
 
 /** The Finale was won and her ask wasn't met: the lines say "They won." first. */
-export function finaleWonShort(g: { kind: string; scoreDiff: number; blown?: boolean; done?: boolean; pgMet: boolean }): boolean {
+export function finaleWonShort(g: { kind: string; scoreDiff: number; blown?: boolean; done?: boolean; pgMet: boolean; extras?: FinaleExtras | null }): boolean {
   return !g.pgMet && finaleTeamWon(g);
+}
+
+/** Her ask was met and her side lost the Finale (check-in 27, N1): no 優勝, and the panel says they lost. */
+export function finaleLostMet(g: { kind: string; scoreDiff: number; blown?: boolean; done?: boolean; pgMet: boolean; extras?: FinaleExtras | null }): boolean {
+  return g.kind === "finale" && g.done !== false && g.pgMet && !finaleTeamWon(g);
 }
 
 /** The done banner for a Finale won short of her ask (the headline reads her read under it). */
 export const FINALE_WON_BANNER = "They won.";
+/** The line over her read when she got what she came for and her side lost the Finale. */
+export const FINALE_LOST_BANNER = "They lost.";
+
+/**
+ * How a Finale tied when her part ended came out (check-in 27, N2). The rest of the
+ * game is played silently from the seed: her side's half of the 9th when it's still
+ * to bat (the mound's: she pitched the top), then up to three extra innings, then a
+ * coin flip hashed from the seed. `inning` is the one it was decided in.
+ */
+export interface FinaleExtras {
+  won: boolean;
+  inning: number;
+}
+
+/** The extra innings the silent rest-of-game plays before the coin flip settles it. */
+export const FINALE_EXTRA_INNINGS = 3;
+
+/** Runs in one silent half-inning: mostly none, as in a tight 9th and extras. */
+function halfInningRuns(r: () => number): number {
+  const x = r();
+  if (x < 0.68) return 0;
+  if (x < 0.88) return 1;
+  if (x < 0.97) return 2;
+  return 3;
+}
+
+/**
+ * Plays the rest of a tied Finale. `ownNinth`: her side still bats in the 9th (the mound's
+ * Finale is the top of it); a run there walks it off. Deterministic in `seedKey`.
+ */
+export function resolveFinaleTie(seedKey: string, ownNinth: boolean): FinaleExtras {
+  const r = makeRng(hashId(`${seedKey}|finale-extras`));
+  if (ownNinth && halfInningRuns(r) > 0) return { won: true, inning: 9 };
+  const last = 9 + FINALE_EXTRA_INNINGS;
+  for (let inning = 10; inning <= last; inning++) {
+    const theirs = halfInningRuns(r);
+    const ours = halfInningRuns(r);
+    if (ours !== theirs) return { won: ours > theirs, inning };
+  }
+  return { won: r() < 0.5, inning: last };
+}
+
+/** The scorebug on a played-out Finale's done panel: the inning it was decided in, and how. */
+export function finaleExtrasBug(extras: FinaleExtras): { inning: string; score: string } {
+  return { inning: ordinalInning(extras.inning), score: extras.won ? "Won" : "Lost" };
+}
+
+export function ordinalInning(n: number): string {
+  const tens = n % 100;
+  if (tens >= 11 && tens <= 13) return `${n}th`;
+  const one = n % 10;
+  return `${n}${one === 1 ? "st" : one === 2 ? "nd" : one === 3 ? "rd" : "th"}`;
+}
+
+/** The one line a played-out Finale gets on the done panel: how the tie came out, naming her side. */
+export function finaleExtrasLine(extras: FinaleExtras, role: "hitter" | "pitcher"): string {
+  const tied = role === "hitter" ? "Tied after her last at-bat." : "Tied in the 9th.";
+  if (extras.won && extras.inning === 9) return `${tied} They walked it off in the 9th.`;
+  return `${tied} ${extras.won ? "They won it" : "They lost it"} in the ${ordinalInning(extras.inning)}.`;
+}
+
+/**
+ * The scoreboard's line on a Finale's done panel, under her read: how a tie came out, or
+ * "They lost." when she got what she came for and her side didn't win. Null otherwise.
+ */
+export function finaleResultLine(
+  g: { kind: string; scoreDiff: number; blown?: boolean; done?: boolean; pgMet: boolean; extras?: FinaleExtras | null },
+  role: "hitter" | "pitcher",
+): string | null {
+  if (g.kind !== "finale" || !g.done) return null;
+  if (g.extras) return finaleExtrasLine(g.extras, role);
+  return finaleLostMet(g) ? FINALE_LOST_BANNER : null;
+}
 
 export function evalPitcherPg(id: PitcherPgId, g: PitcherGoalView): boolean {
   switch (id) {

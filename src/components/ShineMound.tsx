@@ -64,7 +64,7 @@ import { moundBeatSpec, PREPARE_MS_REDUCED } from "@/shine/beats.ts";
 import { cheerLines, crowdStem, ouenSwell } from "@/shine/culture.ts";
 import { featuredParkId, kitAccent } from "@/shine/stage.ts";
 import { parkSrc, portraitMood, portraitSrc, officialFor, sceneBustSrc, sheet } from "@/shine/bible.ts";
-import { finaleTeamWon, speakGoal } from "@/shine/goals.ts";
+import { finaleExtrasBug, finaleResultLine, finaleTeamWon, speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { HR_STAMP_HOLD_MS, STAMP_DELAY_MS, stillFor, type ActionManifest, type ActionView, type StingFlags } from "@/shine/action-art.ts";
 import { ARM_GONE_TANK, leadoffWalkPending, moundFieldBeat, type MoundBeat } from "@/shine/pitching.ts";
@@ -331,7 +331,8 @@ function MoundFrame({
   }, [stage, paused, doneNow, clock, mound]);
 
   // A won Finale: once the done panel is up, the home run's length of moment over it (FinaleWinMoment).
-  const winReady = game.done && game.kind === "finale" && game.pgMet && (closed || stage === "idle" || stage === "dead" || stage === "situation");
+  // It follows the scoreboard, not her ask (check-in 27, N1): her side won the G1.
+  const winReady = game.done && finaleTeamWon(game) && (closed || stage === "idle" || stage === "dead" || stage === "situation");
   const winPlayed = useRef(false);
   useEffect(() => {
     if (!winReady || winPlayed.current) return;
@@ -565,6 +566,10 @@ function MoundFrame({
   // The card after each batter (C8), from her stamp clearing to the next wind-up.
   const cardShown = cardUp !== null && paEnd !== null && cardUp === paEnd.key && !game.done;
   const finalBug = doneUp && !practice;
+  // A Finale blown to a tie was played out (N2): the bug shows the inning it ended in, and the
+  // line under her read says who won it. Met and lost says so (N1).
+  const extrasBug = game.done && game.extras ? finaleExtrasBug(game.extras) : null;
+  const resultLine = finaleResultLine(game, "pitcher");
   // Her rival's read on this pitcher, said out loud before it's used: the first-strike read
   // at 0-0, the two-strike read at two strikes. Both are about where the glove sits, so the
   // Coach can answer them.
@@ -710,9 +715,9 @@ function MoundFrame({
         <header className="shine-race-hud">
           <div ref={bugRef} className="min-w-0">
             <Scorebug
-              inning={bug.inning}
+              inning={finalBug && extrasBug ? extrasBug.inning : bug.inning}
               done={finalBug}
-              score={finalBug ? scorePhrase(game.scoreDiff) : bug.score === null ? null : scorePhrase(bug.score)}
+              score={finalBug ? (extrasBug ? extrasBug.score : scorePhrase(game.scoreDiff)) : bug.score === null ? null : scorePhrase(bug.score)}
               atBat={finalBug ? "" : bug.atBat}
               count={bug.count}
               outs={bug.outs}
@@ -748,6 +753,11 @@ function MoundFrame({
               <DoneHeader met={practice ? null : game.pgMet} label={RACE_COPY.doneLabel} headline={closeLine ?? ""} reduced={reduced} paused={paused} />
               <DayStrip chips={dayChips} label="Batter by batter" reduced={reduced} paused={paused} />
               {readUnder ? <p className="text-center font-story text-sm text-cream/85">{readUnder}</p> : null}
+              {resultLine ? (
+                <p className="text-center font-story text-sm text-gold" data-finale-result>
+                  {resultLine}
+                </p>
+              ) : null}
               {middle ? <p className="text-center font-story text-sm text-cream/80">{middle}</p> : null}
               {/* The way forward wears Go's gold (C16). */}
               <PixelBtn className="shine-go h-12" onClick={leave}>

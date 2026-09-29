@@ -243,16 +243,15 @@ describe("Diamond Finale and endings", () => {
     );
     run.mentorARelationship = 20;
     const still = careerStill(run);
-    assert.match(still.trained, /same work/i);
+    assert.equal(still.trained, "The cage, most days. Her scorebook says so, in pencil.");
     assert.doesNotMatch(still.trained, /Contact over Speed/i);
     const split = newAoiRun();
     split.calendar.push(
       { turn: 6, type: "work", statTrained: "contact", outcome: "success", energyAfter: 60, moodAfter: 2 },
       { turn: 7, type: "work", statTrained: "speed", outcome: "success", energyAfter: 50, moodAfter: 2 },
     );
-    assert.match(careerStill(split).trained, /Cage and the poles/);
-    assert.doesNotMatch(careerStill(split).trained, /same work/i);
-    assert.match(still.mentor, /Cage Coach stayed late/);
+    assert.equal(careerStill(split).trained, "The cage and the basepaths, most days. She scored them like a doubleheader.");
+    assert.match(still.mentor, /Cage Coach stayed late at Koi/);
     assert.doesNotMatch(still.mentor, /turn 14/);
     assert.ok(still.quote.length > 0);
   });
@@ -289,8 +288,8 @@ describe("Diamond Finale and endings", () => {
     run.pgMisses = 2;
     run.calendar.push({ turn: 3, type: "work", statTrained: "stuff", outcome: "success", energyAfter: 60, moodAfter: 1 });
     const still = careerStill(run);
-    assert.match(still.trained, /on the rubber/);
-    assert.doesNotMatch(still.trained, /at the plate/);
+    assert.match(still.trained, /^The fastball, day after day/);
+    assert.doesNotMatch(still.trained, /the cage/i);
     assert.match(still.mentor, /Bullpen Coach/);
     assert.doesNotMatch(still.mentor, /Cage Coach/);
     assert.match(still.frame, /took the ball/);

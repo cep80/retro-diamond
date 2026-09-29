@@ -1,4 +1,5 @@
-import { isPitcherStyle, sheet } from "./bible.ts";
+import { FINALE_PARK_PLATE, isPitcherStyle, sheet, stillSrc } from "./bible.ts";
+import { FINALE_PARK } from "./core/parks.ts";
 import type { CharacterId, EndingRank } from "./types.ts";
 
 export type ParkCulture = "jp" | "blend" | "us";
@@ -14,18 +15,19 @@ export function pastBlurb(id: CharacterId) {
 
 /** Curtain Call still path. Cap in hand, no bat — presentation only. */
 export function curtainStillSrc(skin: "otachidai" | "dugout") {
-  return skin === "otachidai" ? "/bg/park-koi.jpg" : "/bg/stadium.jpg";
+  return skin === "otachidai" ? "/bg/park-koi.jpg" : FINALE_PARK_PLATE;
 }
 
 /**
  * The girl on お立ち台. Celebrate and hitter follow stills hold a bat — retired.
  * Aoi has the locked cap-in-hand still. Miki walks off with the bat on the ground.
  * Yuki's trot is the steal: she is already running, no bat in the frame.
- * Pitchers hold the glove.
+ * Pitchers hold the glove. A pitcher whose follow-through wears a banned mark stands
+ * in her clean still, or her calm bust when she has none (Sol, art brief §10.2).
  */
 export function curtainFilmSrc(id: CharacterId) {
   if (id === "aoi") return "/art/curtain/aoi.png";
-  if (isPitcherStyle(sheet(id).style)) return `/art/action/${id}/follow.webp`;
+  if (isPitcherStyle(sheet(id).style)) return stillSrc(id, "follow", "neutral");
   return `/art/action/${id}/trot.webp`;
 }
 
@@ -140,10 +142,14 @@ export function morningSpeech(lastLine: string | null, year: 1 | 2 | 3, parkId: 
   return dateSpeech(lastLine);
 }
 
-/** Sacred-date host. Culture follows this park, not the girl's home. */
+/**
+ * Sacred-date host. Culture follows this park, not the girl's home. The Diamond Finale is
+ * played in its own house (FINALE_PARK): neutral factors, its own crowd and booth.
+ */
 export function datePark(kind: string, homePark: string, weekly = false) {
   if (weekly || kind === "weekly" || kind === "lantern-classic" || kind === "gate") return "koi";
   if (kind === "night-classic") return "kings";
+  if (kind === "finale") return FINALE_PARK;
   return homePark;
 }
 
@@ -160,7 +166,9 @@ export function shouldCurtainCall(kind: string, pgMet: boolean) {
   );
 }
 
+/** The Finale's house takes the loudest stem we have (midwest measures loudest on disk). */
 export function crowdStem(parkId: string): CrowdStem {
+  if (parkId === FINALE_PARK) return "midwest";
   if (parkId === "koi") return "koi";
   if (parkId === "north") return "north";
   if (WEST.has(parkId)) return "west";
@@ -268,18 +276,29 @@ const RECAP_US = [
   "A man behind the dugout eats a hot dog like it owes him money.",
 ];
 
+/** The Finale's house: every seat sold, both fan sections in one building. */
+const RECAP_DIAMOND = [
+  "Every seat is sold. Nobody is sitting in one.",
+  "Both ends of the stadium have brought their own songs.",
+  "Gold bunting on the rail. The booth has stopped reading the lineup.",
+  "The lights hum. Somebody in the upper deck is crying already.",
+  "Her number is on towels in sections she's never played to.",
+  "The organ holds a chord. The whole house waits for the pitch.",
+  "Towels in one end, cowbells in the other. It's the last night.",
+];
+
 /** Lines only a hitter's day can say: the box, the walk-up, a foul, the spikes. */
 const BATTER_ONLY = /in the box|Walk-up|fouled back|spikes|before the pitch/i;
 
 export function recapLine(parkId: string, inning: number, pitcher = false): string {
   const culture = parkCulture(parkId);
-  const all = culture === "jp" ? RECAP_JP : culture === "blend" ? RECAP_BLEND : RECAP_US;
+  const all = parkId === FINALE_PARK ? RECAP_DIAMOND : culture === "jp" ? RECAP_JP : culture === "blend" ? RECAP_BLEND : RECAP_US;
   const pool = pitcher ? all.filter((l) => !BATTER_ONLY.test(l)) : all;
   return pool[Math.abs(inning) % pool.length]!;
 }
 
 export function recapPoolSize() {
-  return { jp: RECAP_JP.length, blend: RECAP_BLEND.length, us: RECAP_US.length };
+  return { jp: RECAP_JP.length, blend: RECAP_BLEND.length, us: RECAP_US.length, diamond: RECAP_DIAMOND.length };
 }
 
 export function verseCount() {

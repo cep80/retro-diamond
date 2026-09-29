@@ -45,7 +45,7 @@ import {
   type PlateEvent,
   type ReachKind,
 } from "./events.ts";
-import { evalHitterPg, evalHitterSg, FINALE_WON_BANNER, finaleTeamWon, isHitterPg, isHitterSg, type HitterGoalView, type HitterPgId, type HitterSgId } from "./goals.ts";
+import { evalHitterPg, evalHitterSg, FINALE_WON_BANNER, finaleTeamWon, resolveFinaleTie, type FinaleExtras, isHitterPg, isHitterSg, type HitterGoalView, type HitterPgId, type HitterSgId } from "./goals.ts";
 import {
   isHit,
   LEAD_DEFAULT_SIT,
@@ -198,6 +198,11 @@ export interface FeaturedGame {
   callback: string | null;
   /** How the between-PA innings went for her as a runner. */
   runnerLine: string | null;
+  /**
+   * A Finale tied after her last at-bat, played out silently (check-in 27): who won it, and
+   * in which inning. Absent on every other date and on saves from before it.
+   */
+  extras?: FinaleExtras | null;
 }
 
 /** A hitter's Diamond Finale: always five at-bats, so her last one comes in the 9th. */
@@ -664,6 +669,7 @@ function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedT
 
   if (game.paIndex >= game.paTarget) {
     game.done = true;
+    settleFinaleTie(run, game);
     if (game.kind === "weekly") game.banner = "That's the week's look.";
     else if (game.pgMet) game.banner = `${verb}.`;
     else if (game.kind === "gate") game.banner = "The Gate still opens.";
@@ -710,6 +716,15 @@ function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedT
     : armChanged
       ? `${rivalProfile(arm).name} comes in from the pen.`
       : (game.betweenLine ?? "Next look.");
+}
+
+/**
+ * A career Finale never ends level (check-in 27, N2): tied after her last at-bat, the rest
+ * of the game is played out silently from the seed, and the extras decide who won it.
+ */
+export function settleFinaleTie(run: Pick<TraineeRun, "rngSeed">, game: FeaturedGame) {
+  if (game.kind !== "finale" || game.encounter || !game.done || game.scoreDiff !== 0 || game.extras) return;
+  game.extras = resolveFinaleTie(`${run.rngSeed}|finale|plate`, false);
 }
 
 function isFirstPitch(game: FeaturedGame) {

@@ -15,7 +15,6 @@ import {
   sfxSelect,
   sfxStamp,
   sfxTitleSting,
-  startMusic,
   stopMusic,
   unlockAudio,
   type ScreenMusic,
@@ -46,10 +45,9 @@ import {
   careerStill,
   cardAltLook,
   cardBanner,
-  endingStage,
+  endingRank,
   endingStageCta,
   endingStageLabel,
-  liveStageSrc,
   nextGirlId,
   nextGirlName,
   parentEligible,
@@ -57,6 +55,7 @@ import {
   postgameLeaveLabel,
   rankReveal,
   rankTone,
+  runEndingStage,
   seriesFinaleLine,
   sparkEffectLine,
   sparkGapLine,
@@ -75,6 +74,7 @@ import { lowPointScene, rivalIntro, RIVAL_KINDS, type RivalKind } from "@/shine/
 import { cappedEffect, effectChips, eventChip, eventDue, eventKey, type EventChoice, type TrainingEvent } from "@/shine/training-events.ts";
 import { EVENT_LIBRARY } from "@/shine/training-events-library.ts";
 import { endingChip, endingScene, endingTier } from "@/shine/story-endings.ts";
+import { endingSceneOpenSrc, endingSceneSrc, endingStagePicture, finaleDoneSrcs, finalePostgamePicture, firstPolaroidSrc } from "@/shine/ending-pictures.ts";
 
 function isRivalKind(t: string | null): t is RivalKind {
   return t !== null && (RIVAL_KINDS as readonly string[]).includes(t);
@@ -137,6 +137,9 @@ function TitleIconButton({ icon, label, count = 0, onClick }: { icon: TitleIcon;
 /** Set once the player taps to start; the title skips the gate for the rest of the session. */
 let titleStarted = false;
 
+/** The title's bed: the lantern field, shared with Select and her promise scene. */
+const TITLE_MUSIC: ScreenMusic = { kind: "title" };
+
 function Title() {
   const run = useShine((s) => s.run);
   const clubhouse = useShine((s) => s.clubhouse);
@@ -159,17 +162,18 @@ function Title() {
   // The key art is Aoi; anyone else stands in her own painted still, so her line never sits under another girl's face.
   const art = girl === "aoi" ? "/bg/diamond-shine-hero.png" : careerFilmSrc(girl);
 
+  // The lantern bed (check-in 27, N9). It keeps playing into Select and her promise scene, which
+  // ask for the same cue, so it starts once; every other door out of the title stops it (`go`).
   useEffect(() => {
     warmActionExhibition();
-    if (titleStarted) startMusic("title");
-    return () => stopMusic();
+    if (titleStarted) playScreenMusic(TITLE_MUSIC);
   }, []);
 
   const start = () => {
     if (started) return;
     unlockAudio();
     sfxTitleSting();
-    startMusic("title");
+    playScreenMusic(TITLE_MUSIC);
     titleStarted = true;
     setStarted(true);
   };
@@ -186,9 +190,9 @@ function Title() {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const go = (fn: () => void) => () => {
+  const go = (fn: () => void, keepBed = false) => () => {
     sfxSelect();
-    stopMusic();
+    if (!keepBed) stopMusic();
     fn();
   };
 
@@ -228,7 +232,7 @@ function Title() {
               </PixelBtn>
             ) : (
               // Her line above says who she is; the door says what the year is.
-              <PixelBtn className="min-h-14 justify-between px-5 py-2.5 text-sm" onClick={go(openSelect)}>
+              <PixelBtn className="min-h-14 justify-between px-5 py-2.5 text-sm" onClick={go(openSelect, true)}>
                 <span className="flex flex-col items-start gap-1 text-left">
                   Begin her year
                   <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Pick a girl. Coach her three years.</span>
@@ -251,7 +255,7 @@ function Title() {
             </nav>
             {run && !run.clubhouseCard ? (
               endYear ? (
-                <button type="button" className="shine-title-end is-armed" onClick={go(openSelect)}>
+                <button type="button" className="shine-title-end is-armed" onClick={go(openSelect, true)}>
                   This year ends here. Start a new one?
                 </button>
               ) : (
@@ -268,7 +272,7 @@ function Title() {
                 </button>
               )
             ) : run?.clubhouseCard ? (
-              <button type="button" className="shine-title-end" onClick={go(openSelect)}>
+              <button type="button" className="shine-title-end" onClick={go(openSelect, true)}>
                 New Rookie year
               </button>
             ) : null}
@@ -415,10 +419,11 @@ function Wall() {
           <GoButton
             onClick={() => {
               sfxSelect();
+              wallPick = nextUp;
               openSelect();
             }}
           >
-            Coach the next her
+            {`Coach ${sheet(nextUp).name} next`}
           </GoButton>
         </GoDock>
       ) : null}
@@ -906,8 +911,23 @@ function Postgame() {
   const dateName = last ? dateLabel(turnMeta(last.turn), who.style) : "The game";
   // Never the picture that was just on screen (the done panel's settled still, or the Call's).
   const picture = postgamePicture(run.characterId, met, calledOut);
-  const film = sceneFilmSrc(run.characterId, picture.mood);
-  const bust = picture.kind === "bust" ? sceneBustSrc(run.characterId, picture.mood) : null;
+  // The Finale's postgame (check-in 27, N4): her face over the Finale's plate in the night's mood,
+  // never the done panel's still or the curtain's.
+  const finalePic =
+    last?.type === "finale"
+      ? finalePostgamePicture(
+          run.characterId,
+          met,
+          run.finaleTeamWon ?? met,
+          calledOut ? [curtainFilmSrc(run.characterId)] : finaleDoneSrcs(run.characterId, met),
+          // The ending scene comes next: never the bust it opens on.
+          [endingSceneOpenSrc(run.characterId, endingRank(run, true, met))],
+        )
+      : null;
+  const film = finalePic?.kind === "film" ? finalePic.src : sceneFilmSrc(run.characterId, picture.mood);
+  const bust = finalePic ? (finalePic.kind === "bust" ? finalePic.src : null) : picture.kind === "bust" ? sceneBustSrc(run.characterId, picture.mood) : null;
+  const bustMood = finalePic?.kind === "bust" ? finalePic.mood : picture.mood;
+  const plate = finalePic?.kind === "bust" ? finalePic.plate : parkSrc(parkId);
   const stamp = doneStamp(met);
   const keptToday = run.highlights.some((h) => h.kind === "keepsake" && h.turn === last?.turn);
 
@@ -968,8 +988,8 @@ function Postgame() {
       <div className="shine-backdrop" aria-hidden>
         {bust ? (
           <>
-            <img src={parkSrc(parkId)} alt="" className="shine-scene-plate" />
-            <img src={bust} alt="" className="shine-after-bust" data-postgame-bust={picture.mood} onError={(e) => fallBackTo(e.currentTarget, film)} />
+            <img src={plate} alt="" className="shine-scene-plate" />
+            <img src={bust} alt="" className="shine-after-bust" data-postgame-bust={bustMood} onError={(e) => fallBackTo(e.currentTarget, film)} />
           </>
         ) : (
           <img src={film} alt="" className="shine-after-film" data-scene-film={run.characterId} />
@@ -1040,16 +1060,24 @@ function YearEnd() {
   const [pages, setPages] = useState(false);
   const still = card ? careerStill(run) : null;
   const finalePlayed = run.pgResults[6] !== "pending";
-  const stage = card ? endingStage(card.ending, run.pgResults[6] === "met") : "bow";
-  // The Winning Live stands her on the stage (her curtain still until §9.2's stage art lands);
-  // the Last Bow keeps her bow, or the quiet still of a career that closed early.
-  const film = card
-    ? stage === "live"
-      ? liveStageSrc(run.characterId, curtainFilmSrc(run.characterId))
-      : card.ending === "C" || card.ending === "D"
-        ? endingFilmSrc(run.characterId, card.ending)
-        : curtainFilmSrc(run.characterId)
-    : careerFilmSrc(run.characterId);
+  // The Live follows the scoreboard, not her ask (check-in 27, N1).
+  const stage = card ? runEndingStage(run) : "bow";
+  const book = card ? (run.highlights.length ? run.highlights : (card.highlights ?? [])) : [];
+  // The picture budget (check-in 27, N4): the Winning Live stands her bust on the stage-lit Finale
+  // plate until §9.2's stage art lands; the Last Bow keeps her composed bust on her home park, or
+  // the quiet still of a career that closed early. Never the ending scene's last bust, never the
+  // scrapbook's first polaroid.
+  const firstPage = card ? firstPolaroidSrc(scrapbookBook(run.characterId, book, run.pgResults)) : null;
+  const stagePic = card
+    ? endingStagePicture({
+        id: run.characterId,
+        rank: card.ending,
+        stage,
+        before: [endingSceneSrc(run.characterId, card.ending)],
+        after: firstPage ? [firstPage] : [],
+      })
+    : null;
+  const film = stagePic ? stagePic.src : careerFilmSrc(run.characterId);
   const [revealed, setRevealed] = useState(false);
 
   // The rank slams in once the stage has had a moment. Her song is ShineApp's screen music.
@@ -1071,7 +1099,6 @@ function YearEnd() {
     const label = endingStageLabel(stage);
     const reveal = rankReveal(card.ending);
     const tone = rankTone(card.ending);
-    const book = run.highlights.length ? run.highlights : (card.highlights ?? []);
     // The Winning Live / Last Bow: the stage, the rank, her quote and one frame line. The numbers wait in the scrapbook.
     return (
       <main
@@ -1080,7 +1107,26 @@ function YearEnd() {
         data-stage={stage}
       >
         <div className="shine-backdrop" aria-hidden>
-          <img src={film} alt="" className="shine-after-film shine-live-film" data-live-still={run.characterId} />
+          {/* The scrapbook's pages sit over the bare plate: her polaroids are the pictures there. */}
+          {stagePic?.kind === "bust" ? (
+            <>
+              <img src={stagePic.plate} alt="" className={`shine-scene-plate shine-live-plate ${stagePic.lit ? "is-lit" : ""}`} />
+              {!pages ? (
+                <img
+                  src={stagePic.src}
+                  alt=""
+                  className="shine-after-bust shine-live-bust"
+                  data-live-still={run.characterId}
+                  data-live-bust={stagePic.mood}
+                  onError={(e) => fallBackTo(e.currentTarget, sceneFilmSrc(run.characterId, "elated"))}
+                />
+              ) : null}
+            </>
+          ) : pages ? (
+            <img src={parkSrc(who.parkId)} alt="" className="shine-scene-plate shine-live-plate" />
+          ) : (
+            <img src={film} alt="" className="shine-after-film shine-live-film" data-live-still={run.characterId} />
+          )}
           {stage === "live" ? (
             <>
               <div className="shine-live-lights" />
@@ -1130,9 +1176,6 @@ function YearEnd() {
             <>
               <p className="max-w-md font-ui text-sm text-gold">{still.trained}</p>
               <p className="mt-2 max-w-md font-ui text-sm text-gold">{still.mentor}</p>
-              <p className="mt-2 max-w-md font-ui text-xs text-cream/70" data-ending-why>
-                {still.why}
-              </p>
               <p className="mt-3 max-w-md font-ui text-sm text-gold">{sparkGapLine([card]) ?? `Next: Coach ${nextGirlName(run.characterId)}.`}</p>
               <Scrapbook
                 highlights={book}
@@ -1142,6 +1185,15 @@ function YearEnd() {
                 finalePlayed={finalePlayed}
                 finaleClip={stage === "live" && !reduced && card.ending !== "B" ? endingClipSrc(run.characterId, card.ending) : null}
               />
+              {/* The fans and the rank's numbers wait at the very bottom, folded (check-in 27, N5). */}
+              <details className="shine-ending-why mt-4 max-w-md">
+                <summary className="flex min-h-11 cursor-pointer items-center font-display text-[11px] uppercase tracking-widest text-gold">
+                  How she earned her rank
+                </summary>
+                <p className="pb-2 font-ui text-xs text-cream/70" data-ending-why>
+                  {still.why}
+                </p>
+              </details>
             </>
           )}
         </section>
@@ -1459,7 +1511,8 @@ function Establishing() {
 
   useEffect(() => {
     unlockAudio();
-    startMusic("title");
+    // Coming from the title the bed is already playing under the same cue, so this never restarts it.
+    playScreenMusic(TITLE_MUSIC);
     return () => stopMusic();
   }, []);
 
@@ -1838,7 +1891,7 @@ export function ShineApp() {
   } else if (screen === "plate") view = <ShinePlate />;
   else if (screen === "postgame") view = <Postgame />;
   else if (screen === "year-end" && run.clubhouseCard && !run.arcsHeard?.includes("ending")) {
-    const stage = endingStage(run.clubhouseCard.ending, run.pgResults[6] === "met");
+    const stage = runEndingStage(run);
     view = (
       <StoryScreen
         scene={endingScene(run.characterId, run.clubhouseCard.ending)}
@@ -1854,7 +1907,7 @@ export function ShineApp() {
     // A won Finale's Live sings her song at full voice; the Last Bow keeps the piano.
     musicCue = !card
       ? { kind: "theme", id: run.characterId }
-      : endingStage(card.ending, run.pgResults[6] === "met") === "live"
+      : runEndingStage(run) === "live"
         ? { kind: "live", id: run.characterId }
         : { kind: "bow", rank: card.ending };
   } else {

@@ -4,7 +4,7 @@
  */
 import { turnMeta } from "./calendar.ts";
 import { memoryLine } from "./relationship.ts";
-import { isPitcherStyle, parkSrc, sceneBustSrc, sheet, type PortraitMood } from "./bible.ts";
+import { isBustSrc, isPitcherStyle, parkSrc, sceneBustSrc, sheet, stillSrc, type PortraitMood } from "./bible.ts";
 import { datePark } from "./culture.ts";
 import { eventsOfPa, type PlateEvent } from "./events.ts";
 import { proofLine, type GoalId } from "./goals.ts";
@@ -540,14 +540,18 @@ export interface BookPicture {
 export function pagePicture(id: CharacterId, game: BigGame, met: boolean, nth: number): BookPicture {
   const pitcher = isPitcherStyle(sheet(id).style);
   const plate = parkSrc(datePark(game, sheet(id).parkId));
-  const film = (stem: string): BookPicture => ({ src: `/art/action/${id}/${stem}.webp`, plate: null });
+  // A still that wears a banned mark gives way to a clean one, or to her bust on the park (bible OFF_MODEL_ART).
+  const film = (stem: string, or: PortraitMood = "neutral"): BookPicture => {
+    const src = stillSrc(id, stem, or);
+    return { src, plate: isBustSrc(src) ? plate : null };
+  };
   const bust = (mood: PortraitMood): BookPicture => ({ src: sceneBustSrc(id, mood), plate });
   const pool: BookPicture[] = met
     ? pitcher
-      ? [film("k"), bust("elated"), film("follow")]
+      ? [film("k", "neutral"), bust("elated"), film("follow", "focused")]
       : [film("celebrate"), bust("elated"), film("trot")]
     : pitcher
-      ? [bust("focused"), bust("crushed"), film("set")]
+      ? [bust("focused"), bust("crushed"), film("windup", "neutral")]
       : [bust("focused"), film("crushed"), bust("crushed")];
   return pool[nth % pool.length]!;
 }
