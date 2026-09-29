@@ -13,16 +13,20 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       { name: "theme-color", content: "#0c1210" },
       { name: "description", content: "Coach one girl. Work the complex. Sit her, press Go, and watch. Diamond Shine." },
+      // The page mixes Japanese and English, so browsers offer to translate it. Translation rewraps
+      // text nodes under React and crashes it ("removeChild ... not a child"); the game's kana are on purpose.
+      { name: "google", content: "notranslate" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/manifest.webmanifest" },
+      // With credentials, so a protected preview's login cookie goes along (no SSO redirect, no CORS error).
+      { rel: "manifest", href: "/manifest.webmanifest", crossOrigin: "use-credentials" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
     ],
   }),
   component: () => (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" translate="no" className="notranslate" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

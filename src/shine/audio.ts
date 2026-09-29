@@ -591,11 +591,13 @@ function stopFileMusic() {
   fileMusic = null;
 }
 
-function playWalkBuffer(buf: AudioBuffer, level = 1, url?: string, fadeIn = 0) {
+function playWalkBuffer(buf: AudioBuffer, level = 1, url?: string, fadeIn = 0, loop = true) {
   if (!ctx || !music || !enabled.music) return;
+  // One song in this slot, ever: a late decode never leaves the last one playing with no handle on it.
+  stopFileMusic();
   const src = ctx.createBufferSource();
   src.buffer = buf;
-  src.loop = true;
+  src.loop = loop;
   const g = ctx.createGain();
   if (fadeIn > 0) {
     g.gain.setValueAtTime(0.0001, now());
@@ -620,6 +622,7 @@ function stopFieldBed() {
 
 function playFieldBuffer(buf: AudioBuffer, level = 0.55, fadeIn = 0) {
   if (!ctx || !music || !enabled.music) return;
+  stopFieldBed();
   const src = ctx.createBufferSource();
   src.buffer = buf;
   src.loop = true;
@@ -648,8 +651,10 @@ export function startWalkUp(id: WalkId, alt = false) {
     if (!buf && alt && url !== primary) buf = walkBufs.get(primary) ?? (await decodeUrl(primary));
     if (buf) walkBufs.set(url, buf);
     if (gen !== walkGen) return;
+    // A walk-up plays once as she steps in, like the park's; the crowd carries the date after it.
+    // (It used to loop under every pitch: a 13-second song for five minutes, over the organ and the fanfare.)
     if (buf) {
-      playWalkBuffer(buf);
+      playWalkBuffer(buf, 1, url, 0, false);
       return;
     }
   })();

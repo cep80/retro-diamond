@@ -53,8 +53,10 @@ export function warmActionArt(manifest: ActionManifest | null, girls: readonly (
 }
 
 const clipsWarmed = new Set<string>();
+/** The warm-up videos, held here so they keep buffering. Never in the DOM: React owns <body>. */
+const warmVideos: HTMLVideoElement[] = [];
 
-/** Hidden `<video preload="auto">` per clip so the money beat plays from cache. */
+/** A detached `<video preload="auto">` per clip so the money beat plays from cache. */
 export function preloadActionClips(manifest: ActionManifest | null, girls: readonly (CharacterId | string)[]): void {
   if (!manifest || typeof document === "undefined") return;
   for (const g of girls) {
@@ -68,9 +70,9 @@ export function preloadActionClips(manifest: ActionManifest | null, girls: reado
       v.muted = true;
       v.playsInline = true;
       v.src = c.url;
-      v.setAttribute("aria-hidden", "true");
-      v.style.cssText = "position:absolute;width:0;height:0;opacity:0;pointer-events:none";
-      document.body.appendChild(v);
+      // Appending to document.body put foreign nodes inside the tree React renders (the root route
+      // renders <html>/<body>), and React's later removals threw "removeChild: not a child".
+      warmVideos.push(v);
       v.load();
     }
   }
