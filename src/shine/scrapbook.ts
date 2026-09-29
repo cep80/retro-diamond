@@ -4,7 +4,7 @@
  */
 import { turnMeta } from "./calendar.ts";
 import { memoryLine } from "./relationship.ts";
-import { isBustSrc, isPitcherStyle, parkSrc, sceneBustSrc, sheet, stillSrc, type PortraitMood } from "./bible.ts";
+import { artKey, isBustSrc, isPitcherStyle, parkSrc, sceneBustSrc, sheet, stillSrc, type PortraitMood } from "./bible.ts";
 import { datePark } from "./culture.ts";
 import { eventsOfPa, type PlateEvent } from "./events.ts";
 import { proofLine, type GoalId } from "./goals.ts";
@@ -538,6 +538,15 @@ export interface BookPicture {
  * turns, so two in a row never share a picture.
  */
 export function pagePicture(id: CharacterId, game: BigGame, met: boolean, nth: number): BookPicture {
+  return pagePictureChoices(id, game, met, nth)[0]!;
+}
+
+/**
+ * The page's picture and, after it, the ones it may give way to (check-in 31, F1): the rest of
+ * its turn, then a few more stills from the same side of the day. Only the book's first page
+ * ever gives way, when the ending's screens just showed its picture (`scrapbookBook`'s avoid).
+ */
+export function pagePictureChoices(id: CharacterId, game: BigGame, met: boolean, nth: number): BookPicture[] {
   const pitcher = isPitcherStyle(sheet(id).style);
   const plate = parkSrc(datePark(game, sheet(id).parkId));
   // A still that wears a banned mark gives way to a clean one, or to her bust on the park (bible OFF_MODEL_ART).
@@ -553,7 +562,40 @@ export function pagePicture(id: CharacterId, game: BigGame, met: boolean, nth: n
     : pitcher
       ? [bust("focused"), bust("crushed"), film("windup", "neutral")]
       : [bust("focused"), film("crushed"), bust("crushed")];
-  return pool[nth % pool.length]!;
+  const extras: BookPicture[] = met
+    ? pitcher
+      ? [film("windup", "neutral"), film("release", "neutral"), film("set", "neutral"), bust("neutral")]
+      : [film("contact"), film("follow"), bust("neutral")]
+    : pitcher
+      ? [film("walk", "neutral"), bust("neutral")]
+      : [film("take"), bust("neutral")];
+  const turn = nth % pool.length;
+  const out: BookPicture[] = [];
+  for (const p of [...pool.slice(turn), ...pool.slice(0, turn), ...extras]) if (!out.some((o) => o.src === p.src)) out.push(p);
+  return out;
+}
+
+/**
+ * The book with its first polaroid moved off any picture in `avoid` (the ending's screens, which
+ * run straight into it), onto the next of its choices that isn't the second page's picture. When
+ * every choice is spent, it still steps off `near` (the screen just before the book).
+ */
+export function avoidOnFirstPage(id: CharacterId, entries: readonly BookEntry[], avoid: readonly string[], near: readonly string[] = []): BookEntry[] {
+  const at = entries.findIndex((e) => e.kind === "page");
+  const first = entries[at];
+  // Two names for one file are one picture (bible SAME_ART).
+  const has = (list: readonly string[], src: string) => list.some((s) => artKey(s) === artKey(src));
+  if (!first || first.kind !== "page" || !has(avoid, first.page.picture.src)) return [...entries];
+  const next = entries.slice(at + 1).find((e) => e.kind === "page");
+  const nextSrc = next?.kind === "page" ? artKey(next.page.picture.src) : null;
+  const { game, met } = first.page;
+  const choices = pagePictureChoices(id, game, met, 0).filter((p) => artKey(p.src) !== nextSrc);
+  const pick =
+    choices.find((p) => !has(avoid, p.src)) ?? (has(near, first.page.picture.src) ? choices.find((p) => !has(near, p.src)) : undefined);
+  if (!pick) return [...entries];
+  const out = [...entries];
+  out[at] = { kind: "page", page: { ...first.page, picture: pick } };
+  return out;
 }
 
 export interface BookPage {

@@ -142,10 +142,58 @@ export function workChance(run: TraineeRun, station: StationId): number | null {
   return applyPity(chance, run, stat);
 }
 
-/** The tile's 失敗 figure: how often the work doesn't take today, in whole percent. */
+/** How often the work doesn't take today, in whole percent (every cause: the base roll included). */
 export function workFailPct(run: TraineeRun, station: StationId): number | null {
   const c = workChance(run, station);
   return c === null ? null : Math.round(100 * (1 - c));
+}
+
+/** Full power: no tiredness penalty on the roll and no injury risk (successChance, injuryRisk). */
+export const RESTED_ENERGY = 70;
+/** Normal mood: the lowest with no mood penalty on the roll (successChance's moodMod). */
+export const RESTED_MOOD = 2;
+
+/**
+ * The tile's 失敗 figure (check-in 31, F2): only the risk the Coach controls, never the base roll.
+ * In Uma, 失敗 is the energy risk; a stranger read "45% of training fails" as broken.
+ *
+ * What rest and a good mood take away, exactly as run.ts rolls a morning:
+ * - the roll's energy penalty (−0.10 below 70 energy, −0.18 below 40) and mood penalty (−0.10 Bad,
+ *   −0.18 Awful) on successChance;
+ * - the injury roll (injuryRisk: 2% while Worn, 20–39 energy), its own draw after the outcome.
+ * The bad-fail band (rollTrainOutcome) is a slice of the fails, not more of them, so it adds no
+ * risk of its own; its cost is energy and mood, which the same rest and mood cure.
+ *
+ * Risk = P(no gain or hurt today) − P(no gain rested and in good spirits)
+ *      = chance(rested) − chance(today) × (1 − injuryRisk(today's energy)).
+ * Everything else (the base roll, her ceiling, the mentors, the pity floor) is the same on both
+ * sides, so it cancels. Zero on a fresh, normal-or-better morning. Null for a tile that isn't work.
+ */
+export function workRisk(run: TraineeRun, station: StationId): number | null {
+  const today = workChance(run, station);
+  if (today === null) return null;
+  const rested = workChance({ ...run, energy: Math.max(run.energy, RESTED_ENERGY), mood: Math.max(run.mood, RESTED_MOOD) }, station)!;
+  return Math.max(0, rested - today * (1 - injuryRisk(run.energy)));
+}
+
+/** workRisk in whole percent. */
+export function workRiskPct(run: TraineeRun, station: StationId): number | null {
+  const r = workRisk(run, station);
+  return r === null ? null : Math.round(100 * r);
+}
+
+/** A gain this likely or more reads as ↑↑ on the tile; below it, ↑. */
+export const GAIN_LIKELY = 0.6;
+
+/**
+ * The base roll's upside, as the tile's gain arrows (check-in 31, F2): "likely" (↑↑) when the
+ * work lands at least GAIN_LIKELY of the time today, else "possible" (↑). Null for a tile that
+ * isn't work.
+ */
+export function workGainOdds(run: TraineeRun, station: StationId): "likely" | "possible" | null {
+  const c = workChance(run, station);
+  if (c === null) return null;
+  return c >= GAIN_LIKELY ? "likely" : "possible";
 }
 
 export function successChance(

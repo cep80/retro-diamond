@@ -51,6 +51,24 @@ export function postgamePicture(id: CharacterId, met: boolean, curtain: boolean)
 /** The Call's own stamp: 喝采 (the cheer) over a gold "Curtain Call" pill, slammed like a date's. */
 export const CURTAIN_STAMP = { jp: "喝采", en: "Curtain Call", tone: "gold" } as const;
 
+/** The Call's way out (check-in 31, N10): she bows to the stands, she doesn't walk off on them. */
+export const CURTAIN_CTA = "Take the bow";
+
+/**
+ * The stands' flashbulbs over the Call (check-in 31, N10): where each pops (percent of the
+ * screen, kept to the stands above her), when it first fires and how often it fires again.
+ * Fixed, so every Call flashes the same; reduced motion draws none.
+ */
+export const CURTAIN_FLASHES: readonly { x: number; y: number; d: number; p: number }[] = [
+  { x: 12, y: 14, d: 150, p: 2300 },
+  { x: 78, y: 9, d: 520, p: 2900 },
+  { x: 34, y: 22, d: 940, p: 2600 },
+  { x: 90, y: 26, d: 1350, p: 3100 },
+  { x: 55, y: 11, d: 1720, p: 2450 },
+  { x: 6, y: 31, d: 2100, p: 3300 },
+  { x: 68, y: 33, d: 2480, p: 2750 },
+];
+
 /**
  * The card that opens a new year on its spring morning: the class in kana (the
  * way the track calls them), the year's name big, and the season under it.

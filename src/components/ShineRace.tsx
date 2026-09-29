@@ -65,6 +65,8 @@ import { track as trackEvent } from "@/lib/telemetry.ts";
 import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
 import { HR_STAMP_HOLD_MS, resultStamp, SCORE_STAMP, SCORE_STAMP_HOLD_MS, STAMP_DELAY_MS, stampHoldMs, stillFor } from "@/shine/action-art.ts";
 import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sceneBustSrc, sheet } from "@/shine/bible.ts";
+import { finaleWinPicture } from "@/shine/ending-pictures.ts";
+import { decodePicture } from "@/components/preload";
 import { finaleExtrasBug, finaleResultLine, finaleTeamWon, speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
 import { crowdStem } from "@/shine/culture.ts";
@@ -408,17 +410,28 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     // Leave the park takes its place under the thumb.
     useShine.getState().bumpView();
   }, []);
+  // The moment's hold (and its sting) starts once its pictures are decoded (F4, at most 600 ms).
+  const [winShown, setWinShown] = useState(false);
   useEffect(() => {
     if (!wonFinale || winPlayed.current) return;
     winPlayed.current = true;
     setWinUp(true);
-    sfxFinaleWin();
   }, [wonFinale]);
+  const onWinReady = useCallback(() => {
+    setWinShown(true);
+    sfxFinaleWin();
+  }, []);
   useEffect(() => {
-    if (!winUp) return;
+    if (!winUp || !winShown) return;
     const t = window.setTimeout(endWin, CHROME_MS.finaleWin);
     return () => window.clearTimeout(t);
-  }, [winUp, endWin]);
+  }, [winUp, winShown, endWin]);
+  // The Finale decodes her 優勝 picture and the plate as it starts, so the moment never opens on bare rays.
+  useEffect(() => {
+    if (!finale) return;
+    for (const met of [true, false]) void decodePicture(finaleWinPicture(run.characterId, met).src);
+    void decodePicture(FINALE_PLATE.src);
+  }, [finale, run.characterId]);
 
   // Film state fed to the stage.
   const [manifest, setManifest] = useState<ActionManifest | null>(null);
@@ -1071,7 +1084,9 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           onSkip={endTitle}
         />
       ) : null}
-      {winUp ? <FinaleWinMoment bust={sceneBustSrc(run.characterId, "elated")} name={who.name} jp={who.jp} reduced={reduced} onSkip={endWin} /> : null}
+      {winUp ? (
+        <FinaleWinMoment picture={finaleWinPicture(run.characterId, game.pgMet)} name={who.name} jp={who.jp} reduced={reduced} onSkip={endWin} onReady={onWinReady} />
+      ) : null}
       {paused ? (
         <PauseOverlay
           reason={plate.pauseReason}

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { deliveryWindows, windowMiss } from "./core/zone.ts";
 import { traineePitcher } from "./actors.ts";
 import { newRun } from "./run.ts";
+import { FINALE_WON_BANNER, finaleTeamWon } from "./goals.ts";
 import { ACE_ACT1_BATTERS, completeAct2, decideDelivery, decidePitch, DELIVERY_DUR, enterSeventh, lastPitchSwung, maybeLastSpurtCloser, moundBeatFor, pitchingWindows, resolveDelivery, resolveMiddle, startPitchingGame, stuffWhiff } from "./pitching.ts";
 
 describe("Ace / Closer mound", () => {
@@ -73,6 +74,8 @@ describe("Ace / Closer mound", () => {
     }
     assert.equal(game.done, true);
     if (game.pgMet) assert.equal(game.banner, "HOLD.");
+    // A blown lead that her side won back in the played-out tie says so (check-in 27, N2); newRun's seed varies.
+    else if (finaleTeamWon(game)) assert.equal(game.banner, FINALE_WON_BANNER);
     else if (game.blown) assert.match(game.banner, /Blown/);
     else assert.equal(game.banner, "HOLD slipped.");
   });

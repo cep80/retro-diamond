@@ -27,6 +27,8 @@ import {
   verseCount,
   verseTier,
   yearCard,
+  CURTAIN_CTA,
+  CURTAIN_FLASHES,
   CURTAIN_STAMP,
 } from "./culture.ts";
 import { FORBIDDEN_IN_STORY } from "./story.ts";
@@ -145,6 +147,10 @@ describe("culture presentation", () => {
       assert.doesNotMatch(c.sub, /\d/);
     }
     assert.deepEqual(CURTAIN_STAMP, { jp: "喝采", en: "Curtain Call", tone: "gold" });
+    // Check-in 31 (N10): she takes a bow, under flashbulbs kept to the stands.
+    assert.equal(CURTAIN_CTA, "Take the bow");
+    assert.ok(CURTAIN_FLASHES.length >= 5);
+    for (const f of CURTAIN_FLASHES) assert.ok(f.x >= 0 && f.x <= 100 && f.y <= 40 && f.p >= 2000, JSON.stringify(f));
   });
 
   it("quotes the date she sat in the fan letter", () => {

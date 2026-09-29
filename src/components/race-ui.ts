@@ -24,8 +24,12 @@ export function leaveLabel(opts: { practice: boolean }): string {
 }
 
 export const RACE_COPY = {
-  /** The one line on the first pitch of a date. Center is already lit. */
-  firstPick: "Sit the zone under her. Press Go. Watch her.",
+  /**
+   * The one line on the first pitch of a date. Center is already lit, so it names the grid as
+   * the choice in no one's jargon (check-in 31, F7: a stranger read "Sit the zone" as baseball
+   * talk). "Sit" is the word everywhere after it.
+   */
+  firstPick: "Tap the box she's sitting on. Then Go, and watch.",
   /** The mound's twin: the grid is where the glove sits (shown in place of the caption at pitch 0). */
   moundFirstPick: "Set the glove where you want it, then press Go.",
   /** The done panel's label, the same on both dates; the exhibition keeps its park. */

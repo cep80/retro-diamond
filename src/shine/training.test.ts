@@ -21,6 +21,11 @@ import {
   treatmentAvailable,
   treatmentForced,
   workFailPct,
+  workGainOdds,
+  workRisk,
+  workRiskPct,
+  RESTED_ENERGY,
+  RESTED_MOOD,
 } from "./training.ts";
 import { newAoiRun, newRun, resolveTrainingTurn } from "./run.ts";
 import type { CharacterId, StationId, TraineeStatKey } from "./types.ts";
@@ -155,6 +160,63 @@ describe("five facilities (check-in 28)", () => {
     run.failStreak = { stat: "eye", count: 2 };
     assert.equal(workFailPct(run, "looks"), 10, "the pity floor shows on the tile");
     assert.equal(workFailPct(run, "off-day"), null);
+  });
+});
+
+describe("the 失敗 figure is the risk rest and mood control (check-in 31, F2)", () => {
+  function morning(energy: number, mood: number, seed: string) {
+    const run = newRun("miki");
+    run.rngSeed = seed;
+    run.turn = 9;
+    run.energy = energy;
+    run.mood = mood;
+    return run;
+  }
+
+  it("is 0 on a fresh morning in normal spirits or better, whatever the base roll", () => {
+    for (const mood of [2, 3, 4]) for (const energy of [70, 85, 100]) assert.equal(workRiskPct(morning(energy, mood, "z"), "bp"), 0, `${energy}/${mood}`);
+    // The base roll still misses 45% of Fair, fresh mornings: that's the arrows' business, not 失敗's.
+    assert.equal(workFailPct(morning(80, 2, "z"), "bp"), 45);
+    assert.equal(workGainOdds(morning(80, 2, "z"), "bp"), "possible");
+    assert.equal(workGainOdds(morning(80, 3, "z"), "bp"), "likely");
+    assert.equal(workRiskPct(morning(80, 2, "z"), "off-day"), null);
+    assert.equal(workGainOdds(morning(80, 2, "z"), "off-day"), null);
+  });
+
+  it("climbs as she tires and sinks, by the roll's own penalties and the Worn injury chance", () => {
+    assert.equal(workRiskPct(morning(50, 2, "z"), "bp"), 10, "Tired: −0.10 on the roll");
+    assert.equal(workRiskPct(morning(80, 0, "z"), "bp"), 18, "Awful: −0.18 on the roll");
+    // Worn and Bad: 0.55 rested vs 0.27 today, and 2% of the landed mornings hurt her.
+    assert.ok(Math.abs(workRisk(morning(30, 1, "z"), "bp")! - (0.55 - 0.27 * (1 - injuryRisk(30)))) < 1e-9);
+    assert.ok(workRiskPct(morning(30, 1, "z"), "bp")! > workRiskPct(morning(50, 1, "z"), "bp")!);
+    assert.equal(RESTED_ENERGY, 70);
+    assert.equal(RESTED_MOOD, 2);
+  });
+
+  it("matches the engine: today's mornings go wrong (no gain, or hurt) that much more often than rested ones", () => {
+    const N = 3000;
+    const wrong = (energy: number, mood: number) => {
+      let n = 0;
+      for (let s = 0; s < N; s++) {
+        const run = morning(energy, mood, `risk-${s}`);
+        const before = run.stats.power;
+        resolveTrainingTurn(run, "bp");
+        if (run.stats.power === before || run.lastInjury) n++;
+      }
+      return n / N;
+    };
+    for (const [energy, mood] of [
+      [80, 2],
+      [50, 2],
+      [80, 0],
+      [30, 1],
+      [25, 4],
+    ] as const) {
+      const run = morning(energy, mood, "x");
+      const told = workRisk(run, "bp")!;
+      const measured = wrong(energy, mood) - wrong(Math.max(energy, RESTED_ENERGY), Math.max(mood, RESTED_MOOD));
+      assert.ok(Math.abs(measured - told) < 0.045, `${energy}/${mood}: tile ${told.toFixed(3)}, engine ${measured.toFixed(3)}`);
+    }
   });
 });
 

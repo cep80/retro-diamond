@@ -5,11 +5,12 @@ import { FORBIDDEN_IN_STORY } from "../shine/story.ts";
 import { MOOD_LABELS, REST_ENERGY, TREATMENT_ENERGY, canTrain, moodLevel } from "../shine/training.ts";
 import type { CharacterId, StationId, TraineeRun } from "../shine/types.ts";
 import { facilityRow, restRowIds } from "../shine/store.ts";
-import { workFailPct } from "../shine/training.ts";
+import { workGainOdds, workRiskPct } from "../shine/training.ts";
 import {
   allMorningLines,
   energyTone,
   facilityFace,
+  gainArrows,
   herMorning,
   isTrainingTile,
   moodFace,
@@ -95,15 +96,22 @@ describe("the work grid", () => {
     assert.equal(f.en, "Contact");
     assert.equal(f.plus, "+POW");
     assert.equal(f.plusEn, "Power");
-    assert.equal(f.fail, workFailPct(run, "cage"));
-    assert.ok(f.fail! > 0 && f.fail! < 100);
+    // Check-in 31 (F2): 失敗 is only the risk rest and mood control; a fresh, normal morning has none.
+    assert.equal(f.fail, workRiskPct(run, "cage"));
+    assert.equal(f.fail, 0, "full power and a normal mood: nothing to warn about");
+    assert.equal(f.odds, workGainOdds(run, "cage"));
     assert.equal(facilityFace("cage", run, false)!.fail, null, "a shut tile shows no odds");
+    assert.equal(facilityFace("cage", run, false)!.odds, null);
+    run.energy = 30;
+    assert.ok(facilityFace("cage", run, true)!.fail! > 0, "Worn: the tile warns");
     const p = workRun("kira", 80, 2, "face-p");
     assert.equal(facilityFace("spots", p, true)!.en, "Control");
     assert.equal(facilityFace("spots", p, true)!.plus, "+WIT");
     assert.equal(facilityFace("off-day", p, true), null);
-    assert.equal(riskyFail(45), false, "a Fair, fresh morning is not a warning");
-    assert.equal(riskyFail(50), true);
+    assert.equal(riskyFail(10), false, "Tired alone is not a warning");
+    assert.equal(riskyFail(15), true);
+    assert.equal(gainArrows("likely"), "↑↑");
+    assert.equal(gainArrows("possible"), "↑");
   });
 
   it("gives the lead to the Trainer's room only on an empty day", () => {

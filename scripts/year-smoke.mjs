@@ -624,7 +624,8 @@ async function scanCopy(s) {
       if (rule.id === "snake-or-kebab-id" && m[0].split(/[-_]/).every((w) => NUMBER_WORD.test(w))) continue;
       // Baseball's own hyphenated words ("first-to-third") are speech, not ids.
       if (rule.id === "snake-or-kebab-id" && /^(first|second|third|home)-to-(first|second|third|home)$/.test(m[0])) continue;
-      // A facility tile's fail chance (失敗 32%) is Uma's own training readout, on purpose.
+      // A facility tile's 失敗 figure (失敗 12%) is Uma's own training readout, on purpose: since
+      // check-in 31 it is only the risk rest and mood control (training workRiskPct), shown above 0.
       if (rule.id === "percent" && /^失敗\s?\d+\s?%$/.test(line)) continue;
       const key = `${rule.id}|${line}`;
       if (copySeen.has(key)) continue;
@@ -947,7 +948,8 @@ async function act(s) {
     }
 
     case "curtain": {
-      const b = s.buttons.find((x) => /^Walk off$/i.test(x.name));
+      // "Take the bow" since check-in 31 (N10); "Walk off" before it.
+      const b = s.buttons.find((x) => /^(Take the bow|Walk off)$/i.test(x.name));
       if (!b) return wait(500); // the first Lantern Classic curtain holds 18 s on purpose
       return press(s, byName(b.name), b.name);
     }

@@ -18,6 +18,7 @@ import {
   moodFace,
   morningAfter,
   orderTiles,
+  gainArrows,
   riskyFail,
   stationLifts,
   statStrip,
@@ -342,7 +343,7 @@ export function ShineComplexWork({
                   const name = s.short ?? s.label;
                   const says = !f.open
                     ? `${name}. ${face?.en ?? ""} work. ${f.reason ?? "Not open yet"}.`
-                    : `${name}. ${face?.en ?? ""} work${face?.plusEn ? `, and a little ${face.plusEn}` : ""}.${face?.fail != null ? ` ${face.fail}% it doesn't take today.` : ""}`;
+                    : `${name}. ${face?.en ?? ""} work${face?.plusEn ? `, and a little ${face.plusEn}` : ""}.${face?.odds ? ` A gain is ${face.odds} today.` : ""}${face?.fail ? ` Tired or low, ${face.fail}% more risk it goes wrong.` : ""}`;
                   return (
                     <button
                       key={f.id}
@@ -379,9 +380,17 @@ export function ShineComplexWork({
                         <span className="shine-facility-lock" aria-hidden>
                           {f.reason ?? ""}
                         </span>
-                      ) : face?.fail != null ? (
-                        <span className="shine-facility-fail" data-risky={riskyFail(face.fail) ? "true" : undefined} aria-hidden>
-                          <span className="shine-facility-fail-kana">失敗</span> {face.fail}%
+                      ) : face?.odds ? (
+                        // The base roll's upside as arrows; 失敗 only for the risk rest and mood control (check-in 31, F2).
+                        <span className="shine-facility-odds" aria-hidden>
+                          <span className="shine-facility-arrows" data-odds={face.odds}>
+                            {gainArrows(face.odds)}
+                          </span>
+                          {face.fail ? (
+                            <span className="shine-facility-fail" data-risky={riskyFail(face.fail) ? "true" : undefined}>
+                              <span className="shine-facility-fail-kana">失敗</span> {face.fail}%
+                            </span>
+                          ) : null}
                         </span>
                       ) : null}
                     </button>

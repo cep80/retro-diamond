@@ -64,9 +64,11 @@ import { moundBeatSpec, PREPARE_MS_REDUCED } from "@/shine/beats.ts";
 import { cheerLines, crowdStem, ouenSwell } from "@/shine/culture.ts";
 import { featuredParkId, kitAccent } from "@/shine/stage.ts";
 import { parkSrc, portraitMood, portraitSrc, officialFor, sceneBustSrc, sheet } from "@/shine/bible.ts";
+import { finaleDonePicture, finaleWinPicture } from "@/shine/ending-pictures.ts";
+import { decodePicture } from "@/components/preload";
 import { finaleExtrasBug, finaleResultLine, finaleTeamWon, speakGoal } from "@/shine/goals.ts";
 import { dateLabel, turnMeta } from "@/shine/calendar.ts";
-import { HR_STAMP_HOLD_MS, STAMP_DELAY_MS, stillFor, type ActionManifest, type ActionView, type StingFlags } from "@/shine/action-art.ts";
+import { HR_STAMP_HOLD_MS, montageStillAt, montageStills, STAMP_DELAY_MS, stillFor, type ActionManifest, type ActionView, type StingFlags } from "@/shine/action-art.ts";
 import { ARM_GONE_TANK, leadoffWalkPending, moundFieldBeat, type MoundBeat } from "@/shine/pitching.ts";
 import { batterInBox, MoundController, MOUND_LAND_U, moundGutsOn, type MiddleUp, type MoundCue } from "@/shine/mound-controller.ts";
 import { RACE_PACE } from "@/shine/race.ts";
@@ -334,21 +336,33 @@ function MoundFrame({
   // It follows the scoreboard, not her ask (check-in 27, N1): her side won the G1.
   const winReady = game.done && finaleTeamWon(game) && (closed || stage === "idle" || stage === "dead" || stage === "situation");
   const winPlayed = useRef(false);
+  // The moment's hold (and its sting) starts once its pictures are decoded (F4, at most 600 ms).
+  const [winShown, setWinShown] = useState(false);
   useEffect(() => {
     if (!winReady || winPlayed.current) return;
     winPlayed.current = true;
     setCrowdHold(true);
     setCrowdLevel(0.18);
-    sfxFinaleWin();
   }, [winReady]);
+  const onWinReady = useCallback(() => {
+    setWinShown(true);
+    sfxFinaleWin();
+  }, []);
   useEffect(() => {
-    if (!crowdHold) return;
+    if (!crowdHold || !winShown) return;
     const t = window.setTimeout(() => {
       setCrowdHold(false);
       useShine.getState().bumpView();
     }, CHROME_MS.finaleWin);
     return () => window.clearTimeout(t);
-  }, [crowdHold]);
+  }, [crowdHold, winShown]);
+  // The Finale decodes her 優勝 picture and the plate as it starts, so the moment never opens on bare rays.
+  const finaleDate = game.kind === "finale";
+  useEffect(() => {
+    if (!finaleDate) return;
+    for (const met of [true, false]) void decodePicture(finaleWinPicture(run.characterId, met).src);
+    void decodePicture(FINALE_PLATE.src);
+  }, [finaleDate, run.characterId]);
   const endWin = useCallback(() => {
     setCrowdHold(false);
     // Leave the park takes its place under the thumb.
@@ -563,6 +577,7 @@ function MoundFrame({
   const dayChips = doneUp ? moundDayChips(game.events) : [];
   // Under the done panel, her own face (C4): joy when she did it, heartbreak when she didn't.
   const bustMood = game.pgMet ? "elated" : "crushed";
+  const finaleDone = finale && game.done ? finaleDonePicture(run.characterId, game.pgMet, finaleTeamWon(game)) : null;
   // The card after each batter (C8), from her stamp clearing to the next wind-up.
   const cardShown = cardUp !== null && paEnd !== null && cardUp === paEnd.key && !game.done;
   const finalBug = doneUp && !practice;
@@ -602,6 +617,7 @@ function MoundFrame({
   // The middle innings' montage says its newest inning out loud.
   const middleNow = montage ? montage.rows.at(-1) : null;
   const middleSay = middleNow ? `${middleNow.label}. ${middleNow.line}` : null;
+  const montagePic = montage ? montageStillAt(montageStills(manifest?.girls[run.characterId]), montage.rows.length) : null;
 
   return (
     <main
@@ -631,7 +647,9 @@ function MoundFrame({
           onSkip={onEndTitle}
         />
       ) : null}
-      {crowdHold ? <FinaleWinMoment bust={sceneBustSrc(run.characterId, "elated")} name={who.name} jp={who.jp} reduced={reduced} onSkip={endWin} /> : null}
+      {crowdHold ? (
+        <FinaleWinMoment picture={finaleWinPicture(run.characterId, game.pgMet)} name={who.name} jp={who.jp} reduced={reduced} onSkip={endWin} onReady={onWinReady} />
+      ) : null}
       {paused ? (
         <PauseOverlay
           reason={pauseReason}
@@ -676,9 +694,29 @@ function MoundFrame({
           {picking && !game.done ? <SitZone aim={aim} onSit={(c) => mound.setAim(c)} ghost={ghost} label="Glove" /> : null}
         </ActionStage>
         {/* Under the done panel her mood bust fades in over the film (C4). */}
-        {doneUp ? (
+        {/* The middle innings (check-in 31, N10): each inning that lands turns to her next clean
+            still, with a slow push-in; Sol, with no clean still yet, stands her bust on the park. */}
+        {montage && !doneUp ? (
+          <div className={`shine-mound-montage ${reduced ? "is-reduced" : ""}`} data-mound-montage={montagePic ? "still" : "bust"} aria-hidden>
+            {montagePic ? (
+              <img key={`${montagePic}-${montage.rows.length}`} src={montagePic} alt="" draggable={false} className="shine-mound-montage-still" />
+            ) : (
+              <>
+                <img src={park} alt="" draggable={false} className="shine-mound-montage-plate" />
+                <img src={sceneBustSrc(run.characterId, "focused")} alt="" draggable={false} className="shine-mound-montage-bust" />
+              </>
+            )}
+          </div>
+        ) : null}
+        {/* The Finale's done panel is the ending's budget (check-in 31, F1): a clean action still
+            of her when she has one, since 優勝 just showed her face and the ending scene closes on it. */}
+        {doneUp && finaleDone?.kind === "film" ? (
+          <div className={`shine-mound-bust shine-mound-done-film ${reduced ? "is-reduced" : ""}`} data-mound-done-film={run.characterId} aria-hidden>
+            <img src={finaleDone.src} alt="" draggable={false} />
+          </div>
+        ) : doneUp ? (
           <div className={`shine-mound-bust ${reduced ? "is-reduced" : ""}`} data-mound-bust={bustMood} aria-hidden>
-            <img src={sceneBustSrc(run.characterId, bustMood)} alt="" draggable={false} />
+            <img src={finaleDone?.src ?? sceneBustSrc(run.characterId, bustMood)} alt="" draggable={false} />
           </div>
         ) : null}
         {/* Two strikes in a jp park: the 応援団's swell warms the film. */}

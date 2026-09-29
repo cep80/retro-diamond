@@ -152,6 +152,19 @@ The Finale entrance, the 優勝 moment, the Live and the scrapbook are built in 
    - Charting is her in the video booth with a clipboard. Looks is her in the box taking pitches with the bat on her shoulder. Situational is a two-strike drill with the Coach's hand up.
 4. **Plate priority for the endings, restated.** The Finale eve now shows its place tag ("Koi Park Dugout · the night before") over the blurred green field. The order is: `koi-dugout`, `643-shop`, `dorm-lounge`, `luz-truck`, `stars-bullpen-door` (§2, §9.6).
 
+## 11. What the user supplies next, in order (creative director, check-in 30, 2026-09-28)
+
+The code for the climax is now honest and complete: the Finale follows the scoreboard, plays in its own house, and every letter trains. What the screens *show* is now almost the whole remaining gap. Nothing new is added here; this is the order to generate what §1–§10 already specify, ranked by how much each lifts the game per image.
+
+1. **The Finale stadium plate and the Finale at-bat stills (§9.1 / §10.1), 1 + 18 images.** Every Finale at-bat is still painted in the lantern park from Day 2's practice (`ci27v/miki/136`, `138`), under a gold 決勝 scorebug. This is the single biggest "it's the same game as practice" tell left. Flip `FINALE_PLATE_ART_READY` (`src/components/race-ui.ts`) when the plate lands.
+2. **Read-test stills: walk and home run (handoff 2026-09-18).** The "name the beat from pictures" half of the goal can't pass without them. The stranger playtest can run before they land, but walk and HR will be misread.
+3. **The Winning Live stage stills (§9.2), 6 images.** Today the Live is her bust on the skyline plate under CSS rays and confetti (`ci28v/reina/157`, `ci29v/sol/150`). Flip `LIVE_STAGE_ART_READY` (`src/shine/ending.ts`).
+4. **Pitcher kit and logo pass (§10.2), about 10 images.** Reina's `set` (horse on the cap) is on every pitch and every middle-innings row (`ci28v/reina/136–138`). Every Sol mound still has the horse badge and a different kit from her busts (`ci29v/sol/008`, `130` vs `148`). Code routes Reina's set to her windup in the next build, but Sol has no clean still at all.
+5. **Curtain-call bows (§8), 5 images.** The curtain still reads as walking off (`ci28v/reina/154`, `ci29v/sol/147`).
+6. **Place plates, endings first (§10.4):** `koi-dugout`, `643-shop`, `dorm-lounge`, `luz-truck`, `stars-bullpen-door`. Reina's Finale eve still sits on the blurred field under "Koi Park Dugout" (`ci28v/reina/148`).
+7. **Music (§9.4).** The title bed is fixed; the Winning Live song is still her synthesized walk-up (Aoi's and Kira's are square waves, `src/shine/audio.ts:106`, `110`).
+8. **Training-cut stills for the five facilities (§8 + §10.3).** The five facilities shipped (check-in 28), so §10.3 is now live, not conditional.
+
 ## Also still open from earlier
 
 - Generated action stills for the stranger read test: HR and walk still fail (see `design/diamond-shine-action-art-handoff-2026-09-18.md`).

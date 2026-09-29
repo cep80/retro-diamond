@@ -623,6 +623,28 @@ export function isOffModel(src: string): boolean {
   return m[1] === "busts" ? (bad.busts ?? []).includes(m[3] as PortraitMood) : (bad.stills ?? []).includes(m[3]!);
 }
 
+/**
+ * Files on disk that are one picture under two names (checked by md5 and by eye on 2026-09-28):
+ * a pitcher's k and walk stills are the settled frame of her follow-through, and Kira's and
+ * Yuki's neutral busts are byte for byte their focused ones. A picture budget (ending-pictures)
+ * counts them as one. Drop an entry when its file is regenerated.
+ */
+const SAME_ART: Readonly<Record<string, string>> = {
+  "/art/action/reina/k.webp": "/art/action/reina/follow.webp",
+  "/art/action/reina/walk.webp": "/art/action/reina/follow.webp",
+  "/art/action/kira/k.webp": "/art/action/kira/follow.webp",
+  "/art/action/kira/walk.webp": "/art/action/kira/follow.webp",
+  "/art/action/sol/k.webp": "/art/action/sol/follow.webp",
+  "/art/action/sol/walk.webp": "/art/action/sol/follow.webp",
+  "/art/busts/kira/neutral.webp": "/art/busts/kira/focused.webp",
+  "/art/busts/yuki/neutral.webp": "/art/busts/yuki/focused.webp",
+};
+
+/** The picture a path shows: two names for one file share a key. */
+export function artKey(src: string): string {
+  return SAME_ART[src] ?? src;
+}
+
 /** A cut-out bust (it needs a plate behind it), not a painted still. */
 export function isBustSrc(src: string) {
   return src.startsWith("/art/busts/");
@@ -637,6 +659,11 @@ const STILL_STAND_INS: Record<string, readonly string[]> = {
   k: ["follow", "windup"],
   walk: ["follow", "windup"],
 };
+
+/** The clean poses that stand in for one whose file wears a banned mark, nearest first. */
+export function stillStandIns(pose: string): readonly string[] {
+  return STILL_STAND_INS[pose] ?? [];
+}
 
 /**
  * Her painted still for a pose, or the nearest clean one when that file wears a banned mark,

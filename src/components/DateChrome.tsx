@@ -12,6 +12,8 @@
  * it is live: show them at the wind-up, not at the aim.
  */
 import type React from "react";
+import { useEffect, useState } from "react";
+import { picturesReady } from "@/components/preload";
 import { CHROME_MS, FINALE_PLATE, type DateTitle } from "@/components/race-ui";
 import { sheet } from "@/shine/bible.ts";
 import { kitAccent } from "@/shine/stage.ts";
@@ -276,26 +278,70 @@ export function DateTitleCard({
  * A won Finale's moment, as long as a home run's, over the done panel whatever
  * the last pitch was: the stadium behind her joy, gold rays turning around her
  * face, streamers, and 優勝 CHAMPION landing kana by kana. A tap skips it. The
- * caller times it (CHROME_MS.finaleWin); `reduced` sets it all down still.
+ * caller times it (CHROME_MS.finaleWin) from `onReady`; `reduced` sets it all down still.
+ *
+ * Its picture is the ending's budget (ending-pictures finaleWinPicture): her elated bust over the
+ * Finale's plate, or, when the ending scene holds that bust, her biggest joy on film, full bleed.
+ * It shows nothing until the plate and the picture are decoded (check-in 31, F4: it opened on
+ * bare gold rays), and waits no longer than 600 ms (preload.ts). The wait is the same with
+ * reduced motion; only what plays after it is still.
  */
-export function FinaleWinMoment({ bust, name, jp, reduced, onSkip }: { bust: string; name: string; jp: string | null; reduced: boolean; onSkip: () => void }) {
+export function FinaleWinMoment({
+  picture,
+  name,
+  jp,
+  reduced,
+  onSkip,
+  onReady,
+}: {
+  picture: { kind: "film" | "bust"; src: string };
+  name: string;
+  jp: string | null;
+  reduced: boolean;
+  onSkip: () => void;
+  /** The pictures are in (or the cap ran out): the hold starts now. */
+  onReady?: () => void;
+}) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void picturesReady(picture.kind === "bust" ? [FINALE_PLATE.src, picture.src] : [picture.src]).then(() => {
+      if (!live) return;
+      setReady(true);
+      onReady?.();
+    });
+    return () => {
+      live = false;
+    };
+    // Once per showing: the picture doesn't change under it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picture.src]);
   const still = reduced ? "shine-hr-still" : "";
   const hold = { ["--hr-hold" as string]: `${CHROME_MS.finaleWin}ms` } as React.CSSProperties;
+  // Waiting on the pictures: a tap still goes on, but nothing plays on bare rays.
+  if (!ready)
+    return <button type="button" className="shine-finale-win-wait" onClick={onSkip} aria-label={`${name} won the Diamond Finale. Tap to go on.`} data-finale-win="waiting" />;
   return (
     <>
       <button type="button" className={`shine-finale-win ${reduced ? "is-reduced" : ""}`} style={hold} onClick={onSkip} aria-label={`${FINALE_WIN_STAMP.en}. ${name} won the Diamond Finale. Tap to go on.`} data-finale-win="">
-        <img
-          src={FINALE_PLATE.src}
-          alt=""
-          draggable={false}
-          className="shine-finale-win-park"
-          onError={(e) => {
-            const img = e.currentTarget;
-            if (!img.src.endsWith(FINALE_PLATE.fallback)) img.src = FINALE_PLATE.fallback;
-          }}
-          aria-hidden
-        />
-        <img src={bust} alt="" draggable={false} className="shine-finale-win-bust" aria-hidden />
+        {picture.kind === "bust" ? (
+          <>
+            <img
+              src={FINALE_PLATE.src}
+              alt=""
+              draggable={false}
+              className="shine-finale-win-park"
+              onError={(e) => {
+                const img = e.currentTarget;
+                if (!img.src.endsWith(FINALE_PLATE.fallback)) img.src = FINALE_PLATE.fallback;
+              }}
+              aria-hidden
+            />
+            <img src={picture.src} alt="" draggable={false} className="shine-finale-win-bust" data-finale-win-picture="bust" aria-hidden />
+          </>
+        ) : (
+          <img src={picture.src} alt="" draggable={false} className="shine-finale-win-film" data-finale-win-picture="film" aria-hidden />
+        )}
       </button>
       <div className={`shine-hr-bloom ${still}`} style={hold} aria-hidden />
       <div className={`shine-hr-rays ${still}`} style={hold} aria-hidden />

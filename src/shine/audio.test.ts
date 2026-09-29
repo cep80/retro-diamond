@@ -135,6 +135,24 @@ describe("music between games (check-in 22)", () => {
     }
   });
 
+  it("check-in 31 (F9): until the Live song lands, Aoi's and Kira's Live is the lantern bed, not the chiptune walk-up", () => {
+    assert.deepEqual([...audio.LIVE_ON_LANTERN_BED], ["aoi", "kira"]);
+    for (const id of ["aoi", "kira"] as const) {
+      assert.equal(audio.screenMusicUrl({ kind: "live", id }), audio.LIVE_SONG_FILE ?? "/audio/lantern-field.mp3", id);
+      assert.equal(audio.screenMusicUrl({ kind: "theme", id }), `/audio/walk-${id}.mp3`, `${id}'s theme is still hers`);
+    }
+    for (const id of ["reina", "miki", "sol", "yuki"] as const) assert.equal(audio.screenMusicUrl({ kind: "live", id }), audio.LIVE_SONG_FILE ?? `/audio/walk-${id}.mp3`, id);
+    assert.ok(existsSync(join(audioDir, "lantern-field.mp3")));
+  });
+
+  it("check-in 31 (N10): the curtain's clap is two short and one held, inside its bar, and safe without audio", () => {
+    assert.deepEqual([...audio.CLAP_PATTERN_MS], [0, 260, 780]);
+    assert.ok(audio.CLAP_PATTERN_MS.every((ms) => ms < audio.CLAP_BAR_MS));
+    const stop = audio.startClapping();
+    stop();
+    audio.sfxClap();
+  });
+
   it("keys each cue so the same cue across a screen swap is one song, not two", () => {
     assert.equal(audio.screenMusicKey(null), "");
     assert.equal(audio.screenMusicKey({ kind: "complex" }), audio.screenMusicKey({ kind: "complex" }));

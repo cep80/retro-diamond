@@ -11,6 +11,7 @@ import {
   setMasterMuted,
   setMix,
   sfxCowbell,
+  startClapping,
   sfxGain,
   sfxSelect,
   sfxStamp,
@@ -26,6 +27,8 @@ import { NEVER_SOLD, SKUS, cosmeticClasses, previewClaimable } from "@/shine/com
 import { kitAccent } from "@/shine/stage.ts";
 import {
   cheerLines,
+  CURTAIN_CTA,
+  CURTAIN_FLASHES,
   CURTAIN_STAMP,
   curtainCallLine,
   curtainCaption,
@@ -75,14 +78,14 @@ import { lowPointScene, rivalIntro, RIVAL_KINDS, type RivalKind } from "@/shine/
 import { cappedEffect, effectChips, eventChip, eventDue, eventKey, type EventChoice, type TrainingEvent } from "@/shine/training-events.ts";
 import { EVENT_LIBRARY } from "@/shine/training-events-library.ts";
 import { endingChip, endingScene, endingTier } from "@/shine/story-endings.ts";
-import { endingSceneOpenSrc, endingSceneSrc, endingStagePicture, finaleDoneSrcs, finalePostgamePicture, firstPolaroidSrc } from "@/shine/ending-pictures.ts";
+import { endingSceneSrc, endingStagePicture, finaleEnding, firstPolaroidSrc } from "@/shine/ending-pictures.ts";
 
 function isRivalKind(t: string | null): t is RivalKind {
   return t !== null && (RIVAL_KINDS as readonly string[]).includes(t);
 }
 import { ScenePlayer } from "./ScenePlayer";
 import { catchWithCoachScene, memoryLine, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
-import { keepsakeWallLine, letterPage, replayLines, scrapbookBook } from "@/shine/scrapbook.ts";
+import { keepsakeWallLine, letterPage, replayLines, scrapbookBook, type BookEntry } from "@/shine/scrapbook.ts";
 import type { CharacterId, DefiningPa, Highlight, Spark } from "@/shine/types.ts";
 
 /** A layout effect in the browser; the server render has no layout to wait for. */
@@ -905,6 +908,11 @@ function Postgame() {
     const t = window.setTimeout(() => setCanSkipCurtain(true), 18000);
     return () => window.clearTimeout(t);
   }, [last?.type]);
+  // The stands clap in time under the Call's verses (check-in 31, N10); it's sound, so reduced motion keeps it.
+  useEffect(() => {
+    if (!curtain) return;
+    return startClapping();
+  }, [curtain]);
 
   const met = run.pgResults[idx] === "met";
   const seriesFinale = last?.type === "series" ? seriesFinaleLine(run) : null;
@@ -912,18 +920,18 @@ function Postgame() {
   const dateName = last ? dateLabel(turnMeta(last.turn), who.style) : "The game";
   // Never the picture that was just on screen (the done panel's settled still, or the Call's).
   const picture = postgamePicture(run.characterId, met, calledOut);
-  // The Finale's postgame (check-in 27, N4): her face over the Finale's plate in the night's mood,
-  // never the done panel's still or the curtain's.
+  // The Finale's postgame (check-in 31, F1): her face over the Finale's plate in the night's mood,
+  // from the whole ending's picture budget (never 優勝's, the done panel's, the curtain's, the
+  // ending scene's, the stage's or the scrapbook's first page).
   const finalePic =
     last?.type === "finale"
-      ? finalePostgamePicture(
-          run.characterId,
+      ? finaleEnding({
+          id: run.characterId,
           met,
-          run.finaleTeamWon ?? met,
-          calledOut ? [curtainFilmSrc(run.characterId)] : finaleDoneSrcs(run.characterId, met),
-          // The ending scene comes next: never the bust it opens on.
-          [endingSceneOpenSrc(run.characterId, endingRank(run, true, met))],
-        )
+          teamWon: run.finaleTeamWon ?? met,
+          rank: endingRank(run, true, met),
+          book: scrapbookBook(run.characterId, run.highlights, run.pgResults),
+        }).postgame
       : null;
   const film = finalePic?.kind === "film" ? finalePic.src : sceneFilmSrc(run.characterId, picture.mood);
   const bust = finalePic ? (finalePic.kind === "bust" ? finalePic.src : null) : picture.kind === "bust" ? sceneBustSrc(run.characterId, picture.mood) : null;
@@ -941,6 +949,14 @@ function Postgame() {
         <div className="shine-backdrop" aria-hidden>
           <img src={call} alt="" className="shine-after-film shine-curtain-film" data-curtain-film={run.characterId} />
           <div className="shine-after-shade" />
+          {/* Flashbulbs from the stands (check-in 31, N10); none with reduced motion. */}
+          {reduced ? null : (
+            <div className="shine-curtain-flashes">
+              {CURTAIN_FLASHES.map((f, i) => (
+                <span key={i} style={{ ["--x" as string]: `${f.x}%`, ["--y" as string]: `${f.y}%`, ["--d" as string]: `${f.d}ms`, ["--p" as string]: `${f.p}ms` }} />
+              ))}
+            </div>
+          )}
         </div>
         <header className="shine-after-top">
           <p className="episode-chip w-fit">{skin === "otachidai" ? "お立ち台" : "Dugout"}</p>
@@ -974,7 +990,7 @@ function Postgame() {
                 setCurtain(false);
               }}
             >
-              Walk off
+              {CURTAIN_CTA}
             </GoButton>
           ) : (
             <p className="shine-dock-wait">The first Lantern Classic Call is hers.</p>
@@ -1069,7 +1085,21 @@ function YearEnd() {
   // the quiet still of a career that closed early. Never the ending scene's last bust, never the
   // scrapbook's first polaroid.
   const firstPage = card ? firstPolaroidSrc(scrapbookBook(run.characterId, book, run.pgResults)) : null;
-  const stagePic = card
+  // A played Finale spends one picture budget from 優勝 to the scrapbook's first page (check-in 31, F1).
+  const ending =
+    card && finalePlayed
+      ? finaleEnding({
+          id: run.characterId,
+          met: run.pgResults[6] === "met",
+          teamWon: finaleWonRun(run),
+          rank: card.ending,
+          stage,
+          book: scrapbookBook(run.characterId, book, run.pgResults),
+        })
+      : null;
+  const stagePic = ending
+    ? ending.stage
+    : card
     ? endingStagePicture({
         id: run.characterId,
         rank: card.ending,
@@ -1180,6 +1210,7 @@ function YearEnd() {
               <p className="mt-3 max-w-md font-ui text-sm text-gold">{sparkGapLine([card]) ?? `Next: Coach ${nextGirlName(run.characterId)}.`}</p>
               <Scrapbook
                 highlights={book}
+                entries={ending?.book ?? undefined}
                 pgResults={run.pgResults}
                 pa={card.definingPa ?? run.definingPa}
                 who={run.characterId}
@@ -1299,6 +1330,7 @@ function SceneBlock({ scene }: { scene: RelationshipScene }) {
  */
 function Scrapbook({
   highlights,
+  entries: given,
   pgResults,
   pa,
   who,
@@ -1306,6 +1338,8 @@ function Scrapbook({
   finaleClip,
 }: {
   highlights: Highlight[];
+  /** The book as the ending hands it over (its first polaroid off the ending's pictures). */
+  entries?: BookEntry[];
   pgResults?: readonly string[];
   pa: DefiningPa | null | undefined;
   who: CharacterId;
@@ -1313,7 +1347,7 @@ function Scrapbook({
   finaleClip?: string | null;
 }) {
   const [replay, setReplay] = useState(false);
-  const entries = scrapbookBook(who, highlights, pgResults);
+  const entries = given ?? scrapbookBook(who, highlights, pgResults);
   const letter = letterPage(who, finalePlayed);
   const style = sheet(who).style;
   if (!entries.length && !pa && !letter) return null;

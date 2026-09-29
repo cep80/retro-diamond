@@ -253,10 +253,12 @@ export function Scorebug({
         {atBat ? <span className="shine-bug-cell shine-bug-atbat">{atBat.replace(/(\d+) of (\d+)/, "$1 of $2")}</span> : null}
       </span>
       {tagged ? (
+        // The dot stays with the date's name (a no-break space before it) and the goal never splits,
+        // so a wrap reads "DIAMOND FINALE ·" over "Two strikeouts", never a line opening on the dot (check-in 31, F6).
         <span className="shine-bug-tag" aria-hidden>
           {tag}
-          {tag && tagGold ? " · " : null}
-          {tagGold ? <b>{tagGold}</b> : null}
+          {tag && tagGold ? " · " : null}
+          {tagGold ? <b className="shine-bug-tag-gold">{tagGold}</b> : null}
         </span>
       ) : null}
     </div>

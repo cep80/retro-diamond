@@ -6840,3 +6840,181 @@ img.shine-after-film[src^="/art/busts/"] {
     letter-spacing: 0;
   }
 }
+
+/* ===== Gameplay programmer (check-in 31): the 優勝 frame on film and its wait, a pitcher's
+   Finale done panel on film, the middle innings' stills, the curtain's flashbulbs, the scorebug's
+   tag wrap, and the facility tile's gain arrows. ===== */
+
+/* F1 · When the ending scene holds her elated bust, 優勝 plays over her biggest joy on film. */
+.shine-finale-win-film {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+  transform-origin: 50% 40%;
+  animation:
+    shine-hr-shake 420ms steps(2, end) 1,
+    shine-finale-bust 3.2s cubic-bezier(0.2, 0.6, 0.3, 1) forwards;
+}
+/* F4 · Up to 600 ms while her picture decodes: nothing shows, a tap still goes on. */
+.shine-finale-win-wait {
+  position: fixed;
+  inset: 0;
+  z-index: 59;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* F1 · A pitcher's Finale done panel on her clean still, full bleed under the panel. */
+.shine-mound-done-film img {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  aspect-ratio: auto;
+  translate: none;
+  object-fit: cover;
+  object-position: 50% 18%;
+  filter: none;
+}
+
+/* N10 · The middle innings: each inning turns to her next still, with a slow push-in. */
+.shine-mound-montage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.shine-mound-montage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(8 17 39 / 0.25), transparent 35%, rgb(8 17 39 / 0.55));
+}
+.shine-mound-montage-still,
+.shine-mound-montage-plate {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 20%;
+}
+.shine-mound-montage-still {
+  animation:
+    shine-dc-fade 320ms ease-out both,
+    shine-montage-push 2800ms ease-out both;
+}
+.shine-mound-montage-plate {
+  filter: blur(6px) brightness(0.6) saturate(0.9);
+}
+.shine-mound-montage-bust {
+  position: absolute;
+  left: 50%;
+  top: var(--bug-foot, 96px);
+  height: min(calc(100% - var(--bug-foot, 96px) - var(--coach-h, 40%) + 1.5rem), 80dvh);
+  width: auto;
+  max-width: 100%;
+  translate: -50% 0;
+  object-fit: contain;
+  object-position: 50% 0;
+  filter: drop-shadow(0 12px 28px rgb(0 0 0 / 0.45));
+}
+@keyframes shine-montage-push {
+  from {
+    scale: 1;
+  }
+  to {
+    scale: 1.06;
+  }
+}
+.shine-mound-montage.is-reduced .shine-mound-montage-still {
+  animation: shine-dc-fade 160ms ease-out both;
+}
+.shine-race[data-paused] .shine-mound-montage-still {
+  animation-play-state: paused;
+}
+
+/* N10 · Flashbulbs pop in the stands over the Call, each on its own slow beat. */
+.shine-curtain-flashes {
+  position: absolute;
+  inset: 0 0 45% 0;
+  pointer-events: none;
+}
+.shine-curtain-flashes span {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 4.5rem;
+  height: 4.5rem;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 255 255 / 0.95), rgb(255 244 214 / 0.45) 35%, transparent);
+  mix-blend-mode: screen;
+  opacity: 0;
+  animation: shine-flashbulb var(--p, 2600ms) linear var(--d, 0ms) infinite;
+}
+@keyframes shine-flashbulb {
+  0% {
+    opacity: 0;
+  }
+  2% {
+    opacity: 1;
+  }
+  8% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.shine-curtain.is-reduced .shine-curtain-flashes {
+  display: none;
+}
+
+/* F6 · The scorebug's goal moves as one piece: a wrap puts it on the band's second line whole,
+   with the dot left behind on the first. */
+.shine-bug-tag-gold {
+  display: inline-block;
+}
+
+/* F2 · The tile's gain arrows (the base roll's upside), then 失敗 only when rest or mood would help. */
+.shine-facility-odds {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.02rem;
+  margin-top: 0.1rem;
+}
+.shine-facility-arrows {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.08em;
+  color: var(--color-gold);
+}
+.shine-facility-arrows[data-odds="possible"] {
+  color: rgb(245 248 255 / 0.72);
+}
+.shine-facility-odds .shine-facility-fail {
+  margin-top: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shine-finale-win-film {
+    animation: none;
+  }
+  .shine-mound-montage-still {
+    animation: shine-dc-fade 160ms ease-out both;
+  }
+  .shine-curtain-flashes {
+    display: none;
+  }
+}

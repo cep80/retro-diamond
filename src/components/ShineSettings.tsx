@@ -128,7 +128,7 @@ export function ShineSettings() {
             Play
           </h3>
           <p className="shine-set-body mt-2">
-            Tap the spot in the zone where she should look. Press Go. Watch her. She decides the swing. Pitching works the same way. Nothing is timed while the ball is in the air.
+            Tap the box she&apos;s sitting on. Then Go, and watch. She decides the swing. Pitching works the same way. Nothing is timed while the ball is in the air.
           </p>
           {/* A real checkbox under the switch: role="switch" reads it as on or off, the label row is the target. */}
           <label className="shine-set-toggle mt-4">
@@ -271,7 +271,7 @@ export function ShineSettings() {
 const TEACH_CARDS: { title: string; body: string }[] = [
   {
     title: "The at-bat",
-    body: "You are her Coach. Tap the spot in the zone where she should look, press Go, and watch. She decides the swing from who she is and where you told her to look. Nothing is tapped while the ball is in the air.",
+    body: "You are her Coach. Tap the box she's sitting on. Then Go, and watch. She decides the swing from who she is and where you told her to look. Nothing is tapped while the ball is in the air.",
   },
   {
     title: "Where she looks",

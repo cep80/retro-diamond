@@ -97,10 +97,12 @@ describe("race sitelines", () => {
   });
 
   it("says the verb once, on the first pitch", () => {
-    assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 0 }), "Sit the zone under her. Press Go. Watch her.");
+    // Check-in 31 (F7): the first sit names the grid in plain words, not "Sit the zone".
+    assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 0 }), "Tap the box she's sitting on. Then Go, and watch.");
     assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 1 }), null);
     assert.equal(pickPrompt({ phase: "racing", pitchesSeen: 0 }), null);
-    assert.equal(RACE_COPY.firstPick, "Sit the zone under her. Press Go. Watch her.");
+    assert.equal(RACE_COPY.firstPick, "Tap the box she's sitting on. Then Go, and watch.");
+    assert.doesNotMatch(RACE_COPY.firstPick, /zone/i);
   });
 
   it("sends practice back to the complex, not off the mound", () => {

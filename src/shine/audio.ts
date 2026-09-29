@@ -462,6 +462,51 @@ export function stopCrowd() {
   stopCrowdInternal();
 }
 
+/**
+ * The curtain call's clapping (check-in 31, N10): the stands clap her name in time, two short
+ * and one held, under the verses. Each clap is a burst of bright noise; a few hands a beat late
+ * make it a crowd, not a metronome.
+ */
+export const CLAP_PATTERN_MS: readonly number[] = [0, 260, 780];
+export const CLAP_BAR_MS = 1040;
+
+export function sfxClap(vol = 0.09) {
+  if (!ctx || !sfx || !enabled.sfx) return;
+  noise(0.06, vol, 1400);
+  const late = ctx;
+  window.setTimeout(() => {
+    if (ctx === late) noise(0.05, vol * 0.55, 1800);
+  }, 18);
+}
+
+/** Clap the pattern bar after bar until the returned stop is called. Safe without audio. */
+export function startClapping(): () => void {
+  if (typeof window === "undefined") return () => {};
+  const timers = new Set<number>();
+  let live = true;
+  const bar = () => {
+    if (!live) return;
+    for (const at of CLAP_PATTERN_MS) {
+      const id = window.setTimeout(() => {
+        timers.delete(id);
+        if (live) sfxClap(at === CLAP_PATTERN_MS.at(-1) ? 0.11 : 0.08);
+      }, at);
+      timers.add(id);
+    }
+    const next = window.setTimeout(() => {
+      timers.delete(next);
+      bar();
+    }, CLAP_BAR_MS);
+    timers.add(next);
+  };
+  bar();
+  return () => {
+    live = false;
+    for (const id of timers) window.clearTimeout(id);
+    timers.clear();
+  };
+}
+
 export function sfxWhoosh() {
   if (!enabled.sfx) return;
   noise(0.12, 0.07, 900);
@@ -706,12 +751,22 @@ export function screenMusicKey(cue: ScreenMusic | null): string {
   return `${cue.kind}:${cue.id}`;
 }
 
+/**
+ * The walk-ups too chiptune to carry a Winning Live (check-in 30, F9): the girls whose walk-up
+ * voice is the square wave (TRACK_CONFIG; Aoi and Kira). Until the Live song lands
+ * (LIVE_SONG_FILE, the swap point), their Live plays the lantern bed at the Live's gain, with
+ * the fanfare over it, as the title does.
+ */
+export const LIVE_ON_LANTERN_BED: readonly WalkId[] = (["aoi", "reina", "miki", "sol", "kira", "yuki"] as const).filter(
+  (id) => TRACK_CONFIG[`walk-${id}`].type === "square",
+);
+
 /** The file a cue plays. Her theme and her Live are the same walk-up until the Live song lands. */
 export function screenMusicUrl(cue: ScreenMusic): string | null {
   if (cue.kind === "title") return fieldBedUrl("lantern");
   if (cue.kind === "complex") return COMPLEX_THEME_FILE ?? fieldBedUrl("lantern");
   if (cue.kind === "theme") return walkUpUrl(cue.id);
-  if (cue.kind === "live") return LIVE_SONG_FILE ?? walkUpUrl(cue.id);
+  if (cue.kind === "live") return LIVE_SONG_FILE ?? (LIVE_ON_LANTERN_BED.includes(cue.id) ? fieldBedUrl("lantern") : walkUpUrl(cue.id));
   return null;
 }
 

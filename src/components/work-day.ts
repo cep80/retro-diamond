@@ -16,7 +16,8 @@ import {
   stationCost,
   stationSecondary,
   stationStat,
-  workFailPct,
+  workGainOdds,
+  workRiskPct,
 } from "../shine/training.ts";
 import {
   STAT_EN,
@@ -111,8 +112,18 @@ export interface FacilityFace {
   /** The second stat, short (+POW). Null for the Hitch. */
   plus: string | null;
   plusEn: string | null;
-  /** Whole percent the work doesn't take today. Null when the tile is shut. */
+  /**
+   * The 失敗 figure: whole percent of risk today that rest and a good mood would take away
+   * (training workRiskPct; the tile shows it only above 0). Null when the tile is shut.
+   */
   fail: number | null;
+  /** The gain arrows: ↑↑ when the work likely lands today, ↑ when it may (training workGainOdds). Null when shut. */
+  odds: "likely" | "possible" | null;
+}
+
+/** The gain arrows the tile draws for its odds. */
+export function gainArrows(odds: "likely" | "possible"): string {
+  return odds === "likely" ? "↑↑" : "↑";
 }
 
 export function facilityFace(id: StationId, run: TraineeRun, open: boolean): FacilityFace | null {
@@ -124,13 +135,17 @@ export function facilityFace(id: StationId, run: TraineeRun, open: boolean): Fac
     en: STAT_EN[stat],
     plus: sec ? `+${STAT_SHORT[sec]}` : null,
     plusEn: sec ? STAT_EN[sec] : null,
-    fail: open ? workFailPct(run, id) : null,
+    fail: open ? workRiskPct(run, id) : null,
+    odds: open ? workGainOdds(run, id) : null,
   };
 }
 
-/** A fail figure worth a second look (a coin flip or worse; a Fair, fresh morning is 45): it colours coral. */
+/**
+ * A 失敗 figure worth a second look: she's Worn, or Tired and low, or Awful (a fresh morning in
+ * good spirits is 0; Tired alone is about 10). It colours coral.
+ */
 export function riskyFail(pct: number): boolean {
-  return pct >= 50;
+  return pct >= 15;
 }
 
 /**

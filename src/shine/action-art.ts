@@ -11,6 +11,7 @@
  * Film language: design/diamond-shine-pa-film-2026-09-17.md.
  */
 import type { Stage } from "./beats.ts";
+import { isOffModel, stillStandIns } from "./bible.ts";
 import type { DuelCall } from "./duel.ts";
 import type { FieldBeat, SwingKind } from "./featured-game.ts";
 import type { CharacterId } from "./types.ts";
@@ -634,16 +635,54 @@ export function fallbackPose<P extends BatterPose | PitcherPose>(
   return null;
 }
 
+/**
+ * Her still for a pose. A still that wears a banned mark (bible OFF_MODEL_ART) gives way to the
+ * nearest clean pose she has (bible stillStandIns: Reina's set → her windup, her release → her
+ * follow-through), so the mound film never shows the old badge (check-in 31, F3). A girl with no
+ * clean still at all (Sol, until art brief §11.4) keeps hers: a bust on the mound would lose
+ * the pitch. Her montage stands her bust on the park instead (montageStills).
+ */
 export function stillFor(girl: GirlArt | undefined, pose: BatterPose | PitcherPose): ActionStill | null {
   if (!girl) return null;
   const kClip = girl.clips.k;
-  if (pose === "k" && girl.role === "pitcher" && kClip?.poster) {
+  if (pose === "k" && girl.role === "pitcher" && kClip?.poster && !isOffModel(kClip.poster)) {
     const clip = kClip;
     return { url: kClip.poster, bytes: clip.bytes, w: clip.w, h: clip.h, angle: clip.angle };
   }
   const row: readonly (BatterPose | PitcherPose)[] = girl.role === "batter" ? BATTER_POSES : PITCHER_POSES;
+  const stills = girl.stills as Partial<Record<string, ActionStill>>;
+  const clean = Object.keys(stills).filter((k) => !isOffModel(stills[k]!.url));
+  if (clean.length) {
+    for (const p of [pose, ...stillStandIns(pose)]) if (clean.includes(p)) return stills[p] ?? null;
+    const key = fallbackPose(pose, clean, row);
+    if (key) return girl.stills[key] ?? null;
+  }
   const key = fallbackPose(pose, Object.keys(girl.stills), row);
   return key ? (girl.stills[key] ?? null) : null;
+}
+
+/** Her montage poses, one per middle inning in turn. */
+const MONTAGE_POSES: readonly PitcherPose[] = ["set", "windup", "follow"];
+
+/**
+ * The middle innings' pictures (check-in 31, N10): her clean stills for the set, the windup and
+ * the follow-through, each once, in that order (Reina's set stands in as her windup, so she
+ * alternates two). Empty for a girl with no clean still (Sol): the montage stands her bust on the park.
+ */
+export function montageStills(girl: GirlArt | undefined): string[] {
+  if (!girl || girl.role !== "pitcher") return [];
+  const out: string[] = [];
+  for (const p of MONTAGE_POSES) {
+    const s = stillFor(girl, p);
+    if (s && !isOffModel(s.url) && !out.includes(s.url)) out.push(s.url);
+  }
+  return out;
+}
+
+/** The montage's picture once `rows` innings have landed: the next still in turn, or null for her bust. */
+export function montageStillAt(stills: readonly string[], rows: number): string | null {
+  if (!stills.length) return null;
+  return stills[Math.max(0, rows - 1) % stills.length]!;
 }
 
 /** Stills first, then posters, then clips: the lazy per-girl order. */

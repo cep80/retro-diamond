@@ -484,9 +484,34 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
   - **Pitcher letters:** Reina and Sol are at potential 17. Their letters go from about 75% S to 48–61% S with 33–48% A, and ranks don't move.
   - **After:** B-or-A 78–94%, S 3–13%, early close 0–12%.
   - **Checks:** 813 tests pass. Career smoke: Yuki A (stole third at the Series) and Sol A, clean.
+- **Check-in 30 (creative director): about 55%, up from 48%. The stranger playtest is READY with placeholder art.**
+  - **By area:**
+    - Hitter race 57%
+    - Mound 50%
+    - Work 55%
+    - VN 55%
+    - Years 2–3 52%
+    - Finale and payoff 63%
+    - Title 66%
+    - Audio 44%
+  - **N findings:** 9 of 12 closed; N4 and N8 partly; N10 open.
+  - **First minute:** a stranger's first minute (title, select, first scene, Cage, sit, Go, a base hit) takes about 64 s and is clean at both sizes.
+  - **All six girls** have a clean career on the current build.
+  - **Art brief §11:** added, putting the art already specified in priority order.
+- **Check-in 31: the pre-playtest polish (CD check-in 30 list).**
+  - **Pictures:** one picture budget for the whole ending (`finaleEnding`). Hitters never repeat. Pitchers can repeat only on non-adjacent screens until their art lands: Sol has 4 clean pictures, Reina 5 and Kira 7, against the 8 a run needs.
+  - **優勝:** the picture and plate are decoded as the Finale starts, and the win moment holds up to 600 ms for them.
+  - **失敗 N%:** shows only the risk rest and mood can remove, and a fresh morning shows none. The base roll shows as ↑↑ or ↑. Tested against the engine over 3,000 mornings per case.
+  - **Mound:** off-model art is routed out of the film and the montage. Reina's set becomes her windup, her release her follow-through.
+  - **Curtain:** "Take the bow", with flashbulbs and a clap.
+  - **Middle innings:** the montage turns to a new still each inning.
+  - **Scorebug:** its wrap is fixed.
+  - **Day 1:** "Tap the box she's sitting on. Then Go, and watch."
+  - **Winning Live:** plays the lantern bed for the square-wave walk-ups.
+  - **Checks:** 838 tests pass. Career smoke: Kira B and Aoi B, clean.
 - **Open:**
   - balance, above band: the pitchers' Lantern and Series (91–94%), hitters' Stretch and Series (87–94%), and Aoi's Lantern at 46%
-  - `datePark("finale")` is still her home park (park factors and crowd sound); the stadium shows only in the chrome
+  - the Finale at-bat stills: `datePark("finale")` is the neutral `diamond` park since check-in 27, but the at-bat pictures are still the lantern park (art brief §11.1)
   - a production deploy (needs the user's go-ahead)
   - the stranger playtest (M6, a user step)
   - server-side receipt verification before any real purchase
