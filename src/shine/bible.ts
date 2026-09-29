@@ -136,7 +136,7 @@ const RAW_BIBLE: RawSheet[] = [
       { turn: 28, verb: "Pitch 5+ innings, ≤3 ER", sgVerb: "Escape a jam", resultsPg: false },
       { turn: 33, verb: "Consecutive strikeouts", sgVerb: "Strike out 2", resultsPg: false },
       { turn: 50, verb: "Escape a bases-loaded jam", sgVerb: "Strike out 3", resultsPg: false },
-      { turn: 55, verb: "Quality start", sgVerb: "Walk nobody", resultsPg: false },
+      { turn: 55, verb: "Quality start", sgVerb: "Strike out 3", resultsPg: false },
       { turn: 60, verb: "Clean ninth", sgVerb: "Record 3 outs", resultsPg: false },
     ],
   },
@@ -157,7 +157,7 @@ const RAW_BIBLE: RawSheet[] = [
     yearStills: {
       rookie: "Gate. She worked the 3-2 before it was called.",
       classic: "Lantern Classic. 0-for-4. Two fouls on the last at-bat. The cowbell did not stop.",
-      senior: "Finale. Three pitches in the at-bat. Every one counted.",
+      senior: "Finale. Five trips. She never went down on strikes.",
     },
     unique: "Cowbell Single. Never Quit (◆).",
     walkUp: "Cowbell",
@@ -177,7 +177,8 @@ const RAW_BIBLE: RawSheet[] = [
       { turn: 33, verb: "Work a 3-2 count", sgVerb: "Reach base", resultsPg: false },
       { turn: 50, verb: "Make contact on a breaking ball", sgVerb: "Work a full count", resultsPg: false },
       { turn: 55, verb: "Come to bat with runners on", sgVerb: "See 3 pitches in one PA", resultsPg: false },
-      { turn: 60, verb: "See 3 pitches in one PA", sgVerb: "See 2 pitches in one PA", resultsPg: false },
+      // Check-in 25: the Finale asks what First Light asked, over a whole G1 (not three pitches in one look).
+      { turn: 60, verb: "Don't strike out", sgVerb: "See 2 pitches in one PA", resultsPg: false },
     ],
   },
   {
@@ -294,12 +295,15 @@ const RAW_BIBLE: RawSheet[] = [
     potential: 16,
     official: [
       { turn: 5, verb: "Reach base once", sgVerb: "See 4 pitches", resultsPg: false },
-      { turn: 18, verb: "Steal a base", sgVerb: "Reach base once", resultsPg: false },
+      // "Reach base", not "Reach base once": the smaller ask resolves to `reach`, a Support Goal id
+      // (`reach-once` is a Primary Goal and could never be met as the smaller ask; check-in 25).
+      { turn: 18, verb: "Steal a base", sgVerb: "Reach base", resultsPg: false },
       { turn: 28, verb: "Score from first on a single", sgVerb: "Reach base", resultsPg: false },
       { turn: 33, verb: "Reach base twice", sgVerb: "Reach base", resultsPg: false },
-      { turn: 50, verb: "Steal in the 7th+", sgVerb: "Draw a walk", resultsPg: false },
-      { turn: 55, verb: "Score without a hit", sgVerb: "Reach base once", resultsPg: false },
-      { turn: 60, verb: "Steal with RISP", sgVerb: "Work a full count", resultsPg: false },
+      // Check-in 25: the runner-in-scoring-position steal comes first, the late steal is the Finale.
+      { turn: 50, verb: "Steal with RISP", sgVerb: "Draw a walk", resultsPg: false },
+      { turn: 55, verb: "Score without a hit", sgVerb: "Reach base", resultsPg: false },
+      { turn: 60, verb: "Steal in the 7th+", sgVerb: "Work a full count", resultsPg: false },
     ],
   },
 ];
@@ -370,12 +374,12 @@ export function yearStillLine(
       return "The Stretch, Skyline Series, and Diamond Finale. She came up short in all three.";
     }
     const bits: string[] = [];
-    if (stretch === "met") bits.push("The Stretch. She stole late.");
-    else if (stretch === "missed") bits.push("The Stretch. The late steal didn't come.");
+    if (stretch === "met") bits.push("The Stretch. She stole with a runner in scoring position.");
+    else if (stretch === "missed") bits.push("The Stretch. The steal with a runner in scoring position didn't come.");
     if (series === "met") bits.push("Skyline Series. She scored without a hit.");
     else if (series === "missed") bits.push("Skyline Series. The run without a hit didn't come.");
-    if (finale === "met") bits.push("Diamond Finale. She stole with a runner in scoring position.");
-    else if (finale === "missed") bits.push("Diamond Finale. The steal with a runner in scoring position didn't come.");
+    if (finale === "met") bits.push("Diamond Finale. She stole late.");
+    else if (finale === "missed") bits.push("Diamond Finale. The late steal didn't come.");
     if (bits.length) return bits.join(" ");
   }
   if (id === "aoi" && turn <= 20) {
@@ -497,7 +501,7 @@ const SENIOR_STILLS: Partial<Record<CharacterId, SeniorStills>> = {
   miki: {
     stretch: { met: "She put the bat on a breaking ball.", missed: "The breaking ball never met the bat." },
     series: { met: "She came up with runners on.", missed: "She never came up with runners on." },
-    finale: { met: "Three pitches in the at-bat. Every one counted.", missed: "The at-bat never got to three pitches." },
+    finale: { met: "Five trips. She never went down on strikes.", missed: "She went down on strikes." },
     none: "Senior year. Gary still clanks.",
   },
   sol: {
@@ -514,9 +518,9 @@ const SENIOR_STILLS: Partial<Record<CharacterId, SeniorStills>> = {
   },
   // Yuki's own branch in yearStillLine says the games she sat; this is her line before any.
   yuki: {
-    stretch: { met: "She stole late.", missed: "The late steal didn't come." },
+    stretch: { met: "She stole with a runner in scoring position.", missed: "The steal with a runner in scoring position didn't come." },
     series: { met: "She scored without a hit.", missed: "The run without a hit didn't come." },
-    finale: { met: "She stole with a runner in scoring position.", missed: "The steal with a runner in scoring position didn't come." },
+    finale: { met: "She stole late.", missed: "The late steal didn't come." },
     none: "Senior year. Already stretched. Already on her way.",
   },
 };

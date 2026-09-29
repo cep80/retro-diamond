@@ -388,8 +388,8 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "The bases were empty every time she came up, and she said cool about it twice.",
     },
     finale: {
-      met: "She made them throw her three pitches in one at-bat, and then she made them sick of her.",
-      missed: "They got her early every time, and she still looked for you before she looked at Section 4.",
+      met: "She never went down on strikes all night, and she made them sick of her.",
+      missed: "They got her on strikes, and she still looked for you before she looked at Section 4.",
     },
   },
   sol: {
@@ -470,15 +470,15 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "She came up short, and she ate a strawberry shaved ice so fast it hurt.",
     },
     stretch: {
-      met: "She stole late, and Kira owed her another juice.",
-      missed: "The late steal didn't come, and Kira won the juice bet for once and didn't look happy about it.",
+      met: "She stole with a runner in scoring position, and Kira owed her another juice.",
+      missed: "The scoring-position steal didn't come, and Kira won the juice bet for once and didn't look happy about it.",
     },
     series: {
       met: "She scored without a hit, and Reina looked at her once, too late.",
       missed: "She never got around without a hit, and the lighthouse box stayed shut on the trunk.",
     },
     finale: {
-      met: "She stole with a runner in scoring position and was gone before you finished saying go.",
+      met: "She stole late and was gone before you finished saying go.",
       missed: "The steal didn't come, and that night she did a thousand-piece puzzle, slowly.",
     },
   },
@@ -492,7 +492,7 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
 export const FINALE_WON_SHORT_CAPTIONS: Record<CharacterId, string> = {
   aoi: "They won, and she still circled the at-bat with runners on that she wanted back.",
   reina: "They won, and she went over the ninth in the ruled notebook anyway, one row at a time.",
-  miki: "They won, and Section 4 rang both cowbells for a look that never got to three pitches.",
+  miki: "They won, and Section 4 rang both cowbells anyway, strikeout and all.",
   sol: "They won, and she held up one finger to Luz in row one. She'd wanted two.",
   kira: "They won, and she took the seat in the dugout without the save she'd come for.",
   yuki: "They won, and she told you the steal would have been there if you'd said go sooner.",

@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
+import { goalIdForVerb, isHitterPg, isHitterSg, isPitcherPg, isPitcherSg } from "./goals.ts";
 import { BIBLE, careerFilmSrc, endingClipSrc, endingFilmSrc, endingMood, isPitcherStyle, mikiResultsPgCount, portraitFile, portraitSrc, practiceSrc, sceneFilmSrc, sheet, workMood, yearStillLine } from "./bible.ts";
 
 const CHAR = join(dirname(fileURLToPath(import.meta.url)), "../../public/characters");
@@ -44,7 +45,36 @@ describe("1.0 bible", () => {
       assert.doesNotMatch(g.verb, /get a hit/i);
       assert.doesNotMatch(g.verb, /risp/i);
     }
-    assert.equal(sheet("miki").official[6]?.verb, "See 3 pitches in one PA");
+    // Check-in 25: her Finale asks what her First Light asked, the exact same verb.
+    assert.equal(sheet("miki").official[6]?.verb, "Don't strike out");
+    assert.equal(sheet("miki").official[6]?.verb, sheet("miki").official[1]?.verb);
+    assert.equal(sheet("miki").official[6]?.pgId, "no-k");
+  });
+
+  it("gives every official date a smaller ask the game can actually meet (check-in 25 regression)", () => {
+    // "Reach base once" resolved to reach-once, a Primary Goal, so hitterSupportMet always said no.
+    for (const c of BIBLE) {
+      const pitcher = isPitcherStyle(c.style);
+      for (const g of c.official) {
+        const where = `${c.id} T${g.turn} "${g.sgVerb}" → ${g.sgId}`;
+        assert.equal(goalIdForVerb(g.sgVerb), g.sgId, where);
+        assert.ok(pitcher ? isPitcherSg(g.sgId) : isHitterSg(g.sgId), where);
+        assert.ok(pitcher ? isPitcherPg(g.pgId) : isHitterPg(g.pgId), `${c.id} T${g.turn} "${g.verb}" → ${g.pgId}`);
+      }
+    }
+    assert.deepEqual(
+      sheet("yuki").official.filter((g) => g.turn === 18 || g.turn === 55).map((g) => g.sgId),
+      ["reach", "reach"],
+    );
+  });
+
+  it("pins the check-in 25 asks: Yuki's steals swapped, Reina's Series smaller ask", () => {
+    const yuki = sheet("yuki").official;
+    assert.equal(yuki.find((g) => g.turn === 50)?.pgId, "steal-risp");
+    assert.equal(yuki.find((g) => g.turn === 50)?.sgVerb, "Draw a walk");
+    assert.equal(yuki.find((g) => g.turn === 60)?.pgId, "steal-late");
+    assert.equal(yuki.find((g) => g.turn === 60)?.sgVerb, "Work a full count");
+    assert.equal(sheet("reina").official.find((g) => g.turn === 55)?.sgId, "k-3");
   });
 
   it("puts letters and a process SG on every official date", () => {
@@ -134,7 +164,11 @@ describe("1.0 bible", () => {
     );
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "met", "met", "met"]),
-      "The Stretch. She stole late. Skyline Series. She scored without a hit. Diamond Finale. She stole with a runner in scoring position.",
+      "The Stretch. She stole with a runner in scoring position. Skyline Series. She scored without a hit. Diamond Finale. She stole late.",
+    );
+    assert.equal(
+      yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "missed", "met", "missed"]),
+      "The Stretch. The steal with a runner in scoring position didn't come. Skyline Series. She scored without a hit. Diamond Finale. The late steal didn't come.",
     );
     assert.doesNotMatch(yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "met", "missed", "pending"]), /Stolen third|ninth/);
   });

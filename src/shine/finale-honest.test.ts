@@ -188,7 +188,9 @@ describe("senior stills say only what she met (check-in 24)", () => {
     kira: [/got four outs/, /A clean ninth\. Nobody scored/, /never got home/],
     reina: [/She got out of it/, /Three runs or fewer/, /Nobody scored/],
     sol: [/She got out of it/, /Three runs or fewer/, /Two punchouts in the ninth/],
-    miki: [/She put the bat on a breaking ball/, /She came up with runners on/, /Three pitches in the at-bat/],
+    miki: [/She put the bat on a breaking ball/, /She came up with runners on/, /She never went down on strikes/],
+    // Check-in 25: the scoring-position steal is her Stretch, the late steal her Finale.
+    yuki: [/She stole with a runner in scoring position/, /She scored without a hit/, /She stole late/],
     aoi: [/She hit late/, /Three quality at-bats/, /A hit with runners on/],
   };
 

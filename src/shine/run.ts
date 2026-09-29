@@ -564,7 +564,8 @@ export function applyGameResult(
     if ((box.ks ?? 0) > 0) run.fans = Math.max(0, run.fans - 1);
     if (box.won) run.fans = Math.min(100, run.fans + 1);
   } else if (reached) {
-    run.fans = Math.min(100, run.fans + 2);
+    // A pitcher's date has no hit or walk to count, so a good outing is worth more (check-in 25).
+    run.fans = Math.min(100, run.fans + (pitcher ? 4 : 2));
   }
   if (hr) run.fans = Math.min(100, run.fans + 5);
   if (lastSpurt) run.fans = Math.min(100, run.fans + 3);

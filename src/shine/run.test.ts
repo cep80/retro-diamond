@@ -194,7 +194,12 @@ describe("Aoi Rookie calendar", () => {
     lantern.turn = 28;
     applyGameResult(lantern, "lantern-classic", true, false, true, false, false, undefined, { walks: 1 });
     assert.equal(lantern.walks, 1);
-    assert.equal(lantern.fans, 7);
+    // A pitcher's reached outing pays +4 fans (check-in 25), not a hitter's +2.
+    assert.equal(lantern.fans, 9);
+    const hitter = newRun("aoi");
+    hitter.turn = 28;
+    applyGameResult(hitter, "lantern-classic", true, false, true, false, false, undefined, { walks: 1 });
+    assert.equal(hitter.fans, 7, "a hitter's reached date without a box score stays +2");
   });
 
   it("pays a walk +1 and a K −1, never treating a walk as a hit", () => {

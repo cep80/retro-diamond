@@ -83,8 +83,9 @@ describe("style sit and miss read", () => {
     game.kind = "gate";
     game.maxPaPitches = 3;
     assert.equal(plateRead(run, game), "Three pitches in one look. The Gate opened.");
+    // Check-in 25: the Finale no longer asks for three pitches, so a Finale look reads like any other.
     game.kind = "finale";
-    assert.equal(plateRead(run, game), "Diamond Finale. Three pitches in one look.");
+    assert.equal(plateRead(run, game), "Three pitches in one look.");
     game.kind = "gate";
     game.pgMet = false;
     game.maxPaPitches = 2;
@@ -94,6 +95,10 @@ describe("style sit and miss read", () => {
     game.pgMet = true;
     game.struckOut = false;
     assert.equal(plateRead(run, game), "She didn't strike out.");
+    // Her Finale asks the same, over the whole game (check-in 25).
+    game.kind = "finale";
+    assert.equal(plateRead(run, game), "Diamond Finale. She never went down on strikes.");
+    game.kind = "first-light";
     game.pgMet = false;
     game.struckOut = true;
     assert.equal(plateRead(run, game), "She struck out.");
@@ -143,8 +148,9 @@ describe("style sit and miss read", () => {
     assert.equal(plateRead(run, game), "The run without a hit didn't come.");
     game.events.push({ t: "score", pa: 1, runner: "self", from: 1, on: "single", selfReachedBy: "hit" });
     assert.equal(plateRead(run, game), "She scored. It was on a hit.");
+    // Check-in 25: the late steal is her Finale ask, the scoring-position steal her Stretch.
     game.pgId = "steal-late";
-    game.kind = "stretch";
+    game.kind = "finale";
     game.pgMet = true;
     assert.equal(plateRead(run, game), "She stole late.");
     game.pgMet = false;
@@ -153,7 +159,7 @@ describe("style sit and miss read", () => {
     game.events.push({ t: "stealResult", pa: 1, from: 1, safe: true, inning: 4, risp: false });
     assert.equal(plateRead(run, game), "She stole. It was early.");
     game.pgId = "steal-risp";
-    game.kind = "finale";
+    game.kind = "stretch";
     game.pgMet = true;
     assert.equal(plateRead(run, game), "She stole with a runner in scoring position.");
     game.pgMet = false;

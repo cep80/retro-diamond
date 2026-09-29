@@ -408,6 +408,31 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
   - **Senior stills follow the results** for Aoi, Reina, Miki, Sol and Kira (the Stretch, Series and Finale), with a neutral line before any senior date. Tested over all 27 combinations × 3 scoreboard states.
   - Tests: 756 pass. Career smoke for Reina and Sol reaches the Clubhouse clean; Sol hit the won-short case and read it right.
   - **Open (narrative):** a hitter whose ask is met while her side trails still gets 優勝 / CHAMPION.
+- **Check-in 25 (game designer): the whole career, simulated.**
+  - Setup: 300 careers per girl × three policies (even, Coach-following, strong), through the engine's own run, training, events and dates (`scratchpad/ci25/career.sim.mts`).
+  - **Found:**
+    - A bug: Yuki's "Reach base once" smaller asks (First Light, Series) mapped to a goal that isn't a smaller ask, so they could never be met. She closed early 59% of the time.
+    - Pitchers couldn't reach S (0%). They got +2 fans per date and topped out around 70 against S's 80.
+    - Miki's Finale ("see 3 pitches") was met 95%+, so she was the easiest A and her never-quit ending almost never played.
+    - Reina closed early 17% of the time.
+    - The hitters' 5-at-bat Finale moved Aoi from 35% to 46% met.
+  - **Applied:**
+    - Yuki's smaller asks → "Reach base", with a regression test that every official date's smaller ask can be met.
+    - Yuki's Stretch and Finale steals swapped.
+    - Miki's Finale → "Don't strike out" ("Five trips. She never went down on strikes.").
+    - Reina's Series smaller ask → "Strike out 3".
+    - Pitchers get +4 fans per date.
+    - S needs 75 fans.
+    - Copy updated in the stills, scrapbook and stage.
+  - **After, Coach policy:**
+    - B or A (or Miki's never-quit) 79–92% for every girl.
+    - S 1–11% (Kira up to 15% for a strong player).
+    - Early closes 8–16%.
+    - Miki's never-quit is back at about 33%.
+  - **UI career smoke:** Yuki reached B and Miki A, both clean.
+  - **Open (balance):**
+    - Aoi's Finale ("Hit with RISP", her 1981 story) is met 39–46%.
+    - Yuki's Lantern ("Score from first") is met 10%. The designer measured "Steal a base" at 61–73%, but it repeats her First Light verb.
 - **Open:**
   - `datePark("finale")` is still her home park (park factors and crowd sound); the stadium shows only in the chrome
   - a production deploy (needs the user's go-ahead)

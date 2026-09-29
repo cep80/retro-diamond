@@ -85,10 +85,11 @@ describe("featured game", () => {
     assert.ok(game.runnerLine);
   });
 
-  it("sits a runner on third when Yuki reaches at the Finale", () => {
+  it("sits a runner on third when Yuki reaches at The Stretch", () => {
+    // Check-in 25: the scoring-position steal is her Stretch ask now, the late steal her Finale.
     const run = newRun("yuki");
-    run.turn = 60;
-    const game = startFeaturedGame(run, "finale");
+    run.turn = 50;
+    const game = startFeaturedGame(run, "stretch");
     assert.equal(game.pgId, "steal-risp");
     setBases(game, { first: false, second: false, third: false });
     game.count = { balls: 3, strikes: 0 };
@@ -99,12 +100,15 @@ describe("featured game", () => {
     assert.equal(steal.risp, true);
   });
 
-  it("opens The Stretch in the seventh so a steal can be late", () => {
+  it("opens The Stretch in the seventh, and her Finale's late steal gets three late trips", () => {
     const run = newRun("yuki");
     run.turn = 50;
     const game = startFeaturedGame(run, "stretch");
-    assert.equal(game.pgId, "steal-late");
     assert.equal(game.inning, 7);
+    run.turn = 60;
+    const finale = startFeaturedGame(run, "finale");
+    assert.equal(finale.pgId, "steal-late");
+    assert.deepEqual([3, 4, 5].map((pa) => inningForPa("finale", pa)), [7, 8, 9]);
     assert.equal(inningForPa("stretch", 1), 7);
     assert.equal(inningForPa("stretch", 2), 8);
     assert.equal(inningForPa("stretch", 3), 9);
@@ -388,16 +392,24 @@ describe("featured game", () => {
     assert.equal(game.sgMet, true);
   });
 
-  it("meets Miki Finale without RISP", () => {
+  it("holds Miki's Finale ask until she goes down on strikes, without RISP (check-in 25: Don't strike out)", () => {
     const run = newRun("miki");
     run.turn = 60;
     const game = startFeaturedGame(run, "finale");
+    assert.equal(game.pgId, "no-k");
+    assert.equal(game.pgMet, true, "no-k starts met: she hasn't struck out yet");
     game.risp = false;
     const heart = { type: "fastball" as const, loc: cellLoc({ row: 1, col: 1 }), inZone: true, speed: 2, recognizeAt: 0, family: "hard" as const };
-    resolveTake(run, game, heart);
-    resolveTake(run, game, heart);
-    resolveTake(run, game, heart);
+    const away = { type: "fastball" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const };
+    resolveTake(run, game, away);
+    resolveTake(run, game, away);
+    assert.equal(game.sgMet, true, "two pitches in one look is the smaller ask");
     assert.equal(game.pgMet, true);
+    resolveTake(run, game, heart);
+    resolveTake(run, game, heart);
+    resolveTake(run, game, heart);
+    assert.equal(game.struckOut, true);
+    assert.equal(game.pgMet, false);
     assert.equal(game.sgMet, true);
   });
 

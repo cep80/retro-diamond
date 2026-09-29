@@ -90,7 +90,7 @@ export function postgameLeaveLabel(run: TraineeRun, finale: boolean) {
  * The fan counts each rank asks for. endingRank and endingWhy both read these.
  * neverQuit is A's bar on purpose: never-quit is A-level devotion without the A-level year.
  */
-export const RANK_FANS = { S: 80, A: 60, C: 20, neverQuit: 60 } as const;
+export const RANK_FANS = { S: 75, A: 60, C: 20, neverQuit: 60 } as const;
 
 /**
  * A career ends one of two ways: it closes early at the second big date lost

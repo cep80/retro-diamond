@@ -74,10 +74,9 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
   if (game.pgMet) {
     if (game.pgId === "see-3-one-pa") {
       if (game.kind === "gate") return "Three pitches in one look. The Gate opened.";
-      if (game.kind === "finale") return "Diamond Finale. Three pitches in one look.";
       return "Three pitches in one look.";
     }
-    if (game.pgId === "no-k") return "She didn't strike out.";
+    if (game.pgId === "no-k") return game.kind === "finale" ? "Diamond Finale. She never went down on strikes." : "She didn't strike out.";
     if (game.pgId === "foul-two-strike") return "She fouled one off with two strikes and stayed alive.";
     if (game.pgId === "full-count") return "She took it to 3-2.";
     if (game.pgId === "contact-breaking") return "She put the bat on a breaking ball.";
