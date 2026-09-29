@@ -509,6 +509,17 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
   - **Day 1:** "Tap the box she's sitting on. Then Go, and watch."
   - **Winning Live:** plays the lantern bed for the square-wave walk-ups.
   - **Checks:** 838 tests pass. Career smoke: Kira B and Aoi B, clean.
+- **Playtest fixes (`d5d4b47`), after the user's first preview playtest:**
+  - **Music overlap:** the walk-up looped under the whole date and now plays once. Each song slot stops its old source before starting.
+  - **The `removeChild` crash:** the clip preloader appended videos to the React-owned `<body>`, and page translation was allowed. Videos are now detached, and the page is marked notranslate.
+  - **Manifest CORS on the protected preview:** the link now sends credentials.
+  - The preview was redeployed.
+- **Handoff (2026-09-29):**
+  - `design/handoff/README.md` holds the goal, state, loop, how-to, traps and next steps.
+  - `design/handoff/builder-brief.md` is the shared builder rules.
+  - `design/handoff/creative-director-ci30-findings.md` is the latest review.
+  - `scripts/sims/career.sim.mts` is the balance sim, now running against the repo's `src/shine`.
+  - `AGENTS.md` and `CLAUDE.md` at the root point to it all.
 - **Open:**
   - balance, above band: the pitchers' Lantern and Series (91–94%), hitters' Stretch and Series (87–94%), and Aoi's Lantern at 46%
   - the Finale at-bat stills: `datePark("finale")` is the neutral `diamond` park since check-in 27, but the at-bat pictures are still the lantern park (art brief §11.1)
