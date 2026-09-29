@@ -6688,3 +6688,155 @@ img.shine-after-film[src^="/art/busts/"] {
 .shine-live :is(.shine-live-lights, .shine-live-confetti, .shine-after-shade) {
   z-index: 2;
 }
+
+/* ===== Check-in 28 (facilities builder): five facilities in one row, the rest tiles in a
+   second row under them. A facility names what it raises (kana over English), what it carries
+   over to (+POW), and how often it doesn't take today (失敗 12%). A shut facility stays in the
+   row, dimmed, and says when it opens. ===== */
+.shine-work-facilities {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+.shine-work .shine-station.shine-facility {
+  align-items: center;
+  gap: 0;
+  min-height: 2.75rem;
+  padding: 0.42rem 0.2rem 0.36rem;
+  border-radius: 0.8rem;
+  text-align: center;
+}
+/* The facility names its kana in the open; no watermark under the fail figure. */
+.shine-work .shine-station.shine-facility::before {
+  content: none;
+}
+.shine-facility-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: rgb(245 248 255 / 0.72);
+}
+.shine-facility-kana {
+  max-width: 100%;
+  overflow: hidden;
+  margin-top: 0.1rem;
+  font-family: var(--font-jp);
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--station-color, var(--color-gold)) 70%, var(--color-cream));
+}
+.shine-facility-stat {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-cream);
+}
+.shine-facility-plus {
+  margin-top: 0.08rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: rgb(255 209 102 / 0.14);
+  font-family: var(--font-display);
+  font-size: 0.52rem;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  color: var(--color-gold);
+}
+.shine-facility-fail,
+.shine-facility-lock {
+  margin-top: 0.14rem;
+  font-family: var(--font-ui);
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+  color: rgb(245 248 255 / 0.78);
+}
+.shine-facility-fail-kana {
+  font-family: var(--font-jp);
+  font-size: 0.52rem;
+  color: rgb(245 248 255 / 0.6);
+}
+.shine-facility-fail[data-risky] {
+  color: var(--color-coral);
+}
+.shine-facility-lock {
+  white-space: normal;
+  font-size: 0.5rem;
+  color: rgb(245 248 255 / 0.85);
+}
+.shine-work .shine-station.shine-facility[data-locked] {
+  opacity: 0.66;
+  filter: grayscale(0.7);
+  border-style: dashed;
+}
+.shine-work .shine-station.shine-facility[data-locked]::after {
+  background: rgb(245 248 255 / 0.25);
+}
+.shine-work .shine-station.shine-facility[data-strain] .shine-facility-kana {
+  color: var(--color-coral);
+}
+/* The rest row: short tiles, their kana left to the watermark. */
+.shine-work-tiles[data-row="rest"] {
+  gap: 0.35rem;
+}
+.shine-work-tiles[data-row="rest"] .shine-station {
+  min-height: 2.75rem;
+  padding: 0.38rem 0.55rem 0.36rem;
+  border-radius: 0.8rem;
+}
+.shine-work-tiles[data-row="rest"] .shine-station-kana {
+  display: none;
+}
+.shine-work-tiles[data-row="rest"] .shine-station-label {
+  font-size: 0.7rem;
+}
+.shine-work-tiles[data-row="rest"] .shine-station-lift {
+  margin-top: 0.08rem;
+  font-size: 0.6rem;
+}
+.shine-work-tiles[data-row="rest"] .shine-station::before {
+  font-size: 1.5rem;
+}
+/* The stack is a little tighter now there are two rows. */
+.shine-work-stack:has(.shine-work-facilities) {
+  gap: 0.4rem;
+}
+/* Reduced motion (the app's setting; the media query is in section 3's block): the tiles don't lift or press. */
+.shine-root[data-reduced-motion="true"] .shine-work .shine-station {
+  transition: none;
+}
+.shine-root[data-reduced-motion="true"] .shine-work .shine-station:is(:hover, :active):not(:disabled) {
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .shine-work .shine-station:hover:not(:disabled) {
+    transform: none;
+  }
+}
+@media (max-width: 370px) {
+  .shine-facility-name {
+    font-size: 0.52rem;
+    letter-spacing: 0.03em;
+  }
+  .shine-facility-stat {
+    font-size: 0.58rem;
+    letter-spacing: 0;
+  }
+}

@@ -16,7 +16,7 @@ export type TurnType =
 
 export type TraineeStatKey = "contact" | "speed" | "eye" | "power" | "guts" | "wit" | "stuff" | "control" | "stamina";
 
-export type StationId = "cage" | "poles" | "looks" | "bp" | "situational" | "charting" | "off-day" | "treatment" | "clubhouse" | "side" | "hitch";
+export type StationId = "cage" | "poles" | "looks" | "bp" | "situational" | "charting" | "off-day" | "treatment" | "clubhouse" | "side" | "spots" | "hitch";
 
 export type TrainOutcome = "success" | "bonus" | "fail" | "bad-fail" | "game" | "event" | "scene";
 
@@ -136,6 +136,10 @@ export interface LastWork {
   from: number;
   to: number;
   outcome: TrainOutcome;
+  /** Where she worked (check-in 28). Optional: an old save's lastWork has none. */
+  station?: StationId;
+  /** The facility's second stat, when the work carried over to it. Optional for old saves. */
+  sec?: { stat: TraineeStatKey; from: number; to: number };
 }
 
 /** Observable plate tendencies a rival is allowed to read. Never hidden counters. */

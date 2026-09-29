@@ -47,6 +47,7 @@ import {
   type CharacterId,
   type CoachMemory,
   type DefiningPa,
+  type LastWork,
   type Spark,
   type StationId,
   type Tells,
@@ -60,19 +61,20 @@ import {
   TRAIN_STANDARD_ENERGY,
   TREATMENT_ENERGY,
   RECREATION_ENERGY,
+  SECONDARY_CHANCE,
   applyEnergy,
   applyMood,
-  applyPity,
   canTrain,
   pgMissMoodDrop,
   injuryRisk,
   applyInjury,
   clampStat,
-  isMentorSpecialty,
   rollTrainOutcome,
+  stationCost,
+  stationSecondary,
   stationStat,
-  successChance,
   treatmentAvailable,
+  workChance,
 } from "./training.ts";
 
 export const AOI_START = {
@@ -145,12 +147,6 @@ export function remember(run: TraineeRun, memory: CoachMemory) {
 
 export function newAoiRun(): TraineeRun {
   return newRun("aoi");
-}
-
-function mentorRel(run: TraineeRun, stat: TraineeStatKey): number {
-  if (stat === "contact") return run.mentorARelationship;
-  if (stat === "speed") return run.mentorBRelationship;
-  return 0;
 }
 
 function bumpMentor(run: TraineeRun, stat: TraineeStatKey, amount: number) {
@@ -276,7 +272,7 @@ export function resolveMentorEvent(run: TraineeRun) {
   advance(run);
 }
 
-export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensive = false, sideFocus: "stuff" | "control" = "stuff") {
+export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensive = false) {
   run.lastBreakthrough = null;
   run.lastInjury = false;
   run.lastTrainingSpark = null;
@@ -292,7 +288,7 @@ export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensi
     resolveCatchWithCoach(run);
     return;
   }
-  const stat = stationStat(station, sideFocus, run);
+  const stat = stationStat(station, run);
   if (!stat) return;
   if (!canTrain(run.energy)) {
     resolveTreatment(run);
@@ -310,20 +306,10 @@ export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensi
   }
   const before = run.stats[stat];
   const r = makeRng(hashId(`${run.rngSeed}|t${run.turn}|${station}`));
-  const specialty = isMentorSpecialty(station, stat);
-  let chance = successChance(
-    run.stats[stat],
-    run.potential,
-    run.mood,
-    run.energy,
-    specialty,
-    mentorRel(run, stat),
-    station === "hitch",
-  );
-  chance = applyPity(chance, run, stat);
+  const chance = workChance(run, station)!;
   const outcome = rollTrainOutcome(r, chance, run.mood);
 
-  applyEnergy(run, intensive ? TRAIN_INTENSIVE_ENERGY : TRAIN_STANDARD_ENERGY);
+  applyEnergy(run, intensive ? TRAIN_INTENSIVE_ENERGY : stationCost(station));
   if (outcome === "bad-fail") {
     applyEnergy(run, -2);
     applyMood(run, -0.5);
@@ -340,6 +326,20 @@ export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensi
     bumpMentor(run, stat, 5);
     maybeBreakthrough(run);
     run.bonusSuccesses += 1;
+  }
+
+  // The facility's second stat (check-in 28): a bonus always carries a point over, a success one
+  // time in four. Its own roll, so the main roll and the injury roll are what they always were.
+  const secStat = stationSecondary(station, run);
+  let sec: LastWork["sec"];
+  if (secStat && secStat !== stat && (outcome === "success" || outcome === "bonus")) {
+    const rs = makeRng(hashId(`${run.rngSeed}|t${run.turn}|${station}|sec`));
+    const lands = outcome === "bonus" || rs() < SECONDARY_CHANCE;
+    if (lands) {
+      const from = run.stats[secStat];
+      run.stats[secStat] = clampStat(from + 1, run.potential);
+      sec = { stat: secStat, from, to: run.stats[secStat] };
+    }
   }
 
   if (worn > 0 && r() < worn) applyInjury(run);
@@ -362,7 +362,7 @@ export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensi
     const coach = isPitcherStyle(sheet(run.characterId).style) ? "Bullpen Coach" : "Cage Coach";
     remember(run, { kind: "breakthrough", turn: run.turn, note: `${coach} stayed late, and her ${run.lastBreakthrough} jumped.`, warm: true });
   }
-  run.lastWork = { stat, turn: run.turn, from: before, to: run.stats[stat], outcome };
+  run.lastWork = { stat, turn: run.turn, from: before, to: run.stats[stat], outcome, station, ...(sec ? { sec } : {}) };
 
   logTurn(run, stat, outcome);
   awardTrainingSpark(run);

@@ -190,16 +190,42 @@ describe("style sit and miss read", () => {
     assert.equal(plateRead(run, game), "In play. She didn't reach.");
   });
 
-  it("does not call a 3-hit Finale a loss when the RISP goal stayed open", () => {
+  it("does not call a 3-hit Finale a loss when the run-home ask stayed open (check-in 28: Drive in a run)", () => {
     const run = newRun("aoi");
     run.turn = 60;
     const game = startFeaturedGame(run, "finale");
+    assert.equal(game.pgId, "rbi");
     game.pgMet = false;
     game.hits = 3;
     game.scoreDiff = 1;
     game.lastContact = "hit";
     const line = plateRead(run, game);
-    assert.equal(line, "She hit. The runners weren't on.");
+    assert.equal(line, "She hit. No run came home on her.");
     assert.doesNotMatch(line, /loss/i);
+    game.sgMet = true;
+    assert.equal(plateRead(run, game), "She hit. No run came home on her. The walk held.");
+    game.hits = 0;
+    game.walks = 2;
+    assert.equal(plateRead(run, game), "She walked. No run came home on her.");
+    game.pgMet = true;
+    assert.equal(plateRead(run, game), "Diamond Finale. A run came home on her.");
+  });
+
+  it("keeps Aoi's Lantern and Finale reads apart: the same ask, two nights", () => {
+    const run = newRun("aoi");
+    run.turn = 28;
+    const lantern = startFeaturedGame(run, "lantern-classic");
+    assert.equal(lantern.pgId, "rbi");
+    lantern.pgMet = true;
+    const lanternRead = plateRead(run, lantern);
+    assert.equal(lanternRead, "A run scored on her ball.");
+    lantern.pgMet = false;
+    lantern.hits = 1;
+    lantern.sgMet = true;
+    assert.equal(plateRead(run, lantern), "She hit. No run came home on her.", "the Lantern's smaller ask isn't a walk");
+    run.turn = 60;
+    const finale = startFeaturedGame(run, "finale");
+    finale.pgMet = true;
+    assert.notEqual(plateRead(run, finale), lanternRead);
   });
 });

@@ -7,7 +7,9 @@
  * anyway. A Finale ending never states a result (a B can be a Finale won
  * on too few fans), and no ending says a count the game didn't guarantee.
  * Every ending answers her promise scene. None of them punish her for the
- * rank; the short ones are the quietest, not the saddest.
+ * rank; the short ones are the quietest, not the saddest. An S or A needs her ask met, not
+ * the game won: when her side lost the Finale, the top-tier scene swaps the lines that claimed
+ * the top (SHOW_LOST, check-in 28).
  */
 import type { SceneLike, Beat } from "./story.ts";
 import type { CharacterId, EndingRank } from "./types.ts";
@@ -105,7 +107,7 @@ const ENDINGS: Record<CharacterId, Scenes> = {
         { who: "miki", text: "Week one-fifty-seven, Coach. That's a week nobody was paying you for.", mood: "elated" },
         { who: "miki", text: "Top of the Academy. North won something. I'm going to go stand behind the dugout for a minute.", mood: "crushed" },
         { who: "narration", text: "Gary clanks on by himself. She laughs so hard she has to sit back down." },
-        { who: "miki", text: "Cool. That's him saying congratulations. So. Melon pan? I brought two. In case.", mood: "elated" },
+        { who: "miki", text: "Cool. That's Gary saying congratulations. So. Melon pan? I brought two. In case.", mood: "elated" },
       ],
     },
     finale: {
@@ -252,15 +254,50 @@ const NEVER_QUIT: { place: string; beats: Beat[] } = {
   ],
 };
 
-export function endingScene(id: CharacterId, rank: EndingRank): SceneLike {
+/**
+ * An S or A whose side lost the Finale (check-in 28): the same top-tier scene, with each line
+ * that claimed the top or a won night swapped for one true to "she did what she came for, and
+ * they lost the game". Keyed by beat index; the speaker and mood stay, so the scene's pictures
+ * (ending-pictures.ts reads its first and last busts) are the same either way.
+ */
+const SHOW_LOST: Record<CharacterId, Record<number, string>> = {
+  aoi: {
+    1: "Koi lost last night, and she's up there with a paint can anyway. She won't tell me what it's for. It's been twenty minutes.",
+  },
+  reina: {
+    3: "Inside the back cover there's new ink, in her handwriting: My part. Checked. Under it, smaller, the final score.",
+    4: "Everyone at the top walks people. I told you that the first day. Koi lost last night, and I did my part to the pitch. Both of those are allowed.",
+  },
+  miki: {
+    3: "I never went down on strikes. North lost anyway. I'm going to go stand behind the dugout for a minute.",
+    5: "Cool. That's Gary saying good game. So. Melon pan? I brought two. In case.",
+  },
+  sol: {
+    3: "The Dusters lost it, Jefe. I did my part anyway, with all four. You gave me a reason every time. Out loud.",
+  },
+  kira: {
+    1: "Partner. We lost the Finale. I held up my end anyway, so the deal's done. Here's the problem.",
+  },
+  yuki: {
+    1: "We lost. I got my steal anyway. …Don't say it. I know. Let me be fast about the good part first.",
+  },
+};
+
+/**
+ * Her ending scene. `teamWon` is the Finale's scoreboard (ending.ts finaleWonRun): an S or A
+ * whose side lost it plays her top-tier scene with the SHOW_LOST lines. Omitted, it reads as won.
+ */
+export function endingScene(id: CharacterId, rank: EndingRank, teamWon = true): SceneLike {
   const tier = endingTier(id, rank);
   const scene = tier === "never-quit" ? NEVER_QUIT : ENDINGS[id][tier];
-  return { id: `ending-${tier}`, girl: id, place: scene.place, beats: scene.beats };
+  const swap = tier === "show" && !teamWon ? SHOW_LOST[id] : null;
+  const beats = swap ? scene.beats.map((b, i) => (swap[i] ? { ...b, text: swap[i]! } : b)) : scene.beats;
+  return { id: `ending-${tier}`, girl: id, place: scene.place, beats };
 }
 
-/** The chip over the scene. */
-export function endingChip(tier: EndingTier): string {
-  if (tier === "show") return "The top of the Academy";
+/** The chip over the scene. An S or A whose side lost the Finale doesn't claim the top. */
+export function endingChip(tier: EndingTier, teamWon = true): string {
+  if (tier === "show") return teamWon ? "The top of the Academy" : "What she came for";
   if (tier === "short") return "The last day";
   return "After the Finale";
 }

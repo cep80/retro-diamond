@@ -4,15 +4,20 @@ import { newRun, resolveForcedCage, resolveTrainingTurn } from "../shine/run.ts"
 import { FORBIDDEN_IN_STORY } from "../shine/story.ts";
 import { MOOD_LABELS, REST_ENERGY, TREATMENT_ENERGY, canTrain, moodLevel } from "../shine/training.ts";
 import type { CharacterId, StationId, TraineeRun } from "../shine/types.ts";
+import { facilityRow, restRowIds } from "../shine/store.ts";
+import { workFailPct } from "../shine/training.ts";
 import {
   allMorningLines,
   energyTone,
+  facilityFace,
   herMorning,
   isTrainingTile,
   moodFace,
   morningAfter,
   morningGain,
+  morningGains,
   orderTiles,
+  riskyFail,
   stationLifts,
   statStrip,
   strained,
@@ -42,12 +47,63 @@ describe("the work grid", () => {
     }
   });
 
-  it("runs day 1's single tile full width, four two across, five three across with a wide lead", () => {
+  it("runs day 1's single tile full width, and the rest row in one line up to four", () => {
     assert.deepEqual(tileGrid(1), { cols: 1, leadSpan: 1 });
-    assert.deepEqual(tileGrid(4), { cols: 2, leadSpan: 1 });
+    assert.deepEqual(tileGrid(2), { cols: 2, leadSpan: 1 });
+    assert.deepEqual(tileGrid(3), { cols: 3, leadSpan: 1 });
+    assert.deepEqual(tileGrid(4), { cols: 4, leadSpan: 1 });
     assert.deepEqual(tileGrid(5), { cols: 3, leadSpan: 2 });
     assert.deepEqual(tileGrid(6), { cols: 3, leadSpan: 1 });
-    assert.deepEqual(tileGrid(3), { cols: 2, leadSpan: 2 });
+  });
+
+  it("shows her role's five facilities in a row, the shut ones saying when they open", () => {
+    const day1 = newRun("aoi");
+    assert.deepEqual(facilityRow(day1), [{ id: "cage", open: true }]);
+    assert.deepEqual(facilityRow(newRun("sol")), [{ id: "side", open: true }]);
+    const rookie = workRun("aoi", 80, 2, "row-r");
+    rookie.turn = 3;
+    const r3 = facilityRow(rookie);
+    assert.deepEqual(r3.map((f) => f.id), ["cage", "bp", "looks", "poles", "situational"]);
+    assert.deepEqual(r3.filter((f) => f.open).map((f) => f.id), ["cage", "poles"]);
+    assert.equal(r3.find((f) => f.id === "looks")!.reason, "After the Gate");
+    assert.equal(r3.find((f) => f.id === "bp")!.reason, "After First Light");
+    rookie.turn = 9;
+    assert.deepEqual(facilityRow(rookie).filter((f) => f.open).map((f) => f.id), ["cage", "looks", "poles"]);
+    const senior = workRun("reina", 80, 2, "row-s");
+    senior.turn = 45;
+    const s = facilityRow(senior);
+    assert.deepEqual(s.map((f) => f.id), ["side", "spots", "poles", "situational", "charting"]);
+    assert.ok(s.every((f) => f.open && !f.reason));
+    // A game day has no work on it.
+    senior.turn = 50;
+    assert.deepEqual(facilityRow(senior), []);
+  });
+
+  it("puts only rest tiles (and the Hitch) in the second row", () => {
+    const run = workRun("aoi", 30, 2, "rest-row");
+    run.parentId = "sol";
+    assert.deepEqual(restRowIds(run), ["off-day", "treatment", "clubhouse", "hitch"]);
+    run.energy = 80;
+    run.catchWithCoachYear = run.year;
+    assert.deepEqual(restRowIds(run), ["off-day", "hitch"]);
+  });
+
+  it("gives each open facility a face: what it raises, what it carries over to, the fail figure", () => {
+    const run = workRun("miki", 80, 2, "face");
+    run.turn = 25;
+    const f = facilityFace("cage", run, true)!;
+    assert.equal(f.en, "Contact");
+    assert.equal(f.plus, "+POW");
+    assert.equal(f.plusEn, "Power");
+    assert.equal(f.fail, workFailPct(run, "cage"));
+    assert.ok(f.fail! > 0 && f.fail! < 100);
+    assert.equal(facilityFace("cage", run, false)!.fail, null, "a shut tile shows no odds");
+    const p = workRun("kira", 80, 2, "face-p");
+    assert.equal(facilityFace("spots", p, true)!.en, "Control");
+    assert.equal(facilityFace("spots", p, true)!.plus, "+WIT");
+    assert.equal(facilityFace("off-day", p, true), null);
+    assert.equal(riskyFail(45), false, "a Fair, fresh morning is not a warning");
+    assert.equal(riskyFail(50), true);
   });
 
   it("gives the lead to the Trainer's room only on an empty day", () => {
@@ -60,31 +116,43 @@ describe("the work grid", () => {
 
 describe("what each tile trains", () => {
   it("names the skill the station works, as the engine does", () => {
-    assert.deepEqual(stationLifts("cage").map((l) => l.en), ["Contact"]);
-    assert.deepEqual(stationLifts("poles").map((l) => l.en), ["Speed"]);
-    assert.deepEqual(stationLifts("side").map((l) => l.en), ["Stuff"]);
+    assert.deepEqual(stationLifts("cage").map((l) => `${l.en}${l.up}`), ["Contact2", "Power1"]);
+    assert.deepEqual(stationLifts("poles").map((l) => `${l.en}${l.up}`), ["Speed2", "Power1"]);
+    assert.deepEqual(stationLifts("side").map((l) => l.en), ["Stuff", "Stamina"]);
+    assert.deepEqual(stationLifts("spots").map((l) => l.en), ["Control", "Wit"]);
     assert.equal(stationLifts("cage")[0]!.kana, "コンタクト");
     assert.equal(stationLifts("poles")[0]!.kana, "スピード");
     // Every training tile, on a run where the Hitch has a parent to carry. A failed roll moves
-    // nothing, so each pairing retries seeds until the work lands, and then exactly the named skill moves.
-    const stations: StationId[] = ["cage", "poles", "looks", "bp", "situational", "charting", "side", "hitch"];
+    // nothing, so each pairing retries seeds until the work lands. Then the named main skill moves,
+    // and the only other thing that can move is the named second one, never a skill the tile didn't name.
+    const stations: StationId[] = ["cage", "poles", "looks", "bp", "situational", "charting", "side", "spots", "hitch"];
+    let secMoves = 0;
     for (const girl of GIRLS) {
       for (const station of stations) {
         let landed = false;
         for (let seed = 0; seed < 40 && !landed; seed++) {
           const run = workRun(girl, 80, 3, `lift-${girl}-${station}-${seed}`);
           if (station === "hitch") run.parentId = girl === "sol" ? "yuki" : "sol";
-          const named = stationLifts(station, run)[0]!.en.toLowerCase();
+          const lifts = stationLifts(station, run);
+          const named = lifts[0]!.en.toLowerCase();
+          const second = lifts[1]?.en.toLowerCase();
           const before = { ...run.stats };
           resolveTrainingTurn(run, station);
           const moved = (Object.keys(before) as (keyof typeof before)[]).filter((k) => run.stats[k] !== before[k]);
           if (!moved.length) continue;
           landed = true;
-          assert.deepEqual(moved, [named], `${girl} ${station}`);
+          assert.ok(moved.includes(named as (typeof moved)[number]), `${girl} ${station}: ${named} didn't move (${moved})`);
+          const others = moved.filter((k) => k !== named);
+          if (others.length) {
+            assert.deepEqual(others, [second], `${girl} ${station}: moved ${moved}, named ${named} + ${second}`);
+            assert.equal(run.lastWork!.sec!.stat, second);
+            secMoves++;
+          } else assert.equal(run.lastWork!.sec, undefined);
         }
         assert.ok(landed, `${girl} ${station} never landed in 40 mornings`);
       }
     }
+    assert.ok(secMoves > 0, "some first landing carried a point over");
   });
 
   it("gives two arrows to the bigger lift of the two rest tiles", () => {
@@ -135,8 +203,9 @@ describe("the gauge and the mood", () => {
 
 describe("the morning after", () => {
   it("says what yesterday's work did, and nothing it didn't", () => {
-    const stations: StationId[] = ["cage", "poles", "side", "off-day", "treatment", "clubhouse"];
+    const stations: StationId[] = ["cage", "poles", "side", "spots", "looks", "charting", "off-day", "treatment", "clubhouse"];
     let checked = 0;
+    let secChips = 0;
     for (const girl of GIRLS) {
       for (const station of stations) {
         for (const energy of [0, 5, 20, 25, 39, 40, 55, 69, 70, 76, 80, 95, 100]) {
@@ -161,6 +230,7 @@ describe("the morning after", () => {
               const chip = texts.find((t) => t.startsWith(`${name} +`));
               if (d > 0) assert.equal(chip, `${name} +${d}`, `${girl} ${station}: ${k} rose ${d}`);
               else assert.equal(chip, undefined);
+              if (d > 0 && run.lastWork?.sec?.stat === k) secChips++;
             }
             const lvBefore = moodLevel(before.mood);
             const lvAfter = moodLevel(run.mood);
@@ -174,6 +244,32 @@ describe("the morning after", () => {
       }
     }
     assert.ok(checked > 1000);
+    assert.ok(secChips > 20, `the second stat's chip showed ${secChips} times`);
+  });
+
+  it("says the second stat's point as its own chip, and the reading work's lighter cost", () => {
+    for (let seed = 0; seed < 200; seed++) {
+      const run = workRun("aoi", 80, 3, `sec-chip-${seed}`);
+      resolveTrainingTurn(run, "looks");
+      if (!run.lastWork?.sec) continue;
+      const texts = morningAfter(run).chips.map((c) => c.text);
+      assert.ok(texts.some((t) => /^Eye \+[12]$/.test(t)), texts.join());
+      assert.ok(texts.includes("Contact +1"), texts.join());
+      assert.ok(texts.includes("Energy −5"), texts.join());
+      const cells = statStrip(run, false).filter((c) => c.land);
+      assert.deepEqual(cells.map((c) => c.stat).sort(), ["contact", "eye"]);
+      return;
+    }
+    assert.fail("Live looks never carried over in 200 mornings");
+  });
+
+  it("an old save's lastWork (no station, no second stat) still reads", () => {
+    const run = workRun("reina", 80, 2, "old-save");
+    run.calendar.push({ turn: 8, type: "work", statTrained: "control", outcome: "success", energyAfter: 80, moodAfter: 2 });
+    run.lastWork = { stat: "control", turn: 8, from: 6, to: 7, outcome: "success" };
+    run.stats.control = 7;
+    assert.deepEqual(morningAfter(run).chips.map((c) => c.text), ["Control +1", "Energy −10"]);
+    assert.deepEqual(morningGains(run).map((g) => g.stat), ["control"]);
   });
 
   it("reads the first day's forced session like any other work", () => {
@@ -242,11 +338,12 @@ describe("the stat strip", () => {
             quiet++;
             continue;
           }
-          assert.equal(landing.length, 1);
-          const c = landing[0]!;
-          assert.equal(c.stat, moved[0]!.stat);
-          assert.equal(c.land!.from, before[c.stat] / 20);
-          assert.equal(c.land!.gradeFrom, statGrade(before[c.stat]));
+          // The main stat and, when the facility carried one over, the second: each bar from where it was.
+          assert.deepEqual(landing.map((c) => c.stat), moved.map((c) => c.stat));
+          for (const c of landing) {
+            assert.equal(c.land!.from, before[c.stat] / 20);
+            assert.equal(c.land!.gradeFrom, statGrade(before[c.stat]));
+          }
           filled++;
         }
       }

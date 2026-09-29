@@ -1,4 +1,4 @@
-import type { StyleId, TurnType } from "./types.ts";
+import type { StationId, StyleId, TurnType } from "./types.ts";
 
 export interface CalendarBeat {
   turn: number;
@@ -62,8 +62,26 @@ export function looksUnlocked(turn: number) {
   return turn > 5;
 }
 
+/** On-field BP and Situational open after First Light (check-in 28's ladder). */
 export function powerStationsUnlocked(turn: number) {
-  return turn >= 6;
+  return turn > 18;
+}
+
+/**
+ * The facility ladder, by day alone (the role check lives with the tiles). Her first tile and
+ * the Poles are open from her first free morning; the reading work (Live looks, Spot work,
+ * Charting) after the Gate; On-field BP and Situational after First Light. A shut facility
+ * says when it opens. Rest tiles and the Hitch keep their own rules: this says open.
+ */
+export function facilityUnlock(station: StationId, turn: number): { open: boolean; reason?: string } {
+  if (station === "looks" || station === "spots" || station === "charting") {
+    return looksUnlocked(turn) ? { open: true } : { open: false, reason: "After the Gate" };
+  }
+  if (station === "bp" || station === "situational") {
+    return powerStationsUnlocked(turn) ? { open: true } : { open: false, reason: "After First Light" };
+  }
+  if (station === "poles") return turn >= 3 ? { open: true } : { open: false, reason: "From Day 3" };
+  return { open: true };
 }
 
 export function clubhouseOpen(turn: number) {

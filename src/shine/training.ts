@@ -33,6 +33,7 @@ export function stationStaff(station: StationId, run?: TraineeRun): string | nul
   if (station === "situational") return "The skip is calling two-strike.";
   if (station === "charting") return "The booth left the last-3 column.";
   if (station === "side") return "Bullpen catcher. Mitt up.";
+  if (station === "spots") return "Flat ground. The catcher sets up on the corners.";
   if (station === "hitch") return run?.parentId ? "She's throwing her mother's BP." : null;
   return null;
 }
@@ -47,21 +48,104 @@ export function hitchStat(run: TraineeRun): TraineeStatKey {
   return "contact";
 }
 
-export function stationStat(station: StationId, sideFocus: "stuff" | "control" = "stuff", run?: TraineeRun): TraineeStatKey | null {
+function pitcherRun(run?: Pick<TraineeRun, "characterId">): boolean {
+  return !!run && isPitcherStyle(sheet(run.characterId).style);
+}
+
+/** What a station works. The Bullpen throws for Stuff; Spot work (check-in 28) is where Control lives. */
+export function stationStat(station: StationId, run?: TraineeRun): TraineeStatKey | null {
   if (station === "hitch") return run ? hitchStat(run) : "contact";
   if (station === "cage") return "contact";
   // A pitcher runs the poles for the arm's tank (the Coach's "Stamina work"); a hitter for her first step.
-  if (station === "poles") return run && isPitcherStyle(sheet(run.characterId).style) ? "stamina" : "speed";
+  if (station === "poles") return pitcherRun(run) ? "stamina" : "speed";
   if (station === "looks") return "eye";
   if (station === "bp") return "power";
   if (station === "situational") return "guts";
   if (station === "charting") return "wit";
-  if (station === "side") return sideFocus;
+  if (station === "side") return "stuff";
+  if (station === "spots") return "control";
   return null;
+}
+
+/** The five facilities on each side of the complex, in the row's order. */
+export const HITTER_FACILITIES: readonly StationId[] = ["cage", "bp", "looks", "poles", "situational"];
+export const PITCHER_FACILITIES: readonly StationId[] = ["side", "spots", "poles", "situational", "charting"];
+
+export function roleFacilities(pitcher: boolean): readonly StationId[] {
+  return pitcher ? PITCHER_FACILITIES : HITTER_FACILITIES;
+}
+
+/**
+ * What a facility carries over to (check-in 28): a good day at the Cage puts a little into her
+ * Power too. Null for the Hitch and the rest tiles.
+ */
+export function stationSecondary(station: StationId, run?: Pick<TraineeRun, "characterId">): TraineeStatKey | null {
+  const pitcher = pitcherRun(run);
+  switch (station) {
+    case "cage":
+      return "power";
+    case "poles":
+      return pitcher ? "guts" : "power";
+    case "looks":
+      return "contact";
+    case "bp":
+      return "guts";
+    case "situational":
+      return pitcher ? "control" : "eye";
+    case "side":
+      return "stamina";
+    case "spots":
+      return "wit";
+    case "charting":
+      return "stuff";
+    default:
+      return null;
+  }
+}
+
+/** A success carries a point to the second stat this often; a bonus always does. */
+export const SECONDARY_CHANCE = 0.25;
+
+/** Reading work (Live looks, Charting) is light on the legs. */
+export const LIGHT_WORK_ENERGY = -5;
+
+/** What a morning at the station costs her, before a bad day's extra 2. */
+export function stationCost(station: StationId | undefined): number {
+  if (station === "looks" || station === "charting") return LIGHT_WORK_ENERGY;
+  return TRAIN_STANDARD_ENERGY;
 }
 
 export function isMentorSpecialty(station: StationId, stat: TraineeStatKey): boolean {
   return (station === "cage" && stat === "contact") || (station === "poles" && stat === "speed");
+}
+
+/** The Cage Coach and the Poles Coach: how well she knows them. */
+export function mentorRel(run: Pick<TraineeRun, "mentorARelationship" | "mentorBRelationship">, stat: TraineeStatKey): number {
+  if (stat === "contact") return run.mentorARelationship;
+  if (stat === "speed") return run.mentorBRelationship;
+  return 0;
+}
+
+/** The chance a morning at the station lands, exactly as the work rolls it (pity included). */
+export function workChance(run: TraineeRun, station: StationId): number | null {
+  const stat = stationStat(station, run);
+  if (!stat) return null;
+  const chance = successChance(
+    run.stats[stat],
+    run.potential,
+    run.mood,
+    run.energy,
+    isMentorSpecialty(station, stat),
+    mentorRel(run, stat),
+    station === "hitch",
+  );
+  return applyPity(chance, run, stat);
+}
+
+/** The tile's 失敗 figure: how often the work doesn't take today, in whole percent. */
+export function workFailPct(run: TraineeRun, station: StationId): number | null {
+  const c = workChance(run, station);
+  return c === null ? null : Math.round(100 * (1 - c));
 }
 
 export function successChance(

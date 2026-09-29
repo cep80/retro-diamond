@@ -461,7 +461,22 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
   - **Open:**
     - For an A or S whose side lost, the ending scene still claims "the top" (story-endings.ts).
     - The N3 five facilities: the designer's plan is at `scratchpad/ci27/design/APPLY.md`.
+- **Check-in 28: five facilities per role, the honest ending after a lost Finale, and Aoi's Finale ask.**
+  - **Five facilities, applied from the designer's plan:**
+    - Hitters: Cage, Poles, Live looks, BP, Situational. Pitchers: Bullpen (Stuff only), Poles, a new Spot work 制球 (Control), Charting, Situational.
+    - Each has a main stat and a secondary: +1 on a bonus and on 25% of successes, from its own roll.
+    - Live looks and Charting cost −5 energy.
+    - The ladder: the reading work opens after the Gate, BP and Situational after First Light. Locked tiles show their reason.
+    - The tile shows 失敗 N%. The Coach follows a ceiling rule (her lowest open letter near a cap); no-k → Contact; rbi gets its own advice.
+    - pitching.ts reads her trained Wit, and the Guts window covers aces too.
+    - Layout: a 5-across facility row, with the rest tiles in one row below.
+    - Sim, Coach policy: B-or-A 71–89%, S 4–18%, early close 0–16%. Aoi is at S 18% and B-or-A 71%, a watch item from her new Finale ask. Every letter now moves over a career.
+  - **Narrative:**
+    - An S or A whose side lost the Finale gets her top-tier scene with the lines that claimed the top swapped (`SHOW_LOST`, chip "What she came for"). The selection runs through finaleWonRun.
+    - Aoi's Finale → "Drive in a run" (rbi): "A run came home on her." Her Finale eve now sets up the '81 double play with runners on.
+  - **Checks:** 807 tests pass. Career smoke: Aoi S and Reina B, clean. The smoke's copy check now allows 失敗 N% and "first-to-third".
 - **Open:**
+  - balance: Aoi's S at 18%, Yuki's Lantern at 10%, Yuki's Series at 11–22%, pitchers saturating at S letters
   - `datePark("finale")` is still her home park (park factors and crowd sound); the stadium shows only in the chrome
   - a production deploy (needs the user's go-ahead)
   - the stranger playtest (M6, a user step)

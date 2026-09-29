@@ -170,7 +170,7 @@ export function endingWhy(run: TraineeRun, rank: EndingRank, finalePlayed: boole
 
 /** Her quote when she got what she came for and her side lost the Finale (check-in 27, N1). */
 export const FINALE_LOST_MET_QUOTES: Record<TraineeRun["characterId"], string> = {
-  aoi: "Diamond Finale. She reached, like she said she would. Koi lost it, and she wrote the score down anyway, in pencil.",
+  aoi: "Diamond Finale. A run came home on her. Koi lost it, and she wrote the score down anyway, in pencil.",
   reina: "Diamond Finale. She did her part to the pitch. They lost it, and she wrote the count in the notebook anyway.",
   miki: "Diamond Finale. Five trips, never on strikes. They lost, and Section 4 rang the cowbell anyway.",
   sol: "Diamond Finale. She did her part. They lost it, and she iced the arm on Luz's tailgate and called it ninety-six.",

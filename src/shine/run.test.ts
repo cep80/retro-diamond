@@ -16,7 +16,7 @@ import {
   resolveYearScene,
   resolveYearStart,
 } from "./run.ts";
-import { lastTrainLine, liveStationIds } from "./store.ts";
+import { lastTrainLine, liveStationIds, stationOpen, useShine } from "./store.ts";
 
 describe("Aoi Rookie calendar", () => {
   it("is twenty turns with First Light on 18 and Gate on 5", () => {
@@ -477,14 +477,40 @@ describe("complex live tiles", () => {
     assert.equal(ids.includes("cage"), false);
   });
 
-  it("after the Gate the campus stays a few tiles, not the board", () => {
+  it("opens the facilities on the ladder: the reading work after the Gate, BP and Situational after First Light", () => {
     const run = newAoiRun();
-    run.turn = 6;
+    run.turn = 3;
     run.energy = 80;
     assert.deepEqual(liveStationIds(run), ["cage", "poles", "off-day", "clubhouse"]);
-    assert.equal(liveStationIds(run).includes("looks"), false);
-    assert.equal(liveStationIds(run).includes("charting"), false);
-    assert.equal(liveStationIds(run).includes("bp"), false);
-    assert.equal(liveStationIds(run).includes("situational"), false);
+    run.turn = 6;
+    assert.deepEqual(liveStationIds(run), ["cage", "looks", "poles", "off-day", "clubhouse"]);
+    assert.equal(liveStationIds(run).includes("charting"), false, "Charting is the pitchers' film room");
+    assert.equal(stationOpen(run, "bp").reason, "After First Light");
+    run.turn = 19;
+    assert.deepEqual(liveStationIds(run), ["cage", "bp", "looks", "poles", "situational", "off-day", "clubhouse"]);
+    const kira = newRun("kira");
+    kira.turn = 4;
+    assert.deepEqual(stationOpen(kira, "spots"), { open: false, reason: "After the Gate" });
+    kira.turn = 42;
+    assert.deepEqual(liveStationIds(kira), ["side", "spots", "poles", "situational", "charting", "off-day", "clubhouse"]);
+    assert.equal(stationOpen(kira, "cage").open, false, "a pitcher's side of the complex has no Cage");
+    assert.equal(stationOpen(kira, "looks").open, false);
+  });
+
+  it("the store refuses a shut facility, and an old save's run on one still loads and plays", () => {
+    const run = newAoiRun();
+    run.turn = 9;
+    run.energy = 80;
+    // An old save parked mid-career with a lastWork from the removed Bullpen focus, on a pitcher's tile.
+    const old = structuredClone(run);
+    old.lastWork = { stat: "control", turn: 8, from: 5, to: 6, outcome: "success" };
+    useShine.setState({ run: old, screen: "complex" } as never);
+    useShine.getState().train("bp");
+    assert.equal(useShine.getState().run!.turn, 9, "BP is shut before First Light");
+    useShine.getState().train("spots");
+    assert.equal(useShine.getState().run!.turn, 9, "Spot work is the pitchers'");
+    useShine.getState().train("looks");
+    assert.equal(useShine.getState().run!.turn, 10);
+    useShine.setState({ run: null } as never);
   });
 });

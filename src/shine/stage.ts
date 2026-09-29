@@ -89,7 +89,8 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
     if (game.pgId === "reach-twice") return "She reached twice.";
     if (game.pgId === "hit-risp") return "A hit with runners on.";
     if (game.pgId === "hit-late") return "A hit, and a late one.";
-    if (game.pgId === "rbi") return "A run scored on her ball.";
+    // Aoi's Lantern and her Finale ask the same (check-in 28); the Finale says it its own way.
+    if (game.pgId === "rbi") return game.kind === "finale" ? "Diamond Finale. A run came home on her." : "A run scored on her ball.";
     if (game.pgId === "quality-abs-3") return "Three balls in play, all hard.";
     if (game.kind === "gate") return "The Gate opened.";
     if (game.hr) return "She watched it go.";
@@ -140,6 +141,11 @@ function plateMissRead(run: TraineeRun, game: FeaturedGame): string {
     if (game.pgId === "hit-risp") {
       const walk = game.sgMet ? " The walk held." : "";
       return game.hits > 0 ? `She hit. The runners weren't on.${walk}` : `The hit with runners on didn't come.${walk}`;
+    }
+    if (game.pgId === "rbi") {
+      // She got on and nobody came home on her: say both (Aoi's Lantern and Finale, check-in 28).
+      const walk = game.kind === "finale" && game.sgMet && game.hits > 0 ? " The walk held." : "";
+      return `${game.hits > 0 ? "She hit." : "She walked."} No run came home on her.${walk}`;
     }
     return on === 1 ? "She reached once. Not the way she needed to." : "She got on. Not the way she needed to.";
   }

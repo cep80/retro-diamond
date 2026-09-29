@@ -77,6 +77,23 @@ describe("1.0 bible", () => {
     assert.equal(sheet("reina").official.find((g) => g.turn === 55)?.sgId, "k-3");
   });
 
+  it("pins Aoi's check-in 28 Finale: Drive in a run, the same ask as her Lantern, with the walk kept", () => {
+    const aoi = sheet("aoi").official;
+    assert.equal(aoi.find((g) => g.turn === 60)?.pgId, "rbi");
+    assert.equal(aoi.find((g) => g.turn === 28)?.pgId, "rbi");
+    assert.equal(aoi.find((g) => g.turn === 60)?.sgId, "draw-walk");
+    assert.ok(!aoi.some((g) => g.pgId === "hit-risp"));
+  });
+
+  it("says Aoi's Lantern and Finale in different words", () => {
+    const lantern = yearStillLine("aoi", 40, ["met", "met", "met", "met", "pending", "pending", "pending"]);
+    const senior = yearStillLine("aoi", 60, ["met", "met", "met", "met", "met", "met", "met"]);
+    assert.match(lantern, /She drove in a run/);
+    assert.match(senior, /Diamond Finale\. A run came home on her\./);
+    assert.doesNotMatch(senior, /drove in a run|runners on|scoring position/i);
+    assert.match(yearStillLine("aoi", 60, ["met", "met", "met", "met", "met", "met", "missed"], null, null, true), /Diamond Finale\. They won\. No run came home on her\.$/);
+  });
+
   it("puts letters and a process SG on every official date", () => {
     const blurbs = BIBLE.map((c) => c.sg);
     assert.equal(new Set(blurbs).size, BIBLE.length);

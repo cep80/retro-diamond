@@ -3,12 +3,13 @@
  * After the work: the comparison in the unit the plate actually uses (ms of
  * swing window, or the pitching window), so a tick is never an abstract +1.
  */
-import { nextOfficial, turnMeta } from "./calendar.ts";
+import { facilityUnlock, nextOfficial, turnMeta } from "./calendar.ts";
 import { isPitcherStyle, officialFor, sheet, type OutingGrade } from "./bible.ts";
 import { goalDefinition, type GoalId } from "./goals.ts";
+import { roleStats } from "./grades.ts";
 import { workPreviewWindow } from "./oracle.ts";
 import { energyBand, MOOD_LABELS, moodLevel, stationStat } from "./training.ts";
-import type { CharacterId, StationId, TraineeRun, TraineeStatKey } from "./types.ts";
+import type { CharacterId, StationId, StyleId, TraineeRun, TraineeStatKey } from "./types.ts";
 
 /** Fresh and in a good mood: she says so herself, in her own voice. */
 const READY_LINE: Record<CharacterId, string> = {
@@ -41,9 +42,20 @@ const STAT_STATION: Record<TraineeStatKey, StationId> = {
   guts: "situational",
   wit: "charting",
   stuff: "side",
-  control: "side",
+  control: "spots",
   stamina: "poles",
 };
+
+/** Her main work: the Cage, the Poles for a runner, the Bullpen for an ace, Spot work for a closer. */
+export function mainStat(style: StyleId): TraineeStatKey {
+  if (style === "move") return "speed";
+  if (style === "ace") return "stuff";
+  if (style === "closer") return "control";
+  return "contact";
+}
+
+/** How close to her ceiling a stat is before the work starts failing more (successChance's -0.2). */
+const CEILING_GAP = 2;
 
 /** The stat each goal leans on hardest. Presentation only; the goal itself resolves from the record. */
 export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeStatKey; need: string } {
@@ -53,6 +65,8 @@ export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeSt
     case "reach":
       return { stat: "contact", need: "Get on base. Contact puts the ball in play; Eye earns the walk." };
     case "rbi":
+      // A walk with the bases full or a ball in play brings a run home too: this ask isn't a hit.
+      return { stat: "contact", need: "A run home on her ball. Contact first; Guts keeps her steady when it matters." };
     case "hit-risp":
       return { stat: "contact", need: "A hit with runners on. Contact first; Guts keeps her steady when it matters." };
     case "hit-late":
@@ -67,7 +81,7 @@ export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeSt
     case "draw-walk":
       return { stat: "eye", need: "See pitches. Teach her to see it out of the pitcher's hand, and to keep the bat on her shoulder." };
     case "no-k":
-      return { stat: "eye", need: "Don't strike out. Eye lets the ball go by; Contact fouls off the strike." };
+      return { stat: "contact", need: "Don't strike out. Contact fouls off the strike; Eye lets the ball go by." };
     case "foul-two-strike":
       return { stat: "contact", need: "Foul one off with two strikes. Contact keeps her alive." };
     case "contact-breaking":
@@ -138,6 +152,17 @@ export function coachBrief(run: TraineeRun): CoachBrief {
       why = `${cap(stat)} work did not take yesterday. ${cap(alt)} helps for ${next.label} too, and a different station breaks the bad run.`;
     }
   }
+  if (choiceStation !== "off-day" && choiceStation !== "treatment") {
+    const picked = facilityPick(run, pitcher, who.style, choiceStat, choiceStat !== stat ? stat : null);
+    if (picked.stat !== choiceStat) {
+      const failed = choiceStat !== stat ? stat : null;
+      choiceStat = picked.stat;
+      choiceStation = STAT_STATION[choiceStat];
+      if (picked.why === "ceiling") why = `She's close to her ceiling in ${cap(picked.from)}. ${cap(choiceStat)} work pays more today.`;
+      else if (failed && failed !== choiceStat) why = `${cap(failed)} work did not take yesterday. ${cap(choiceStat)} work breaks the bad run.`;
+      else why = `${cap(choiceStat)} work is the quickest way to get her ready for ${next.label}.`;
+    }
+  }
 
   const line =
     run.energy < 25
@@ -161,6 +186,41 @@ export function coachBrief(run: TraineeRun): CoachBrief {
     },
     condition: { energy: energyLabel, mood: moodLabel, line },
   };
+}
+
+/**
+ * Check-in 28: the Coach's pick on the five-facility complex. A stat outside her role's five
+ * goes to her main work; a stat within two of her ceiling (where the work fails more) gives way
+ * to her lowest open letter; a facility still shut sends her to her main tile (or, when that is
+ * the work that just failed, her lowest open letter).
+ */
+function facilityPick(
+  run: TraineeRun,
+  pitcher: boolean,
+  style: StyleId,
+  want: TraineeStatKey,
+  avoid: TraineeStatKey | null,
+): { stat: TraineeStatKey; why: "ok" | "role" | "ceiling" | "locked"; from: TraineeStatKey } {
+  const roles = roleStats(pitcher);
+  const open = (s: TraineeStatKey) => facilityUnlock(STAT_STATION[s], run.turn).open;
+  const near = (s: TraineeStatKey) => run.stats[s] >= run.potential - CEILING_GAP;
+  const lowest = (xs: TraineeStatKey[]) => [...xs].sort((a, b) => run.stats[a] - run.stats[b])[0];
+  const main = mainStat(style);
+  let stat = roles.includes(want) ? want : main;
+  let why: "ok" | "role" | "ceiling" | "locked" = stat === want ? "ok" : "role";
+  const from = stat;
+  if (near(stat)) {
+    const alt = lowest(roles.filter((s) => s !== stat && open(s) && !near(s)));
+    if (alt) {
+      stat = alt;
+      why = "ceiling";
+    }
+  }
+  if (!open(stat)) {
+    stat = open(main) && main !== avoid ? main : (lowest(roles.filter((s) => s !== avoid && open(s))) ?? (pitcher ? "stuff" : "contact"));
+    why = "locked";
+  }
+  return { stat, why, from };
 }
 
 function secondNeed(id: GoalId | null, pitcher: boolean): TraineeStatKey | null {
@@ -269,8 +329,8 @@ export function stationForStat(stat: TraineeStatKey): StationId {
   return STAT_STATION[stat];
 }
 
-export function statForStation(station: StationId, run: TraineeRun, sideFocus: "stuff" | "control" = "stuff") {
-  return stationStat(station, sideFocus, run);
+export function statForStation(station: StationId, run: TraineeRun) {
+  return stationStat(station, run);
 }
 
 export function turnLabel(turn: number) {

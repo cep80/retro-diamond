@@ -95,7 +95,9 @@ const RAW_BIBLE: RawSheet[] = [
       { turn: 33, verb: "Reach base twice", sgVerb: "Reach base", resultsPg: false },
       { turn: 50, verb: "Get a hit in the 7th+", sgVerb: "Work a full count", resultsPg: true },
       { turn: 55, verb: "Three quality at-bats", sgVerb: "Work a full count", resultsPg: false },
-      { turn: 60, verb: "Hit with RISP", sgVerb: "Draw a walk", resultsPg: true },
+      // Check-in 28: "Drive in a run" (met 62–69% in the check-in 25 sim), where "Hit with RISP"
+      // was 39–52%. Her '81 story still lands: Haruko had two on (Finale eve), and this time a run comes home.
+      { turn: 60, verb: "Drive in a run", sgVerb: "Draw a walk", resultsPg: true },
     ],
   },
   {
@@ -489,7 +491,8 @@ const SENIOR_STILLS: Partial<Record<CharacterId, SeniorStills>> = {
   aoi: {
     stretch: { met: "She hit late.", missed: "The late hit didn't come." },
     series: { met: "Three quality at-bats. The third one was for her.", missed: "The quality at-bats didn't add up to three." },
-    finale: { met: "A hit with runners on.", missed: "The hit with runners on didn't come." },
+    // The Lantern's still says "She drove in a run."; the Finale's says it her way.
+    finale: { met: "A run came home on her.", missed: "No run came home on her." },
     none: "Senior year. The pencil stub is down to an inch.",
   },
   reina: {

@@ -48,6 +48,7 @@ import {
   endingRank,
   endingStageCta,
   endingStageLabel,
+  finaleWonRun,
   nextGirlId,
   nextGirlName,
   parentEligible,
@@ -1775,7 +1776,7 @@ export function ShineApp() {
     if (typeof window === "undefined" || new URLSearchParams(window.location.search).get("debug") !== "1") return;
     const api = {
       get: () => useShine.getState(),
-      train: (station: "cage" | "off-day" | "poles" | "looks" | "bp" | "situational" | "charting" | "treatment" | "hitch" | "side") =>
+      train: (station: "cage" | "off-day" | "poles" | "looks" | "bp" | "situational" | "charting" | "treatment" | "hitch" | "side" | "spots") =>
         useShine.getState().train(station),
       finishForcedCage: () => useShine.getState().finishForcedCage(),
       finishMentor: () => useShine.getState().finishMentor(),
@@ -1892,10 +1893,12 @@ export function ShineApp() {
   else if (screen === "postgame") view = <Postgame />;
   else if (screen === "year-end" && run.clubhouseCard && !run.arcsHeard?.includes("ending")) {
     const stage = runEndingStage(run);
+    // An S or A whose side lost the Finale: the same scene, without the lines that claim the top (check-in 28).
+    const teamWon = finaleWonRun(run);
     view = (
       <StoryScreen
-        scene={endingScene(run.characterId, run.clubhouseCard.ending)}
-        chip={endingChip(endingTier(run.characterId, run.clubhouseCard.ending))}
+        scene={endingScene(run.characterId, run.clubhouseCard.ending, teamWon)}
+        chip={endingChip(endingTier(run.characterId, run.clubhouseCard.ending), teamWon)}
         cta={endingStageCta(stage)}
         onDone={() => hearArc("ending")}
       />

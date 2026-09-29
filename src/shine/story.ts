@@ -159,7 +159,7 @@ const FINALE_EVE: Record<CharacterId, StoryScene> = {
       { who: "narration", text: "The grill ticks as it cools. Haruko has gone upstairs and left the lights on for you." },
       { who: "aoi", text: "I asked her. About '81.", mood: "focused" },
       { who: "coach", text: "What did she say?" },
-      { who: "aoi", text: "She said it was a good pitch to hit, and she'd swing at it again. Then she gave me extra bonito, which is how she says the rest.", mood: "elated" },
+      { who: "aoi", text: "Two on, she said. A good pitch to hit, and she'd swing at it again. Then she gave me extra bonito, which is how she says the rest.", mood: "elated" },
       { who: "narration", text: "She turns her batting glove over. The pencil is almost gone. Coach. Day one. Said top." },
       { who: "aoi", text: "Um, sorry. I kept it the whole time. It's mostly smudge now.", mood: "neutral" },
       { who: "coach", text: "Top. I said it." },

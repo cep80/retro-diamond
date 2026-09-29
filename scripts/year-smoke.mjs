@@ -622,6 +622,10 @@ async function scanCopy(s) {
       if (!m) continue;
       // A number said out loud ("Week one-fifty-six") is speech, not an id.
       if (rule.id === "snake-or-kebab-id" && m[0].split(/[-_]/).every((w) => NUMBER_WORD.test(w))) continue;
+      // Baseball's own hyphenated words ("first-to-third") are speech, not ids.
+      if (rule.id === "snake-or-kebab-id" && /^(first|second|third|home)-to-(first|second|third|home)$/.test(m[0])) continue;
+      // A facility tile's fail chance (失敗 32%) is Uma's own training readout, on purpose.
+      if (rule.id === "percent" && /^失敗\s?\d+\s?%$/.test(line)) continue;
       const key = `${rule.id}|${line}`;
       if (copySeen.has(key)) continue;
       copySeen.add(key);

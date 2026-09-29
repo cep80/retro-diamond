@@ -11,10 +11,12 @@ import {
   MOOD_LABELS,
   RECREATION_ENERGY,
   REST_ENERGY,
-  TRAIN_STANDARD_ENERGY,
   TREATMENT_ENERGY,
   moodLevel,
+  stationCost,
+  stationSecondary,
   stationStat,
+  workFailPct,
 } from "../shine/training.ts";
 import {
   STAT_EN,
@@ -27,7 +29,6 @@ import {
   type Grade,
 } from "../shine/grades.ts";
 import type { CalendarEntry, CharacterId, StationId, TraineeRun, TraineeStatKey } from "../shine/types.ts";
-import { coachBrief } from "../shine/coach.ts";
 import { isBustSrc, isPitcherStyle, sceneBustSrc, sheet, stillSrc, type PortraitMood } from "../shine/bible.ts";
 import { yearOf } from "../shine/calendar.ts";
 
@@ -81,29 +82,55 @@ const ENERGY = (up: 1 | 2): Lift => ({ kana: "体力", en: "Energy", up });
 const MOOD = (up: 1 | 2): Lift => ({ kana: "やる気", en: "Mood", up });
 
 /**
- * What a tile trains. The Bullpen tile throws for Stuff (the screen never asks
- * for a focus). Rest: the Off day gives energy and a little mood, the Trainer's
- * room more energy (+35 to +25), the Clubhouse a whole mood step (+1 to +0.5).
+ * What a tile trains. A facility raises its main stat (two arrows) and carries a
+ * little over to a second one (one arrow; check-in 28). Rest: the Off day gives
+ * energy and a little mood, the Trainer's room more energy (+35 to +25), the
+ * Clubhouse a whole mood step (+1 to +0.5).
  */
-/**
- * What the Bullpen works today: Control when the Coach's brief asks for it (the out, the clean
- * ninth and the hold asks lean on it), otherwise Stuff. Before this, nothing trained Control.
- */
-export function bullpenFocus(run: TraineeRun): "stuff" | "control" {
-  return coachBrief(run).choice.stat === "control" ? "control" : "stuff";
-}
-
-export function stationLifts(id: StationId, run?: Pick<TraineeRun, "carry" | "parentId" | "characterId">, sideFocus: "stuff" | "control" = "stuff"): Lift[] {
+export function stationLifts(id: StationId, run?: Pick<TraineeRun, "carry" | "parentId" | "characterId">): Lift[] {
   if (id === "off-day") return [ENERGY(1), MOOD(1)];
   if (id === "treatment") return [ENERGY(2)];
   if (id === "clubhouse") return [MOOD(2)];
-  const stat = stationStat(id, sideFocus, run as TraineeRun | undefined);
-  return stat ? [{ kana: STAT_KANA[stat], en: STAT_EN[stat], up: 1 }] : [];
+  const stat = stationStat(id, run as TraineeRun | undefined);
+  if (!stat) return [];
+  const main: Lift = { kana: STAT_KANA[stat], en: STAT_EN[stat], up: 2 };
+  const sec = stationSecondary(id, run);
+  return sec && sec !== stat ? [main, { kana: STAT_KANA[sec], en: STAT_EN[sec], up: 1 }] : [main];
 }
 
 /** A training tile (one that works a skill, and costs energy to). */
 export function isTrainingTile(id: StationId): boolean {
-  return stationStat(id, "stuff") !== null;
+  return stationStat(id) !== null;
+}
+
+/** A facility tile's face: what it raises, what it carries over to, and how often it doesn't take. */
+export interface FacilityFace {
+  /** The main stat, kana and English. */
+  kana: string;
+  en: string;
+  /** The second stat, short (+POW). Null for the Hitch. */
+  plus: string | null;
+  plusEn: string | null;
+  /** Whole percent the work doesn't take today. Null when the tile is shut. */
+  fail: number | null;
+}
+
+export function facilityFace(id: StationId, run: TraineeRun, open: boolean): FacilityFace | null {
+  const stat = stationStat(id, run);
+  if (!stat) return null;
+  const sec = stationSecondary(id, run);
+  return {
+    kana: STAT_KANA[stat],
+    en: STAT_EN[stat],
+    plus: sec ? `+${STAT_SHORT[sec]}` : null,
+    plusEn: sec ? STAT_EN[sec] : null,
+    fail: open ? workFailPct(run, id) : null,
+  };
+}
+
+/** A fail figure worth a second look (a coin flip or worse; a Fair, fresh morning is 45): it colours coral. */
+export function riskyFail(pct: number): boolean {
+  return pct >= 50;
 }
 
 /**
@@ -116,13 +143,14 @@ export function orderTiles(ids: readonly StationId[], empty: boolean): StationId
 }
 
 /**
- * The grid: one tile runs full width, up to four go two across, five or six go
- * three across. The lead tile spans what the last row would leave empty, so
- * there's never a hole (three is 2 over 1+1, five is 2+1 over 3).
+ * The rest row's grid (check-in 28: the facilities have their own row of five
+ * above it). Up to four go in one row, as wide as there are tiles; five or six
+ * go three across, with the lead spanning what the last row would leave empty,
+ * so there's never a hole.
  */
-export function tileGrid(n: number): { cols: 1 | 2 | 3; leadSpan: number } {
-  if (n <= 1) return { cols: 1, leadSpan: 1 };
-  const cols: 2 | 3 = n >= 5 ? 3 : 2;
+export function tileGrid(n: number): { cols: number; leadSpan: number } {
+  if (n <= 4) return { cols: Math.max(1, n), leadSpan: 1 };
+  const cols = 3;
   const spare = (cols - (n % cols)) % cols;
   return { cols, leadSpan: spare + 1 };
 }
@@ -168,9 +196,9 @@ export function morningAfter(run: Pick<TraineeRun, "turn" | "calendar" | "lastWo
   let full = false;
   const chips: DayChip[] = [];
   if (last.statTrained && isWorkOutcome(last.outcome)) {
-    const w = morningGain(run);
-    if (w) chips.push({ text: `${STAT_EN[w.stat]} +${w.to - w.from}`, cost: false });
-    energy = TRAIN_STANDARD_ENERGY + (last.outcome === "bad-fail" ? -2 : 0);
+    for (const w of morningGains(run)) chips.push({ text: `${STAT_EN[w.stat]} +${w.to - w.from}`, cost: false });
+    const where = run.lastWork && run.lastWork.turn === last.turn ? run.lastWork.station : undefined;
+    energy = stationCost(where) + (last.outcome === "bad-fail" ? -2 : 0);
     mood =
       last.outcome === "bad-fail"
         ? -0.5
@@ -230,6 +258,21 @@ export function morningGain(run: Pick<TraineeRun, "turn" | "calendar" | "lastWor
   return { stat: w.stat, from: w.from, to: w.to };
 }
 
+/**
+ * Every point yesterday's work put on: the main stat's, then the second stat's when the facility
+ * carried one over (check-in 28). The second is read off the same work, so the same rules hold.
+ */
+export function morningGains(run: Pick<TraineeRun, "turn" | "calendar" | "lastWork">): MorningGain[] {
+  const out: MorningGain[] = [];
+  const main = morningGain(run);
+  if (main) out.push(main);
+  const last = run.calendar.at(-1);
+  const w = run.lastWork;
+  if (!last || last.turn !== run.turn - 1 || !last.statTrained || !isWorkOutcome(last.outcome)) return out;
+  if (w && w.turn === last.turn && w.sec && w.sec.to > w.sec.from) out.push({ stat: w.sec.stat, from: w.sec.from, to: w.sec.to });
+  return out;
+}
+
 export interface StripCell {
   stat: TraineeStatKey;
   kana: string;
@@ -252,10 +295,11 @@ export interface StripCell {
  * it at), so the bar never animates a point she didn't get.
  */
 export function statStrip(run: Pick<TraineeRun, "turn" | "calendar" | "lastWork" | "stats" | "potential">, pitcher: boolean): StripCell[] {
-  const gain = morningGain(run);
+  const gains = morningGains(run);
   return roleStats(pitcher).map((stat) => {
     const value = run.stats[stat];
-    const land = gain && gain.stat === stat && gain.to === value ? { from: statFill(gain.from), gradeFrom: statGrade(gain.from) } : null;
+    const gain = gains.find((g) => g.stat === stat);
+    const land = gain && gain.to === value ? { from: statFill(gain.from), gradeFrom: statGrade(gain.from) } : null;
     return {
       stat,
       kana: STAT_KANA[stat],

@@ -102,7 +102,8 @@ describe("a hitter's Finale: her side ahead when her last at-bat ends, the ask m
       for (let s = 0; s < 40; s++) {
         const run = finale(id, `hit-short-${id}-${s}`);
         const game = startFeaturedGame(run, "finale");
-        // The others walk every time (their asks need a hit or a steal); Miki mixes in strikes.
+        // The others walk every time (Yuki's ask needs a steal, Aoi's a run home, which a walk
+        // gives only with the bases loaded); Miki mixes in strikes.
         for (let n = 0; n < 200 && !game.done; n++) resolveTake(run, game, id === "miki" ? (n % 3 === 0 ? away : heart) : away);
         assert.equal(game.done, true, `${id} ${s}`);
         if (!finaleWonShort(game)) continue;
@@ -198,7 +199,8 @@ describe("senior stills say only what she met (check-in 24)", () => {
     miki: [/She put the bat on a breaking ball/, /She came up with runners on/, /She never went down on strikes/],
     // Check-in 25: the scoring-position steal is her Stretch, the late steal her Finale.
     yuki: [/She stole with a runner in scoring position/, /She scored without a hit/, /She stole late/],
-    aoi: [/She hit late/, /Three quality at-bats/, /A hit with runners on/],
+    // Check-in 28: her Finale is "Drive in a run".
+    aoi: [/She hit late/, /Three quality at-bats/, /A run came home on her/],
   };
 
   it("every combination, every girl, and every Finale scoreboard", () => {

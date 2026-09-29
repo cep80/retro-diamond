@@ -328,8 +328,8 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "The at-bats didn't add up, and Haruko folded the flag and kept the grill on anyway.",
     },
     finale: {
-      met: "She got the hit with a runner in scoring position, and the sign at 6-4-3 had to change.",
-      missed: "The hit with runners on never came, and she kept score of the whole game anyway.",
+      met: "A run came home on her on the last night, and the sign at 6-4-3 had to change.",
+      missed: "Nobody came home on her, and she kept score of the whole game anyway.",
     },
   },
   reina: {
@@ -490,7 +490,7 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
  * theirs are here so no girl's page can say the night was lost when it wasn't.
  */
 export const FINALE_WON_SHORT_CAPTIONS: Record<CharacterId, string> = {
-  aoi: "They won, and she still circled the at-bat with runners on that she wanted back.",
+  aoi: "They won, and she still circled every at-bat where nobody came home on her.",
   reina: "They won, and she went over the ninth in the ruled notebook anyway, one row at a time.",
   miki: "They won, and Section 4 rang both cowbells anyway, strikeout and all.",
   sol: "They won, and she held up one finger to Luz in row one. She'd wanted two.",

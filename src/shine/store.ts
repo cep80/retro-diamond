@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { clubhouseOpen, dateLabel, looksUnlocked, powerStationsUnlocked, turnMeta } from "./calendar.ts";
+import { clubhouseOpen, dateLabel, facilityUnlock, turnMeta } from "./calendar.ts";
 import {
   applyGameResult,
   leavePostgame,
@@ -14,7 +14,7 @@ import {
   type GameCarry,
   type PlateBox,
 } from "./run.ts";
-import { canTrain, treatmentAvailable, treatmentForced } from "./training.ts";
+import { canTrain, roleFacilities, treatmentAvailable, treatmentForced } from "./training.ts";
 import { applyParentPeak, pickInheritSparks } from "./ending.ts";
 import { decodeCard } from "./carry.ts";
 import { weeklyGuestFor } from "./rivals.ts";
@@ -81,7 +81,7 @@ export interface ShineState {
   resetRun: () => void;
   finishCareer: () => void;
   setHydrated: () => void;
-  train: (station: StationId, intensive?: boolean, sideFocus?: "stuff" | "control") => void;
+  train: (station: StationId, intensive?: boolean) => void;
   finishForcedCage: () => void;
   finishMentor: () => void;
   finishGame: (
@@ -294,12 +294,14 @@ export const useShine = create<ShineState>()(
           establishing: false,
         });
       },
-      train: (station, intensive, sideFocus) => {
+      train: (station, intensive) => {
         const { run, lastLine } = get();
         if (!run) return;
         if (run.turn === 1) return;
+        // A facility still shut on the ladder (or the other side's) is not a tap that works.
+        if (!stationOpen(run, station).open) return;
         const next = structuredClone(run);
-        resolveTrainingTurn(next, station, intensive, sideFocus);
+        resolveTrainingTurn(next, station, intensive);
         const card = lightCardFrom(lastLine);
         if (next.phase === "year-end" && !next.lightCard && card) next.lightCard = card;
         set({
@@ -552,16 +554,38 @@ export function stationOpen(run: TraineeRun, station: StationId): { open: boolea
   if (station === "treatment") return { open: treatmentAvailable(run.energy) || treatmentForced(run.energy) };
   if (treatmentForced(run.energy)) return { open: false, reason: "Trainer's room first." };
   if (station === "off-day") return { open: turn >= 3 };
-  if (station === "side") {
-    if (!isPitcherStyle(sheet(run.characterId).style)) return { open: false };
-    return { open: true };
-  }
-  if (station === "cage") return { open: !isPitcherStyle(sheet(run.characterId).style) || turn >= 3 };
-  if (station === "poles") return { open: turn >= 3 };
-  if (station === "looks") return { open: looksUnlocked(turn) };
-  if (station === "charting") return { open: looksUnlocked(turn) };
-  if (station === "bp" || station === "situational") return { open: powerStationsUnlocked(turn) };
-  return { open: false };
+  // The five facilities (check-in 28): each side of the complex has its own, and they open on the ladder.
+  if (!roleFacilities(isPitcherStyle(sheet(run.characterId).style)).includes(station)) return { open: false };
+  return facilityUnlock(station, turn);
+}
+
+export interface FacilityTile {
+  id: StationId;
+  open: boolean;
+  /** When it opens, for a facility still shut on the ladder. */
+  reason?: string;
+}
+
+/**
+ * Her role's five facilities in the row's order, shut ones included (they say when they open).
+ * Day 1 is her one forced session, so only that tile. A day with no work on it (a game, a scene) is empty.
+ */
+export function facilityRow(run: TraineeRun): FacilityTile[] {
+  const pitcher = isPitcherStyle(sheet(run.characterId).style);
+  const type = turnMeta(run.turn).type;
+  if (type === "tutorial-forced") return [{ id: pitcher ? "side" : "cage", open: true }];
+  if (type !== "work" && type !== "semi-free") return [];
+  return roleFacilities(pitcher).map((id) => {
+    const o = stationOpen(run, id);
+    return o.open ? { id, open: true } : { id, open: false, ...(o.reason ? { reason: o.reason } : {}) };
+  });
+}
+
+/** The rest tiles open today (and the Hitch, which rides with them): the second row. */
+export function restRowIds(run: TraineeRun): StationId[] {
+  const consider: StationId[] = ["off-day", "treatment", "clubhouse"];
+  if (run.parentId) consider.push("hitch");
+  return consider.filter((id) => stationOpen(run, id).open);
 }
 
 export function workLocked(run: TraineeRun) {
@@ -569,14 +593,12 @@ export function workLocked(run: TraineeRun) {
 }
 
 /**
- * The few tiles on the complex today. Hitch is inheritance after the Gate,
- * never a day-one station. Pitchers work Side, not a second Cage campus.
+ * The tiles she can take today: her role's open facilities, then the rest tiles. Hitch is
+ * inheritance after the Gate, never a day-one station. Pitchers work their own five, not the Cage.
  */
 export function liveStationIds(run: TraineeRun): StationId[] {
   const pitcher = isPitcherStyle(sheet(run.characterId).style);
-  const consider: StationId[] = pitcher
-    ? ["side", "poles", "off-day", "treatment", "clubhouse"]
-    : ["cage", "poles", "off-day", "treatment", "clubhouse"];
+  const consider: StationId[] = [...roleFacilities(pitcher), "off-day", "treatment", "clubhouse"];
   if (run.parentId) consider.push("hitch");
   return consider.filter((id) => stationOpen(run, id).open);
 }

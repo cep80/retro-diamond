@@ -7,17 +7,18 @@ import { speakGoal } from "@/shine/goals.ts";
 import { morningSpeech } from "@/shine/culture.ts";
 import { sfxGain } from "@/shine/audio.ts";
 import { GRADES, STAT_EN, gradeIndex, roleStats, rookieSpringDue, sinceLastSpring, statGrade, type WithSpring } from "@/shine/grades.ts";
-import { liveStationIds, useShine, workLocked } from "@/shine/store.ts";
+import { facilityRow, liveStationIds, restRowIds, useShine, workLocked } from "@/shine/store.ts";
 import type { StationId, TraineeRun } from "@/shine/types.ts";
 import {
   energyTone,
   energyWords,
+  facilityFace,
   herMorning,
   isTrainingTile,
   moodFace,
   morningAfter,
   orderTiles,
-  bullpenFocus,
+  riskyFail,
   stationLifts,
   statStrip,
   strained,
@@ -75,14 +76,16 @@ export function YearGrades({ run }: { run: TraineeRun }) {
 }
 
 // Her main training leads: the Cage for a hitter, the Bullpen for a pitcher (each only shows for one).
-export const STATIONS: { id: StationId; label: string; kana: string; color: string }[] = [
+// `short` is the facility row's name, where five share a phone's width.
+export const STATIONS: { id: StationId; label: string; kana: string; color: string; short?: string }[] = [
   { id: "cage", label: "Cage", kana: "ケージ", color: "#ff718f" },
   { id: "side", label: "Bullpen", kana: "ブルペン", color: "#7ad7ff" },
+  { id: "spots", label: "Spot work", kana: "制球", color: "#5fd9a0", short: "Spots" },
   { id: "poles", label: "Poles", kana: "ポール", color: "#78eadc" },
-  { id: "looks", label: "Live looks", kana: "見極め", color: "#7ad7ff" },
-  { id: "bp", label: "On-field BP", kana: "打撃", color: "#ffd166" },
-  { id: "situational", label: "Situational", kana: "状況", color: "#e07a3d" },
-  { id: "charting", label: "Charting", kana: "映像", color: "#b794f6" },
+  { id: "looks", label: "Live looks", kana: "見極め", color: "#7ad7ff", short: "Looks" },
+  { id: "bp", label: "On-field BP", kana: "打撃", color: "#ffd166", short: "BP" },
+  { id: "situational", label: "Situational", kana: "状況", color: "#e07a3d", short: "Clutch" },
+  { id: "charting", label: "Charting", kana: "映像", color: "#b794f6", short: "Film" },
   { id: "off-day", label: "Off day", kana: "休養", color: "#ffd166" },
   { id: "treatment", label: "Trainer's room", kana: "治療", color: "#c4d4e0" },
   { id: "clubhouse", label: "Clubhouse", kana: "キャッチ", color: "#ffd166" },
@@ -117,7 +120,7 @@ export function ShineComplexWork({
   mood: string;
   moodIdx: 0 | 1 | 2 | 3 | 4;
   lastLine: string | null;
-  train: (station: StationId, intensive?: boolean, sideFocus?: "stuff" | "control") => void;
+  train: (station: StationId, intensive?: boolean) => void;
   finishForcedCage: () => void;
   setCatchBeat: Dispatch<SetStateAction<boolean>>;
   openTitle: () => void;
@@ -126,13 +129,15 @@ export function ShineComplexWork({
   turnsAway: number;
 }) {
   const who = sheet(run.characterId);
-  // The Bullpen works Control when the Coach asks for it, otherwise Stuff; the tile says which.
-  const focus = bullpenFocus(run);
   const pitcher = isPitcherStyle(who.style);
   const ask = officialFor(run.characterId, next.turn);
   const empty = workLocked(run);
-  const ids = orderTiles(liveStationIds(run), empty);
-  const stations = ids.flatMap((id) => STATIONS.filter((s) => s.id === id));
+  // Day 1 is her one forced session, full width. After that: her five facilities in a row (the shut
+  // ones say when they open), and the rest tiles under them.
+  const firstDay = run.turn === 1;
+  const facilities = firstDay ? [] : facilityRow(run);
+  const restIds = firstDay ? liveStationIds(run) : orderTiles(restRowIds(run), empty);
+  const stations = restIds.flatMap((id) => STATIONS.filter((s) => s.id === id));
   const grid = tileGrid(stations.length);
   const face = moodFace(moodIdx);
   const tone = energyTone(run.energy);
@@ -328,17 +333,74 @@ export function ShineComplexWork({
               </p>
               <p className="mt-0.5 font-ui text-sm leading-snug">{words}</p>
             </div>
-            <div className="shine-work-tiles" style={{ ["--cols" as string]: grid.cols } as CSSProperties}>
+            {facilities.length ? (
+              <div className="shine-work-facilities" role="group" aria-label="Facilities">
+                {facilities.map((f, i) => {
+                  const s = STATIONS.find((x) => x.id === f.id)!;
+                  const shut = !f.open || empty;
+                  const face = facilityFace(f.id, run, f.open && !empty);
+                  const name = s.short ?? s.label;
+                  const says = !f.open
+                    ? `${name}. ${face?.en ?? ""} work. ${f.reason ?? "Not open yet"}.`
+                    : `${name}. ${face?.en ?? ""} work${face?.plusEn ? `, and a little ${face.plusEn}` : ""}.${face?.fail != null ? ` ${face.fail}% it doesn't take today.` : ""}`;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      disabled={shut}
+                      aria-label={says}
+                      data-lead={i === 0 ? "true" : undefined}
+                      data-locked={!f.open ? "true" : undefined}
+                      data-strain={tired && f.open ? "true" : undefined}
+                      onClick={() => {
+                        if (shut) return;
+                        train(f.id, false);
+                      }}
+                      className="shine-station shine-facility"
+                      style={{ ["--station-color"]: s.color, ["--station-kana"]: `"${s.kana}"` } as CSSProperties}
+                    >
+                      <span className="shine-facility-name font-display">{name}</span>
+                      {face ? (
+                        <>
+                          <span className="shine-facility-kana" aria-hidden>
+                            {face.kana}
+                          </span>
+                          <span className="shine-facility-stat" aria-hidden>
+                            {face.en}
+                          </span>
+                          {face.plus ? (
+                            <span className="shine-facility-plus" aria-hidden>
+                              {face.plus}
+                            </span>
+                          ) : null}
+                        </>
+                      ) : null}
+                      {!f.open ? (
+                        <span className="shine-facility-lock" aria-hidden>
+                          {f.reason ?? ""}
+                        </span>
+                      ) : face?.fail != null ? (
+                        <span className="shine-facility-fail" data-risky={riskyFail(face.fail) ? "true" : undefined} aria-hidden>
+                          <span className="shine-facility-fail-kana">失敗</span> {face.fail}%
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+            <div className="shine-work-tiles" data-row={firstDay ? undefined : "rest"} style={{ ["--cols" as string]: grid.cols } as CSSProperties}>
               {stations.map((s, i) => {
                 const shut = empty && s.id !== "treatment";
-                const lifts = stationLifts(s.id, run, focus);
+                // Day 1's forced session puts its point on the main stat only; the tile says just that.
+                const lifts = firstDay ? stationLifts(s.id, run).slice(0, 1) : stationLifts(s.id, run);
                 const wide = i === 0 && grid.leadSpan > 1;
                 return (
                   <button
                     key={s.id}
                     type="button"
                     disabled={shut}
-                    data-lead={i === 0 ? (wide ? "wide" : "true") : undefined}
+                    data-lead={firstDay && i === 0 ? (wide ? "wide" : "true") : undefined}
                     data-strain={tired && isTrainingTile(s.id) ? "true" : undefined}
                     onClick={() => {
                       if (shut) return;
@@ -350,7 +412,7 @@ export function ShineComplexWork({
                         setCatchBeat(true);
                         return;
                       }
-                      train(s.id, false, s.id === "side" ? focus : undefined);
+                      train(s.id, false);
                     }}
                     className="shine-station"
                     style={

@@ -238,7 +238,8 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
   const sgId = official && isPitcherSg(official.sgId) ? official.sgId : null;
   const tells = run.tells ?? EMPTY_TELLS;
   const batter = rivalLineup({ characterId: run.characterId, year: run.year }, 0);
-  const hot = who.stats.wit >= 8 ? hottestCell(batter) : null;
+  // Her own Wit, as trained (check-in 28): Charting is how she learns to read the hot zone.
+  const hot = run.stats.wit >= 8 ? hottestCell(batter) : null;
   const rivalBat = sheet(pitcherRivalBat(run.characterId)).name;
   // Reina's Finale: the runner on first is the leadoff walk, and it plays on screen before
   // the ninth her ask is about. The bottom of the order draws it (never the cast hitter).
@@ -341,7 +342,9 @@ export function pitchingWindows(run: TraineeRun, game: PitchingGame) {
   const extra = 0.005 * sparkCount(run.carry, "control");
   w.kick.half += extra;
   w.release.half += extra;
-  if (game.role === "closer") {
+  // Guts widens the window when the inning is on fire, for the ace and the closer alike (check-in 28:
+  // Situational work trains it for both). The closer's lead bonus below stays hers.
+  {
     const li = leverageIndex(game.scoreDiff, game.inning, game.outs, game.runners >= 2, game.count);
     if (gutsActive({ li, closer: true, lastSpurt: game.lastSpurt })) {
       const g = 1 + (clamp(run.stats.guts, 1, 20) / 20) * GUTS_WINDOW_BONUS;
@@ -471,7 +474,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   game.battersFaced += 1;
   const batter = batterFor(run, game);
   game.batterName = batter.name;
-  game.hotCell = sheet(run.characterId).stats.wit >= 8 ? hottestCell(batter) : null;
+  game.hotCell = run.stats.wit >= 8 ? hottestCell(batter) : null;
   game.pgMet = evaluatePg(run, game);
 
   const gateDone = game.kind === "gate" && game.outsRecorded >= 3;
