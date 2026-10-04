@@ -70,7 +70,7 @@ export function sitLabel(style: string, cell: { row: number; col: number }, home
 }
 
 export function plateRead(run: TraineeRun, game: FeaturedGame) {
-  if (game.kind === "practice") return "Three looks. The bat is real.";
+  if (game.kind === "practice") return "One look. The bat is real.";
   if (game.pgMet) {
     if (game.pgId === "see-3-one-pa") {
       if (game.kind === "gate") return "Three pitches in one look. The Gate opened.";

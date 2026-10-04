@@ -211,7 +211,8 @@ export const FINALE_APPEARANCES = 5;
 export const FINALE_NINTH_MARGIN = 1;
 
 function paCount(kind: GameKind, r: () => number): number {
-  if (kind === "practice") return 3;
+  // One honest look teaches the sit. Three guaranteed middle tosses taught only how to press Go.
+  if (kind === "practice") return 1;
   if (kind === "weekly") return 1;
   if (kind === "gate") return 2;
   // The Finale is a full game: five trips, the last one in the 9th (inningForPa).
@@ -943,7 +944,8 @@ export function resolveSwing(
   push(game.events, { t: "contact", pa: game.paIndex, tier: game.lastContact, quality: contact.quality });
   const inAir = contact.quality > 0.25;
   if (inAir) game.outfield = true;
-  if (hit || game.kind === "practice") {
+  // The first soft toss pays off a correct sit. A wrong sit resolves through the normal hit roll.
+  if (hit || (game.kind === "practice" && aim.row === 1 && aim.col === 1)) {
     setVerdict(game, pitch, "reach", aim);
     // Like the long ball, a double is how square she got it, not her Contact stat
     // (quality carries contactQuality, ~0.4 fresh, so "quality > 0.78" meant no girl ever doubled).

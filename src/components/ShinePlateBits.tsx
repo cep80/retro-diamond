@@ -18,18 +18,20 @@ export function SitZone({
   onSit,
   ghost,
   label,
+  active = true,
 }: {
   aim: Cell;
   onSit: (c: Cell) => void;
   ghost: Cell | null;
   label: string;
+  active?: boolean;
 }) {
   return (
     <div className="shine-sit-plate" role="grid" aria-label={label}>
       {[0, 1, 2].map((row) =>
         [0, 1, 2].map((col) => {
           const cell = { row: row as 0 | 1 | 2, col: col as 0 | 1 | 2 };
-          const on = cellKey(aim) === cellKey(cell);
+          const on = active && cellKey(aim) === cellKey(cell);
           const ghostHere = ghost !== null && cellKey(ghost) === cellKey(cell);
           return (
             <button

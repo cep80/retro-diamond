@@ -10,6 +10,7 @@ import type { Stage } from "../shine/beats.ts";
 import { isPitcherStyle, sheet } from "../shine/bible.ts";
 import { FINALE_WON_BANNER, finaleTeamWon, type FinaleExtras } from "../shine/goals.ts";
 import { parkById } from "../shine/core/parks.ts";
+import type { Cell } from "../shine/core/zone.ts";
 import { recapLine } from "../shine/culture.ts";
 import { opposingArm, pitcherRivalBat } from "../shine/rivals.ts";
 import type { CharacterId, GoalMark } from "../shine/types.ts";
@@ -30,6 +31,7 @@ export const RACE_COPY = {
    * talk). "Sit" is the word everywhere after it.
    */
   firstPick: "Tap the box she's sitting on. Then Go, and watch.",
+  practicePick: "The first toss is down the middle. Tap where she should wait, then Go.",
   /** The mound's twin: the grid is where the glove sits (shown in place of the caption at pitch 0). */
   moundFirstPick: "Set the glove where you want it, then press Go.",
   /** The done panel's label, the same on both dates; the exhibition keeps its park. */
@@ -54,9 +56,18 @@ export const RACE_COPY = {
 } as const;
 
 /** The coach line under the pick, or null once she has seen a pitch. */
-export function pickPrompt(opts: { phase: RacePhase; pitchesSeen: number }): string | null {
+export function pickPrompt(opts: { phase: RacePhase; pitchesSeen: number; practice?: boolean }): string | null {
   if (opts.phase !== "pick" || opts.pitchesSeen > 0) return null;
-  return RACE_COPY.firstPick;
+  return opts.practice ? RACE_COPY.practicePick : RACE_COPY.firstPick;
+}
+
+/** The first cage look explains what the Coach's box did, including a miss. */
+export function firstLookRead(sit: Cell, reached: boolean): string {
+  const middle = sit.row === 1 && sit.col === 1;
+  if (middle) return reached ? "You sat middle. The toss came middle. She was ready for it." : "You sat middle. The toss came middle. She missed this one, but she was in the right place.";
+  return reached
+    ? "The toss came middle. She found a hit from the box you chose. Next time, watch where it crosses."
+    : "The toss came middle. She waited in another box. Now you know what the sit changes.";
 }
 
 /** The Go button's label. */

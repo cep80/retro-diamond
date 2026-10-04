@@ -133,6 +133,11 @@ describe("race: her swing decision", () => {
     for (let i = 0; i < 50; i++) assert.equal(barrelCell(far, rng(i)).adjusted, false);
   });
 
+  it("the first cage look keeps the Coach's sit instead of correcting it for free", () => {
+    const practice = ctx({ practice: true, pick: { sit: { row: 0, col: 0 }, call: "sit-cell" } });
+    assert.deepEqual(barrelCell(practice, makeRng(1)), { aim: { row: 0, col: 0 }, adjusted: false });
+  });
+
   it("the PA card names the beat in one line", () => {
     assert.equal(paCardLine({ beat: "hr", banner: "", reached: true, struckOut: false, rbi: 1 }), "Gone.");
     assert.equal(paCardLine({ beat: "hr", banner: "", reached: true, struckOut: false, rbi: 3 }), "Gone. 3 runs.");

@@ -4,6 +4,7 @@ import { ShineBack, ShineRoundBtn } from "@/components/ShineRoundBtn";
 import { dateLabel, daysAwayLabel, type CalendarBeat } from "@/shine/calendar.ts";
 import { isPitcherStyle, officialFor, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
+import { coachBrief, workComparison } from "@/shine/coach.ts";
 import { morningSpeech } from "@/shine/culture.ts";
 import { sfxGain } from "@/shine/audio.ts";
 import { GRADES, STAT_EN, gradeIndex, roleStats, rookieSpringDue, sinceLastSpring, statGrade, type WithSpring } from "@/shine/grades.ts";
@@ -145,7 +146,15 @@ export function ShineComplexWork({
   const tired = strained(run.energy) && !empty;
   const after = morningAfter(run);
   const landFrom = after.energyFrom !== null && after.energyFrom !== run.energy ? after.energyFrom : null;
-  const note = morningSpeech(lastLine, run.year, who.parkId, pitcher);
+  // The first free morning teaches why a facility matters. The next one says what the
+  // Coach's choice changed before the Gate, in the same small note space.
+  const openingBrief = run.turn === 3 ? coachBrief(run) : null;
+  const openingWork = run.turn === 4 && run.lastWork?.turn === 3 ? workComparison(run) : null;
+  const note = openingBrief
+    ? openingBrief.choice.why
+    : openingWork
+      ? `${openingWork.line} The Gate is tomorrow.`
+      : morningSpeech(lastLine, run.year, who.parkId, pitcher);
   const words = herMorning(run.characterId, run.turn, run.energy, moodIdx);
   // Her still changes by year and takes the season's grade (N7); `art` is only the old caller's fallback.
   const still = workStill(run);

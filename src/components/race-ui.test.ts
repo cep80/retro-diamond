@@ -11,6 +11,7 @@ import {
   DONE_STAMP,
   doneStamp,
   exhibitionDayLine,
+  firstLookRead,
   genericRead,
   leaveLabel,
   metHeadline,
@@ -103,6 +104,9 @@ describe("race sitelines", () => {
     assert.equal(pickPrompt({ phase: "racing", pitchesSeen: 0 }), null);
     assert.equal(RACE_COPY.firstPick, "Tap the box she's sitting on. Then Go, and watch.");
     assert.doesNotMatch(RACE_COPY.firstPick, /zone/i);
+    assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 0, practice: true }), RACE_COPY.practicePick);
+    assert.match(firstLookRead({ row: 1, col: 1 }, true), /middle.*middle/);
+    assert.match(firstLookRead({ row: 0, col: 0 }, false), /another box/);
   });
 
   it("sends practice back to the complex, not off the mound", () => {

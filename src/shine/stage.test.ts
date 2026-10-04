@@ -39,7 +39,7 @@ describe("style sit and miss read", () => {
     const run = newRun("yuki");
     run.turn = 2;
     const game = startFeaturedGame(run, "practice");
-    assert.equal(plateRead(run, game), "Three looks. The bat is real.");
+    assert.equal(plateRead(run, game), "One look. The bat is real.");
   });
 
   it("names a miss without a formula tooltip", () => {

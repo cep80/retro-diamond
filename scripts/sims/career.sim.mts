@@ -39,8 +39,9 @@ for (const m of MUT) {
 const N = Number(process.argv[2] ?? 200);
 const GIRLS = (process.argv[3] ?? "aoi,reina,miki,sol,kira,yuki").split(",");
 const POLS = (process.argv[4] ?? "coach").split(",") as Policy[];
+// Optional sit policy for a paired agency check: the same seeds with middle or far corner.
+const SIT = process.argv[5] === "corner" ? ({ row: 0 as const, col: 0 as const }) : ({ row: 1 as const, col: 1 as const });
 type Policy = "even" | "coach" | "strong";
-const CENTER = { row: 1 as const, col: 1 as const };
 const DATE_TURNS = [5, 18, 28, 33, 50, 55, 60];
 const DATE_NAMES = ["Gate", "FLight", "Lantern", "Night", "Stretch", "Series", "Finale"];
 
@@ -108,7 +109,7 @@ function playHitter(run: any, kind: string) {
       }) || li >= 2;
     const r = RNG.makeRng(RNG.hashId(`${run.rngSeed}|race|${g.kind}|pa${g.paIndex}|p${g.pitchesSeen}`));
     const d = RC.decideSwing(
-      { stats: run.stats, style: who.style, count: g.count, pitch: { loc: p.loc, speed: p.speed, family: p.family, stuff: p.stuff }, pick: { sit: CENTER, call: g.call }, practice: false, guts },
+      { stats: run.stats, style: who.style, count: g.count, pitch: { loc: p.loc, speed: p.speed, family: p.family, stuff: p.stuff }, pick: { sit: SIT, call: g.call }, practice: false, guts },
       r,
     );
     if (d.swing) FG.resolveSwing(run, g, p, d.aim, d.timingErr, d.kind, RC.RACE_MODS);
@@ -123,8 +124,8 @@ function playMound(run: any, kind: string) {
   const g = P.startPitchingGame(run, kind);
   for (let n = 0; n < 4000 && !g.done; n++) {
     const pitch = P.decidePitch(run, g);
-    const d = P.decideDelivery(run, g, pitch, CENTER);
-    P.resolveDelivery(run, g, pitch, CENTER, d.kickT, d.releaseT);
+    const d = P.decideDelivery(run, g, pitch, SIT);
+    P.resolveDelivery(run, g, pitch, SIT, d.kickT, d.releaseT);
   }
   R.applyGameResult(run, kind, g.pgMet, g.sgMet, g.outsRecorded >= 3, false, g.spurtFired, undefined,
     { tells: g.tells, outs: g.outs, inning: g.inning, scoreDiff: g.scoreDiff, walks: g.walks, teamWon: Gl.finaleTeamWon(g) });
@@ -173,7 +174,7 @@ function career(girl: string, pol: Policy, seed: string): Career {
 const pct = (x: number, n: number) => (n ? `${((100 * x) / n).toFixed(0)}` : "-").padStart(3);
 const q = (a: number[], p: number) => { const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(p * s.length))] ?? 0; };
 const RANKS = ["S", "A", "B", "never-quit", "C", "D"];
-console.log(`\n=== SRC=${SRCDIR} MUT=${MUT.join(",") || "-"} (N=${N}) ===`);
+console.log(`\n=== SRC=${SRCDIR} MUT=${MUT.join(",") || "-"} SIT=${SIT.row === 1 ? "center" : "corner"} (N=${N}) ===`);
 console.log("girl  pol    |  S   A   B  NQ   C   D | early | B+A(+NQ) | fans p50 | pg met % " + DATE_NAMES.join(" ") + " | lost% (pg+sg missed) | Day-60 letters p50 (p10-p90) | letter mix %S/A/B/<B");
 for (const girl of GIRLS) {
   const pitcher = B.isPitcherStyle(B.sheet(girl).style);

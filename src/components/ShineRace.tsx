@@ -26,6 +26,7 @@ import {
   dateTier,
   dateTitle,
   FINALE_PLATE,
+  firstLookRead,
   genericRead,
   goLabel,
   headToHead,
@@ -366,6 +367,10 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const game = plate.game;
   const stage = plate.stage;
   const practice = game.kind === "practice";
+  // The cage and the Gate ask for an intentional sit. Later dates retain the familiar one-tap Go.
+  // A restored attempt can continue from its saved pick.
+  const openingPickNeeded = mode === "career" && (practice || game.kind === "gate");
+  const [openingPicked, setOpeningPicked] = useState(() => !openingPickNeeded || Boolean(restore));
   const who = sheet(run.characterId);
   const ask = practice || exhibition ? null : officialFor(run.characterId, run.turn);
   const parkId = featuredParkId({ weekly, kind: game.kind, homePark: who.parkId });
@@ -813,10 +818,11 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // first wind-up waits under it. Every later Go (and the race's own) goes at once.
   const introPlayed = useRef(false);
   const go = useCallback(() => {
+    if (openingPickNeeded && !openingPicked) return;
     unlockAudio();
     const introMs = !introPlayed.current && vsRef.current ? CHROME_MS.vs : 0;
     if (race.go({ introMs })) introPlayed.current = true;
-  }, [race]);
+  }, [race, openingPickNeeded, openingPicked]);
 
   // Back in the box: the dialog leaves and the sit grid or Go is under the thumb
   // again, so the resume re-arms the input guard like any other swap of view.
@@ -921,7 +927,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
 
   const paused = plate.paused;
   const parts = situationParts(game, snap.watching && snap.phase === "pick" ? "pa-card" : snap.phase);
-  const prompt = pickPrompt({ phase: snap.phase, pitchesSeen: game.pitchesSeen });
+  const prompt = pickPrompt({ phase: snap.phase, pitchesSeen: game.pitchesSeen, practice });
+  const scoutingLine = snap.phase === "pick" && !snap.watching && game.pitchesSeen === 0 && !practice && !exhibition ? rivalProfile(game.arm).tells[0] : null;
   const sitGrid = showSitGrid({ phase: snap.phase, stage }) && !snap.watching;
   // The wind-up names her: "Kira comes set." (the mound's "Set." from the other side).
   const caption = raceCaption({ phase: snap.phase, stage, verdict: game.lastVerdict, banner: game.banner, arm: practice ? null : armCallName(game.arm) });
@@ -1126,7 +1133,18 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
             </div>
           }
         >
-          {sitGrid ? <SitZone aim={plate.aim} onSit={(c) => race.setSit(c)} ghost={ghost} label="Sit" /> : null}
+          {sitGrid ? (
+            <SitZone
+              aim={plate.aim}
+              active={!openingPickNeeded || openingPicked}
+              onSit={(c) => {
+                race.setSit(c);
+                if (openingPickNeeded) setOpeningPicked(true);
+              }}
+              ghost={ghost}
+              label="Sit"
+            />
+          ) : null}
         </ActionStage>
 
         {/* The broadcast chrome over the film, none of it taking a tap: the VS card at
@@ -1197,8 +1215,9 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           {snap.phase === "pick" && !snap.watching ? (
             <div className="flex flex-col gap-2">
               {prompt ? <p className="text-center font-story text-sm text-cream/90">{prompt}</p> : null}
+              {scoutingLine ? <p className="text-center font-story text-xs text-gold/90" data-first-scout>{scoutingLine}</p> : null}
               {basepath ? <p className="text-center font-story text-sm text-gold">{basepath}</p> : null}
-              <PixelBtn className="h-14 text-sm shine-go" onClick={go} disabled={!filmWarm} ariaLabel={goLabel({ practice, stage })}>
+              <PixelBtn className="h-14 text-sm shine-go" onClick={go} disabled={!filmWarm || (openingPickNeeded && !openingPicked)} ariaLabel={goLabel({ practice, stage })}>
                 {goLabel({ practice, stage })}
               </PixelBtn>
             </div>
@@ -1240,6 +1259,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
               {/* The exhibition's headline already told the whole day, runs and steals included. */}
               {basepath && !countDate && !exhibition ? <p className="text-center font-story text-sm text-gold">{basepath}</p> : null}
               {closeLine ? <p className="text-center font-story text-sm text-cream/85">{closeLine}</p> : null}
+              {practice ? <p className="text-center font-story text-sm text-cream/90" data-first-look-read>{firstLookRead(plate.aim, game.reached)}</p> : null}
               {/* The scoreboard under her read (N1, N2): how a tie came out, or "They lost." on a met ask. */}
               {resultLine ? (
                 <p className="text-center font-story text-sm text-gold" data-finale-result>

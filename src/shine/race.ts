@@ -170,7 +170,9 @@ export function barrelCell(ctx: SwingContext, r: () => number): { aim: Cell; adj
   const crossed = locCell(ctx.pitch.loc);
   const d = cellDistance(ctx.pick.sit, crossed);
   if (d === 0) return { aim: ctx.pick.sit, adjusted: false };
-  if (ctx.practice) return { aim: crossed, adjusted: true };
+  // The first lesson has to honor the Coach's box. Auto-correcting every practice swing
+  // made a wrong sit look exactly like a right one.
+  if (ctx.practice) return { aim: ctx.pick.sit, adjusted: false };
   if (d === 1 && r() < adjustChance(ctx.stats)) return { aim: crossed, adjusted: true };
   return { aim: ctx.pick.sit, adjusted: false };
 }
