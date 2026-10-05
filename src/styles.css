@@ -6431,6 +6431,11 @@
   background: #b7c3d8;
   color: #0d1a33;
 }
+.shine-polaroid-sticker.is-teal {
+  background: var(--color-grass-2);
+  color: #0d1a33;
+  font-size: 0.68rem;
+}
 .shine-polaroid-title {
   margin-top: 0.6rem;
   font-family: var(--font-display);

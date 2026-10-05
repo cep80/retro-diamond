@@ -42,7 +42,7 @@ import {
   shouldCurtainCall,
   yearCard,
 } from "@/shine/culture.ts";
-import { doneStamp, postgameFiller } from "@/components/race-ui";
+import { bookStamp, doneStamp, postgameFiller } from "@/components/race-ui";
 import { ShineComplexWork, YearGrades, markSpring } from "./ShineComplexWork";
 import {
   careerStill,
@@ -1364,10 +1364,10 @@ function Scrapbook({
             );
           }
           const p = e.page;
-          const stamp = doneStamp(p.met);
+          const stamp = bookStamp(p.met, p.saved);
           const clip = p.game === "finale" && p.met ? finaleClip : null;
           return (
-            <li key={`p-${p.turn}`} className={`shine-polaroid ${p.met ? "is-met" : "is-missed"}`} style={{ ["--tilt" as string]: `${i % 2 ? 1.4 : -1.2}deg` }} data-book-page={p.game}>
+            <li key={`p-${p.turn}`} className={`shine-polaroid ${p.met ? "is-met" : p.saved ? "is-saved" : "is-missed"}`} style={{ ["--tilt" as string]: `${i % 2 ? 1.4 : -1.2}deg` }} data-book-page={p.game} data-book-saved={p.saved ? "" : undefined}>
               <div className="shine-polaroid-photo">
                 {p.picture.plate ? (
                   <img src={p.picture.plate} alt="" className="shine-polaroid-plate" loading="lazy" onError={(ev) => fallBackTo(ev.currentTarget, parkSrc(sheet(who).parkId))} />
@@ -1834,6 +1834,7 @@ export function ShineApp() {
         });
       },
       dismissPostgame: () => useShine.getState().dismissPostgame(),
+      setState: (partial: Parameters<typeof useShine.setState>[0]) => useShine.setState(partial),
       dismissYearEnd: () => useShine.getState().dismissYearEnd(),
       dismissCalendarPeek: () => useShine.getState().dismissCalendarPeek(),
       continueRun: () => useShine.getState().continueRun(),

@@ -178,10 +178,19 @@ export function genericRead(read: string | null | undefined, verb = ""): boolean
 export const DONE_STAMP = {
   met: { jp: "達成", en: "She did it", tone: "gold" },
   missed: { jp: "未達成", en: "Not this time", tone: "slate" },
+  /** A big ask missed, and the smaller one held: the scrapbook's chip, not the done panel's. */
+  saved: { jp: "小さな達成", en: "The little one", tone: "teal" },
 } as const;
 
-export function doneStamp(met: boolean): (typeof DONE_STAMP)[keyof typeof DONE_STAMP] {
+export function doneStamp(met: boolean): (typeof DONE_STAMP)["met"] | (typeof DONE_STAMP)["missed"] {
   return met ? DONE_STAMP.met : DONE_STAMP.missed;
+}
+
+/** The scrapbook's chip. A page the smaller ask saved wears 小さな達成 instead of 未達成. */
+export function bookStamp(met: boolean, saved: boolean): (typeof DONE_STAMP)[keyof typeof DONE_STAMP] {
+  if (met) return DONE_STAMP.met;
+  if (saved) return DONE_STAMP.saved;
+  return DONE_STAMP.missed;
 }
 
 // ── The day, at a glance ────────────────────────────────────────────────────
@@ -515,10 +524,10 @@ export function moundRead(game: {
     if (game.pgId === "hold-one-run") return "The lead held.";
     if (game.pgId === "k-side") return "She struck out the side.";
     if (game.pgId === "strand-inherited") return "She came in with runners and stranded them.";
-    if (game.pgId === "four-out") return "Four outs. The lead held.";
+    if (game.pgId === "four-out") return "Four outs, two punchouts. The lead held.";
     if (game.pgId === "clean-ninth") return "Three outs. No runs.";
     if (game.pgId === "innings-5") return "Five innings. Three runs or fewer.";
-    if (game.pgId === "quality-start") return "Six innings. Three runs or fewer.";
+    if (game.pgId === "quality-start") return "Six innings. One run or fewer.";
     if (game.pgId === "escape-jam") return "Runners on. The inning ended.";
     if (game.pgId === "escape-loaded-jam") return "Bases loaded. The inning ended.";
     return "She got what she came for.";
@@ -555,10 +564,16 @@ export function moundRead(game: {
     return "The lead is gone.";
   }
   if (game.pgId === "four-out") {
-    if (game.blown || (game.outsRecorded ?? 0) >= 4) return "The lead is gone.";
+    if (game.blown) return "The lead is gone.";
     const n = game.outsRecorded ?? 0;
-    const word = n === 1 ? "out" : "outs";
-    return `She got ${n} ${word}. She needed four.`;
+    if (n < 4) {
+      const word = n === 1 ? "out" : "outs";
+      return `She got ${n} ${word}. She needed four.`;
+    }
+    const k = game.strikeouts ?? 0;
+    if (k === 1) return "One punchout. She needed two.";
+    if (k === 0) return "No punchouts. She needed two.";
+    return "The save didn't come together.";
   }
   if (game.pgId === "clean-ninth") {
     if ((game.earnedRuns ?? 0) > 0) return "A run scored.";
@@ -575,7 +590,8 @@ export function moundRead(game: {
       const word = innings === 1 ? "inning" : "innings";
       return `She got ${innings} ${word}. She needed ${asked}.`;
     }
-    return `She got the innings. ${er} runs. She needed three or fewer.`;
+    const cap = game.pgId === "quality-start" ? "one or fewer" : "three or fewer";
+    return `She got the innings. ${er} runs. She needed ${cap}.`;
   }
   if (game.kind === "gate") return "The Gate still opens.";
   if ((game.outsRecorded ?? 0) > 0 && (game.strikeouts ?? 0) === 0) return "The outs came. The punchouts didn't.";

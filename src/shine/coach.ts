@@ -70,7 +70,7 @@ export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeSt
     case "hit-risp":
       return { stat: "contact", need: "A hit with runners on. Contact first; Guts keeps her steady when it matters." };
     case "hit-late":
-      return { stat: "guts", need: "A hit in the 7th or later. Guts keeps her steady when the park gets loud." };
+      return { stat: "guts", need: "A hit in the 9th. Guts keeps her steady when the park gets loud." };
     case "quality-abs-3":
       return { stat: "contact", need: "Three solid at-bats. Contact is the whole job." };
     case "see-3-one-pa":
@@ -101,9 +101,10 @@ export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeSt
       // Check-in 29: both start with her on base, and a Coach who sends her to the poles for
       // them costs her more trips than it wins (simulated: Contact first is the better week).
       return { stat: "contact", need: "Get on, then run. Contact puts her on base; Speed takes the next one." };
+    case "four-out":
+      return { stat: "control", need: "Four outs, two of them strikeouts, with the lead. Control puts the ball where the glove is." };
     case "outs-3":
     case "out-1":
-    case "four-out":
     case "clean-ninth":
     case "hold-one-run":
       return { stat: "control", need: "Record outs. Control puts the ball where the glove is." };

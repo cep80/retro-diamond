@@ -194,8 +194,8 @@ describe("senior stills say only what she met (check-in 24)", () => {
   ];
   const MET: Partial<Record<CharacterId, RegExp[]>> = {
     kira: [/got four outs/, /A clean ninth\. Nobody scored/, /never got home/],
-    reina: [/She got out of it/, /Three runs or fewer/, /Nobody scored/],
-    sol: [/She got out of it/, /Three runs or fewer/, /Two punchouts in the ninth/],
+    reina: [/She got out of it/, /One run or fewer/, /Nobody scored/],
+    sol: [/She got out of it/, /One run or fewer/, /Two punchouts in the ninth/],
     miki: [/She put the bat on a breaking ball/, /She came up with runners on/, /She never went down on strikes/],
     // Check-in 25: the scoring-position steal is her Stretch, the late steal her Finale.
     // Check-in 29: her Series is third base.
@@ -231,8 +231,8 @@ describe("senior stills say only what she met (check-in 24)", () => {
 
   it("Kira's senior still in her results", () => {
     const k = (a: GoalMark, b: GoalMark, f: GoalMark) => yearStillLine("kira", 60, ["met", "met", "met", "met", a, b, f]);
-    assert.equal(k("met", "met", "met"), "The Stretch. She asked for the eighth and got four outs. Skyline Series. A clean ninth. Nobody scored. Diamond Finale. The tying run started on first. It never got home.");
-    assert.equal(k("met", "missed", "pending"), "The Stretch. She asked for the eighth and got four outs. Skyline Series. A run got in.");
+    assert.equal(k("met", "met", "met"), "The Stretch. She asked for the eighth and got four outs, two of them punchouts. Skyline Series. A clean ninth. Nobody scored. Diamond Finale. The tying run started on first. It never got home.");
+    assert.equal(k("met", "missed", "pending"), "The Stretch. She asked for the eighth and got four outs, two of them punchouts. Skyline Series. A run got in.");
     assert.equal(k("missed", "missed", "missed"), "The Stretch, Skyline Series, and Diamond Finale. She came up short in all three.");
     assert.equal(k("pending", "pending", "pending"), "Senior year. The bag by the bullpen door is still packed.");
     assert.doesNotMatch(sheet("kira").yearStills.senior, /Three up/);

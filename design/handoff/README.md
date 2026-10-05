@@ -14,8 +14,8 @@ Start here. This is enough to continue the goal without the previous session's c
 ## 2. Where it stands
 
 **Build**
-- **HEAD:** `d5d4b47` on `main`. It isn't pushed; the repo has no Vercel git integration.
-- **Tests:** 838 pass (`npm test`), and `npx tsc --noEmit` is clean.
+- **HEAD:** check-in 32 on `main` (the progress log). Its parent is `a312547` (Cage and Gate wait for a real sit). `d5d4b47` is the playtest-fix commit under that. It isn't pushed; the repo has no Vercel git integration.
+- **Tests:** 841 pass (`npm test`), and `npx tsc --noEmit` is clean.
 - **Score:** the creative director (check-in 30) puts it at about 55% of the way to Uma. Code alone can add maybe 3 more points; the rest is the user's art and music.
 
 **Playtest**
@@ -29,15 +29,14 @@ Start here. This is enough to continue the goal without the previous session's c
   - "music overlap": the walk-up looped under the whole date and now plays once. A song slot now always stops its old source first.
   - a React `removeChild` crash: the clip preloader appended videos to the React-owned `<body>`, and page translation was allowed. It's now detached, with notranslate.
   - manifest CORS errors on the protected preview: the link now sends credentials.
-- **Not yet verified on `d5d4b47`:** a full-career smoke run. Run one for a hitter and a pitcher (see §4) before anything else.
+- **Verified on check-in 32:** full-career smokes for Aoi (hitter, rank A, seed `aoi-muvkjcb0`) and Sol (pitcher, rank A, seed `sol-muvkjch9`). Both reached the Clubhouse with empty defects. Do not re-smoke this freeze before a new change. The audio-probe script is not in `scripts/`; it was not run.
 
-**Balance, from the career sim (Coach policy)**
-- B-or-A: 78–94%
-- S: 3–13%
-- early close: 0–12%
-- every stat letter trainable across five facilities per role
+**Balance, from the career sim (Coach policy, N=400, check-in 32)**
+- Three asks that sat at 86–95% are in band: Aoi's Stretch is a hit in the 9th (62%), a quality start is six innings with one earned run or fewer (Reina 71%, Sol 70%), and Kira's four-out save also needs two strikeouts (63%).
+- The scrapbook wears teal 小さな達成 when the big ask slipped and the smaller one held.
+- What is still outside the band is the Open list at the end of check-in 32. The band target is unchanged: big dates 50–70% (Gate and First Light may be higher), B-or-A 75–92%, S 3–14%, early close 8–16%.
 
-**The full history** is the progress log at the bottom of `design/diamond-shine-build-plan-2026-09-22.md`: every check-in from 1 to 31, with what was found, the numbers, and the commits.
+**The full history** is the progress log at the bottom of `design/diamond-shine-build-plan-2026-09-22.md`: every check-in from 1 to 32, with what was found, the numbers, and the commits.
 
 ## 3. The loop that has been working
 
@@ -102,24 +101,19 @@ The creative director has re-scored about every 3–4 check-ins.
 
 ## 6. What to do next, in order
 
-1. **Verify `d5d4b47`:** a full-career smoke for one hitter and one pitcher, and the audio probe. Then wait for the user's playtest notes and fix what they report first.
-2. **Playtest watch-list** (the creative director's):
+1. **Balance still outside the band** (the Open list at the end of check-in 32). Simulate one knob at a time on a patched copy (`SRC=`). Do not re-stack the rejected knobs listed in that check-in. Do not re-smoke this freeze before a new change. Miki's Lantern (16%) and Night (25%) are the clear misses under the band. The dates still above it are Reina and Sol Lantern, Aoi Series, Miki Stretch and Series, Kira Series, and Yuki Stretch.
+2. **Playtest watch-list** (the creative director's), when the user is playing:
    - do they hesitate on the first sit?
    - do they read 失敗?
    - can they say who won the Finale?
    - which beat do they name from each picture?
 
    The walk and HR stills are expected to fail the last one until the art lands.
-3. **Balance above band** (simulate, then apply):
-   - the pitchers' Lantern and Series at 91–94% met
-   - hitters' Stretch and Series at 87–94%
-   - Aoi's Lantern at 46%, which is below band
-4. **Creative director check-in 30 leftover** (finding 10): Yuki can reach A with four 未達成 polaroids. Consider a "small win" chip on scrapbook pages her smaller ask saved.
-5. **After the art lands:**
+3. **After the art lands** (a user step, including Sol's pitching clips, which the user is authoring):
    - flip the swap flags and re-run the stranger read test
    - have the creative director re-score
    - the flags: `FINALE_PLATE_ART_READY` in `src/components/race-ui.ts`; `LIVE_STAGE_ART_READY` in `src/shine/ending.ts`; `LIVE_SONG_FILE` and `COMPLEX_THEME_FILE` in `src/shine/audio.ts`; `OFF_MODEL_ART` in `src/shine/bible.ts` (entries come out as clean art replaces them)
-6. **The user's steps. Don't do these without them:**
+4. **The user's steps. Don't do these without them:**
    - **Art, in the §11 order** of `design/diamond-shine-art-brief-2026-09-24.md`:
      1. Finale stadium and Finale at-bat stills
      2. Walk and HR stills

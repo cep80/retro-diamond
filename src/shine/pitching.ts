@@ -307,7 +307,7 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
                 : pgId === "innings-5"
                   ? "Five innings. Three runs or fewer."
                   : pgId === "quality-start"
-                    ? "Six innings. Three runs or fewer."
+                    ? "Six innings. One run or fewer."
                     : pgId === "k-2"
                       ? "Two punchouts."
                       : pgId === "k-3"

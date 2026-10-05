@@ -79,6 +79,8 @@ const VERB_TO_ID: [RegExp, GoalId][] = [
   [/^reach base twice$/i, "reach-twice"],
   [/^reach base$/i, "reach"],
   [/^drive in a run$/i, "rbi"],
+  [/^get a hit in the 9th$/i, "hit-late"],
+  // Retired Stretch verb. Older saves still name the 7th.
   [/^get a hit in the 7th\+$/i, "hit-late"],
   [/^three quality at-bats$/i, "quality-abs-3"],
   [/^hit with risp$/i, "hit-risp"],
@@ -128,6 +130,7 @@ const SPOKEN_GOAL: Record<string, string> = {
   "Quality start": "A long start",
   "See 3 pitches in one PA": "Three pitches in one look",
   "See 2 pitches in one PA": "Two pitches in one look",
+  "Get a hit in the 9th": "A hit in the 9th",
   "Get a hit in the 7th+": "A hit late",
   "Enter with inherited runners and strand": "Come in with runners and strand them",
   "Steal in the 7th+": "Steal late",
@@ -158,7 +161,7 @@ export function goalDefinition(id: GoalId): string {
     case "rbi":
       return "A run scores on her ball in play. A walk with the bases loaded counts. A walk otherwise does not.";
     case "hit-late":
-      return "A base hit in the 7th inning or later.";
+      return "A base hit in the 9th.";
     case "quality-abs-3":
       return "Three plate appearances that end in solid contact, hit or out.";
     case "hit-risp":
@@ -212,7 +215,7 @@ export function goalDefinition(id: GoalId): string {
     case "innings-5":
       return "Five innings with three or fewer earned runs.";
     case "quality-start":
-      return "Six innings with three or fewer earned runs.";
+      return "Six innings with one or fewer earned runs.";
     case "hold-one-run":
       return "Finish the inning with the lead intact.";
     case "k-side":
@@ -220,7 +223,7 @@ export function goalDefinition(id: GoalId): string {
     case "strand-inherited":
       return "Runners on when she enters; none of them score.";
     case "four-out":
-      return "Four outs with the lead intact.";
+      return "Four outs, two of them strikeouts, with the lead intact.";
     case "clean-ninth":
       return "Three outs, no runs.";
     case "k-consecutive":
@@ -266,7 +269,7 @@ export function evalHitterPg(id: HitterPgId, g: HitterGoalView): boolean {
     case "rbi":
       return ev.some((e) => e.t === "rbi" && e.runs > 0);
     case "hit-late":
-      return ev.some((e) => e.t === "reach" && e.via === "hit" && paInning(ev, e.pa) >= 7);
+      return ev.some((e) => e.t === "reach" && e.via === "hit" && paInning(ev, e.pa) >= 9);
     case "quality-abs-3":
       return g.qualityAbs >= 3;
     case "hit-risp":
@@ -474,7 +477,7 @@ export function evalPitcherPg(id: PitcherPgId, g: PitcherGoalView): boolean {
     case "innings-5":
       return g.inningsOuts >= 15 && g.earnedRuns <= 3;
     case "quality-start":
-      return g.inningsOuts >= 18 && g.earnedRuns <= 3;
+      return g.inningsOuts >= 18 && g.earnedRuns <= 1;
     case "hold-one-run":
       return g.scoreDiff >= 1 && g.outsRecorded >= 3 && !g.blown;
     case "k-side":
@@ -482,7 +485,7 @@ export function evalPitcherPg(id: PitcherPgId, g: PitcherGoalView): boolean {
     case "strand-inherited":
       return g.inherited > 0 && g.inheritedStranded && g.outsRecorded >= 3 && !g.blown;
     case "four-out":
-      return g.outsRecorded >= 4 && !g.blown;
+      return g.outsRecorded >= 4 && !g.blown && g.strikeouts >= 2;
     case "clean-ninth":
       return g.outsRecorded >= 3 && g.earnedRuns === 0 && !g.blown;
     case "k-consecutive":

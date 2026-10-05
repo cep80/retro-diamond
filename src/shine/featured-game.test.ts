@@ -18,6 +18,7 @@ import {
   startFeaturedGame,
   type FeaturedGame,
 } from "./featured-game.ts";
+import { weeklySit } from "./pilgrimage.ts";
 import { newAoiRun, newRun } from "./run.ts";
 
 /** Re-seat the runners for the current PA, including the paStart record the goals read. */
@@ -235,11 +236,15 @@ describe("featured game", () => {
     assert.equal(game.done, false);
   });
 
-  it("opens the weekly pilgrimage as one PA at Lantern leverage", () => {
+  it("opens the weekly pilgrimage as one PA at this week's look", () => {
     const run = newAoiRun();
+    const sit = weeklySit();
     const game = startFeaturedGame(run, "weekly");
     assert.equal(game.paTarget, 1);
-    assert.ok(game.inning >= 6);
+    assert.equal(game.inning, sit.inning);
+    assert.equal(game.count.balls, sit.balls);
+    assert.equal(game.count.strikes, sit.strikes);
+    assert.equal(game.outs, sit.outs);
   });
 
   it("plays the rest of Miki First Light after the 7th while she has not struck out", () => {

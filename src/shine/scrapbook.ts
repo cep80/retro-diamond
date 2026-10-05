@@ -604,6 +604,8 @@ export interface BookPage {
   /** The game's name, as the page was minted. */
   label: string;
   met: boolean;
+  /** The big ask missed, and the smaller one held. The chip says 小さな達成. */
+  saved: boolean;
   caption: string;
   /** Who was across from her, counted over the career. */
   meeting: string | null;
@@ -643,12 +645,14 @@ export function scrapbookBook(id: CharacterId, highlights: readonly Highlight[],
       // A Finale her side won short of her ask (gameHighlight's "They won") says they won.
       const wonShort = game === "finale" && !met && /^They won\b/.test(h.line);
       const caption = wonShort ? FINALE_WON_SHORT_CAPTIONS[id] : pageCaption(id, game, met);
-      const smaller = !met && /smaller (ask|one) held/i.test(h.line) ? " She still got the little one." : "";
+      const saved = !met && /smaller (ask|one) held/i.test(h.line);
+      const smaller = saved ? " She still got the little one." : "";
       const page: BookPage = {
         turn: h.turn,
         game,
         label: h.label,
         met,
+        saved,
         caption: `${caption}${smaller}`,
         meeting,
         notes: [],

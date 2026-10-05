@@ -116,6 +116,20 @@ describe("scrapbook book (check-in 22)", () => {
     }
   });
 
+  it("chips a page the smaller ask saved, and leaves a plain miss as a miss", () => {
+    const saved = game(28, "It got away from her vs Aoi. The smaller ask held.");
+    const oldSave = game(33, "It got away from her vs Aoi. The smaller one held.");
+    const missed = game(50, "It got away from her vs Aoi.");
+    const pages = scrapbookBook("yuki", [saved, oldSave, missed]).flatMap((e) => (e.kind === "page" ? [e.page] : []));
+    assert.equal(pages[0]?.met, false);
+    assert.equal(pages[0]?.saved, true);
+    assert.match(pages[0]?.caption ?? "", /She still got the little one\.$/);
+    assert.equal(pages[1]?.saved, true);
+    assert.equal(pages[2]?.saved, false);
+    assert.doesNotMatch(pages[2]?.caption ?? "", /little one/);
+    assert.equal(pages[2]?.caption, GIRL_CAPTIONS.yuki.stretch.missed);
+  });
+
   it("reads the mark from the run when it has one, over the words on the page", () => {
     const entries = scrapbookBook("sol", [game(5, "She got what she came for.")], ["missed", "pending", "pending", "pending", "pending", "pending", "pending"]);
     const page = entries[0]!.kind === "page" ? entries[0]!.page : null;

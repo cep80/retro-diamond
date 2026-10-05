@@ -187,6 +187,27 @@ describe("goals", () => {
     assert.equal(evalPitcherPg("k-2", pitcherView({ strikeouts: 2, outsRecorded: 3 })), true);
   });
 
+  it("the 9th-inning hit, the one-run quality start, and the two-punchout save", () => {
+    const hit = (inning: number): PlateEvent[] => [
+      { t: "paStart", pa: 1, inning, outs: 0, bases: emptyBases() },
+      { t: "reach", pa: 1, via: "hit", base: 1 },
+    ];
+    assert.equal(evalHitterPg("hit-late", hitterView(hit(8))), false);
+    assert.equal(evalHitterPg("hit-late", hitterView(hit(9))), true);
+    assert.equal(goalIdForVerb("Get a hit in the 9th"), "hit-late");
+    assert.equal(goalIdForVerb("Get a hit in the 7th+"), "hit-late", "older saves still resolve");
+    assert.equal(speakGoal("Get a hit in the 9th"), "A hit in the 9th");
+    assert.match(goalDefinition("hit-late"), /9th/);
+    assert.equal(evalPitcherPg("quality-start", pitcherView({ inningsOuts: 18, earnedRuns: 2 })), false);
+    assert.equal(evalPitcherPg("quality-start", pitcherView({ inningsOuts: 18, earnedRuns: 1 })), true);
+    assert.equal(evalPitcherPg("innings-5", pitcherView({ inningsOuts: 15, earnedRuns: 3 })), true);
+    assert.match(goalDefinition("quality-start"), /one or fewer/);
+    assert.equal(evalPitcherPg("four-out", pitcherView({ outsRecorded: 4, strikeouts: 1 })), false);
+    assert.equal(evalPitcherPg("four-out", pitcherView({ outsRecorded: 4, strikeouts: 2 })), true);
+    assert.equal(evalPitcherPg("four-out", pitcherView({ outsRecorded: 4, strikeouts: 2, blown: true })), false);
+    assert.match(goalDefinition("four-out"), /two of them strikeouts/);
+  });
+
   it("bases-loaded jam is stricter than a jam", () => {
     assert.equal(evalPitcherPg("escape-jam", pitcherView({ escapedJam: true })), true);
     assert.equal(evalPitcherPg("escape-loaded-jam", pitcherView({ escapedJam: true })), false);

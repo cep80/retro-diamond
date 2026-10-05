@@ -527,3 +527,25 @@ Pass 4 is repetition and lore checks. Uses `team-narrative` for the writing pass
   - the stranger playtest (M6, a user step)
   - server-side receipt verification before any real purchase
   - the art brief (a user step)
+- **Check-in 32 (game designer, then applied): three asks above the band, and the small-win chip.** Coach policy, N=400, one knob at a time. A bundled patch overshot rank and early close and was not applied. `a312547` (Cage and Gate wait for a real sit) was already on main and had not been logged. The three asks do not stack on the same girl, so the separate tables are the landing.
+  - **Cage and Gate (`a312547`):** Go stays off until a sit cell is pressed. Hitter practice is one plate appearance and keeps the Coach's box. The sim's optional 5th argument `corner` sits the corner. Pitcher practice is still three pitches ("Three looks. The glove is real.").
+  - **Smokes before this change** (they do not cover the chip or the asks): Aoi `aoi-muvj30qz` reached the Clubhouse at C and closed early at turn 50, which is legal. Sol `sol-muvj30w8` reached the Clubhouse at S, turn 60.
+  - **Small-win chip:** a scrapbook page whose big ask slipped and whose smaller ask held says "The smaller ask held." and wears teal 小さな達成 ("The little one"). Gold 達成 is still the big ask. Slate 未達成 is both missed. Saved pages stay in color. Older pages that say "The smaller one held." still count. Browser check at 390×844, 360×640, and 1280×800: Yuki's Lantern saved, Stretch missed, Series met. The weekly test follows `weeklySit()`, so a week whose look is the 3rd, 4th, or 5th does not fail it.
+  - **Applied:**
+    - Aoi's Stretch is "Get a hit in the 9th". The retired "Get a hit in the 7th+" still resolves, so older saves load. Coach 86% → 62%. Even 61, strong 63. B-or-A 73 is 2 under 75, and even early-close 18 is 2 over the 16 cap: both are noise at N=400 (about 2.5 points of SE). Her Series was left alone. She already misses Lantern about half the time, and a second frequent miss closes careers.
+    - A quality start is six innings with one earned run or fewer. The spoken name stays "A long start." The banner is "Six innings. One run or fewer." Reina's Series 95% → 71% (S 3, early close 12, B-or-A 86, Finale 66). Sol's Series 91% → 70% (S 2, early close 8, B-or-A 90, Finale 58). Even: Reina 75, Sol 69. Strong: Reina 80, Sol 69. Sol's S at 2 is 1 under the floor of 3; the baseline was 3, so that is noise. Lantern stays at three runs or fewer.
+    - Kira's four-out save also needs two strikeouts. Coach Stretch 86% → 63% (S 7, early close 8, B-or-A 86, Series still 88, Finale 62). Even and strong were not re-run: 63 sits 13 points above the 50 floor. A held lead that missed the punchouts says so. The opening banner stays "Two outs. HOLD the lead."
+  - **Measured and not applied** (do not stack these again):
+    - Quality start at two earned runs. Lantern at two runs, one run, or a shutout. A shutout kills S.
+    - A hit in the 8th. Three quality at-bats plus any extra hit bar (four quality at-bats, three plus two hits, three plus one hit).
+    - Miki's "come to bat with runners on" rewritten as a hit with any runner: coach 51, even 50, strong 45. Strong falls through the floor, so it stays.
+    - Kira's Series as the clean ninth plus one strikeout (79, and Reina's Finale drops to 60) or plus two (49, Reina's Finale 40). Swapping her Series to `k-3` (13) or `k-side` (14), or her Stretch to `k-side` (16).
+    - Removing Yuki's ghost runner: her Stretch goes 79% → 15%. The assist stays.
+  - **Checks:** `npx tsc --noEmit` clean. 841 tests pass. Career smoke after the freeze: Aoi A (`aoi-muvkjcb0`, turn 60, Stretch scorebug "A hit in the 9th", done line "A hit, and a late one.") and Sol A (`sol-muvkjch9`, 14.7 minutes, Series "Six innings. One run or fewer."). Both reached the Clubhouse with empty defects, stuck lists, and copy flags. The audio probe was not run; that script is not in `scripts/`.
+- **Open (check-in 32):**
+  - Still above the band: Reina and Sol Lantern (~93 / ~92). Aoi Series (~93). Miki Stretch (88) and Series (92). Kira Series (88). Yuki Stretch (79); the assist has to stay.
+  - Still under the band: Aoi Lantern (45, about 2 SE under 50; borderline, do not chase it first). Miki Lantern (16) and Night (25).
+  - Miki's B-or-A around 94–96 and early close 0 are structural. Her path cannot close early, and the NQ column counts in B-or-A.
+  - Sol's live pitching takes: the user is authoring them. Do not generate more, and do not wire the rejected proofs.
+  - Finale at-bat stills are still the lantern park (art brief §11.1).
+  - A production deploy, payments, the art brief, music, and the stranger playtest stay the user's steps.

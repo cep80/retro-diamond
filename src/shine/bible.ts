@@ -93,7 +93,7 @@ const RAW_BIBLE: RawSheet[] = [
       { turn: 18, verb: "Reach base once", sgVerb: "Hit an outfield ball", resultsPg: false },
       { turn: 28, verb: "Drive in a run", sgVerb: "Work a full count", resultsPg: false },
       { turn: 33, verb: "Reach base twice", sgVerb: "Reach base", resultsPg: false },
-      { turn: 50, verb: "Get a hit in the 7th+", sgVerb: "Work a full count", resultsPg: true },
+      { turn: 50, verb: "Get a hit in the 9th", sgVerb: "Work a full count", resultsPg: true },
       { turn: 55, verb: "Three quality at-bats", sgVerb: "Work a full count", resultsPg: false },
       // Check-in 28: "Drive in a run" (met 62–69% in the check-in 25 sim), where "Hit with RISP"
       // was 39–52%. Her '81 story still lands: Haruko had two on (Finale eve), and this time a run comes home.
@@ -499,7 +499,7 @@ const SENIOR_STILLS: Partial<Record<CharacterId, SeniorStills>> = {
   },
   reina: {
     stretch: { met: "Bases loaded. She got out of it.", missed: "Bases loaded. A run came in." },
-    series: { met: "Six innings. Three runs or fewer.", missed: "The six innings didn't hold." },
+    series: { met: "Six innings. One run or fewer.", missed: "The six innings didn't hold." },
     finale: { met: "Ball four to lead off. Nobody scored.", missed: "Ball four to lead off. A run came in." },
     none: "Senior year. The notebook is on its last ruled page.",
   },
@@ -511,12 +511,12 @@ const SENIOR_STILLS: Partial<Record<CharacterId, SeniorStills>> = {
   },
   sol: {
     stretch: { met: "Runners on. She got out of it.", missed: "A run scored out of the jam." },
-    series: { met: "Six innings. Three runs or fewer.", missed: "The six innings didn't hold." },
+    series: { met: "Six innings. One run or fewer.", missed: "The six innings didn't hold." },
     finale: { met: "Two punchouts in the ninth, and the lead held.", missed: "The two punchouts didn't come.", lost: "The lead didn't hold." },
     none: "Senior year. Ninety-six, she says, and means it.",
   },
   kira: {
-    stretch: { met: "She asked for the eighth and got four outs.", missed: "She asked for the eighth. The lead didn't last." },
+    stretch: { met: "She asked for the eighth and got four outs, two of them punchouts.", missed: "She asked for the eighth. The save didn't come together." },
     series: { met: "A clean ninth. Nobody scored.", missed: "A run got in." },
     finale: { met: "The tying run started on first. It never got home.", missed: "The tying run came around." },
     none: "Senior year. The bag by the bullpen door is still packed.",

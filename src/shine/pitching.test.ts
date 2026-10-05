@@ -110,7 +110,7 @@ describe("Ace / Closer mound", () => {
     run.turn = 55;
     const game = startPitchingGame(run, "series");
     assert.equal(game.pgId, "quality-start");
-    assert.equal(game.banner, "Six innings. Three runs or fewer.");
+    assert.equal(game.banner, "Six innings. One run or fewer.");
     assert.doesNotMatch(game.banner, /one time through/i);
   });
 
