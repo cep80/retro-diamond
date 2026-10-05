@@ -74,6 +74,8 @@ export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeSt
     case "quality-abs-3":
       return { stat: "contact", need: "Three solid at-bats. Contact is the whole job." };
     case "see-3-one-pa":
+    case "see-4-one-pa":
+    case "see-5-one-pa":
     case "see-4":
     case "see-3":
     case "see-2-one-pa":
@@ -241,6 +243,8 @@ function secondNeed(id: GoalId | null, pitcher: boolean): TraineeStatKey | null 
     case "hit-late":
       return "guts";
     case "see-3-one-pa":
+    case "see-4-one-pa":
+    case "see-5-one-pa":
     case "see-4":
     case "see-3":
     case "full-count":

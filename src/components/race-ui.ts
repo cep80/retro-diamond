@@ -2,8 +2,8 @@
  * The race view's pure half: copy, the count bulbs, what the frame shows in
  * each phase. Kept out of the .tsx so the node test runner covers it.
  *
- * The race has one verb before the PA (sit, later the call) and none during
- * it. Everything here exists to keep the HUD to that.
+ * The race has one sit before the plate appearance, and one Swing while the
+ * ball is in the air. Everything here exists to keep the HUD to that.
  */
 import { resultStamp } from "../shine/action-art.ts";
 import type { Stage } from "../shine/beats.ts";
@@ -26,12 +26,11 @@ export function leaveLabel(opts: { practice: boolean }): string {
 
 export const RACE_COPY = {
   /**
-   * The one line on the first pitch of a date. Center is already lit, so it names the grid as
-   * the choice in no one's jargon (check-in 31, F7: a stranger read "Sit the zone" as baseball
-   * talk). "Sit" is the word everywhere after it.
+   * The one line on the first pitch of a date. The grid starts empty, so it names
+   * the box and the swing in plain words. "Sit" is the word everywhere after it.
    */
-  firstPick: "Tap the box she's sitting on. Then Go, and watch.",
-  practicePick: "The first toss is down the middle. Tap where she should wait, then Go.",
+  firstPick: "Tap the box she's sitting on. Then Go. Swing when it arrives.",
+  practicePick: "The first toss is down the middle. Tap where she should wait, then Go. Swing when it arrives.",
   /** The mound's twin: the grid is where the glove sits (shown in place of the caption at pitch 0). */
   moundFirstPick: "Set the glove where you want it, then press Go.",
   /** The done panel's label, the same on both dates; the exhibition keeps its park. */
@@ -642,15 +641,56 @@ export function showPicks(_phase: RacePhase): boolean {
   return false;
 }
 
+const LOOK_HOLD = ["", "One pitch", "Two pitches", "Three pitches", "Four pitches", "Five pitches"] as const;
+
+/** How many pitches a look ask is waiting on. Null for every other ask. */
+export function lookNeed(pgId: string | null | undefined): 2 | 3 | 4 | 5 | null {
+  if (pgId === "see-2-one-pa") return 2;
+  if (pgId === "see-3-one-pa") return 3;
+  if (pgId === "see-4-one-pa") return 4;
+  if (pgId === "see-5-one-pa") return 5;
+  return null;
+}
+
+/**
+ * The hold between pitches, while she is still in this at-bat. The count is the
+ * look so far. Once it has the number, it says the ask the way the scorebug does.
+ */
+export function lookHoldLine(seen: number, need: 2 | 3 | 4 | 5): string | null {
+  if (seen <= 0) return null;
+  if (seen >= need) {
+    const got = LOOK_HOLD[need];
+    return got ? `${got} in one look.` : null;
+  }
+  const soFar = LOOK_HOLD[seen];
+  return soFar ? `${soFar} in the look.` : null;
+}
+
 /**
  * One caption during the race: the pitcher set at her wind-up (the mound's
- * "Set." from the other side, when the caller names her), the verdict after a
- * pitch, else nothing.
+ * "Set." from the other side, when the caller names her), the verdict on the
+ * reaction, the look's length in the hold between pitches, else nothing.
  */
-export function raceCaption(opts: { phase: RacePhase; stage: Stage; verdict: string; banner: string; arm?: string | null }): string | null {
+export function raceCaption(opts: {
+  phase: RacePhase;
+  stage: Stage;
+  verdict: string;
+  banner: string;
+  arm?: string | null;
+  /** Pitches in the at-bat on screen. A finished at-bat has already dealt the next one at 0. */
+  lookSeen?: number;
+  lookNeed?: 2 | 3 | 4 | 5 | null;
+  /** Named only on the reaction, and only when the Coach released. */
+  release?: string | null;
+}): string | null {
   if (opts.phase !== "racing") return null;
   if (opts.stage === "prepare") return opts.arm ? `${opts.arm} comes set.` : null;
   if (opts.stage === "flight") return null;
+  if (opts.stage === "reaction" && opts.release) return opts.release;
+  if (opts.stage === "idle" && opts.lookNeed) {
+    const hold = lookHoldLine(opts.lookSeen ?? 0, opts.lookNeed);
+    if (hold) return hold;
+  }
   return opts.verdict || opts.banner || null;
 }
 

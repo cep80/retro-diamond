@@ -128,7 +128,7 @@ export function ShineSettings() {
             Play
           </h3>
           <p className="shine-set-body mt-2">
-            Tap the box she&apos;s sitting on. Then Go, and watch. She decides the swing. Pitching works the same way. Nothing is timed while the ball is in the air.
+            Tap the box she&apos;s sitting on. Then Go. Swing when it arrives. If you let the pitch go, she swings from who she is. On the mound, set the glove, then Go.
           </p>
           {/* A real checkbox under the switch: role="switch" reads it as on or off, the label row is the target. */}
           <label className="shine-set-toggle mt-4">
@@ -271,7 +271,7 @@ export function ShineSettings() {
 const TEACH_CARDS: { title: string; body: string }[] = [
   {
     title: "The at-bat",
-    body: "You are her Coach. Tap the box she's sitting on. Then Go, and watch. She decides the swing from who she is and where you told her to look. Nothing is tapped while the ball is in the air.",
+    body: "You are her Coach. Tap the box she's sitting on. Then Go. Swing when it arrives. If you let the pitch go, she swings from who she is and where you told her to look.",
   },
   {
     title: "Where she looks",
@@ -279,7 +279,7 @@ const TEACH_CARDS: { title: string; body: string }[] = [
   },
   {
     title: "The mound",
-    body: "Reina, Sol, and Kira throw. Show her where the catcher sets up, press Go. She picks the pitch. It works just like the plate.",
+    body: "Reina, Sol, and Kira throw. Tap where the catcher sets up, then press Go. She picks the pitch.",
   },
   {
     title: "The big games",

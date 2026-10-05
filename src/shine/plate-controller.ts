@@ -485,6 +485,22 @@ export class PlateController {
     return true;
   }
 
+  /**
+   * Land a swing now, during flight. The race uses this when the Coach
+   * releases. Pause, a pitch that is already gone, or a non-finite timing
+   * error refuse it. Practice forces contact. Returns false when nothing resolves.
+   */
+  coachSwing(timingErr: number, kind: SwingKind, aim: Cell, mods?: Partial<CallMods>): boolean {
+    const p = this.pitch;
+    if (this.stage !== "flight" || this.pauseReason || !p || !Number.isFinite(timingErr)) return false;
+    const practice = this.game.kind === "practice";
+    const nextKind = practice ? "contact" : kind;
+    const next = { ...this.game };
+    resolveSwing(this.run, next, p, aim, timingErr, nextKind, mods);
+    this.land(next, true, nextKind);
+    return true;
+  }
+
   private land(next: FeaturedGame, swung: boolean, swingKind: SwingKind | null) {
     const beat = fieldBeatFor(next);
     const spec = beatSpec(beat, this.reduced, this.beatPace);

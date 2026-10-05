@@ -50,9 +50,10 @@ const SPECS: Record<FieldBeat, BeatSpec> = {
 
 /**
  * `tap`: the tapped plate, where ordinary pitches hurry back to the button.
- * `race`: the watch-only PA. Nothing is timed, so a swing gets to finish on
- * screen: load → cut → contact → follow-through reads as a swing, and the
- * count line lands before the next wind-up.
+ * `race`: the plate appearance. The sheet swing is held to the plate so a
+ * release can still land, and a swing gets to finish on screen: load → cut →
+ * contact → follow-through reads as a swing, and the count line lands before
+ * the next wind-up.
  */
 export type BeatPace = "tap" | "race";
 

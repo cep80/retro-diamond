@@ -76,6 +76,8 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
       if (game.kind === "gate") return "Three pitches in one look. The Gate opened.";
       return "Three pitches in one look.";
     }
+    if (game.pgId === "see-4-one-pa") return "Four pitches in one look.";
+    if (game.pgId === "see-5-one-pa") return "Five pitches in one look.";
     if (game.pgId === "no-k") return game.kind === "finale" ? "Diamond Finale. She never went down on strikes." : "She didn't strike out.";
     if (game.pgId === "foul-two-strike") return "She fouled one off with two strikes and stayed alive.";
     if (game.pgId === "full-count") return "She took it to 3-2.";
@@ -108,14 +110,20 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
   return finaleWonShort(game) ? `${FINALE_WON_BANNER} ${miss}` : miss;
 }
 
+const LOOK_SAW = ["", "One pitch", "Two pitches", "Three pitches", "Four pitches"] as const;
+const LOOK_NEED = ["", "one", "two", "three", "four", "five"] as const;
+
+function lookShort(n: number, need: 3 | 4 | 5): string {
+  const saw = n > 0 && n < need ? LOOK_SAW[n] : undefined;
+  const word = LOOK_NEED[need];
+  return saw ? `${saw} in the look. She needed ${word}.` : `The look never got to ${word} pitches.`;
+}
+
 /** What a missed ask says at the plate: what she did, and what didn't come. */
 function plateMissRead(run: TraineeRun, game: FeaturedGame): string {
-  if (game.pgId === "see-3-one-pa") {
-    const n = game.maxPaPitches;
-    if (n >= 2) return "Two pitches in the look. She needed three.";
-    if (n === 1) return "One pitch in the look. She needed three.";
-    return "The look never got to three pitches.";
-  }
+  if (game.pgId === "see-3-one-pa") return lookShort(game.maxPaPitches, 3);
+  if (game.pgId === "see-4-one-pa") return lookShort(game.maxPaPitches, 4);
+  if (game.pgId === "see-5-one-pa") return lookShort(game.maxPaPitches, 5);
   if (game.pgId === "no-k" && game.struckOut) return "She struck out.";
   if (game.pgId === "foul-two-strike") return "The two-strike foul didn't come. She kept swinging anyway.";
   if (game.pgId === "full-count") return "The count never got to 3-2.";

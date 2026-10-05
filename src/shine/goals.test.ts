@@ -187,6 +187,22 @@ describe("goals", () => {
     assert.equal(evalPitcherPg("k-2", pitcherView({ strikeouts: 2, outsRecorded: 3 })), true);
   });
 
+  it("sees four pitches in one look, then five, and still resolves the old foul and 3-2 verbs", () => {
+    assert.equal(goalIdForVerb("See 4 pitches in one PA"), "see-4-one-pa");
+    assert.equal(goalIdForVerb("See 5 pitches in one PA"), "see-5-one-pa");
+    assert.equal(goalIdForVerb("See 4 pitches"), "see-4");
+    assert.equal(goalIdForVerb("Foul off a 2-strike pitch"), "foul-two-strike");
+    assert.equal(goalIdForVerb("Work a 3-2 count"), "full-count");
+    assert.equal(speakGoal("See 4 pitches in one PA"), "Four pitches in one look");
+    assert.equal(speakGoal("See 5 pitches in one PA"), "Five pitches in one look");
+    assert.match(goalDefinition("see-4-one-pa"), /Four pitches/);
+    assert.match(goalDefinition("see-5-one-pa"), /Five pitches/);
+    assert.equal(evalHitterPg("see-4-one-pa", hitterView([], { maxPaPitches: 3 })), false);
+    assert.equal(evalHitterPg("see-4-one-pa", hitterView([], { maxPaPitches: 4 })), true);
+    assert.equal(evalHitterPg("see-5-one-pa", hitterView([], { maxPaPitches: 4 })), false);
+    assert.equal(evalHitterPg("see-5-one-pa", hitterView([], { maxPaPitches: 5 })), true);
+  });
+
   it("the 9th-inning hit, the one-run quality start, and the two-punchout save", () => {
     const hit = (inning: number): PlateEvent[] => [
       { t: "paStart", pa: 1, inning, outs: 0, bases: emptyBases() },

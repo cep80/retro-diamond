@@ -292,15 +292,26 @@ describe("featured game", () => {
     assert.ok(game.trickFouls >= 1);
   });
 
-  it("meets Miki Lantern Classic on a 2-strike foul", () => {
+  it("meets a two-strike foul when that is still the ask, and Lantern on four pitches in the look", () => {
     const run = newRun("miki");
     run.turn = 28;
-    const game = startFeaturedGame(run, "lantern-classic");
-    game.count = { balls: 1, strikes: 2 };
+    const retired = startFeaturedGame(run, "lantern-classic");
+    retired.pgId = "foul-two-strike";
+    retired.count = { balls: 1, strikes: 2 };
     const loc = { x: -0.5, y: -0.5 };
-    resolveSwing(run, game, { type: "fastball", loc, inZone: true, speed: 0.6, recognizeAt: 0, family: "hard" as const }, { row: 1, col: 1 }, 0.01, "contact");
-    assert.ok(game.lastContact === "foul-tip" || game.lastContact === "foul");
-    assert.equal(game.twoStrikeFoul, true);
+    resolveSwing(run, retired, { type: "fastball", loc, inZone: true, speed: 0.6, recognizeAt: 0, family: "hard" as const }, { row: 1, col: 1 }, 0.01, "contact");
+    assert.ok(retired.lastContact === "foul-tip" || retired.lastContact === "foul");
+    assert.equal(retired.twoStrikeFoul, true);
+    assert.equal(retired.pgMet, true);
+    const game = startFeaturedGame(run, "lantern-classic");
+    assert.equal(game.pgId, "see-4-one-pa");
+    const ball = { type: "fastball" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const };
+    game.paPitches = 2;
+    resolveTake(run, game, ball);
+    assert.equal(game.maxPaPitches, 3);
+    assert.equal(game.pgMet, false);
+    resolveTake(run, game, ball);
+    assert.equal(game.maxPaPitches, 4);
     assert.equal(game.pgMet, true);
   });
 
@@ -317,13 +328,24 @@ describe("featured game", () => {
     }
   });
 
-  it("meets Work a 3-2 count when the count fills", () => {
+  it("meets Work a 3-2 count when the count fills, and Night on five pitches in the look", () => {
     const run = newRun("miki");
     run.turn = 33;
+    const retired = startFeaturedGame(run, "night-classic");
+    retired.pgId = "full-count";
+    retired.count = { balls: 2, strikes: 2 };
+    resolveTake(run, retired, { type: "slider", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "soft" as const });
+    assert.equal(retired.sawFullCount, true);
+    assert.equal(retired.pgMet, true);
     const game = startFeaturedGame(run, "night-classic");
-    game.count = { balls: 2, strikes: 2 };
-    resolveTake(run, game, { type: "slider", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "soft" as const });
-    assert.equal(game.sawFullCount, true);
+    assert.equal(game.pgId, "see-5-one-pa");
+    const ball = { type: "slider" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "soft" as const };
+    game.paPitches = 3;
+    resolveTake(run, game, ball);
+    assert.equal(game.maxPaPitches, 4);
+    assert.equal(game.pgMet, false);
+    resolveTake(run, game, ball);
+    assert.equal(game.maxPaPitches, 5);
     assert.equal(game.pgMet, true);
   });
 

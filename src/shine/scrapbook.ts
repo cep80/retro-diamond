@@ -372,12 +372,12 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "She struck out, and you bought her a melon pan and walked slow and didn't do the talk.",
     },
     "lantern-classic": {
-      met: "She fouled them off with two strikes until the cowbell in Section 4 wouldn't stop.",
-      missed: "She never got a two-strike foul in, and Gary clanked in the empty cage all night.",
+      met: "She made them throw four in one look, and Section 4 rang the cowbell for each.",
+      missed: "The look never got to four pitches, and Gary clanked in the empty cage all night.",
     },
     "night-classic": {
-      met: "She ran the count full and fouled off heat until the pitcher had to think.",
-      missed: "The count never got full, and she ate both melon pans on the bus, the in-case one too.",
+      met: "She stayed for five pitches, and the pitcher had to think.",
+      missed: "The look never got to five, and she ate both melon pans on the bus, the in-case one too.",
     },
     stretch: {
       met: "She got the bat on a breaking ball, and Section 4 rang the bell like it was a home run.",

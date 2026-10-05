@@ -871,9 +871,10 @@ async function act(s) {
     case "mound": {
       if (!date || date.turn !== s.turn) date = newDate(s);
       if (s.go.disabled) {
-        // The cage lesson and Gate wait for the Coach's deliberate first sit.
-        if ((s.turn === 2 || s.turn === 5) && s.type === "race" && (await page.locator('.shine-sit-cell[aria-pressed="true"]').count()) === 0) {
-          return press(s, page.locator(".shine-sit-cell").nth(4), `first sit: middle (Day ${s.turn})`, { expectChange: false });
+        // Career plate and mound dates start with an empty sit. Center is the smoke's box.
+        const cells = page.locator(".shine-sit-cell");
+        if ((await cells.count()) > 0 && (await page.locator('.shine-sit-cell[aria-pressed="true"]').count()) === 0) {
+          return press(s, cells.nth(4), `sit: middle (Day ${s.turn})`, { expectChange: false });
         }
         goWaitSince ??= Date.now();
         if (Date.now() - goWaitSince > 12000) return stuckAt(s, "a tap finds no enabled primary action", `${s.go.name} stayed disabled for 12 s`);

@@ -15,6 +15,8 @@ export type HitterPgId =
   | "quality-abs-3"
   | "hit-risp"
   | "see-3-one-pa"
+  | "see-4-one-pa"
+  | "see-5-one-pa"
   | "no-k"
   | "foul-two-strike"
   | "full-count"
@@ -69,6 +71,8 @@ export type GoalId = HitterPgId | HitterSgId | PitcherPgId | PitcherSgId;
 const VERB_TO_ID: [RegExp, GoalId][] = [
   [/^see 4 pitches$/i, "see-4"],
   [/^see 3 pitches in one pa$/i, "see-3-one-pa"],
+  [/^see 4 pitches in one pa$/i, "see-4-one-pa"],
+  [/^see 5 pitches in one pa$/i, "see-5-one-pa"],
   [/^see 2 pitches in one pa$/i, "see-2-one-pa"],
   [/^see 3 pitches$/i, "see-3"],
   [/^hit an outfield ball$/i, "outfield-ball"],
@@ -129,6 +133,8 @@ const SPOKEN_GOAL: Record<string, string> = {
   "Hit with RISP": "A hit with runners on",
   "Quality start": "A long start",
   "See 3 pitches in one PA": "Three pitches in one look",
+  "See 4 pitches in one PA": "Four pitches in one look",
+  "See 5 pitches in one PA": "Five pitches in one look",
   "See 2 pitches in one PA": "Two pitches in one look",
   "Get a hit in the 9th": "A hit in the 9th",
   "Get a hit in the 7th+": "A hit late",
@@ -168,6 +174,10 @@ export function goalDefinition(id: GoalId): string {
       return "A base hit with a runner on 2nd or 3rd when the pitch is thrown.";
     case "see-3-one-pa":
       return "Three pitches in a single plate appearance.";
+    case "see-4-one-pa":
+      return "Four pitches in a single plate appearance.";
+    case "see-5-one-pa":
+      return "Five pitches in a single plate appearance.";
     case "no-k":
       return "Finish the game without a strikeout.";
     case "foul-two-strike":
@@ -276,6 +286,10 @@ export function evalHitterPg(id: HitterPgId, g: HitterGoalView): boolean {
       return ev.some((e) => e.t === "reach" && e.via === "hit" && risp(paBases(ev, e.pa)));
     case "see-3-one-pa":
       return g.maxPaPitches >= 3;
+    case "see-4-one-pa":
+      return g.maxPaPitches >= 4;
+    case "see-5-one-pa":
+      return g.maxPaPitches >= 5;
     case "no-k":
       return !g.struckOut;
     case "foul-two-strike":
@@ -531,6 +545,8 @@ const HITTER_PG = new Set<GoalId>([
   "quality-abs-3",
   "hit-risp",
   "see-3-one-pa",
+  "see-4-one-pa",
+  "see-5-one-pa",
   "no-k",
   "foul-two-strike",
   "full-count",

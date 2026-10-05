@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * The mound race: sit the glove, press Go, watch her throw the date.
+ * The mound race: set the glove, press Go, watch her throw the date.
  * She picks every pitch. Kick and release come from her sheet. No timing input.
  *
  * Drawn like the race view (ShineRace): her painted still edge to edge on a
@@ -210,6 +210,9 @@ function MoundFrame({
   const snap = useSyncExternalStore(mound.subscribe, mound.getSnapshot, mound.getSnapshot);
   const { game, stage, aim, type, beat, film, closed, paused, pauseReason, restored, ghost, banner, lowerThird, vs, paEnd, cardUp, middle: montage } = snap;
   aimRef.current = aim;
+  // The controller keeps a center aim. The glove on screen starts empty until she sets it.
+  // A restored attempt already has its glove.
+  const [glovePicked, setGlovePicked] = useState(restored);
 
   const [u, setU] = useState(0);
   const [nowMs, setNowMs] = useState(0);
@@ -404,6 +407,7 @@ function MoundFrame({
       const t = e.target instanceof Element ? e.target : null;
       if (t?.closest("button, a, input, select, textarea, [role=button]")) return;
       e.preventDefault();
+      if (!glovePicked) return;
       mound.throw();
     }
   };
@@ -420,7 +424,10 @@ function MoundFrame({
       go: () => {
         mound.throw();
       },
-      setSit: (c: Cell) => mound.setAim(c),
+      setSit: (c: Cell) => {
+        mound.setAim(c);
+        setGlovePicked(true);
+      },
       setType: (t: PitchType) => mound.setType(t),
       snapshot: () => {
         const live = mound.getSnapshot();
@@ -691,7 +698,18 @@ function MoundFrame({
             </div>
           }
         >
-          {picking && !game.done ? <SitZone aim={aim} onSit={(c) => mound.setAim(c)} ghost={ghost} label="Glove" /> : null}
+          {picking && !game.done && !titleUp ? (
+            <SitZone
+              aim={aim}
+              active={glovePicked}
+              onSit={(c) => {
+                mound.setAim(c);
+                setGlovePicked(true);
+              }}
+              ghost={ghost}
+              label="Glove"
+            />
+          ) : null}
         </ActionStage>
         {/* Under the done panel her mood bust fades in over the film (C4). */}
         {/* The middle innings (check-in 31, N10): each inning that lands turns to her next clean
@@ -778,7 +796,9 @@ function MoundFrame({
           </div>
         ) : null}
 
-        {/* Over the foot of the film: the Coach's lines, Go, the caption, the done panel. */}
+        {/* Over the foot of the film: the Coach's lines, Go, the caption, the done panel.
+            The walk-in card owns the screen until it leaves; then the glove and Go are the choice. */}
+        {titleUp ? null : (
         <section ref={coachRef} className="shine-race-coach" aria-label="The Coach">
           {/* One live region for the whole date, so the closing line is heard when the panel swaps in. */}
           <p className="sr-only" aria-live="polite">
@@ -844,13 +864,14 @@ function MoundFrame({
                 <p className="min-h-10 text-center font-story text-sm text-cream/90">{caption}</p>
               )}
               {picking && !game.done ? (
-                <PixelBtn className="shine-go h-14 text-sm" onClick={() => mound.throw()} ariaLabel={goLabel}>
+                <PixelBtn className="shine-go h-14 text-sm" onClick={() => mound.throw()} disabled={!glovePicked} ariaLabel={goLabel}>
                   {goLabel}
                 </PixelBtn>
               ) : null}
             </div>
           )}
         </section>
+        )}
       </div>
     </main>
   );

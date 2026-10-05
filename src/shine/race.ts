@@ -1,13 +1,14 @@
 /**
- * The race: her plate appearance as a watch-only run, Pretty Derby style.
+ * The race: her plate appearance, Pretty Derby style.
  *
- * The Coach makes one pick before the PA (where she sits, later the call and
- * a card) and then watches. Nothing here is tapped. Her swing decision and
- * her timing come from her sheet and the pick; the resolvers in
- * `featured-game.ts` stay the single truth for what the ball does.
+ * The Coach sits her, presses Go, and can release one swing while the ball is
+ * in the air. With no release, her swing and her timing come from her sheet
+ * and the sit. The resolvers in `featured-game.ts` stay the single truth for
+ * what the ball does.
  *
  * Pure and seeded: the same run, game, pitch and pick always produce the same
- * decision, so the harness and the browser agree.
+ * decision, so the harness and the browser agree. A release replaces only
+ * that pitch's timing.
  */
 import { locCell, locInZone, type Cell, type Loc } from "./core/zone.ts";
 import { cellDistance, gaussianFrom, satRight, sitFamily, statSigma, stuffSigmaBite, type CoachCardId, type DuelCall, type PitchFamily } from "./duel.ts";
@@ -183,6 +184,46 @@ export function swingProgress(timingErr: number, speed: number): number {
   return Math.max(SWING_U_MIN, Math.min(SWING_U_MAX, u));
 }
 
+/** Hold a sheet swing until the plate so a release can still land on time. */
+export function heldMeetU(u: number): number {
+  return Math.max(u, 1);
+}
+
+export type ReleaseBand = "early" | "now" | "late";
+
+/** A release before this reads early. 0.78 itself is on time. */
+const RELEASE_EARLY_U = 0.78;
+/** A release after this reads late. 1.06 itself is on time. */
+const RELEASE_LATE_U = 1.06;
+/** The middle of the on-time band. */
+const RELEASE_CENTER_U = 0.92;
+
+/** Early, on time, or late. The band is wide on purpose: this is a swing, not a reflex bar. */
+export function releaseBand(u: number): ReleaseBand {
+  if (u < RELEASE_EARLY_U) return "early";
+  if (u > RELEASE_LATE_U) return "late";
+  return "now";
+}
+
+/**
+ * Timing error for a human release. Early and late sit outside a good
+ * contact window. On time stays inside it, centered on the plate.
+ */
+export function releaseTimingErr(u: number): number {
+  const band = releaseBand(u);
+  if (band === "early") return -0.18;
+  if (band === "late") return 0.18;
+  const t = Math.max(-1, Math.min(1, (u - RELEASE_CENTER_U) / 0.14));
+  return t * 0.05;
+}
+
+/** One sentence for the reaction, only when the Coach released. */
+export function releaseLine(band: ReleaseBand): string {
+  if (band === "early") return "Early, she was ahead of it.";
+  if (band === "late") return "Late, she was behind it.";
+  return "On time, she met it.";
+}
+
 /** Her decision on one pitch. `r` is the seeded source for this pitch. */
 export function decideSwing(ctx: SwingContext, r: () => number): SwingDecision {
   const { p, why } = swingChance(ctx);
@@ -195,7 +236,7 @@ export function decideSwing(ctx: SwingContext, r: () => number): SwingDecision {
   return { swing: true, kind, ...barrel, timingErr, u: swingProgress(timingErr, ctx.pitch.speed), why };
 }
 
-/** Pacing for the watch-only PA. Slower than the tapped plate: nothing is timed, so the film can breathe. */
+/** Pacing for the plate appearance. The flight stays long enough to swing. */
 export const RACE_PACE = {
   prepareMs: 900,
   prepareMsReduced: 420,

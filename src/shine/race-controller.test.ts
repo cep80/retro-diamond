@@ -205,6 +205,54 @@ describe("race controller", () => {
     assert.ok(beat === "k" || beat === "walk", `a taken PA ends looking or walking, got ${beat}`);
   });
 
+  it("a release during a take forces one swing, and a second release does nothing", () => {
+    const seed = "release-take";
+    const a = race(seed);
+    a.c.setCall("take");
+    a.c.go();
+    let guard = 0;
+    while (a.c.getSnapshot().plate.stage !== "flight" && guard++ < 400) a.sched.advance(20);
+    assert.equal(a.c.getSnapshot().plate.stage, "flight");
+    assert.equal(a.c.release(0.5), true);
+    const after = a.c.getSnapshot();
+    assert.notEqual(after.plate.stage, "flight");
+    assert.equal(after.release?.band, "early");
+    const swings = after.plate.game.events.filter((e) => e.t === "swing");
+    assert.equal(swings.length, 1);
+    assert.equal(swings[0]?.timingErr, -0.18);
+    assert.equal(a.c.release(0.92), false);
+    assert.equal(a.c.getSnapshot().plate.game.events.filter((e) => e.t === "swing").length, 1);
+
+    const quiet = race(seed);
+    quiet.c.setCall("take");
+    quiet.c.go();
+    guard = 0;
+    while (quiet.c.getSnapshot().plate.stage !== "flight" && guard++ < 400) quiet.sched.advance(20);
+    const start = quiet.sched.t;
+    while (quiet.c.getSnapshot().plate.stage === "flight" && quiet.sched.t - start < 20_000) quiet.sched.advance(20);
+    assert.notEqual(quiet.c.getSnapshot().plate.stage, "flight");
+    assert.equal(quiet.c.getSnapshot().release, null);
+    assert.equal(quiet.c.getSnapshot().plate.game.events.filter((e) => e.t === "swing").length, 0);
+  });
+
+  it("a release during pause does nothing, and one after resume lands", () => {
+    const { c, sched } = race("release-pause");
+    c.setCall("take");
+    c.go();
+    let guard = 0;
+    while (c.getSnapshot().plate.stage !== "flight" && guard++ < 400) sched.advance(20);
+    assert.equal(c.getSnapshot().plate.stage, "flight");
+    c.pause("user");
+    assert.equal(c.release(Number.NaN), false);
+    assert.equal(c.release(0.92), false);
+    assert.equal(c.getSnapshot().plate.stage, "flight");
+    assert.equal(c.getSnapshot().plate.game.events.filter((e) => e.t === "swing").length, 0);
+    c.resume();
+    assert.equal(c.release(0.92), true);
+    assert.equal(c.getSnapshot().release?.band, "now");
+    assert.equal(c.getSnapshot().plate.game.events.filter((e) => e.t === "swing").length, 1);
+  });
+
   it("a swing that stays in the count holds on screen long enough to read as a swing", () => {
     // Find a PA with a whiff or foul, then measure how long the plate sits in
     // `reaction` for it. The tapped plate hurried these back in 320 ms; the

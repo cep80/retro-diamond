@@ -175,8 +175,8 @@ const RAW_BIBLE: RawSheet[] = [
     official: [
       { turn: 5, verb: "See 3 pitches in one PA", sgVerb: "See 2 pitches in one PA", resultsPg: false },
       { turn: 18, verb: "Don't strike out", sgVerb: "See 3 pitches", resultsPg: false },
-      { turn: 28, verb: "Foul off a 2-strike pitch", sgVerb: "Reach base", resultsPg: false },
-      { turn: 33, verb: "Work a 3-2 count", sgVerb: "Reach base", resultsPg: false },
+      { turn: 28, verb: "See 4 pitches in one PA", sgVerb: "Reach base", resultsPg: false },
+      { turn: 33, verb: "See 5 pitches in one PA", sgVerb: "Reach base", resultsPg: false },
       { turn: 50, verb: "Make contact on a breaking ball", sgVerb: "Work a full count", resultsPg: false },
       { turn: 55, verb: "Come to bat with runners on", sgVerb: "See 3 pitches in one PA", resultsPg: false },
       // Check-in 25: the Finale asks what First Light asked, over a whole G1 (not three pitches in one look).
@@ -463,10 +463,10 @@ export function yearStillLine(
   if (id === "miki" && turn <= 40) {
     const lantern = results[2] === "met";
     const night = results[3] === "met";
-    if (lantern && night) return "Lantern Classic. She fouled one off with two strikes. Night Classic. She took it to 3-2.";
-    if (lantern) return "Lantern Classic. She fouled one off with two strikes. Night Classic. The count never got to 3-2.";
-    if (night) return "Night Classic. She took it to 3-2. Lantern Classic. The two-strike foul didn't come.";
-    return "Lantern Classic. The two-strike foul didn't come. Night Classic. The count never got to 3-2.";
+    if (lantern && night) return "Lantern Classic. Four pitches in one look. Night Classic. Five pitches in one look.";
+    if (lantern) return "Lantern Classic. Four pitches in one look. Night Classic. The look never got to five.";
+    if (night) return "Night Classic. Five pitches in one look. Lantern Classic. The look never got to four.";
+    return "Lantern Classic. The look never got to four. Night Classic. The look never got to five.";
   }
   if (turn > 40 && SENIOR_STILLS[id]) return seniorStill(SENIOR_STILLS[id]!, results, finaleTeamWon);
   if (turn <= 20) return who.yearStills.rookie;

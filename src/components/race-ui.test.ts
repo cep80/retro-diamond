@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { PlateEvent } from "../shine/events.ts";
+import { heldMeetU, releaseBand, releaseLine, releaseTimingErr } from "../shine/race.ts";
 import { FORBIDDEN_IN_STORY } from "../shine/story.ts";
 import {
   basepathRead,
@@ -22,6 +23,7 @@ import {
   moundRead,
   moundResultChip,
   moundSituation,
+  lookHoldLine,
   pickPrompt,
   RACE_COPY,
   raceCaption,
@@ -104,10 +106,10 @@ describe("race sitelines", () => {
 
   it("says the verb once, on the first pitch", () => {
     // Check-in 31 (F7): the first sit names the grid in plain words, not "Sit the zone".
-    assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 0 }), "Tap the box she's sitting on. Then Go, and watch.");
+    assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 0 }), "Tap the box she's sitting on. Then Go. Swing when it arrives.");
     assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 1 }), null);
     assert.equal(pickPrompt({ phase: "racing", pitchesSeen: 0 }), null);
-    assert.equal(RACE_COPY.firstPick, "Tap the box she's sitting on. Then Go, and watch.");
+    assert.equal(RACE_COPY.firstPick, "Tap the box she's sitting on. Then Go. Swing when it arrives.");
     assert.doesNotMatch(RACE_COPY.firstPick, /zone/i);
     assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 0, practice: true }), RACE_COPY.practicePick);
     assert.match(firstLookRead({ row: 1, col: 1 }, true), /middle.*middle/);
@@ -183,6 +185,14 @@ describe("race sitelines", () => {
     assert.equal(
       dateCloseBeat({ done: true, kind: "night-classic", pgMet: true, pgId: "full-count", hr: true, hits: 1, walks: 1 }, "walk"),
       null,
+    );
+    assert.equal(
+      dateCloseBeat({ done: true, kind: "lantern-classic", pgMet: true, pgId: "see-4-one-pa", hr: false, hits: 0, walks: 0 }, "take-strike"),
+      "take-strike",
+    );
+    assert.equal(
+      dateCloseBeat({ done: true, kind: "night-classic", pgMet: false, pgId: "see-5-one-pa", hr: false, hits: 0, walks: 0 }, "foul"),
+      "foul",
     );
     assert.equal(
       dateCloseBeat({ done: true, kind: "stretch", pgMet: true, pgId: "contact-breaking", hr: false, hits: 0, walks: 0 }, "take-strike"),
@@ -476,6 +486,33 @@ describe("the mound's batter line", () => {
   });
 });
 
+describe("a swing release", () => {
+  it("names early, on time, and late across a wide band", () => {
+    assert.equal(releaseBand(0.5), "early");
+    assert.equal(releaseBand(0.779), "early");
+    assert.equal(releaseBand(0.78), "now");
+    assert.equal(releaseBand(0.92), "now");
+    assert.equal(releaseBand(1.06), "now");
+    assert.equal(releaseBand(1.061), "late");
+    assert.equal(releaseTimingErr(0.2), -0.18);
+    assert.equal(releaseTimingErr(1.2), 0.18);
+    assert.ok(Math.abs(releaseTimingErr(0.92)) < 1e-9);
+    assert.ok(Math.abs(releaseTimingErr(0.78) + 0.05) < 1e-9);
+    assert.ok(Math.abs(releaseTimingErr(1.06) - 0.05) < 1e-9);
+    assert.equal(heldMeetU(0.62), 1);
+    assert.equal(heldMeetU(1.05), 1.05);
+    for (const band of ["early", "now", "late"] as const) {
+      const line = releaseLine(band);
+      assert.match(line, /^[^.!?]+[.]$/);
+      assert.doesNotMatch(line, /—/);
+      assert.doesNotMatch(line, FORBIDDEN_IN_STORY);
+    }
+    assert.equal(releaseLine("early"), "Early, she was ahead of it.");
+    assert.equal(releaseLine("now"), "On time, she met it.");
+    assert.equal(releaseLine("late"), "Late, she was behind it.");
+  });
+});
+
 describe("the date's chrome copy", () => {
   it("tells the Coach where the glove sits, once, on the mound's first pitch", () => {
     assert.equal(RACE_COPY.moundFirstPick, "Set the glove where you want it, then press Go.");
@@ -487,7 +524,31 @@ describe("the date's chrome copy", () => {
     assert.equal(raceCaption({ ...racing, stage: "prepare" }), null);
     assert.equal(raceCaption({ ...racing, stage: "flight", arm: "Kira" }), null);
     assert.equal(raceCaption({ ...racing, stage: "reaction", arm: "Kira" }), "Ball.");
+    assert.equal(raceCaption({ ...racing, stage: "reaction", release: "On time. She met it." }), "On time. She met it.");
+    assert.equal(raceCaption({ ...racing, stage: "field", release: "On time. She met it." }), "Ball.");
+    assert.equal(raceCaption({ ...racing, stage: "flight", release: "On time. She met it." }), null);
     assert.equal(raceCaption({ ...racing, phase: "pick", stage: "prepare", arm: "Kira" }), null);
+  });
+
+  it("counts a look in the hold between pitches and leaves the verdict on the reaction", () => {
+    const racing = { phase: "racing" as const, verdict: "Watched it. Strike two.", banner: "", lookSeen: 2, lookNeed: 4 as const };
+    assert.equal(raceCaption({ ...racing, stage: "idle" }), "Two pitches in the look.");
+    assert.equal(raceCaption({ ...racing, stage: "reaction" }), "Watched it. Strike two.");
+    assert.equal(raceCaption({ ...racing, stage: "field" }), "Watched it. Strike two.");
+    assert.equal(raceCaption({ ...racing, stage: "prepare", arm: "Reina" }), "Reina comes set.");
+    assert.equal(raceCaption({ ...racing, stage: "flight" }), null);
+    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 1, lookNeed: 5 }), "One pitch in the look.");
+    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 4, lookNeed: 5 }), "Four pitches in the look.");
+    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 4 }), "Four pitches in one look.");
+    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 6, lookNeed: 5 }), "Five pitches in one look.");
+    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 3, lookNeed: 3 }), "Three pitches in one look.");
+    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 0 }), "Watched it. Strike two.");
+    assert.equal(raceCaption({ ...racing, stage: "idle", lookNeed: null }), "Watched it. Strike two.");
+    assert.equal(lookHoldLine(2, 4), "Two pitches in the look.");
+    for (const line of ["One pitch in the look.", "Two pitches in the look.", "Five pitches in one look."]) {
+      assert.doesNotMatch(line, /\bPA\b/);
+      assert.doesNotMatch(line, FORBIDDEN_IN_STORY);
+    }
   });
 
   it("times each overlay the way the brief asks", () => {

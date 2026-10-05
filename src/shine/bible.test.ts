@@ -77,6 +77,17 @@ describe("1.0 bible", () => {
     assert.equal(sheet("reina").official.find((g) => g.turn === 55)?.sgId, "k-3");
   });
 
+  it("pins Miki's check-in 33 looks: four pitches at Lantern, five at Night", () => {
+    const miki = sheet("miki").official;
+    assert.equal(miki.find((g) => g.turn === 28)?.verb, "See 4 pitches in one PA");
+    assert.equal(miki.find((g) => g.turn === 28)?.pgId, "see-4-one-pa");
+    assert.equal(miki.find((g) => g.turn === 28)?.sgId, "reach");
+    assert.equal(miki.find((g) => g.turn === 33)?.verb, "See 5 pitches in one PA");
+    assert.equal(miki.find((g) => g.turn === 33)?.pgId, "see-5-one-pa");
+    assert.equal(goalIdForVerb("Foul off a 2-strike pitch"), "foul-two-strike");
+    assert.equal(goalIdForVerb("Work a 3-2 count"), "full-count");
+  });
+
   it("pins Aoi's check-in 28 Finale: Drive in a run, the same ask as her Lantern, with the walk kept", () => {
     const aoi = sheet("aoi").official;
     assert.equal(aoi.find((g) => g.turn === 60)?.pgId, "rbi");
@@ -316,10 +327,14 @@ describe("1.0 bible", () => {
     );
   });
 
-  it("names Miki's classic still from the foul and the count", () => {
+  it("names Miki's classic still from the four-pitch look and the five-pitch look", () => {
     assert.equal(
       yearStillLine("miki", 40, ["missed", "met", "missed", "missed", "pending", "pending", "pending"]),
-      "Lantern Classic. The two-strike foul didn't come. Night Classic. The count never got to 3-2.",
+      "Lantern Classic. The look never got to four. Night Classic. The look never got to five.",
+    );
+    assert.equal(
+      yearStillLine("miki", 40, ["met", "met", "met", "met", "pending", "pending", "pending"]),
+      "Lantern Classic. Four pitches in one look. Night Classic. Five pitches in one look.",
     );
     assert.doesNotMatch(
       yearStillLine("miki", 40, ["missed", "met", "missed", "missed", "pending", "pending", "pending"]),

@@ -3,11 +3,11 @@
  *
  *   pick → Go → (prepare → flight → beat) × pitches → PA card → next PA …
  *
- * The Coach sits once, presses Go, and watches the rest of the date. She
- * steps into the next plate appearance on her own. Every pitch is dealt and resolved by
- * the shared `PlateController`; the only thing this layer adds is her swing
- * decision (`race.ts`) and the sequencing between pitches and PAs. No timing
- * input exists. Renders nothing, persists nothing.
+ * The Coach sits once, presses Go, and can release one swing while the ball
+ * is in the air. With no release, she swings from her sheet. She steps into
+ * the next plate appearance on her own. Every pitch is dealt and resolved by
+ * the shared `PlateController`; this layer adds her swing decision (`race.ts`)
+ * and the sequencing between pitches and PAs. Renders nothing, persists nothing.
  */
 import type { Cell, PitchType } from "./core/zone.ts";
 import { hashId, makeRng } from "./core/rng.ts";
@@ -18,7 +18,7 @@ import type { PlateEvent } from "./events.ts";
 import { featuredLi, fieldBeatFor, type EncounterConfig, type FeaturedGame, type FieldBeat, type GameKind, type SwingKind } from "./featured-game.ts";
 import { gutsActive, leverageIndex } from "./oracle.ts";
 import { PlateController, realScheduler, type PlateCue, type PlateScheduler, type PlateSnapshot } from "./plate-controller.ts";
-import { decideSwing, paCardLine, RACE_MODS, RACE_PACE, type RacePick, type SwingDecision } from "./race.ts";
+import { decideSwing, heldMeetU, paCardLine, RACE_MODS, RACE_PACE, releaseBand, releaseTimingErr, type RacePick, type ReleaseBand, type SwingDecision } from "./race.ts";
 import type { TraineeRun } from "./types.ts";
 
 export type RacePhase = "pick" | "racing" | "pa-card" | "done";
@@ -27,6 +27,8 @@ export type RaceCue =
   /** `introMs` > 0: the first pitch waits that long (the VS card plays over it). */
   | { t: "go"; pa: number; introMs: number }
   | { t: "decision"; decision: SwingDecision }
+  /** The Coach released a swing during flight. `u` is flight progress. */
+  | { t: "release"; u: number; band: ReleaseBand }
   /** `scored`: she came around to score on this trip (not a home run's own trot); the card holds for her 得点. */
   | { t: "pa-card"; pa: number; beat: FieldBeat; line: string; reached: boolean; scored: boolean }
   | { t: "pick"; pa: number }
@@ -124,6 +126,8 @@ export interface RaceSnapshot {
   pick: RacePick;
   /** Her decision on the pitch in the air (or just resolved). */
   decision: SwingDecision | null;
+  /** The Coach's release on this pitch, or null when she let it go. */
+  release: { band: ReleaseBand; u: number } | null;
   /** The last plate appearance's card; stays through the next pick. */
   card: PaCard | null;
   /** Pitches she has seen this PA, for the count bulbs and the caption. */
@@ -152,6 +156,8 @@ export class RaceController {
   readonly run: TraineeRun;
   private phase: RacePhase = "pick";
   private decision: SwingDecision | null = null;
+  private releaseInfo: { band: ReleaseBand; u: number } | null = null;
+  private released = false;
   private card: PaCard | null = null;
   private paAtGo = 1;
   private watching = false;
@@ -189,7 +195,7 @@ export class RaceController {
       flightScale: this.pace.flightScale,
       prepareMs: this.pace.prepareMs,
       prepareMsReduced: this.pace.prepareMsReduced,
-      // Nothing is tapped, so a swing gets to finish on screen.
+      // A release can still land at the plate; the beat lets the swing finish.
       beatPace: "race",
       // Sit + Go is the 1.0 race. The Duel hand is a later expansion.
       duel: opts.duel ?? false,
@@ -233,6 +239,7 @@ export class RaceController {
         plate,
         pick: { sit: plate.aim, call: plate.call, card: plate.cardArmed },
         decision: this.decision,
+        release: this.releaseInfo,
         card: this.card,
         paPitches: plate.game.paPitches,
         watching: this.watching,
@@ -290,10 +297,43 @@ export class RaceController {
     this.nextPa = false;
     this.paAtGo = snap.game.paIndex;
     this.decision = null;
+    this.released = false;
+    this.releaseInfo = null;
     this.cue({ t: "go", pa: this.paAtGo, introMs: intro });
     this.changed();
     if (intro > 0) this.later("pitch", () => this.plate.startPitch(), intro);
     else this.plate.startPitch();
+    return true;
+  }
+
+  /**
+   * One swing while the ball is in the air. Replaces her sheet timing and can
+   * force an offer she was going to take. A second release, a pause, or a
+   * pitch that has already landed does nothing. Returns false when nothing resolved.
+   */
+  release(u: number): boolean {
+    if (this.released || this.phase !== "racing" || !Number.isFinite(u)) return false;
+    const snap = this.plate.getSnapshot();
+    if (snap.stage !== "flight" || snap.paused || !this.decision) return false;
+    const decision = this.decision;
+    const band = releaseBand(u);
+    const timingErr = releaseTimingErr(u);
+    const kind = decision.swing ? decision.kind : "contact";
+    const aim = decision.aim;
+    this.released = true;
+    this.releaseInfo = { band, u };
+    this.decision = { ...decision, swing: true, kind, aim, timingErr, u };
+    this.cue({ t: "release", u, band });
+    const mods = snap.game.kind === "practice" ? undefined : RACE_MODS;
+    const swung = this.plate.coachSwing(timingErr, kind, aim, mods);
+    if (!swung) {
+      this.released = false;
+      this.releaseInfo = null;
+      this.decision = decision;
+      this.changed();
+      return false;
+    }
+    this.changed();
     return true;
   }
 
@@ -370,6 +410,8 @@ export class RaceController {
     }
     if (cue.t === "flight") {
       if (this.phase !== "racing") return;
+      this.released = false;
+      this.releaseInfo = null;
       this.decide();
       return;
     }
@@ -486,7 +528,9 @@ export class RaceController {
     this.decision = decision;
     this.cue({ t: "decision", decision });
     this.changed();
-    if (decision.swing) this.plate.swingAt(decision.kind, decision.u, decision.timingErr, decision.aim, game.kind === "practice" ? undefined : RACE_MODS);
+    // Held to the plate: a sheet swing as early as 0.62 would already be gone
+    // before the Coach could meet the ball. The timing error stays hers.
+    if (decision.swing) this.plate.swingAt(decision.kind, heldMeetU(decision.u), decision.timingErr, decision.aim, game.kind === "practice" ? undefined : RACE_MODS);
   }
 
   private finishPa(game: FeaturedGame): PaCard {

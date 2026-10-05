@@ -834,7 +834,8 @@
 }
 
 /* The race: one gold door before the PA, one card after it. */
-.shine-go {
+.shine-go,
+.shine-swing {
   background: linear-gradient(180deg, #ffd166 0%, #f4b942 100%);
   border-color: rgb(255 255 255 / 0.55);
   box-shadow:

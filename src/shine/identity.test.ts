@@ -92,12 +92,18 @@ describe("shine identity", () => {
       if (f.endsWith("ShineRace.tsx") || f.endsWith("ShineMound.tsx")) {
         assert.match(src, /openTitle/);
         assert.doesNotMatch(src, /onClick=\{resetRun\}/);
-        // The race has no tap: nothing on these screens reads a swing timestamp.
-        assert.doesNotMatch(src, /tapAtProgress|onPointerDown|\.tap\(/);
+        // The old plate tap stays off these screens. Swing on the race reads the pointer time.
+        assert.doesNotMatch(src, /tapAtProgress|\.tap\(/);
         assert.match(src, /leaveLabel/);
         assert.match(src, /dateHeadline/);
         assert.doesNotMatch(src, /Leave the mound/);
         assert.doesNotMatch(src, /shine-pa-card/);
+      }
+      if (f.endsWith("ShineMound.tsx")) {
+        assert.doesNotMatch(src, /onPointerDown/);
+      }
+      if (f.endsWith("ShineRace.tsx")) {
+        assert.match(src, /onPointerDown=\{swing\}/);
       }
       if (f.endsWith("ShineRace.tsx")) {
         assert.doesNotMatch(src, /DuelPanel/);
