@@ -157,3 +157,34 @@ test("outing letters translate to what they mean in play", () => {
   assert.match(outingLabel("A").meaning, /distance/);
   assert.match(outingLabel("D").meaning, /ninth/);
 });
+
+test("the Coach never advises a rest on a practice morning, and points it at the day before (check-in 35)", () => {
+  for (const c of BIBLE) {
+    const run = newRun(c.id);
+    for (const t of [17, 27, 32, 49, 54, 59]) {
+      for (const energy of [10, 30, 90]) {
+        run.turn = t;
+        run.energy = energy;
+        const b = coachBrief(run);
+        assert.ok(b.choice.station !== "off-day" && b.choice.station !== "treatment", `${c.id} day ${t} at ${energy}: ${b.choice.station}`);
+        assert.equal(b.choice.station, isPitcherStyle(c.style) ? "side" : "cage", `${c.id} day ${t}`);
+        assert.doesNotMatch(b.choice.why, /\bRest her\b/);
+        assert.doesNotMatch(b.choice.why, FORBIDDEN_IN_STORY);
+      }
+      // The day before the rep is where the rest still fits, and it says why.
+      run.turn = t - 1;
+      run.energy = 30;
+      const before = coachBrief(run);
+      assert.equal(before.choice.station, "off-day", `${c.id} day ${t - 1}`);
+      assert.match(before.choice.why, /tomorrow is one rep/);
+    }
+  }
+});
+
+test("each check-in 35 ask points the Coach at the stat the sim trained", () => {
+  assert.equal(goalNeed("innings-5-k7", true).stat, "stuff");
+  assert.equal(goalNeed("perfect-ninth", true).stat, "control");
+  assert.equal(goalNeed("hits-2", false).stat, "contact");
+  assert.equal(goalNeed("contact-breaking-2", false).stat, "eye");
+  assert.equal(goalNeed("steal-risp-score", false).stat, "speed");
+});

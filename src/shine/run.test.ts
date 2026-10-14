@@ -227,7 +227,8 @@ describe("Aoi Rookie calendar", () => {
     assert.match(run.fanBeat ?? "", /Letters/);
     applyGameResult(run, "lantern-classic", true, false, false, false);
     assert.equal(run.fanStory, 30);
-    assert.equal(run.fanBeat, "More people came to the park for her.");
+    // Her own crowd's line (check-in 35), not the old one every girl shared.
+    assert.equal(run.fanBeat, "Haruko ran out of 6-4-3 flags and started cutting new ones.");
   });
 
   it("unlocks the alt look once at 100 fans", () => {

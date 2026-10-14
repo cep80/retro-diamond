@@ -31,6 +31,7 @@ import {
   moundRead,
   moundResultChip,
   moundSituation,
+  morningPrompt,
   lookHoldLine,
   pickPrompt,
   RACE_COPY,
@@ -60,7 +61,7 @@ describe("race sitelines", () => {
       "",
     );
     assert.equal(moundRead({ kind: "practice", pgMet: true }), "Three looks. The glove is real.");
-    assert.equal(moundRead({ kind: "practice", pgMet: true, looks: 1 }), "One throw. The glove is real.");
+    assert.equal(moundRead({ kind: "practice", pgMet: true, looks: 1 }), "One throw. Then the arm rests for tomorrow.");
     assert.equal(moundRead({ kind: "gate", pgMet: true }), "Three outs. The Gate opened.");
     assert.equal(moundRead({ kind: "gate", pgMet: false }), "The Gate still opens.");
     assert.equal(moundRead({ kind: "first-light", pgMet: false, outsRecorded: 5, strikeouts: 0 }), "The outs came. The punchouts didn't.");
@@ -93,6 +94,18 @@ describe("race sitelines", () => {
     assert.equal(moundRead({ kind: "lantern-classic", pgMet: true, pgId: "innings-5", inningsOuts: 15, earnedRuns: 2 }), "Five innings. Three runs or fewer.");
     assert.equal(moundRead({ kind: "lantern-classic", pgMet: false, pgId: "innings-5", inningsOuts: 9, earnedRuns: 1 }), "She got 3 innings. She needed five.");
     assert.equal(moundRead({ kind: "lantern-classic", pgMet: false, pgId: "innings-5", inningsOuts: 15, earnedRuns: 4 }), "She got the innings. 4 runs. She needed three or fewer.");
+    // Check-in 35: the Lantern's seven punchouts in five, and Kira's 1-2-3 Series.
+    assert.equal(moundRead({ kind: "lantern-classic", pgMet: true, pgId: "innings-5-k7", inningsOuts: 15, earnedRuns: 2, strikeouts: 7 }), "Five innings. Seven punchouts.");
+    assert.equal(moundRead({ kind: "lantern-classic", pgMet: true, pgId: "innings-5-k7", inningsOuts: 15, earnedRuns: 2, strikeouts: 9 }), "Five innings. Nine punchouts.");
+    assert.equal(moundRead({ kind: "lantern-classic", pgMet: false, pgId: "innings-5-k7", inningsOuts: 12, earnedRuns: 1, strikeouts: 8 }), "She got 4 innings. She needed five.");
+    assert.equal(moundRead({ kind: "lantern-classic", pgMet: false, pgId: "innings-5-k7", inningsOuts: 15, earnedRuns: 4, strikeouts: 8 }), "She got the innings. 4 runs. She needed three or fewer.");
+    assert.equal(moundRead({ kind: "lantern-classic", pgMet: false, pgId: "innings-5-k7", inningsOuts: 15, earnedRuns: 1, strikeouts: 5 }), "Five innings. Five punchouts. She needed seven.");
+    assert.equal(moundRead({ kind: "series", pgMet: true, pgId: "perfect-ninth", earnedRuns: 0 }), "Three up. Three down.");
+    assert.equal(moundRead({ kind: "series", pgMet: false, pgId: "perfect-ninth", earnedRuns: 1 }), "A run scored.");
+    assert.equal(moundRead({ kind: "series", pgMet: false, pgId: "perfect-ninth", earnedRuns: 0, blown: true }), "The lead is gone.");
+    assert.equal(moundRead({ kind: "series", pgMet: false, pgId: "perfect-ninth", earnedRuns: 0 }), "Somebody got aboard. The lead held.");
+    // The four-out save held and the punchouts didn't: say so plainly, never "didn't come together".
+    assert.equal(moundRead({ kind: "stretch", pgMet: false, pgId: "four-out", outsRecorded: 4, strikeouts: 3 }), "Four outs, but not the way she asked for them.");
     assert.equal(moundRead({ kind: "series", pgMet: true, pgId: "quality-start", inningsOuts: 18, earnedRuns: 1 }), "Six innings. One run or fewer.");
     assert.equal(moundRead({ kind: "series", pgMet: false, pgId: "quality-start", inningsOuts: 18, earnedRuns: 2 }), "She got the innings. 2 runs. She needed one or fewer.");
     assert.equal(middleRead(["Inn 2: 1 K, 0 ER.", "Inn 3: 0 K, 0 ER."]), "The middle held. No runs.");
@@ -122,8 +135,18 @@ describe("race sitelines", () => {
     assert.doesNotMatch(RACE_COPY.firstPick, /zone/i);
     assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 0, practice: true }), RACE_COPY.practicePick);
     assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 0, morning: true }), RACE_COPY.practiceMorning);
-    assert.equal(RACE_COPY.practiceMorning, "One pitch before tomorrow. Tap her box, press Go, and swing when it arrives.");
-    assert.equal(RACE_COPY.practiceMorningMound, "One throw before tomorrow. Set the glove, then press Go.");
+    assert.equal(RACE_COPY.practiceMorning, "One pitch before tomorrow. Pick her box, Go, then Swing.");
+    assert.equal(RACE_COPY.practiceMorningMound, "One throw before tomorrow. Set the glove, then Go.");
+    // Check-in 35: on her morning she asks for the rep herself, then the short instruction.
+    assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 0, morning: true, characterId: "aoi" }), "Um, sorry. One more before tomorrow? Tell me where to wait. Pick her box, Go, then Swing.");
+    assert.equal(morningPrompt("kira", true), "Here's the deal. One throw, then you buy the juice. Set the glove, then Go.");
+    assert.equal(morningPrompt(null, true), RACE_COPY.practiceMorningMound);
+    for (const id of ["aoi", "reina", "miki", "sol", "kira", "yuki"] as const) {
+      const line = morningPrompt(id, id === "reina" || id === "sol" || id === "kira");
+      assert.doesNotMatch(line, FORBIDDEN_IN_STORY, line);
+      assert.equal(line.includes("—"), false, line);
+      assert.doesNotMatch(line, /\b(he|him|his)\b/i, line);
+    }
     assert.match(firstLookRead({ row: 1, col: 1 }, true), /middle.*middle/);
     assert.match(firstLookRead({ row: 0, col: 0 }, false), /another box/);
   });
@@ -134,10 +157,10 @@ describe("race sitelines", () => {
     assert.equal(RACE_COPY.leavePractice, "Back to the complex");
     const morning = newAoiRun();
     morning.turn = 17;
-    assert.equal(leaveLabel({ practice: true, morning: true, run: morning }), "First Light");
-    assert.equal(morningPanel(morning, "One pitch, and First Light is tomorrow.").under, null);
-    assert.equal(morningPanel(morning, "Gone.").under, "One pitch, and First Light is tomorrow.");
-    assert.equal(morningPanel(morning, "Gone.").leave, "First Light");
+    assert.equal(leaveLabel({ practice: true, morning: true, run: morning }), "On to First Light");
+    assert.equal(morningPanel(morning, "First Light is tomorrow.").under, null);
+    assert.equal(morningPanel(morning, "Gone.").under, "First Light is tomorrow.");
+    assert.equal(morningPanel(morning, "Gone.").leave, "On to First Light");
     assert.equal(cageTutorialRead(true, { row: 1, col: 1 }, true), null);
     assert.match(cageTutorialRead(false, { row: 1, col: 1 }, true) ?? "", /middle/);
   });
@@ -525,13 +548,13 @@ describe("a swing release", () => {
     assert.equal(heldMeetU(1.05), 1.05);
     for (const band of ["early", "now", "late"] as const) {
       const line = releaseLine(band);
-      assert.match(line, /^[^.!?]+[.]$/);
+      assert.match(line, /^(Early|On time|Late)\. [^.!?]+\.$/);
       assert.doesNotMatch(line, /—/);
       assert.doesNotMatch(line, FORBIDDEN_IN_STORY);
     }
-    assert.equal(releaseLine("early"), "Early, she was ahead of it.");
-    assert.equal(releaseLine("now"), "On time, she met it.");
-    assert.equal(releaseLine("late"), "Late, she was behind it.");
+    assert.equal(releaseLine("early"), "Early. She was out in front of it.");
+    assert.equal(releaseLine("now"), "On time. She was right on it.");
+    assert.equal(releaseLine("late"), "Late. It got in on her.");
   });
 });
 
@@ -552,18 +575,18 @@ describe("the date's chrome copy", () => {
     assert.equal(raceCaption({ ...racing, phase: "pick", stage: "prepare", arm: "Kira" }), null);
   });
 
-  it("counts a look in the hold between pitches and leaves the verdict on the reaction", () => {
+  it("counts an at-bat in the hold between pitches and leaves the verdict on the reaction", () => {
     const racing = { phase: "racing" as const, verdict: "Watched it. Strike two.", banner: "", lookSeen: 2, lookNeed: 4 as const };
-    assert.equal(raceCaption({ ...racing, stage: "idle" }), "Two pitches in the look.");
+    assert.equal(raceCaption({ ...racing, stage: "idle" }), "Two pitches into the at-bat.");
     assert.equal(raceCaption({ ...racing, stage: "reaction" }), "Watched it. Strike two.");
     assert.equal(raceCaption({ ...racing, stage: "field" }), "Watched it. Strike two.");
     assert.equal(raceCaption({ ...racing, stage: "prepare", arm: "Reina" }), "Reina comes set.");
     assert.equal(raceCaption({ ...racing, stage: "flight" }), null);
-    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 1, lookNeed: 5 }), "One pitch in the look.");
-    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 4, lookNeed: 5 }), "Four pitches in the look.");
-    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 4 }), "Four pitches in one look.");
-    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 6, lookNeed: 5 }), "Five pitches in one look.");
-    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 3, lookNeed: 3 }), "Three pitches in one look.");
+    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 1, lookNeed: 5 }), "One pitch into the at-bat.");
+    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 4, lookNeed: 5 }), "Four pitches into the at-bat.");
+    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 4 }), "Four pitches in one at-bat.");
+    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 6, lookNeed: 5 }), "Five pitches in one at-bat.");
+    assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 3, lookNeed: 3 }), "Three pitches in one at-bat.");
     assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 0 }), "Watched it. Strike two.");
     assert.equal(raceCaption({ ...racing, stage: "idle", lookNeed: null }), "Watched it. Strike two.");
     assert.equal(exhibitionHudPhase("pick", true), "pa-card");
@@ -591,9 +614,9 @@ describe("the date's chrome copy", () => {
     assert.equal(cutaway.basepath, "");
     assert.equal(cutaway.film, "miki");
     assert.equal(cutaway.inning, "Top of the 2nd");
-    assert.equal(lookHoldLine(2, 4), "Two pitches in the look.");
-    for (const line of ["One pitch in the look.", "Two pitches in the look.", "Five pitches in one look."]) {
-      assert.doesNotMatch(line, /\bPA\b/);
+    assert.equal(lookHoldLine(2, 4), "Two pitches into the at-bat.");
+    for (const line of [lookHoldLine(1, 5)!, lookHoldLine(2, 4)!, lookHoldLine(5, 5)!]) {
+      assert.doesNotMatch(line, /\bPA\b|\blook\b/);
       assert.doesNotMatch(line, FORBIDDEN_IN_STORY);
     }
   });

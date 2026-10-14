@@ -324,8 +324,8 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "The late hit didn't come, and she sat under the 6-4-3 sign until Haruko turned the grill off.",
     },
     series: {
-      met: "She had three good at-bats, and Haruko waved the 6-4-3 flag in row F for every one.",
-      missed: "The at-bats didn't add up, and Haruko folded the flag and kept the grill on anyway.",
+      met: "She got two hits, and Haruko waved the 6-4-3 flag in row F for both.",
+      missed: "The second hit didn't come, and Haruko folded the flag and kept the grill on anyway.",
     },
     finale: {
       met: "A run came home on her on the last night, and the sign at 6-4-3 had to change.",
@@ -342,8 +342,8 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "The punchouts didn't come, and she threw in the empty bullpen until you told her the slot was back.",
     },
     "lantern-classic": {
-      met: "She went deep under the lanterns and didn't pick up her knitting for a month after.",
-      missed: "She came out before the fifth and sat in the tunnel knitting until the lanterns went out.",
+      met: "She struck out seven under the lanterns and didn't pick up her knitting for a month after.",
+      missed: "The lanterns won that one, and she sat in the tunnel knitting until they went out.",
     },
     "night-classic": {
       met: "She got two punchouts back to back on a slick ball, after a night she swore she slept.",
@@ -372,20 +372,20 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "She struck out, and you bought her a melon pan and walked slow and didn't do the talk.",
     },
     "lantern-classic": {
-      met: "She made them throw four in one look, and Section 4 rang the cowbell for each.",
-      missed: "The look never got to four pitches, and Gary clanked in the empty cage all night.",
+      met: "She made Reina throw four in one at-bat, and Reina said the number out loud on the way off the field.",
+      missed: "She never got Reina to four, and Gary clanked in the empty cage all night.",
     },
     "night-classic": {
-      met: "She stayed for five pitches, and the pitcher had to think.",
-      missed: "The look never got to five, and she ate both melon pans on the bus, the in-case one too.",
+      met: "She stayed in for five pitches, and Sol had to throw something that wasn't heat.",
+      missed: "Sol got her before five, and she ate both melon pans on the bus, the in-case one too.",
     },
     stretch: {
-      met: "She got the bat on a breaking ball, and Section 4 rang the bell like it was a home run.",
+      met: "She got the bat on two breaking balls, and Section 4 rang the bell like each one was a home run.",
       missed: "The breaking balls got under her bat, and she took the ugly ones in the cage until midnight.",
     },
     series: {
-      met: "She came up with runners on, and the whole North bench leaned on the rail.",
-      missed: "The bases were empty every time she came up, and she said cool about it twice.",
+      met: "She got on twice, and the whole North bench leaned on the rail.",
+      missed: "She didn't get on twice, and she said cool about it twice.",
     },
     finale: {
       met: "She never went down on strikes all night, and she made them sick of her.",
@@ -402,8 +402,8 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "The punchouts didn't come, and when you asked how she was, she said ninety-nine.",
     },
     "lantern-classic": {
-      met: "She went five innings with the wind pushing the lanterns sideways and never looked at the bullpen.",
-      missed: "She came out before the fifth and iced the arm until you came and stood by the ice machine.",
+      met: "She struck out seven with the wind pushing the lanterns sideways and never looked at the bullpen.",
+      missed: "The lanterns got the better of her, and she iced the arm until you came and stood by the ice machine.",
     },
     "night-classic": {
       met: "She struck out two in a row, and that night she called Luz and didn't say why.",
@@ -441,11 +441,11 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
     },
     stretch: {
       met: "She got four outs, the first of them in the eighth, which she had never pitched before.",
-      missed: "She asked for the eighth and got it, and the lead didn't make it to the last out.",
+      missed: "She asked for the eighth and got it, and the inning didn't go the way she'd made the deal.",
     },
     series: {
-      met: "She pitched a clean ninth with the Stars Park transfer tucked in her cap.",
-      missed: "A run got in, and she took the transfer out of her cap and put it back in the tin.",
+      met: "Three up, three down, with the Stars Park transfer tucked in her cap.",
+      missed: "Somebody reached, and she took the transfer out of her cap and put it back in the tin.",
     },
     finale: {
       met: "The tying run started on first and never got home, and she walked to the dugout instead of the door.",
@@ -470,8 +470,8 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "She came up short, and she ate a strawberry shaved ice so fast it hurt.",
     },
     stretch: {
-      met: "She stole with a runner in scoring position, and Kira owed her another juice.",
-      missed: "The scoring-position steal didn't come, and Kira won the juice bet for once and didn't look happy about it.",
+      met: "She stole with a runner in scoring position and came all the way home, and Kira owed her another juice.",
+      missed: "The run didn't come home with her, and Kira won the juice bet for once and didn't look happy about it.",
     },
     series: {
       met: "She took third standing up, and Reina looked at her once, too late.",

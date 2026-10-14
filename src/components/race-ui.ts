@@ -56,10 +56,13 @@ export const RACE_COPY = {
   practicePick: "The first toss is down the middle. Tap where she should wait, then Go. Swing when it arrives.",
   /** The mound's twin: the grid is where the glove sits (shown in place of the caption at pitch 0). */
   moundFirstPick: "Set the glove where you want it, then press Go.",
-  /** A practice morning at the plate: one pitch, then tomorrow's date. */
-  practiceMorning: "One pitch before tomorrow. Tap her box, press Go, and swing when it arrives.",
+  /**
+   * A practice morning at the plate: one pitch, then tomorrow's date. The fallback when the
+   * girl isn't known; `morningPrompt` puts her own ask in front of the instruction.
+   */
+  practiceMorning: "One pitch before tomorrow. Pick her box, Go, then Swing.",
   /** A practice morning on the mound: one throw, glove then Go. */
-  practiceMorningMound: "One throw before tomorrow. Set the glove, then press Go.",
+  practiceMorningMound: "One throw before tomorrow. Set the glove, then Go.",
   /** The done panel's label, the same on both dates; the exhibition keeps its park. */
   doneLabel: "Her day",
   doneLabelExhibition: "Under the lanterns",
@@ -83,10 +86,30 @@ export const RACE_COPY = {
   exhibitionClose: (runsFor: number, runsAgainst: number) => exhibitionWinnerLine(runsFor, runsAgainst),
 } as const;
 
+/** The practice morning's instruction, short, after she asks for the rep. */
+const MORNING_DO_PLATE = "Pick her box, Go, then Swing.";
+const MORNING_DO_MOUND = "Set the glove, then Go.";
+
+/** Check-in 35: the morning before her big game, she asks for the one rep in her own voice. */
+const MORNING_ASK: Record<CharacterId, string> = {
+  aoi: "Um, sorry. One more before tomorrow? Tell me where to wait.",
+  miki: "One pitch. Then we go home. Don't make it a whole thing.",
+  yuki: "One. Already loose. Pick a box, Stopwatch.",
+  reina: "One throw. Tell me if the slot drops.",
+  sol: "One, Jefe. Give me a reason for where.",
+  kira: "Here's the deal. One throw, then you buy the juice.",
+};
+
+/** The practice morning's first line: her ask, then the instruction. Unknown girl: the plain line. */
+export function morningPrompt(characterId: CharacterId | null | undefined, mound: boolean): string {
+  if (!characterId || !MORNING_ASK[characterId]) return mound ? RACE_COPY.practiceMorningMound : RACE_COPY.practiceMorning;
+  return `${MORNING_ASK[characterId]} ${mound ? MORNING_DO_MOUND : MORNING_DO_PLATE}`;
+}
+
 /** The coach line under the pick, or null once she has seen a pitch. */
-export function pickPrompt(opts: { phase: RacePhase; pitchesSeen: number; practice?: boolean; morning?: boolean }): string | null {
+export function pickPrompt(opts: { phase: RacePhase; pitchesSeen: number; practice?: boolean; morning?: boolean; characterId?: CharacterId | null }): string | null {
   if (opts.phase !== "pick" || opts.pitchesSeen > 0) return null;
-  if (opts.morning) return RACE_COPY.practiceMorning;
+  if (opts.morning) return morningPrompt(opts.characterId, false);
   return opts.practice ? RACE_COPY.practicePick : RACE_COPY.firstPick;
 }
 
@@ -659,7 +682,7 @@ export function dateCloseBeat(
   if (game.kind === "practice" || !game.done) return last;
   if (game.pgId === "foul-two-strike") return game.pgMet ? "foul" : "take-strike";
   if (game.pgId === "full-count") return null;
-  if (game.pgId === "contact-breaking") {
+  if (game.pgId === "contact-breaking" || game.pgId === "contact-breaking-2") {
     if (!game.pgMet) return "take-strike";
     if (game.hr) return "hr";
     if (game.hits > 0) return "single";
@@ -729,6 +752,8 @@ export function moundRead(game: {
     if (game.pgId === "strand-inherited") return "She came in with runners and stranded them.";
     if (game.pgId === "four-out") return "Four outs, two punchouts. The lead held.";
     if (game.pgId === "clean-ninth") return "Three outs. No runs.";
+    if (game.pgId === "perfect-ninth") return "Three up. Three down.";
+    if (game.pgId === "innings-5-k7") return `Five innings. ${capital(countWord(Math.max(7, game.strikeouts ?? 0)))} punchouts.`;
     if (game.pgId === "innings-5") return "Five innings. Three runs or fewer.";
     if (game.pgId === "quality-start") return "Six innings. One run or fewer.";
     if (game.pgId === "escape-jam") return "Runners on. The inning ended.";
@@ -776,14 +801,19 @@ export function moundRead(game: {
     const k = game.strikeouts ?? 0;
     if (k === 1) return "One punchout. She needed two.";
     if (k === 0) return "No punchouts. She needed two.";
-    return "The save didn't come together.";
+    return "Four outs, but not the way she asked for them.";
   }
   if (game.pgId === "clean-ninth") {
     if ((game.earnedRuns ?? 0) > 0) return "A run scored.";
     return "The lead is gone.";
   }
+  if (game.pgId === "perfect-ninth") {
+    if ((game.earnedRuns ?? 0) > 0) return "A run scored.";
+    if (game.blown) return "The lead is gone.";
+    return "Somebody got aboard. The lead held.";
+  }
   if (game.pgId === "escape-jam" || game.pgId === "escape-loaded-jam") return "A run scored.";
-  if (game.pgId === "innings-5" || game.pgId === "quality-start") {
+  if (game.pgId === "innings-5" || game.pgId === "innings-5-k7" || game.pgId === "quality-start") {
     const need = game.pgId === "quality-start" ? 18 : 15;
     const asked = game.pgId === "quality-start" ? "six" : "five";
     const outs = game.inningsOuts ?? 0;
@@ -794,7 +824,10 @@ export function moundRead(game: {
       return `She got ${innings} ${word}. She needed ${asked}.`;
     }
     const cap = game.pgId === "quality-start" ? "one or fewer" : "three or fewer";
-    return `She got the innings. ${er} runs. She needed ${cap}.`;
+    if (game.pgId !== "innings-5-k7" || er > 3) return `She got the innings. ${er} runs. She needed ${cap}.`;
+    const k = game.strikeouts ?? 0;
+    const got = k === 0 ? "No punchouts" : k === 1 ? "One punchout" : `${capital(countWord(k))} punchouts`;
+    return `Five innings. ${got}. She needed seven.`;
   }
   if (game.kind === "gate") return "The Gate still opens.";
   if ((game.outsRecorded ?? 0) > 0 && (game.strikeouts ?? 0) === 0) return "The outs came. The punchouts didn't.";
@@ -864,10 +897,10 @@ export function lookHoldLine(seen: number, need: 2 | 3 | 4 | 5): string | null {
   if (seen <= 0) return null;
   if (seen >= need) {
     const got = LOOK_HOLD[need];
-    return got ? `${got} in one look.` : null;
+    return got ? `${got} in one at-bat.` : null;
   }
   const soFar = LOOK_HOLD[seen];
-  return soFar ? `${soFar} in the look.` : null;
+  return soFar ? `${soFar} into the at-bat.` : null;
 }
 
 /**

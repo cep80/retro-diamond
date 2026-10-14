@@ -128,7 +128,7 @@ export function ShineSettings() {
             Play
           </h3>
           <p className="shine-set-body mt-2">
-            Tap the box she&apos;s sitting on. Then Go. Swing when it arrives. If you let the pitch go, she swings from who she is. On the mound, set the glove, then Go.
+            Tap the box she&apos;s sitting on. Then Go. Swing when it arrives. If you leave Swing alone, she swings the way she would anyway. On the mound, set the glove, then Go.
           </p>
           {/* A real checkbox under the switch: role="switch" reads it as on or off, the label row is the target. */}
           <label className="shine-set-toggle mt-4">
@@ -271,7 +271,7 @@ export function ShineSettings() {
 const TEACH_CARDS: { title: string; body: string }[] = [
   {
     title: "The at-bat",
-    body: "You are her Coach. Tap the box she's sitting on. Then Go. Swing when it arrives. If you let the pitch go, she swings from who she is and where you told her to look.",
+    body: "You are her Coach. Tap the box she's sitting on. Then Go. Swing when it arrives. If you leave Swing alone, she swings the way she would anyway, from where you told her to look.",
   },
   {
     title: "Where she looks",

@@ -314,17 +314,17 @@ function quoteMemory(m: CoachMemory): string {
     case "first-fail":
       return `"The first day it didn't land. You didn't change the plan." She nods. "Good."`;
     case "breakthrough":
-      return `"Staying late with the coach. That was your idea to keep going." She won't say thanks. This is it.`;
+      return `"You kept me late that night. Your idea." It's as close to thank you as she gets.`;
     case "catch":
-      return `"Parking lot. Catch. You didn't say anything." Which is the point.`;
+      return `"Parking lot. Catch. You didn't say anything." She liked that.`;
     case "gate":
-      return `"The Gate." That's all she says, and it's enough.`;
+      return `"The Gate." She says it like the name of a street she grew up on.`;
     case "first-light":
-      return `"First Light." She keeps that one somewhere.`;
+      return `"First Light." She still has the ticket stub. It's gone soft in her pocket.`;
     case "keepsake":
       return `She pats her pocket, where she keeps it. She doesn't take it out.`;
     case "rival":
-      return `"${m.note}" She says it flat. It's not flat.`;
+      return `"${m.note}" She says it flat, and then she says it again.`;
     default:
       return `"${m.note}"`;
   }
@@ -355,11 +355,21 @@ export function catchWithCoachScene(run: TraineeRun): RelationshipScene {
   const id = run.characterId;
   const m = recall(run, ["first-fail", "breakthrough", "rest-before-date", "pushed-tired", "gate", "first-light", "keepsake", "rival"]);
   const lines = [
-    "Parking lot lights. She has the glove. You toss. No timing — just the two of you, and the complex going quiet.",
-    m ? quoteMemory(m) : "\"You didn't say anything.\" Which is the point.",
+    "Parking lot lights. She has the glove. You toss. Nobody's timing anything, and the complex goes quiet around you.",
+    m ? quoteMemory(m) : "\"You didn't say anything.\" She liked that.",
     warmth(run) === "strained"
       ? "She hangs onto the last toss a beat longer than she needs to. Then she nods toward the cage."
-      : "She flips the ball back underhand. \"Same time next year.\"",
+      : CATCH_CLOSER[id],
   ];
   return { slot: "year-end", speaker: id, lines, quoted: m, mood: "neutral" };
 }
+
+/** The last toss of the parking-lot catch, in her own words (Kira never says "next year"). */
+const CATCH_CLOSER: Record<CharacterId, string> = {
+  aoi: "She flips it back underhand. \"I'm not writing this one down.\"",
+  reina: "\"Forty-one tosses.\" She flips it back. \"Not forty.\"",
+  miki: "She flips it back. \"Cool. Same time tomorrow.\"",
+  sol: "She flips it back. \"Ninety-six, Jefe.\"",
+  kira: "She flips it back. \"Again tomorrow, Partner. Deal?\"",
+  yuki: "She flips it back too fast. \"Again. Already.\"",
+};

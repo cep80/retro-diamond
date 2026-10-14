@@ -36,6 +36,7 @@ for (const m of MUT) {
   if (c) g.sgId = c;
 }
 
+const MORNINGS = process.env.MORNINGS !== "off";
 const N = Number(process.argv[2] ?? 200);
 const GIRLS = (process.argv[3] ?? "aoi,reina,miki,sol,kira,yuki").split(",");
 const POLS = (process.argv[4] ?? "coach").split(",") as Policy[];
@@ -143,7 +144,11 @@ function career(girl: string, pol: Policy, seed: string): Career {
   for (let guard = 0; guard < 200 && !run.clubhouseCard; guard++) {
     const t = run.turn;
     const type = C.turnMeta(t).type;
-    if (type === "work" || type === "semi-free") {
+    // Check-in 34: the work morning right before a date is one practice rep (turns 17, 27, 32, 49, 54, 59).
+    // The game skips the station pick and finishes on her own station (cage / side) through
+    // applyGameResult("practice"). MORNINGS=off restores the pre-34 Coach pick for comparison.
+    if (MORNINGS && C.morningKind && C.morningKind(t) === "practice") R.applyGameResult(run, "practice", false, false, false, false);
+    else if (type === "work" || type === "semi-free") {
       const e = TE.eventDue(run, LIB);
       if (e) {
         TE.applyEventChoice(run, e.choices[eventPick(run, e, pol)].effect);
@@ -174,7 +179,7 @@ function career(girl: string, pol: Policy, seed: string): Career {
 const pct = (x: number, n: number) => (n ? `${((100 * x) / n).toFixed(0)}` : "-").padStart(3);
 const q = (a: number[], p: number) => { const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(p * s.length))] ?? 0; };
 const RANKS = ["S", "A", "B", "never-quit", "C", "D"];
-console.log(`\n=== SRC=${SRCDIR} MUT=${MUT.join(",") || "-"} SIT=${SIT.row === 1 ? "center" : "corner"} (N=${N}) ===`);
+console.log(`\n=== SRC=${SRCDIR} MUT=${MUT.join(",") || "-"} MORNINGS=${MORNINGS ? "rep" : "off"} SIT=${SIT.row === 1 ? "center" : "corner"} (N=${N}) ===`);
 console.log("girl  pol    |  S   A   B  NQ   C   D | early | B+A(+NQ) | fans p50 | pg met % " + DATE_NAMES.join(" ") + " | lost% (pg+sg missed) | Day-60 letters p50 (p10-p90) | letter mix %S/A/B/<B");
 for (const girl of GIRLS) {
   const pitcher = B.isPitcherStyle(B.sheet(girl).style);

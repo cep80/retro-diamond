@@ -64,6 +64,22 @@ export function morningKind(turn: number): MorningKind {
   return "practice";
 }
 
+export type PlateKind = "practice" | "gate" | "first-light" | "lantern-classic" | "night-classic" | "stretch" | "series" | "finale";
+
+/**
+ * The game a turn plays, read the way the plate and the mound read it: a practice morning
+ * and the tutorial cage are "practice", a date is its own kind. Null on a turn with no game,
+ * so a finish from a screen left over from another turn can be refused.
+ */
+export function plateKindFor(turn: number): PlateKind | null {
+  if (morningKind(turn) === "practice") return "practice";
+  const t = turnMeta(turn).type;
+  if (turnMeta(turn).turn !== turn) return null;
+  if (t === "tutorial-plate") return "practice";
+  if (t === "gate" || t === "first-light" || t === "lantern-classic" || t === "night-classic" || t === "stretch" || t === "series" || t === "finale") return t;
+  return null;
+}
+
 /** The date name the Coach sees. Work is a morning. Pitchers do not get a cage night. */
 export function dateLabel(beat: Pick<CalendarBeat, "type" | "label">, style: StyleId): string {
   const pitcher = style === "ace" || style === "closer";

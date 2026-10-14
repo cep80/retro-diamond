@@ -523,9 +523,9 @@ describe("race controller", () => {
 
   it("a practice morning is one pitch, and the release names early, on time, or late", () => {
     const bands = [
-      { u: 0.5, band: "early" as const, line: "Early, she was ahead of it." },
-      { u: 0.92, band: "now" as const, line: "On time, she met it." },
-      { u: 1.2, band: "late" as const, line: "Late, she was behind it." },
+      { u: 0.5, band: "early" as const, line: "Early. She was out in front of it." },
+      { u: 0.92, band: "now" as const, line: "On time. She was right on it." },
+      { u: 1.2, band: "late" as const, line: "Late. It got in on her." },
     ];
     for (const want of bands) {
       const { c, sched, run } = race(`one-rep-${want.band}`, { kind: "practice", oneRep: true, duel: false, encounter: undefined });
@@ -542,7 +542,7 @@ describe("race controller", () => {
       assert.equal(s.phase, "done");
       assert.equal(s.plate.game.pitchesSeen, 1);
       assert.equal(s.release?.band, want.band);
-      assert.equal(s.plate.game.banner, "One pitch, and First Light is tomorrow.");
+      assert.equal(s.plate.game.banner, "First Light is tomorrow.");
       assert.doesNotMatch(s.plate.game.banner, /complex/i);
       assert.ok(s.card);
       assert.doesNotMatch(s.card.line, /complex/i);
@@ -558,7 +558,7 @@ describe("race controller", () => {
     assert.equal(s.phase, "done");
     assert.equal(s.release, null);
     assert.equal(s.plate.game.pitchesSeen, 1);
-    assert.equal(s.plate.game.banner, "One pitch, and First Light is tomorrow.");
+    assert.equal(s.plate.game.banner, "First Light is tomorrow.");
     assert.doesNotMatch(s.plate.game.banner, /complex/i);
     assert.ok(s.card);
     assert.doesNotMatch(s.card.line, /complex/i);

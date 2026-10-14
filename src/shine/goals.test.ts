@@ -44,6 +44,7 @@ function pitcherView(patch: Partial<PitcherGoalView> = {}): PitcherGoalView {
     done: false,
     role: "ace",
     bestInningKs: 0,
+    battersFaced: 0,
     ...patch,
   };
 }
@@ -187,14 +188,14 @@ describe("goals", () => {
     assert.equal(evalPitcherPg("k-2", pitcherView({ strikeouts: 2, outsRecorded: 3 })), true);
   });
 
-  it("sees four pitches in one look, then five, and still resolves the old foul and 3-2 verbs", () => {
+  it("sees four pitches in one at-bat, then five, and still resolves the old foul and 3-2 verbs", () => {
     assert.equal(goalIdForVerb("See 4 pitches in one PA"), "see-4-one-pa");
     assert.equal(goalIdForVerb("See 5 pitches in one PA"), "see-5-one-pa");
     assert.equal(goalIdForVerb("See 4 pitches"), "see-4");
     assert.equal(goalIdForVerb("Foul off a 2-strike pitch"), "foul-two-strike");
     assert.equal(goalIdForVerb("Work a 3-2 count"), "full-count");
-    assert.equal(speakGoal("See 4 pitches in one PA"), "Four pitches in one look");
-    assert.equal(speakGoal("See 5 pitches in one PA"), "Five pitches in one look");
+    assert.equal(speakGoal("See 4 pitches in one PA"), "Four pitches in one at-bat");
+    assert.equal(speakGoal("See 5 pitches in one PA"), "Five pitches in one at-bat");
     assert.match(goalDefinition("see-4-one-pa"), /Four pitches/);
     assert.match(goalDefinition("see-5-one-pa"), /Five pitches/);
     assert.equal(evalHitterPg("see-4-one-pa", hitterView([], { maxPaPitches: 3 })), false);
@@ -228,6 +229,69 @@ describe("goals", () => {
     assert.equal(evalPitcherPg("escape-jam", pitcherView({ escapedJam: true })), true);
     assert.equal(evalPitcherPg("escape-loaded-jam", pitcherView({ escapedJam: true })), false);
     assert.equal(evalPitcherPg("escape-loaded-jam", pitcherView({ escapedJam: true, escapedLoadedJam: true })), true);
+  });
+
+  it("check-in 35's new asks resolve, read, and evaluate the way the sim measured them", () => {
+    // New verbs, and every retired verb still resolves for older saves.
+    assert.equal(goalIdForVerb("Pitch 5+ innings, 7+ K"), "innings-5-k7");
+    assert.equal(goalIdForVerb("Three up, three down"), "perfect-ninth");
+    assert.equal(goalIdForVerb("Get two hits"), "hits-2");
+    assert.equal(goalIdForVerb("Make contact on 2 breaking balls"), "contact-breaking-2");
+    assert.equal(goalIdForVerb("Steal with RISP and score"), "steal-risp-score");
+    assert.equal(goalIdForVerb("Pitch 5+ innings, ≤3 ER"), "innings-5");
+    assert.equal(goalIdForVerb("Three quality at-bats"), "quality-abs-3");
+    assert.equal(goalIdForVerb("Make contact on a breaking ball"), "contact-breaking");
+    assert.equal(goalIdForVerb("Come to bat with runners on"), "runners-on-at-bat");
+    assert.equal(goalIdForVerb("Steal with RISP"), "steal-risp");
+    assert.equal(goalIdForVerb("Clean ninth"), "clean-ninth");
+    assert.equal(speakGoal("Pitch 5+ innings, 7+ K"), "Five innings, seven punchouts");
+    assert.equal(speakGoal("Three up, three down"), "Three up, three down");
+    assert.equal(speakGoal("Get two hits"), "Two hits");
+    assert.equal(speakGoal("Make contact on 2 breaking balls"), "Bat on two breaking balls");
+    assert.equal(speakGoal("Steal with RISP and score"), "Steal with runners on, then score");
+    for (const old of ["Three quality at-bats", "Make contact on a breaking ball", "Come to bat with runners on", "Steal with RISP"]) {
+      assert.notEqual(speakGoal(old), old, `${old} keeps its spoken name`);
+    }
+
+    // Seven punchouts in five, three runs or fewer.
+    assert.equal(evalPitcherPg("innings-5-k7", pitcherView({ inningsOuts: 15, earnedRuns: 3, strikeouts: 7 })), true);
+    assert.equal(evalPitcherPg("innings-5-k7", pitcherView({ inningsOuts: 15, earnedRuns: 3, strikeouts: 6 })), false);
+    assert.equal(evalPitcherPg("innings-5-k7", pitcherView({ inningsOuts: 14, earnedRuns: 0, strikeouts: 9 })), false);
+    assert.equal(evalPitcherPg("innings-5-k7", pitcherView({ inningsOuts: 15, earnedRuns: 4, strikeouts: 9 })), false);
+    // A 1-2-3 ninth: a single with no run is not it.
+    assert.equal(evalPitcherPg("perfect-ninth", pitcherView({ outsRecorded: 3, battersFaced: 3 })), true);
+    assert.equal(evalPitcherPg("perfect-ninth", pitcherView({ outsRecorded: 3, battersFaced: 4 })), false);
+    assert.equal(evalPitcherPg("clean-ninth", pitcherView({ outsRecorded: 3, battersFaced: 4 })), true, "a clean ninth still allows the single");
+    assert.equal(evalPitcherPg("perfect-ninth", pitcherView({ outsRecorded: 3, battersFaced: 3, blown: true })), false);
+
+    // Two hits; a bunt she beats out counts (the game adds it to hits).
+    assert.equal(evalHitterPg("hits-2", hitterView([], { hits: 1 })), false);
+    assert.equal(evalHitterPg("hits-2", hitterView([], { hits: 2 })), true);
+
+    // Two breaking balls: one breaking-ball foul plus contact on a fastball is one.
+    const one: PlateEvent[] = [
+      { t: "pitch", pa: 1, n: 1, type: "slider", inZone: true },
+      { t: "contact", pa: 1, tier: "foul", quality: 0.2 },
+      { t: "pitch", pa: 1, n: 2, type: "fastball", inZone: true },
+      { t: "contact", pa: 1, tier: "hit", quality: 0.6 },
+    ];
+    assert.equal(evalHitterPg("contact-breaking-2", hitterView(one)), false);
+    assert.equal(evalHitterPg("contact-breaking", hitterView(one)), true);
+    const two: PlateEvent[] = [...one, { t: "pitch", pa: 2, n: 1, type: "curve", inZone: true }, { t: "contact", pa: 2, tier: "foul", quality: 0.1 }];
+    assert.equal(evalHitterPg("contact-breaking-2", hitterView(two)), true);
+
+    // Steal with RISP, then score on that same trip.
+    const stole: PlateEvent[] = [{ t: "stealResult", pa: 2, from: 1, safe: true, inning: 5, risp: true }];
+    assert.equal(evalHitterPg("steal-risp-score", hitterView(stole)), false, "a steal and no score");
+    assert.equal(evalHitterPg("steal-risp", hitterView(stole)), true);
+    const laterTrip: PlateEvent[] = [...stole, { t: "score", pa: 3, runner: "self", from: 2, on: "single", selfReachedBy: "hit" }];
+    assert.equal(evalHitterPg("steal-risp-score", hitterView(laterTrip)), false, "she scored on another trip");
+    const home: PlateEvent[] = [...stole, { t: "score", pa: 2, runner: "self", from: 2, on: "single", selfReachedBy: "walk" }];
+    assert.equal(evalHitterPg("steal-risp-score", hitterView(home)), true);
+    assert.equal(proofLine("steal-risp-score", home), "Stole 2nd in the 5th, and came all the way home.");
+    for (const id of ["innings-5-k7", "perfect-ninth", "hits-2", "contact-breaking-2", "steal-risp-score"] as const) {
+      assert.ok(goalDefinition(id).length > 10, id);
+    }
   });
 
   it("writes a proof line from the record", () => {

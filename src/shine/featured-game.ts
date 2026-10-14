@@ -642,7 +642,9 @@ function reachBase(run: TraineeRun, game: FeaturedGame, r: () => number, via: Re
   if (via === "hit" || via === "bunt") game.hits += 1;
   else if (via === "walk") game.walks += 1;
   game.stealArmed = hitKind !== "hr" && stealAutoArm(sheet(run.characterId).style, game.outs);
-  if (game.pgId === "steal-risp" && game.selfOnBase === 1 && !game.encounter?.plateOnly) {
+  // The ghost runner on third is the assist for both steal-with-RISP asks (check-in 35: the
+  // Stretch's "and score" ask was simulated with it).
+  if ((game.pgId === "steal-risp" || game.pgId === "steal-risp-score") && game.selfOnBase === 1 && !game.encounter?.plateOnly) {
     game.bases = { first: false, second: false, third: true };
     syncBases(game);
   }

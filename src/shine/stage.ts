@@ -73,11 +73,11 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
   if (game.kind === "practice") return "One look. The bat is real.";
   if (game.pgMet) {
     if (game.pgId === "see-3-one-pa") {
-      if (game.kind === "gate") return "Three pitches in one look. The Gate opened.";
-      return "Three pitches in one look.";
+      if (game.kind === "gate") return "Three pitches in one at-bat. The Gate opened.";
+      return "Three pitches in one at-bat.";
     }
-    if (game.pgId === "see-4-one-pa") return "Four pitches in one look.";
-    if (game.pgId === "see-5-one-pa") return "Five pitches in one look.";
+    if (game.pgId === "see-4-one-pa") return "Four pitches in one at-bat.";
+    if (game.pgId === "see-5-one-pa") return "Five pitches in one at-bat.";
     if (game.pgId === "no-k") return game.kind === "finale" ? "Diamond Finale. She never went down on strikes." : "She didn't strike out.";
     if (game.pgId === "foul-two-strike") return "She fouled one off with two strikes and stayed alive.";
     if (game.pgId === "full-count") return "She took it to 3-2.";
@@ -86,6 +86,10 @@ export function plateRead(run: TraineeRun, game: FeaturedGame) {
     if (game.pgId === "steal") return "She stole a base.";
     if (game.pgId === "steal-late") return "She stole late.";
     if (game.pgId === "steal-risp") return "She stole with a runner in scoring position.";
+    // Check-in 35's asks.
+    if (game.pgId === "steal-risp-score") return "She stole with a runner in scoring position, then came all the way home.";
+    if (game.pgId === "hits-2") return "Two hits. The second one was for her.";
+    if (game.pgId === "contact-breaking-2") return "She put the bat on two breaking balls.";
     if (game.pgId === "score-from-first") return "She scored from first.";
     if (game.pgId === "steal-third") return "She stole third.";
     if (game.pgId === "score-from-first-single") return "She scored from first on a single.";
@@ -116,7 +120,16 @@ const LOOK_NEED = ["", "one", "two", "three", "four", "five"] as const;
 function lookShort(n: number, need: 3 | 4 | 5): string {
   const saw = n > 0 && n < need ? LOOK_SAW[n] : undefined;
   const word = LOOK_NEED[need];
-  return saw ? `${saw} in the look. She needed ${word}.` : `The look never got to ${word} pitches.`;
+  return saw ? `${saw} in the at-bat. She needed ${word}.` : `The at-bat never got to ${word} pitches.`;
+}
+
+/** The pitch type just before event `index` (contact on a breaking ball reads the pitch it met). */
+function lastPitchType(ev: FeaturedGame["events"], index: number) {
+  for (let i = index - 1; i >= 0; i--) {
+    const e = ev[i]!;
+    if (e.t === "pitch") return e.type;
+  }
+  return null;
 }
 
 /** What a missed ask says at the plate: what she did, and what didn't come. */
@@ -128,6 +141,17 @@ function plateMissRead(run: TraineeRun, game: FeaturedGame): string {
   if (game.pgId === "foul-two-strike") return "The two-strike foul didn't come. She kept swinging anyway.";
   if (game.pgId === "full-count") return "The count never got to 3-2.";
   if (game.pgId === "contact-breaking") return "The breaking ball never met the bat.";
+  if (game.pgId === "contact-breaking-2") {
+    const met = game.events.filter((e, i) => e.t === "contact" && e.tier !== "miss" && lastPitchType(game.events, i) !== "fastball").length;
+    return met === 1 ? "One breaking ball met the bat. She needed two." : "The breaking ball never met the bat.";
+  }
+  if (game.pgId === "hits-2") return game.hits === 1 ? "One hit. She needed two." : "The hits didn't come.";
+  if (game.pgId === "steal-risp-score") {
+    const rispSteal = game.events.some((e) => e.t === "stealResult" && e.safe && e.risp);
+    const plain = game.events.some((e) => e.t === "stealResult" && e.safe && !e.risp);
+    if (rispSteal) return "She stole. Home never came.";
+    return plain ? "She stole, but nobody was in scoring position yet." : "The steal with a runner in scoring position didn't come.";
+  }
   if (game.pgId === "runners-on-at-bat") return "She never came up with runners on.";
   if (game.pgId === "steal") return "The steal didn't come.";
   if (game.pgId === "steal-late") {

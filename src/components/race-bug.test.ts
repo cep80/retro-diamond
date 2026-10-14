@@ -144,6 +144,9 @@ describe("the mound's scorebug", () => {
     assert.equal(b.score, null);
     assert.equal(b.atBat, "Bullpen · 2 of 3");
     assert.equal(moundBug({ ...live, kind: "practice", pitchCount: 3 }).atBat, "Bullpen · 3 of 3");
+    // A practice morning is one throw (check-in 35): 1 of 1, before and after it.
+    assert.equal(moundBug({ ...live, kind: "practice", looks: 1, pitchCount: 0 }).atBat, "Bullpen · 1 of 1");
+    assert.equal(moundBug({ ...live, kind: "practice", looks: 1, pitchCount: 1 }).atBat, "Bullpen · 1 of 1");
     const held = settleMoundBug(b, [{ t: "pitch", pa: 0, n: 2, type: "fastball", inZone: true }, { t: "take", pa: 0, strike: true }]);
     assert.deepEqual(held.count, { balls: 0, strikes: 0 });
   });

@@ -3,6 +3,7 @@
  * Every field added to `TraineeRun` gets a default here; every persisted screen
  * is vetted here; the live attempt only survives when it matches the run.
  */
+import { morningKind } from "./calendar.ts";
 import { endingRank, mintClubhouseCard } from "./ending.ts";
 import type { FeaturedGame } from "./featured-game.ts";
 import type { PitchingGame } from "./pitching.ts";
@@ -147,6 +148,17 @@ export function remintPendingCard(run: TraineeRun | null): TraineeRun | null {
   return { ...run, clubhouseCard: { ...mintClubhouseCard(run), id: card.id, runNumber: card.runNumber } };
 }
 
+/**
+ * A day whose screen is the plate: a date, or a practice morning (its rep is the morning).
+ * The complex (a wall, the weekly or settings hydrate there) must not open on one, or its
+ * tiles would skip the rep. Old saves made on the complex on those mornings land on the rep too.
+ * Nothing is dealt yet when it opens from here, so it starts fresh.
+ */
+function plateDay(run: TraineeRun): boolean {
+  if (run.phase === "postgame" || run.phase === "year-end") return false;
+  return run.phase === "plate" || morningKind(run.turn) === "practice";
+}
+
 export function migratePersisted(persisted: unknown, version: number) {
   const p = (persisted ?? {}) as PersistedShine;
   const patched = patchRun(p.run ?? null);
@@ -158,7 +170,7 @@ export function migratePersisted(persisted: unknown, version: number) {
       : "title";
   return {
     run,
-    screen: screen === "plate" && !live ? ("title" as ShineScreen) : screen,
+    screen: screen === "plate" && !live ? ("title" as ShineScreen) : screen === "complex" && run && plateDay(run) ? ("plate" as ShineScreen) : screen,
     lastLine: p.lastLine ?? null,
     clubhouse: (version < 4 ? [] : (p.clubhouse ?? [])).map((c) => ({
       // The pending card was pushed to the wall the moment the career closed, under the same

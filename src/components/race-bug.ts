@@ -95,7 +95,7 @@ function basesFor(runners: number): Bases {
   return { first: runners >= 1, second: runners >= 2, third: runners >= 3 };
 }
 
-/** The bullpen date is three looks (pitching.ts ends it on the third pitch). */
+/** The tutorial bullpen is three throws (pitching.ts ends it on game.looks, default three). */
 const BULLPEN_LOOKS = 3;
 
 /**
@@ -103,12 +103,16 @@ const BULLPEN_LOOKS = 3;
  * she has on the batter, the outs she has, the runners on against her, and who
  * is in the box. `score` is her team's run difference.
  */
-export function moundBug(game: Pick<PitchingGame, "kind" | "inning" | "scoreDiff" | "count" | "outs" | "runners" | "batterName" | "pitchCount">): BugState {
+export function moundBug(
+  game: Pick<PitchingGame, "kind" | "inning" | "scoreDiff" | "count" | "outs" | "runners" | "batterName" | "pitchCount"> & Partial<Pick<PitchingGame, "looks">>,
+): BugState {
   if (game.kind === "practice") {
+    // A practice morning is one throw (check-in 35): the bug reads 1 of 1, like the cage's.
+    const looks = game.looks ?? BULLPEN_LOOKS;
     return {
       inning: null,
       score: null,
-      atBat: `Bullpen · ${Math.min(BULLPEN_LOOKS, game.pitchCount + 1)} of ${BULLPEN_LOOKS}`,
+      atBat: `Bullpen · ${Math.min(looks, game.pitchCount + 1)} of ${looks}`,
       count: { balls: 0, strikes: 0 },
       outs: 0,
       bases: basesFor(0),

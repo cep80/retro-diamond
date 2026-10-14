@@ -11,7 +11,8 @@ test("every girl has an ending scene for every rank", () => {
     for (const rank of RANKS) {
       const scene = endingScene(girl, rank);
       assert.equal(scene.girl, girl);
-      assert.ok(scene.beats.length >= 4 && scene.beats.length <= 8, `${girl} ${rank}: ${scene.beats.length} beats`);
+      // Ten since check-in 35: Yuki's Finale ending carries Aoi's little stars.
+      assert.ok(scene.beats.length >= 4 && scene.beats.length <= 10, `${girl} ${rank}: ${scene.beats.length} beats`);
       for (const b of scene.beats) assert.doesNotMatch(b.text, FORBIDDEN_IN_STORY, `${girl} ${rank}`);
     }
   }

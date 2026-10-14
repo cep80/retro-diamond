@@ -89,28 +89,44 @@ export function statFill(value: number): number {
 
 export interface LetterFill {
   grade: Grade;
-  /** 0..1 inside the letter she already has, toward the next floor. S is full. */
+  /** 0..1 inside the letter she already has, toward the next floor. S, and her ceiling, are full. */
   fill: number;
+  /** The letter she is filling toward. Null at S, and at her ceiling (the next floor is past her potential). */
   next: Grade | null;
+  /** The next letter's floor is past her potential: this letter is as high as she goes. */
+  ceiling: boolean;
 }
 
-/** How full the letter she already has is. Reads the 1–20 value and the floors. Changes neither. */
-export function letterFill(value: number): LetterFill {
+/**
+ * How full the letter she already has is. Reads the 1–20 value, the floors and, when given,
+ * her potential (clampStat caps her there): a letter she can't reach is never the next one.
+ */
+export function letterFill(value: number, potential = STAT_SCALE): LetterFill {
   const n = Math.round(value);
   const i = gradeIndex(n);
   const grade = GRADES[i]!;
   const floor = GRADE_FLOORS[i]!;
   const nextFloor = GRADE_FLOORS[i + 1];
-  if (nextFloor === undefined) return { grade, fill: 1, next: null };
+  if (nextFloor === undefined) return { grade, fill: 1, next: null, ceiling: false };
+  if (nextFloor > Math.round(potential)) return { grade, fill: 1, next: null, ceiling: true };
   const span = nextFloor - floor;
   const raw = span <= 0 ? 1 : (n - floor) / span;
-  return { grade, fill: Math.max(0, Math.min(1, raw)), next: GRADES[i + 1]! };
+  return { grade, fill: Math.max(0, Math.min(1, raw)), next: GRADES[i + 1]!, ceiling: false };
 }
 
-/** One sentence for the morning. The name is the panel's word (Contact, Stuff), never "stat". */
-export function letterFillLine(en: string, value: number): string {
-  const mark = letterFill(value);
-  return mark.next ? `${en} is ${mark.grade}, on the way to ${mark.next}.` : `${en} is ${mark.grade}.`;
+/**
+ * The morning's line, in a scorebook's tone: her letter, then how far the next one is, by how
+ * full this one is (narrative director, check-in 35). At her ceiling it says so and promises
+ * nothing. The name is the panel's word (Contact, Stuff), never "stat".
+ */
+export function letterFillLine(en: string, value: number, potential = STAT_SCALE): string {
+  const mark = letterFill(value, potential);
+  if (mark.ceiling) return `${en} is ${mark.grade}. That's as high as hers goes.`;
+  if (!mark.next) return `${en} is ${mark.grade}.`;
+  if (mark.fill < 0.34) return `${en} is ${mark.grade}. ${mark.next} is a ways off.`;
+  // Two thirds (G's 3, the one letter three wide) is "Nearly".
+  if (mark.fill < 0.66) return `${en} is ${mark.grade}. Halfway to ${mark.next}.`;
+  return `${en} is ${mark.grade}. Nearly ${mark.next}.`;
 }
 
 export interface GradeMove {

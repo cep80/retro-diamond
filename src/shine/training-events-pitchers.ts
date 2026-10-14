@@ -392,7 +392,7 @@ const SOL: TrainingEvent[] = [
       nar("The ball leaves her hand like a fastball and gets there late, tumbling, and drops into the net like it's tired. Then another one. Perfect."),
       nar("She sees you. She closes the glove."),
       sol("You didn't see that.", "focused"),
-      sol("It's not a pitch. It's a thing I do at night. Like brushing my teeth.", "neutral"),
+      sol("That's nothing. A thing I do at night. Like brushing my teeth.", "neutral"),
     ],
     choices: [
       {

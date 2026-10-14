@@ -7049,3 +7049,19 @@ img.shine-after-film[src^="/art/busts/"] {
     display: none;
   }
 }
+
+/* ci35 builder B */
+/* The practice rep: yesterday's chips over the letter line, and the rep's real work at its done panel. */
+.shine-race-coach .shine-rep-chips {
+  justify-content: center;
+}
+.shine-rep-work {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+/* At her ceiling the letter's track is full and quiet: nothing left to fill toward. */
+.shine-letter-fill[data-letter-ceiling] .shine-letter-track-fill {
+  background: color-mix(in srgb, var(--color-gold) 55%, rgb(245 248 255 / 0.5));
+}

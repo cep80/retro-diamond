@@ -14,9 +14,9 @@ Start here. This is enough to continue the goal without the previous session's c
 ## 2. Where it stands
 
 **Build**
-- **HEAD:** check-in 33 on `main` (the progress log). Its parent is `a90ec9d` (three asks brought into the band, and the teal small-win stamp). `d5d4b47` is the playtest-fix commit under the earlier freeze. It isn't pushed; the repo has no Vercel git integration.
-- **Tests:** 847 pass (`npm test`), and `npx tsc --noEmit` is clean.
-- **Score:** the creative director (check-in 30) puts it at about 55% of the way to Uma. Code alone can add maybe 3 more points; the rest is the user's art and music.
+- **HEAD:** check-in 35 on `main` (the progress log); parent `d3212a0` (check-in 34). Not pushed; the repo has no Vercel git integration. A 45-minute review-and-build loop is running from the coordinator session (2026-10-14).
+- **Tests:** 877 pass (`npm test`), and `npx tsc --noEmit` is clean.
+- **Score:** the creative director (check-in 35) puts it at about 57% of the way to Uma (55 at check-in 30). Its N1–N13 in `design/handoff/creative-director-ci35-findings.md` are the next build; the rest is the user's art and music.
 
 **Playtest**
 - **Stranger playtest:** READY with placeholder art (creative director, check-in 30). The user is running it now.
@@ -103,8 +103,8 @@ The creative director has re-scored about every 3–4 check-ins.
 
 ## 6. What to do next, in order
 
-1. **Practice mornings and the letter line landed** (check-in 34). Six work mornings, 17, 27, 32, 49, 54, and 59, are one practice rep: a hitter takes one pitch on the Swing, a pitcher takes one throw, glove then Go. The other work mornings stay a coaching pick. The morning shows how full the next letter is on the 1–20 scale she already has. A date that changes her fans gets one line. When the rep ends, the line and the leave button name the next beat (First Light and the rest, or the year when the Finale is locked). The tutorial still says the complex. Week league, card draw, practice equipment, tactic hand, a pitch-type prompt, and a timing bar stay in the packages. Growth is still +1 or +2. Next is the balance list below.
-2. **Balance still outside the band** (the Open list at the end of check-in 33). Simulate one knob at a time on a patched copy (`SRC=`). Do not re-stack the rejected knobs listed in check-in 32. Do not re-smoke this freeze before a new change. The dates still above it are Reina and Sol Lantern, Aoi Series, Miki Stretch and Series, Kira Series, and Yuki Stretch. Aoi's Lantern at 45 is borderline.
+1. **The creative director's check-in 35 list** (N1 first: an early Swing at two strikes fouls forever; then N2 the crushed still after a won Finale, N4 Japanese inside English sentences, N3/N5 the ending and mound reporting what really happened, N6 sim first, N7, N8–N13), plus the narrative and review leftovers in the check-in 35 Open list, including a review of the nine-inning exhibition that `d3212a0` added without a note.
+2. **Balance:** every big date is in the 50–70 band at Coach after check-in 35. What remains: pitcher S at 2–3 (the S bar is a separate knob, needs a sim and a decision), Miki B-or-A 92 (structural). Any change goes through the sim, which now plays the practice mornings.
 3. **Playtest watch-list** (the creative director's), when the user is playing:
    - do they hesitate on the first sit?
    - do they read 失敗?

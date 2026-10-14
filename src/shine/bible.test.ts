@@ -70,11 +70,39 @@ describe("1.0 bible", () => {
 
   it("pins the check-in 25 asks: Yuki's steals swapped, Reina's Series smaller ask", () => {
     const yuki = sheet("yuki").official;
-    assert.equal(yuki.find((g) => g.turn === 50)?.pgId, "steal-risp");
+    // Check-in 35: the Stretch steal has to come home now.
+    assert.equal(yuki.find((g) => g.turn === 50)?.pgId, "steal-risp-score");
     assert.equal(yuki.find((g) => g.turn === 50)?.sgVerb, "Draw a walk");
     assert.equal(yuki.find((g) => g.turn === 60)?.pgId, "steal-late");
     assert.equal(yuki.find((g) => g.turn === 60)?.sgVerb, "Work a full count");
     assert.equal(sheet("reina").official.find((g) => g.turn === 55)?.sgId, "k-3");
+  });
+
+  it("pins the check-in 35 asks the career sim measured", () => {
+    const at = (id: Parameters<typeof sheet>[0], turn: number) => sheet(id).official.find((g) => g.turn === turn)!;
+    assert.deepEqual([at("reina", 28).pgId, at("reina", 28).sgId], ["innings-5-k7", "walk-nobody"]);
+    assert.deepEqual([at("sol", 28).pgId, at("sol", 28).sgId], ["innings-5-k7", "walk-nobody"]);
+    assert.deepEqual([at("kira", 55).pgId, at("kira", 55).sgId], ["perfect-ninth", "k-2"]);
+    assert.deepEqual([at("aoi", 50).pgId, at("aoi", 50).sgId], ["hit-late", "reach"]);
+    assert.deepEqual([at("aoi", 55).pgId, at("aoi", 55).sgId], ["hits-2", "reach"]);
+    assert.deepEqual([at("miki", 50).pgId, at("miki", 50).sgId], ["contact-breaking-2", "full-count"]);
+    assert.deepEqual([at("miki", 55).pgId, at("miki", 55).sgId], ["reach-twice", "see-3-one-pa"]);
+    assert.deepEqual([at("yuki", 50).pgId, at("yuki", 50).sgId], ["steal-risp-score", "draw-walk"]);
+    // Reina's Finale is still the clean ninth after a leadoff walk.
+    assert.equal(at("reina", 60).pgId, "clean-ninth");
+  });
+
+  it("writes the senior stills so they hold under the old ask and the new one", () => {
+    const series = ["met", "met", "met", "met", "pending", "met", "pending"] as const;
+    const seriesMissed = ["met", "met", "met", "met", "pending", "missed", "pending"] as const;
+    assert.equal(yearStillLine("aoi", 60, [...series]), "Skyline Series. The at-bats added up. The last one was for her.");
+    assert.equal(yearStillLine("aoi", 60, [...seriesMissed]), "Skyline Series. The at-bats didn't add up.");
+    assert.equal(yearStillLine("kira", 60, [...seriesMissed]), "Skyline Series. Somebody reached in the ninth.");
+    assert.equal(yearStillLine("miki", 60, [...series]), "Skyline Series. The North bench leaned on the rail for her.");
+    assert.equal(yearStillLine("kira", 60, ["met", "met", "met", "met", "missed", "pending", "pending"]), "The Stretch. She asked for the eighth. The four outs didn't go her way.");
+    assert.doesNotMatch(sheet("sol").yearStills.senior, /two runs|quality start/);
+    assert.doesNotMatch(sheet("aoi").past, /\bDP\b/);
+    assert.doesNotMatch(sheet("miki").past, /Cup|0-for/);
   });
 
   it("pins Miki's check-in 33 looks: four pitches at Lantern, five at Night", () => {
@@ -199,7 +227,7 @@ describe("1.0 bible", () => {
     );
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "missed", "met", "missed"]),
-      "The Stretch. The steal with a runner in scoring position didn't come. Skyline Series. She stole third. Diamond Finale. The late steal didn't come.",
+      "The Stretch. It got away from her on the bases. Skyline Series. She stole third. Diamond Finale. The late steal didn't come.",
     );
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "met", "missed", "pending"]),
@@ -262,7 +290,12 @@ describe("1.0 bible", () => {
   it("names Reina's classic still from the innings and the punchouts", () => {
     assert.equal(
       yearStillLine("reina", 40, ["met", "met", "met", "missed", "pending", "pending", "pending"]),
-      "Lantern Classic. Five innings. Three runs or fewer. Night Classic. The punchouts didn't come back to back.",
+      "Lantern Classic. She went the five innings. Night Classic. The punchouts didn't come back to back.",
+    );
+    // Check-in 35: true under the old three-runs ask and the new seven-punchout ask alike.
+    assert.equal(
+      yearStillLine("reina", 40, ["met", "met", "missed", "met", "pending", "pending", "pending"]),
+      "Night Classic. Two punchouts, back to back. Lantern Classic. The lanterns won that one.",
     );
     assert.doesNotMatch(
       yearStillLine("reina", 40, ["met", "met", "met", "missed", "pending", "pending", "pending"]),
@@ -288,7 +321,7 @@ describe("1.0 bible", () => {
   it("names Sol's classic still from the innings and the punchouts", () => {
     assert.equal(
       yearStillLine("sol", 40, ["met", "missed", "met", "missed", "pending", "pending", "pending"]),
-      "Lantern Classic. Five innings. Three runs or fewer. Night Classic. The punchouts didn't come back to back.",
+      "Lantern Classic. She went the five innings. Night Classic. The punchouts didn't come back to back.",
     );
     assert.doesNotMatch(
       yearStillLine("sol", 40, ["met", "missed", "met", "missed", "pending", "pending", "pending"]),
@@ -327,15 +360,20 @@ describe("1.0 bible", () => {
     );
   });
 
-  it("names Miki's classic still from the four-pitch look and the five-pitch look", () => {
+  it("names Miki's classic still from the four-pitch at-bat and the five-pitch at-bat", () => {
     assert.equal(
       yearStillLine("miki", 40, ["missed", "met", "missed", "missed", "pending", "pending", "pending"]),
-      "Lantern Classic. The look never got to four. Night Classic. The look never got to five.",
+      "Lantern Classic and Night Classic. Neither at-bat went long enough.",
     );
     assert.equal(
       yearStillLine("miki", 40, ["met", "met", "met", "met", "pending", "pending", "pending"]),
-      "Lantern Classic. Four pitches in one look. Night Classic. Five pitches in one look.",
+      "Lantern Classic. Four pitches in one at-bat. Night Classic. Five pitches in one at-bat.",
     );
+    assert.equal(
+      yearStillLine("miki", 40, ["met", "met", "met", "missed", "pending", "pending", "pending"]),
+      "Lantern Classic. Four pitches in one at-bat. Night Classic. The at-bat never got to five pitches.",
+    );
+    assert.doesNotMatch(yearStillLine("miki", 20, ["met", "met", "pending", "pending", "pending", "pending", "pending"]), /\blook\b/);
     assert.doesNotMatch(
       yearStillLine("miki", 40, ["missed", "met", "missed", "missed", "pending", "pending", "pending"]),
       /0-for-4/,

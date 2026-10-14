@@ -66,12 +66,12 @@ describe("Diamond Finale and endings", () => {
     miki.turn = 33;
     assert.equal(yearFoldLine(miki, "Night Classic", "The Stretch is in 17 days."), "The Stretch is in 17 days.");
     assert.equal(postgameLeaveLabel(miki, false), "Back to the complex");
-    assert.equal(postgameLeaveLabel(miki, true), "The year");
+    assert.equal(postgameLeaveLabel(miki, true), "End of the year");
     const aoi = newAoiRun();
     aoi.pgMisses = 2;
     aoi.turn = 33;
     assert.equal(yearFoldLine(aoi, "Night Classic", "The Stretch is in 17 days."), "Her Academy days end here, at Night Classic.");
-    assert.equal(postgameLeaveLabel(aoi, false), "The year");
+    assert.equal(postgameLeaveLabel(aoi, false), "End of the year");
   });
 
   it("names a pitcher ball as the last out on the Clubhouse wall", () => {

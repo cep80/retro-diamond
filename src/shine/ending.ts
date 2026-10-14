@@ -83,7 +83,7 @@ export function yearFoldLine(run: TraineeRun, dateName: string, countdown: strin
 }
 
 export function postgameLeaveLabel(run: TraineeRun, finale: boolean) {
-  return finale || careerClosesEarly(run) ? "The year" : "Back to the complex";
+  return finale || careerClosesEarly(run) ? "End of the year" : "Back to the complex";
 }
 
 /**
@@ -94,9 +94,9 @@ export function morningDeparture(run: TraineeRun): { label: string; line: string
   const next = turnMeta(run.turn + 1);
   const yearEnds = run.turn >= 60 || (next.turn === run.turn + 1 && next.type === "finale" && !finaleUnlocked(run));
   if (yearEnds) {
-    return { label: "The year", line: "One pitch, and the year ends here.", screen: "year-end" };
+    return { label: "End of the year", line: "That was her last pitch of the year.", screen: "year-end" };
   }
-  return { label: next.label, line: `One pitch, and ${next.label} is tomorrow.`, screen: "plate" };
+  return { label: `On to ${next.label}`, line: `${next.label} is tomorrow.`, screen: "plate" };
 }
 
 /**

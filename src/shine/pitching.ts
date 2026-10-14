@@ -110,7 +110,7 @@ export interface PitchingGame {
 export const THREE_LOOKS_LINE = "Three looks. The glove is real.";
 
 /** A practice morning on the mound: one throw, then she is done. */
-export const ONE_THROW_LINE = "One throw. The glove is real.";
+export const ONE_THROW_LINE = "One throw. Then the arm rests for tomorrow.";
 
 /**
  * A Finale never ends level (check-in 27, N2): a lead blown to a tie is played out from the
@@ -212,7 +212,8 @@ function closerSit(kind: GameKind, r: () => number, pgId: PitcherPgId | null) {
     return { inning: 8, outs: 0, scoreDiff: 2, runners: 2, inherited: 2 };
   }
   if (pgId === "four-out") return { inning: 8, outs: 2, scoreDiff: 1, runners: 0, inherited: 0 };
-  if (pgId === "clean-ninth") return { inning: 9, outs: 0, scoreDiff: 1, runners: 0, inherited: 0 };
+  // Check-in 35: Kira's Series 1-2-3 is the same clean ninth, one-run lead, nobody on.
+  if (pgId === "clean-ninth" || pgId === "perfect-ninth") return { inning: 9, outs: 0, scoreDiff: 1, runners: 0, inherited: 0 };
   if (pgId === "k-side") return { inning: 9, outs: 0, scoreDiff: 1, runners: 0, inherited: 0 };
   const roll = r();
   if (roll < 0.7) return { inning: 9, outs: 0, scoreDiff: 1 + Math.floor(r() * 3), runners: 0, inherited: 0 };
@@ -297,6 +298,8 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
         : role === "closer"
           ? pgId === "k-side"
             ? "Ninth. Strike out the side."
+            : pgId === "perfect-ninth"
+              ? "Ninth. Three up, three down."
             : pgId === "four-out"
               ? "Two outs. HOLD the lead."
               : kind === "gate"
@@ -312,6 +315,8 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
               ? "Runners on. The inning has to end."
               : pgId === "k-side"
                 ? "Ninth. Strike out the side."
+                : pgId === "innings-5-k7"
+                  ? "Five innings. Seven punchouts."
                 : pgId === "innings-5"
                   ? "Five innings. Three runs or fewer."
                   : pgId === "quality-start"
@@ -456,7 +461,7 @@ function recordK(game: PitchingGame) {
 
 /** Innings the date asked her to sit. Null when the ask is not a length. */
 function satInningsOuts(game: PitchingGame): number | null {
-  if (game.pgId === "innings-5") return 15;
+  if (game.pgId === "innings-5" || game.pgId === "innings-5-k7") return 15;
   if (game.pgId === "quality-start") return 18;
   return null;
 }

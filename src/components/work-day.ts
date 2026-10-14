@@ -32,6 +32,23 @@ import {
 import type { CalendarEntry, CharacterId, StationId, TraineeRun, TraineeStatKey } from "../shine/types.ts";
 import { isBustSrc, isPitcherStyle, sceneBustSrc, sheet, stillSrc, type PortraitMood } from "../shine/bible.ts";
 import { yearOf } from "../shine/calendar.ts";
+import { coachBrief } from "../shine/coach.ts";
+
+/**
+ * The stat the letter line follows. On the practice rep it is the rep's own work (the cage's
+ * Contact, the bullpen's Stuff). On the complex it is the stat the Coach card points at, so the
+ * line under it talks about the same work; her role's first stat if the card can't say.
+ */
+export function letterStat(run: TraineeRun, rep: boolean): TraineeStatKey {
+  const pitcher = isPitcherStyle(sheet(run.characterId).style);
+  const first = roleStats(pitcher)[0]!;
+  if (rep) return stationStat(pitcher ? "side" : "cage", run) ?? first;
+  try {
+    return coachBrief(run).choice.stat ?? first;
+  } catch {
+    return first;
+  }
+}
 
 export type MoodIdx = 0 | 1 | 2 | 3 | 4;
 

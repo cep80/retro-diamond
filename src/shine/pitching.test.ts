@@ -84,8 +84,9 @@ describe("Ace / Closer mound", () => {
     const run = newRun("reina");
     run.turn = 28;
     const game = startPitchingGame(run, "lantern-classic");
-    assert.equal(game.pgId, "innings-5");
-    assert.equal(game.banner, "Five innings. Three runs or fewer.");
+    // Check-in 35: seven punchouts in the five innings; the date still sits the five.
+    assert.equal(game.pgId, "innings-5-k7");
+    assert.equal(game.banner, "Five innings. Seven punchouts.");
     assert.doesNotMatch(game.banner, /one time through/i);
     const w = pitchingWindows(run, game);
     for (let i = 0; i < 120 && game.battersFaced < 7 && !game.done; i++) {
@@ -255,13 +256,15 @@ describe("Ace / Closer mound", () => {
     assert.equal(game.banner, "Two outs. HOLD the lead.");
   });
 
-  it("Skyline Series opens a clean ninth", () => {
+  it("Skyline Series opens a clean ninth, now asked three up, three down (check-in 35)", () => {
     const run = newRun("kira");
     run.turn = 55;
     const game = startPitchingGame(run, "series");
-    assert.equal(game.pgId, "clean-ninth");
+    assert.equal(game.pgId, "perfect-ninth");
+    assert.equal(game.banner, "Ninth. Three up, three down.");
     assert.equal(game.inning, 9);
     assert.equal(game.outs, 0);
+    assert.equal(game.scoreDiff, 1);
     assert.equal(game.runners, 0);
     assert.equal(game.inherited, 0);
   });

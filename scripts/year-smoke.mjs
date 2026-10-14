@@ -946,7 +946,8 @@ async function act(s) {
         console.log(`[+${secs()}s] T${s.turn} date done: ${date.result?.kind} ${verdict} | ${date.result?.panel ?? ""}`);
         return;
       }
-      const b = s.buttons.find((x) => /^(Leave the park|Back to the complex)$/i.test(x.name));
+      // Check-in 35: a practice morning's leave names the next beat ("On to First Light", "End of the year").
+      const b = s.buttons.find((x) => /^(Leave the park|Back to the complex|On to .+|End of the year|The year)$/i.test(x.name));
       if (!b) return stuckAt(s, "the done panel has no way out", s.buttons.map((x) => x.name).join(", "));
       date.leftAt = secs();
       return press(s, byName(b.name), b.name);
@@ -962,7 +963,7 @@ async function act(s) {
     case "postgame": {
       if (date && !date.postgame) date.postgame = s.text.replace(/\s+/g, " ").slice(0, 600);
       if (date) date.pgResultsAfter = s.pgResults;
-      const b = s.buttons.find((x) => /^(Back to the complex|The year|Afterward)$/i.test(x.name));
+      const b = s.buttons.find((x) => /^(Back to the complex|The year|End of the year|On to .+|Afterward)$/i.test(x.name));
       if (!b) return stuckAt(s, "a tap finds no enabled primary action", s.buttons.map((x) => x.name).join(", "));
       return press(s, byName(b.name), b.name);
     }

@@ -83,12 +83,13 @@ import type { PlateCue } from "@/shine/plate-controller.ts";
 import { pitchReadout, RaceController, READOUT_FROM_U, type RaceCue } from "@/shine/race-controller.ts";
 import { heldMeetU, RACE_PACE, releaseLine } from "@/shine/race.ts";
 import { rivalProfile, type RivalArmId } from "@/shine/rivals.ts";
-import { newRun } from "@/shine/run.ts";
+import { newRun, previewPracticeRep } from "@/shine/run.ts";
 import { morningDeparture } from "@/shine/ending.ts";
 import { featuredParkId, kitAccent, plateRead } from "@/shine/stage.ts";
 import { useShine } from "@/shine/store.ts";
 import type { CharacterId, TraineeRun } from "@/shine/types.ts";
-import { LetterMarks } from "./LetterMarks";
+import { LetterMarks, RepWork, WorkChips } from "./LetterMarks";
+import { morningAfter } from "./work-day";
 import { ShineMound } from "./ShineMound";
 
 const EXHIBITION_APPEARANCES = 3;
@@ -177,7 +178,9 @@ export function ShinePlate() {
   const liveGame = useShine((s) => s.liveGame);
   const run = weekly ? (guest ?? career) : career;
   if (!run) return null;
-  if (isPitcherStyle(sheet(run.characterId).style) && !weekly) return <ShineMound />;
+  // Keyed by the turn like the plate's session: a done panel from the turn before never renders
+  // against the next turn's run, so a second tap on leave can't land on it.
+  if (isPitcherStyle(sheet(run.characterId).style) && !weekly) return <ShineMound key={`${run.id}:${run.turn}`} />;
   const kind = kindFor(run, weekly);
   const saved = !weekly && liveGame && liveGame.side === "plate" && liveGame.runId === run.id && liveGame.turn === run.turn ? liveGame : null;
   return (
@@ -378,6 +381,10 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const stage = plate.stage;
   const practice = game.kind === "practice";
   const morning = mode === "career" && morningKind(run.turn) === "practice";
+  // The rep's real work, read before the leave button applies it (same seed, same roll), and
+  // what yesterday's pick did: this morning never shows the complex, so its chips ride here.
+  const rep = useMemo(() => (morning ? previewPracticeRep(run) : null), [morning, run]);
+  const yesterday = useMemo(() => (morning ? morningAfter(run).chips : []), [morning, run]);
   // Every career date starts on an empty sit. Exhibition and weekly keep one-tap Go.
   // A restored attempt continues from its saved pick.
   const sitNeeded = mode === "career";
@@ -1010,7 +1017,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     ? RACE_COPY.exhibitionWatch
     : herStepIn
       ? RACE_COPY.firstPick
-      : pickPrompt({ phase: snap.phase, pitchesSeen: game.pitchesSeen, practice, morning });
+      : pickPrompt({ phase: snap.phase, pitchesSeen: game.pitchesSeen, practice, morning, characterId: run.characterId });
   const scoutingLine = snap.phase === "pick" && !snap.watching && game.pitchesSeen === 0 && !practice && !exhibition ? rivalProfile(game.arm).tells[0] : null;
   // The title card owns the walk-in. The sit and Go come up when it leaves.
   const sitGrid = showSitGrid({ phase: snap.phase, stage }) && !snap.watching && !titleUp && !theirLead;
@@ -1037,6 +1044,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     (game.pgId === "foul-two-strike" ||
       game.pgId === "full-count" ||
       game.pgId === "contact-breaking" ||
+      game.pgId === "contact-breaking-2" ||
       game.pgId === "runners-on-at-bat" ||
       (game.pgId === "see-3-one-pa" && game.kind === "finale"));
   const readLine = snap.phase === "done" && !morning ? plateRead(run, game) : null;
@@ -1057,9 +1065,9 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // A swapped-in beat is her settled still, not a replay: no stamp, no takeover over the finish.
   const swapped = snap.phase === "done" && (closing !== lastBeat || beat !== closing);
   const takeMiss =
-    countDate && !game.pgMet && (game.pgId === "foul-two-strike" || game.pgId === "contact-breaking");
+    countDate && !game.pgMet && (game.pgId === "foul-two-strike" || game.pgId === "contact-breaking" || game.pgId === "contact-breaking-2");
   const foulHeld = countDate && beat === "foul" && game.pgId === "foul-two-strike";
-  const contactHeld = countDate && game.pgId === "contact-breaking" && game.pgMet;
+  const contactHeld = countDate && (game.pgId === "contact-breaking" || game.pgId === "contact-breaking-2") && game.pgMet;
   const swung = contactHeld || foulHeld ? true : beat === "walk" || takeMiss ? false : beat === "single" || beat === "hr" ? true : holdFilm && actionCue.swung;
   // The done panel holds her settled still, never a replay. A career date puts its verdict on her
   // face (celebrate when she got it, crushed when she didn't; a walk or a run keeps its trot); a day
@@ -1352,7 +1360,9 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
             The walk-in card covers this; the sit is the choice once it is gone. */}
         {titleUp ? null : (
         <section className="shine-race-coach" aria-label="The Coach">
-          {morning ? <LetterMarks run={run} /> : null}
+          {morning && snap.phase === "pick" && !snap.watching ? <WorkChips chips={yesterday} label="What yesterday's work did" kind="yesterday" /> : null}
+          {/* At the done panel the letter reads where the rep's work leaves her. */}
+          {morning ? <LetterMarks run={doneUp && rep ? rep.after : run} rep /> : null}
           {snap.phase === "pick" && snap.watching ? (
             <p className="min-h-10 text-center font-story text-sm text-cream/90" aria-live="polite">
               {snap.card?.line ?? game.banner}
@@ -1411,6 +1421,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
               <DayStrip chips={dayChips} reduced={reduced} paused={paused} />
               {/* The exhibition's headline already told the whole day, runs and steals included. */}
               {basepath && !countDate && !exhibition ? <p className="text-center font-story text-sm text-gold">{basepath}</p> : null}
+              {rep ? <RepWork result={rep.result} /> : null}
               {closeLine ? <p className="text-center font-story text-sm text-cream/85" data-morning-next={panel?.under ? "" : undefined}>{closeLine}</p> : null}
               {tutorialLook ? <p className="text-center font-story text-sm text-cream/90" data-first-look-read>{tutorialLook}</p> : null}
               {/* The scoreboard under her read (N1, N2): how a tie came out, or "They lost." on a met ask. */}

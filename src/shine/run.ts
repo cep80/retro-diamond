@@ -2,6 +2,7 @@ import { hashId, makeRng, uid } from "./core/rng.ts";
 import { morningKind, PLATE_TURNS, turnMeta, yearOf } from "./calendar.ts";
 import { memoryLine } from "./relationship.ts";
 import { isPitcherStyle, officialFor, sheet } from "./bible.ts";
+import { STAT_EN as STAT_NAME } from "./grades.ts";
 
 /** Old saves' relief line after a miss the smaller ask saved. Don't edit: coachWarningTone matches it. */
 export const SMALLER_ASK_HELD = "The smaller ask held";
@@ -272,7 +273,12 @@ export function resolveMentorEvent(run: TraineeRun) {
   advance(run);
 }
 
-export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensive = false) {
+/**
+ * One morning's work at a station. `practice` is the rep on the morning before a date
+ * (applyGameResult): it is her lightest work, the same gains and cost, but nobody chose to
+ * work her tired, so it writes no `pushed-tired` memory and rolls no injury.
+ */
+export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensive = false, practice = false) {
   run.lastBreakthrough = null;
   run.lastInjury = false;
   run.lastTrainingSpark = null;
@@ -296,7 +302,7 @@ export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensi
   }
 
   const worn = injuryRisk(run.energy);
-  if (run.energy < 40 && dateNext(run.turn)) {
+  if (!practice && run.energy < 40 && dateNext(run.turn)) {
     remember(run, {
       kind: "pushed-tired",
       turn: run.turn,
@@ -342,7 +348,7 @@ export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensi
     }
   }
 
-  if (worn > 0 && r() < worn) applyInjury(run);
+  if (!practice && worn > 0 && r() < worn) applyInjury(run);
 
   if (outcome === "fail" || outcome === "bad-fail") {
     if (run.failStreak.stat === stat) run.failStreak.count = Math.min(run.failStreak.count + 1, 2);
@@ -417,13 +423,28 @@ export const PG_INDEX: Record<Exclude<FeaturedKind, "practice">, number> = {
 
 export type PlateBox = { hits?: number; walks?: number; ks?: number; won?: boolean };
 
+/**
+ * Retired (check-in 35): the one line every girl got. Old saves hold it as `fanBeat`, display
+ * only, so it stays word for word and nothing matches on it.
+ */
 export const FAN_MORE = "More people came to the park for her.";
 export const FAN_FEWER = "Fewer people came to the park for her.";
 
-/** One sentence when a date moves her crowd. Zero stays quiet. A threshold line still wins. */
-export function fanAnnouncement(before: number, after: number): string | null {
-  if (after > before) return FAN_MORE;
-  if (after < before) return FAN_FEWER;
+/** Her own crowd, when a date moves it: her park, her people (narrative director, check-in 35). */
+export const FAN_LINES: Record<CharacterId, { more: string; fewer: string }> = {
+  aoi: { more: "Haruko ran out of 6-4-3 flags and started cutting new ones.", fewer: "A couple of the 6-4-3 regulars stayed home." },
+  reina: { more: "More scorecards behind the plate at Koi.", fewer: "A few empty seats behind the plate at Koi." },
+  miki: { more: "Section 4 had to make room on the bench.", fewer: "Section 4 was a little quieter. The cowbell still came." },
+  sol: { more: "Luz sold out of elote before the third.", fewer: "Luz had elote left over after the game." },
+  kira: { more: "More people stayed past the eighth to see her come in.", fewer: "A few more people left for the last bus before the ninth." },
+  yuki: { more: "The shaved-ice line went all the way to first base.", fewer: "The shaved-ice stand closed early." },
+};
+
+/** Her line when a date moves her crowd. Zero stays quiet. A threshold line still wins. */
+export function fanAnnouncement(before: number, after: number, id: CharacterId): string | null {
+  const lines = FAN_LINES[id];
+  if (after > before) return lines?.more ?? FAN_MORE;
+  if (after < before) return lines?.fewer ?? FAN_FEWER;
   return null;
 }
 
@@ -472,7 +493,7 @@ export function applyGameResult(
   if (kind === "practice") {
     // A practice morning is the station she already has. The tutorial cage keeps the old finish.
     if (morningKind(run.turn) === "practice") {
-      resolveTrainingTurn(run, isPitcherStyle(sheet(run.characterId).style) ? "side" : "cage");
+      resolveTrainingTurn(run, isPitcherStyle(sheet(run.characterId).style) ? "side" : "cage", false, true);
       return;
     }
     applyEnergy(run, PRACTICE_PA_ENERGY * 3);
@@ -587,7 +608,7 @@ export function applyGameResult(
   if (lastSpurt) run.fans = Math.min(100, run.fans + 3);
   tickFanBeat(run);
   if (run.fanBeat === null) {
-    const line = fanAnnouncement(fansBefore, run.fans);
+    const line = fanAnnouncement(fansBefore, run.fans, run.characterId);
     if (line) run.fanBeat = line;
   }
 
@@ -595,6 +616,64 @@ export function applyGameResult(
   awardGameSparks(run, pgMet, sgMet);
   awardStatSparks(run);
   run.phase = "postgame";
+}
+
+export interface RepChip {
+  text: string;
+  /** A cost is shown plainly, not celebrated. */
+  cost: boolean;
+}
+
+export interface RepResult {
+  /** What the work did: "treatment" when she was too spent to work and the trainer took the morning. */
+  outcome: "success" | "bonus" | "fail" | "bad-fail" | "treatment";
+  /** Points the work put on, the main stat first. Never a point the cap swallowed. */
+  gains: { stat: TraineeStatKey; from: number; to: number }[];
+  chips: RepChip[];
+  /** One short line in the Coach's words for the done panel. */
+  line: string;
+}
+
+const REP_MINUS = "−";
+
+/**
+ * What a practice rep's work did, read off the run before and after it (check-in 35). The pitch
+ * is the morning's picture; this is its real result, and it says only what the rules did.
+ */
+export function practiceRepResult(before: TraineeRun, after: TraineeRun): RepResult {
+  const w = after.lastWork && after.lastWork.turn === before.turn ? after.lastWork : null;
+  const pitcher = isPitcherStyle(sheet(before.characterId).style);
+  const where = pitcher ? "bullpen" : "cage";
+  const energy = after.energy - before.energy;
+  const energyChip: RepChip[] =
+    energy > 0 ? [{ text: `Energy +${energy}`, cost: false }] : energy < 0 ? [{ text: `Energy ${REP_MINUS}${-energy}`, cost: true }] : [];
+  if (!w) {
+    return { outcome: "treatment", gains: [], chips: energyChip, line: "She had nothing left to work with. The trainer took her after." };
+  }
+  const gains: RepResult["gains"] = [];
+  if (w.to > w.from) gains.push({ stat: w.stat, from: w.from, to: w.to });
+  if (w.sec && w.sec.to > w.sec.from) gains.push({ stat: w.sec.stat, from: w.sec.from, to: w.sec.to });
+  const chips: RepChip[] = [...gains.map((g) => ({ text: `${STAT_NAME[g.stat]} +${g.to - g.from}`, cost: false })), ...energyChip];
+  const hurt = after.lastInjury ? " She tweaked something." : "";
+  const outcome = w.outcome === "bonus" || w.outcome === "success" || w.outcome === "fail" || w.outcome === "bad-fail" ? w.outcome : "success";
+  let line: string;
+  if (outcome === "fail") line = `The ${where} work didn't take today.`;
+  else if (outcome === "bad-fail") line = `The ${where} work went wrong today.`;
+  else if (w.to <= w.from) line = `The ${where} work took, but her ${STAT_NAME[w.stat]} is as high as it goes.`;
+  else if (outcome === "bonus") line = `The ${where} work took, and then some.`;
+  else line = `The ${where} work took.`;
+  return { outcome, gains, chips, line: `${line}${hurt}` };
+}
+
+/**
+ * The rep's work before it is applied: the same seed rolls the same morning, so the done panel
+ * can show what the leave button is about to put on. The run passed in is left alone.
+ */
+export function previewPracticeRep(run: TraineeRun): { after: TraineeRun; result: RepResult } | null {
+  if (morningKind(run.turn) !== "practice") return null;
+  const after = structuredClone(run);
+  applyGameResult(after, "practice", false, false, false, false);
+  return { after, result: practiceRepResult(run, after) };
 }
 
 export function leavePostgame(run: TraineeRun) {

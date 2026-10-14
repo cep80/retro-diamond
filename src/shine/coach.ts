@@ -3,7 +3,7 @@
  * After the work: the comparison in the unit the plate actually uses (ms of
  * swing window, or the pitching window), so a tick is never an abstract +1.
  */
-import { facilityUnlock, nextOfficial, turnMeta } from "./calendar.ts";
+import { facilityUnlock, morningKind, nextOfficial, turnMeta } from "./calendar.ts";
 import { isPitcherStyle, officialFor, sheet, type OutingGrade } from "./bible.ts";
 import { goalDefinition, type GoalId } from "./goals.ts";
 import { roleStats } from "./grades.ts";
@@ -73,6 +73,17 @@ export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeSt
       return { stat: "guts", need: "A hit in the 9th. Guts keeps her steady when the park gets loud." };
     case "quality-abs-3":
       return { stat: "contact", need: "Three solid at-bats. Contact is the whole job." };
+    // Check-in 35: each new ask points at the stat the sim trained for it.
+    case "hits-2":
+      return { stat: "contact", need: "Two hits. Contact is the whole job." };
+    case "contact-breaking-2":
+      return { stat: "eye", need: "Bat on two breaking balls. Eye picks up the spin early enough to swing." };
+    case "steal-risp-score":
+      return { stat: "speed", need: "Run. Speed is the steal and the extra base; Eye gets her on so there's a base to take." };
+    case "innings-5-k7":
+      return { stat: "stuff", need: "Seven punchouts in five innings. Stuff makes them miss." };
+    case "perfect-ninth":
+      return { stat: "control", need: "Three up, three down. Control keeps everyone off the bases." };
     case "see-3-one-pa":
     case "see-4-one-pa":
     case "see-5-one-pa":
@@ -146,9 +157,20 @@ export function coachBrief(run: TraineeRun): CoachBrief {
   let why = `${cap(stat)} work is the quickest way to get her ready for ${next.label}.`;
   let choiceStation = station;
   let choiceStat = stat;
-  if (run.energy < 40 && turnsAway <= 2) {
+  // Check-in 34 made the morning before a date one rep at her own station: nobody picks it,
+  // and it can't be a rest. The Coach never advises a rest she can't take; the day before
+  // the rep is where a rest still fits.
+  const repToday = morningKind(run.turn) === "practice";
+  const repTomorrow = morningKind(run.turn + 1) === "practice";
+  if (repToday) {
+    choiceStat = pitcher ? "stuff" : "contact";
+    choiceStation = STAT_STATION[choiceStat];
+    why = `This morning is one rep at her own station before ${next.label}. Nobody rests today.`;
+  } else if (run.energy < 40 && turnsAway <= 2) {
     choiceStation = "off-day";
-    why = `She's worn out, and ${next.label} is almost here. Rest her. Tired work goes wrong, and she'd carry it into the game.`;
+    why = repTomorrow
+      ? `She's worn out, and tomorrow is one rep she can't skip before ${next.label}. Rest her today. This is the last day off before the game.`
+      : `She's worn out, and ${next.label} is almost here. Rest her. Tired work goes wrong, and she'd carry it into the game.`;
   } else if (run.energy < 25) {
     choiceStation = "treatment";
     why = "She's running on empty. Nothing trains through that. Send her to the trainer's room.";
@@ -160,7 +182,7 @@ export function coachBrief(run: TraineeRun): CoachBrief {
       why = `${cap(stat)} work did not take yesterday. ${cap(alt)} helps for ${next.label} too, and a different station breaks the bad run.`;
     }
   }
-  if (choiceStation !== "off-day" && choiceStation !== "treatment") {
+  if (!repToday && choiceStation !== "off-day" && choiceStation !== "treatment") {
     const picked = facilityPick(run, pitcher, who.style, choiceStat, choiceStat !== stat ? stat : null);
     if (picked.stat !== choiceStat) {
       const failed = choiceStat !== stat ? stat : null;
@@ -252,6 +274,7 @@ function secondNeed(id: GoalId | null, pitcher: boolean): TraineeStatKey | null 
     case "steal":
     case "steal-late":
     case "steal-risp":
+    case "steal-risp-score":
       return "eye";
     case "score-from-first":
     case "steal-third":

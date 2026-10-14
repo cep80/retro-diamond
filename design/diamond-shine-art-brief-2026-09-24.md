@@ -168,3 +168,9 @@ The code for the climax is now honest and complete: the Finale follows the score
 ## Also still open from earlier
 
 - Generated action stills for the stranger read test: HR and walk still fail (see `design/diamond-shine-action-art-handoff-2026-09-18.md`).
+
+## 12. Additions from the creative director, check-in 35 (2026-10-14)
+
+1. **The hitter's "won, not her night" still** (3 images: Aoi, Miki, Yuki). Cap off, looking at the scoreboard, a small smile; not a celebration and not crushed. Until it lands, the code should fall back to `trot` (finding N2).
+2. **Sol's second and third clean pictures** (already §11.4): a stage-lit bust and a calm bust, so her one elated bust stops repeating on 優勝, the postgame and the Live.
+3. **Mound out stamp stills:** a follow-through still per pitcher (Sol first), so アウト and 三振 don't stamp over the set pose. This is §7's pitcher pack, moved up behind §11.1.

@@ -93,14 +93,28 @@ describe("featured game", () => {
     // Check-in 25: the scoring-position steal is her Stretch ask now, the late steal her Finale.
     const run = newRun("yuki");
     run.turn = 50;
+    // Check-in 35: the Stretch is "Steal with RISP and score" now, and keeps the ghost runner.
     const game = startFeaturedGame(run, "stretch");
-    assert.equal(game.pgId, "steal-risp");
+    assert.equal(game.pgId, "steal-risp-score");
     setBases(game, { first: false, second: false, third: false });
     game.count = { balls: 3, strikes: 0 };
     resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
     const steal = game.events.find((e) => e.t === "stealAttempt");
     assert.ok(steal && steal.t === "stealAttempt");
     assert.equal(steal.from, 1);
+    assert.equal(steal.risp, true);
+  });
+
+  it("an old save's live Stretch on the retired steal-with-RISP ask still gets the runner on third", () => {
+    const run = newRun("yuki");
+    run.turn = 50;
+    const game = startFeaturedGame(run, "stretch");
+    game.pgId = "steal-risp";
+    setBases(game, { first: false, second: false, third: false });
+    game.count = { balls: 3, strikes: 0 };
+    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
+    const steal = game.events.find((e) => e.t === "stealAttempt");
+    assert.ok(steal && steal.t === "stealAttempt");
     assert.equal(steal.risp, true);
   });
 
@@ -406,7 +420,13 @@ describe("featured game", () => {
     run.turn = 50;
     const game = startFeaturedGame(run, "practice");
     const loc = { x: 1.5, y: 1.5 };
-    resolveSwing(run, game, { type: "slider", loc, inZone: true, speed: 2, recognizeAt: 0, family: "soft" as const }, { row: 1, col: 1 }, 0, "contact");
+    const slider = { type: "slider" as const, loc, inZone: true, speed: 2, recognizeAt: 0, family: "soft" as const };
+    resolveSwing(run, game, slider, { row: 1, col: 1 }, 0, "contact");
+    assert.notEqual(game.lastContact, "miss");
+    // Check-in 35: the Stretch asks for two breaking balls now; one is not enough.
+    assert.equal(game.pgId, "contact-breaking-2");
+    assert.equal(game.pgMet, false);
+    resolveSwing(run, game, slider, { row: 1, col: 1 }, 0, "contact");
     assert.notEqual(game.lastContact, "miss");
     assert.equal(game.pgMet, true);
   });
@@ -541,7 +561,7 @@ describe("featured game", () => {
     assert.equal(series.scoreDiff, -6, "only the Finale is held");
   });
 
-  it("counts Series quality ABs as contact even on outs, not as walks", () => {
+  it("counts quality ABs as contact even on outs, not as walks, and meets the Series on two hits (check-in 35)", () => {
     const run = newAoiRun();
     run.turn = 55;
     const walked = startFeaturedGame(run, "series");
@@ -561,7 +581,11 @@ describe("featured game", () => {
       resolveSwing(live, game, heart, LEAD_DEFAULT_SIT, 0, "contact");
     }
     assert.ok(game.qualityAbs >= 3, `qualityAbs ${game.qualityAbs}`);
-    assert.equal(game.pgMet, true);
+    assert.equal(game.pgId, "hits-2");
+    assert.equal(game.pgMet, game.hits >= 2, `hits ${game.hits}`);
+    guard = 0;
+    while (game.hits < 2 && !game.done && guard++ < 48) resolveSwing(live, game, heart, LEAD_DEFAULT_SIT, 0, "contact");
+    if (game.hits >= 2) assert.equal(game.pgMet, true);
   });
 });
 

@@ -69,13 +69,13 @@ const RAW_BIBLE: RawSheet[] = [
     pgVerb: "REACH",
     rival: "reina",
     sg: "See 4 pitches at the Gate. An outfield fly at First Light.",
-    past: "Her mother grounded into the Series-ending DP in '81. Aoi is not asked to rewrite it in Rookie year.",
+    past: "Her mother hit into the double play that ended the '81 Series, and named her shop after it. Aoi is not asked to rewrite it in Rookie year.",
     letters:
       "Row J at Lantern Field. My daughter kept score on a napkin and wrote your number before she wrote the count. We called you Number One before the inning was over. She still has the napkin.",
     yearStills: {
       rookie: "First Light. She reached.",
       classic: "Lantern Classic and Night Classic.",
-      senior: "Skyline Series. Three quality at-bats. The third one was for her.",
+      senior: "Skyline Series. Two hits. The second one was for her.",
     },
     unique: "Table-setter. Cleanup Hour belongs to Ember later.",
     walkUp: "First Light",
@@ -93,8 +93,10 @@ const RAW_BIBLE: RawSheet[] = [
       { turn: 18, verb: "Reach base once", sgVerb: "Hit an outfield ball", resultsPg: false },
       { turn: 28, verb: "Drive in a run", sgVerb: "Work a full count", resultsPg: false },
       { turn: 33, verb: "Reach base twice", sgVerb: "Reach base", resultsPg: false },
-      { turn: 50, verb: "Get a hit in the 9th", sgVerb: "Work a full count", resultsPg: true },
-      { turn: 55, verb: "Three quality at-bats", sgVerb: "Work a full count", resultsPg: false },
+      // Check-in 35: "Reach base" catches her on the Stretch and the Series, where a full count held 14% of the time.
+      { turn: 50, verb: "Get a hit in the 9th", sgVerb: "Reach base", resultsPg: true },
+      // Check-in 35: two hits (57% met in the sim), where three quality at-bats was 92%.
+      { turn: 55, verb: "Get two hits", sgVerb: "Reach base", resultsPg: false },
       // Check-in 28: "Drive in a run" (met 62–69% in the check-in 25 sim), where "Hit with RISP"
       // was 39–52%. Her '81 story still lands: Haruko had two on (Finale eve), and this time a run comes home.
       { turn: 60, verb: "Drive in a run", sgVerb: "Draw a walk", resultsPg: true },
@@ -111,7 +113,7 @@ const RAW_BIBLE: RawSheet[] = [
     pgVerb: "COMMAND",
     rival: "sol",
     sg: "Record the outs. The Gate still opens if COMMAND slips.",
-    past: "She has never walked a batter in the Lantern Classic, and it is starting to break her.",
+    past: "She has never walked a batter, and it is starting to break her.",
     letters:
       "My aunt coached Koi juniors for forty years. She says you are the second pitcher she has ever seen who never looks at the runners, and she won't tell me who the first one was. We sit behind the plate at Koi. Every time the glove pops you check it, like you're reading a receipt. My aunt keeps her own scorecard on your nights and gives it to me after. I keep them in a drawer with the good pens.",
     yearStills: {
@@ -135,7 +137,8 @@ const RAW_BIBLE: RawSheet[] = [
       // First Light is a rookie's debut: two punchouts, not three (simulated at a Day-18 rookie's
       // Stuff, about 80% met instead of 50%), with her curve as the smaller ask.
       { turn: 18, verb: "Strike out 2", sgVerb: "Throw a curve for a strike", resultsPg: false },
-      { turn: 28, verb: "Pitch 5+ innings, ≤3 ER", sgVerb: "Escape a jam", resultsPg: false },
+      // Check-in 35: seven punchouts in five (67% met in the sim), where three runs or fewer was 91%. She walks nobody.
+      { turn: 28, verb: "Pitch 5+ innings, 7+ K", sgVerb: "Walk nobody", resultsPg: false },
       { turn: 33, verb: "Consecutive strikeouts", sgVerb: "Strike out 2", resultsPg: false },
       { turn: 50, verb: "Escape a bases-loaded jam", sgVerb: "Strike out 3", resultsPg: false },
       { turn: 55, verb: "Quality start", sgVerb: "Strike out 3", resultsPg: false },
@@ -153,7 +156,7 @@ const RAW_BIBLE: RawSheet[] = [
     pgVerb: "FIGHT",
     rival: "aoi",
     sg: "See 3 pitches in one PA at the Gate. Don't strike out at First Light.",
-    past: "North has not won a Cup in living memory. She is 0-for-the-Classic in the record we wrote.",
+    past: "Everyone who ever coached her quit around week eleven. North has not won anything in living memory.",
     letters:
       "We bring the cowbell to every home game, section 4, left-field concourse, the one that sounds like a radiator. My daughter asked once why the whole section was cheering a foul ball. I said because you were still up there, and that was the whole point. She started counting your fouls after that. Most nights she runs out of fingers and borrows mine. Whatever the scoreboard said, the fight was always worth watching.",
     yearStills: {
@@ -177,9 +180,11 @@ const RAW_BIBLE: RawSheet[] = [
       { turn: 18, verb: "Don't strike out", sgVerb: "See 3 pitches", resultsPg: false },
       { turn: 28, verb: "See 4 pitches in one PA", sgVerb: "Reach base", resultsPg: false },
       { turn: 33, verb: "See 5 pitches in one PA", sgVerb: "Reach base", resultsPg: false },
-      { turn: 50, verb: "Make contact on a breaking ball", sgVerb: "Work a full count", resultsPg: false },
-      { turn: 55, verb: "Come to bat with runners on", sgVerb: "See 3 pitches in one PA", resultsPg: false },
-      // Check-in 25: the Finale asks what First Light asked, over a whole G1 (not three pitches in one look).
+      // Check-in 35: two breaking balls (64% met in the sim), where one was 89%.
+      { turn: 50, verb: "Make contact on 2 breaking balls", sgVerb: "Work a full count", resultsPg: false },
+      // Check-in 35: on base twice for the North bench (56%), where arriving with runners on was out of her hands.
+      { turn: 55, verb: "Reach base twice", sgVerb: "See 3 pitches in one PA", resultsPg: false },
+      // Check-in 25: the Finale asks what First Light asked, over a whole G1 (not three pitches in one at-bat).
       { turn: 60, verb: "Don't strike out", sgVerb: "See 2 pitches in one PA", resultsPg: false },
     ],
   },
@@ -200,7 +205,7 @@ const RAW_BIBLE: RawSheet[] = [
     yearStills: {
       rookie: "Gate. The opener. Fastball after fastball, and nobody caught up.",
       classic: "Night Classic. Consecutive strikeouts. The crowd was quiet because it was that clean.",
-      senior: "Series. Six innings, two runs, quality start. The Dusters stayed dry.",
+      senior: "Series. Six innings, one run. The Dusters stayed dry.",
     },
     unique: "The Gulf wind.",
     walkUp: "Red Mesa",
@@ -217,7 +222,8 @@ const RAW_BIBLE: RawSheet[] = [
       { turn: 5, verb: "Record 3 outs", sgVerb: "Record 1 out", resultsPg: false },
       // First Light is a rookie's debut: two punchouts (about 80% met at Day 18), and she walks nobody.
       { turn: 18, verb: "Strike out 2", sgVerb: "Walk nobody", resultsPg: false },
-      { turn: 28, verb: "Pitch 5+ innings, ≤3 ER", sgVerb: "Escape a jam", resultsPg: false },
+      // Check-in 35: seven punchouts in five (65% met in the sim), where three runs or fewer was 91%. She walks nobody.
+      { turn: 28, verb: "Pitch 5+ innings, 7+ K", sgVerb: "Walk nobody", resultsPg: false },
       { turn: 33, verb: "Consecutive strikeouts", sgVerb: "Strike out 2", resultsPg: false },
       { turn: 50, verb: "Escape a jam", sgVerb: "Strike out 3", resultsPg: false },
       { turn: 55, verb: "Quality start", sgVerb: "Record 3 outs", resultsPg: false },
@@ -235,7 +241,7 @@ const RAW_BIBLE: RawSheet[] = [
     pgVerb: "HOLD",
     rival: "sol",
     sg: "Record an out at the Gate. Hold the ninth at First Light.",
-    past: "She only pitches the ninth, and she thinks that's the only inning that counts.",
+    past: "She only pitches the ninth, because nobody gets attached in one inning.",
     letters:
       "I got to Stars on the Metro because I missed the last bus, and walked in during the eighth with you already warming in the pen. My seat was behind the bullpen, seven feet from you. You bounced on your toes the whole inning, before anyone had told you it was yours. When you came out they played your walk-up, and you turned and pointed at the bullpen door. I did not understand it until someone told me that is where you go back to.",
     yearStills: {
@@ -261,7 +267,8 @@ const RAW_BIBLE: RawSheet[] = [
       { turn: 28, verb: "Strike out 2", sgVerb: "Record 3 outs", resultsPg: false },
       { turn: 33, verb: "Enter with inherited runners and strand", sgVerb: "Strand inherited runners", resultsPg: false },
       { turn: 50, verb: "Four-out save", sgVerb: "Record 3 outs", resultsPg: false },
-      { turn: 55, verb: "Clean ninth", sgVerb: "Strike out 2", resultsPg: false },
+      // Check-in 35: three up, three down (61% met in the sim), where a clean ninth was 88%.
+      { turn: 55, verb: "Three up, three down", sgVerb: "Strike out 2", resultsPg: false },
       { turn: 60, verb: "Hold a one-run lead", sgVerb: "Record 3 outs", resultsPg: false },
     ],
   },
@@ -276,7 +283,7 @@ const RAW_BIBLE: RawSheet[] = [
     pgVerb: "RUN",
     rival: "aoi",
     sg: "See 4 pitches at the Gate. Reach once at First Light.",
-    past: "The steal is the lesson. She does not wait on a walk.",
+    past: "She goes before anyone says so, because she thinks the legs are borrowed. She does not wait on a walk.",
     letters:
       "My daughter has been to the Palms seventeen times this summer because of you specifically and she keeps a chart: your at-bats, the count when you first looked at the coach, the count when you went. One night you went before anyone in our section saw it coming, and the catcher never even threw. She asked me why. I said because the catcher knew she was already too late.",
     yearStills: {
@@ -304,7 +311,8 @@ const RAW_BIBLE: RawSheet[] = [
       { turn: 28, verb: "Score from first", sgVerb: "Reach base", resultsPg: false },
       { turn: 33, verb: "Reach base twice", sgVerb: "Reach base", resultsPg: false },
       // Check-in 25: the runner-in-scoring-position steal comes first, the late steal is the Finale.
-      { turn: 50, verb: "Steal with RISP", sgVerb: "Draw a walk", resultsPg: false },
+      // Check-in 35: the steal has to come all the way home now (57% met in the sim, ghost runner kept), where the steal alone was 78%.
+      { turn: 50, verb: "Steal with RISP and score", sgVerb: "Draw a walk", resultsPg: false },
       // Check-in 29: the Series is third base (she gets a second go from second on this date).
       { turn: 55, verb: "Steal third", sgVerb: "Reach base", resultsPg: false },
       { turn: 60, verb: "Steal in the 7th+", sgVerb: "Work a full count", resultsPg: false },
@@ -379,7 +387,7 @@ export function yearStillLine(
     }
     const bits: string[] = [];
     if (stretch === "met") bits.push("The Stretch. She stole with a runner in scoring position.");
-    else if (stretch === "missed") bits.push("The Stretch. The steal with a runner in scoring position didn't come.");
+    else if (stretch === "missed") bits.push("The Stretch. It got away from her on the bases.");
     if (series === "met") bits.push("Skyline Series. She stole third.");
     else if (series === "missed") bits.push("Skyline Series. The steal of third didn't come.");
     if (finale === "met") bits.push("Diamond Finale. She stole late.");
@@ -412,13 +420,15 @@ export function yearStillLine(
     if (light) return "The Gate didn't hold. First Light. The punchouts came.";
     return "The Gate and First Light. She came up short in both.";
   }
+  // Check-in 35: the Lantern asks for seven punchouts in the five innings now. These lines
+  // are rebuilt from results every time, so each one is true under the old ask too.
   if (id === "reina" && turn <= 40) {
     const lantern = results[2] === "met";
     const night = results[3] === "met";
-    if (lantern && night) return "Lantern Classic. Five innings. Three runs or fewer. Night Classic. Two punchouts, back to back.";
-    if (lantern) return "Lantern Classic. Five innings. Three runs or fewer. Night Classic. The punchouts didn't come back to back.";
-    if (night) return "Night Classic. Two punchouts, back to back. Lantern Classic. She didn't get the five innings.";
-    return "Lantern Classic. She didn't get the five innings. Night Classic. The punchouts didn't come back to back.";
+    if (lantern && night) return "Lantern Classic. She went the five innings. Night Classic. Two punchouts, back to back.";
+    if (lantern) return "Lantern Classic. She went the five innings. Night Classic. The punchouts didn't come back to back.";
+    if (night) return "Night Classic. Two punchouts, back to back. Lantern Classic. The lanterns won that one.";
+    return "Lantern Classic. The lanterns won that one. Night Classic. The punchouts didn't come back to back.";
   }
   if (id === "sol" && turn <= 20) {
     const gate = results[0] === "met";
@@ -431,10 +441,10 @@ export function yearStillLine(
   if (id === "sol" && turn <= 40) {
     const lantern = results[2] === "met";
     const night = results[3] === "met";
-    if (lantern && night) return "Lantern Classic. Five innings. Three runs or fewer. Night Classic. Two punchouts, back to back.";
-    if (lantern) return "Lantern Classic. Five innings. Three runs or fewer. Night Classic. The punchouts didn't come back to back.";
-    if (night) return "Night Classic. Two punchouts, back to back. Lantern Classic. She didn't get the five innings.";
-    return "Lantern Classic. She didn't get the five innings. Night Classic. The punchouts didn't come back to back.";
+    if (lantern && night) return "Lantern Classic. She went the five innings. Night Classic. Two punchouts, back to back.";
+    if (lantern) return "Lantern Classic. She went the five innings. Night Classic. The punchouts didn't come back to back.";
+    if (night) return "Night Classic. Two punchouts, back to back. Lantern Classic. The lanterns won that one.";
+    return "Lantern Classic. The lanterns won that one. Night Classic. The punchouts didn't come back to back.";
   }
   if (id === "kira" && turn <= 20) {
     const gate = results[0] === "met";
@@ -455,18 +465,18 @@ export function yearStillLine(
   if (id === "miki" && turn <= 20) {
     const gate = results[0] === "met";
     const light = results[1] === "met";
-    if (gate && light) return "The Gate. Three pitches in one look. First Light. She didn't strike out.";
-    if (gate) return "The Gate. Three pitches in one look. First Light. She struck out.";
+    if (gate && light) return "The Gate. Three pitches in one at-bat. First Light. She didn't strike out.";
+    if (gate) return "The Gate. Three pitches in one at-bat. First Light. She struck out.";
     if (light) return "The Gate didn't hold. First Light. She didn't strike out.";
     return "The Gate and First Light. She came up short in both.";
   }
   if (id === "miki" && turn <= 40) {
     const lantern = results[2] === "met";
     const night = results[3] === "met";
-    if (lantern && night) return "Lantern Classic. Four pitches in one look. Night Classic. Five pitches in one look.";
-    if (lantern) return "Lantern Classic. Four pitches in one look. Night Classic. The look never got to five.";
-    if (night) return "Night Classic. Five pitches in one look. Lantern Classic. The look never got to four.";
-    return "Lantern Classic. The look never got to four. Night Classic. The look never got to five.";
+    if (lantern && night) return "Lantern Classic. Four pitches in one at-bat. Night Classic. Five pitches in one at-bat.";
+    if (lantern) return "Lantern Classic. Four pitches in one at-bat. Night Classic. The at-bat never got to five pitches.";
+    if (night) return "Night Classic. Five pitches in one at-bat. Lantern Classic. The at-bat never got to four pitches.";
+    return "Lantern Classic and Night Classic. Neither at-bat went long enough.";
   }
   if (turn > 40 && SENIOR_STILLS[id]) return seniorStill(SENIOR_STILLS[id]!, results, finaleTeamWon);
   if (turn <= 20) return who.yearStills.rookie;
@@ -492,7 +502,8 @@ interface SeniorStills {
 const SENIOR_STILLS: Partial<Record<CharacterId, SeniorStills>> = {
   aoi: {
     stretch: { met: "She hit late.", missed: "The late hit didn't come." },
-    series: { met: "Three quality at-bats. The third one was for her.", missed: "The quality at-bats didn't add up to three." },
+    // Check-in 35: the Series asks for two hits. Both lines hold under the old three-at-bats ask too.
+    series: { met: "The at-bats added up. The last one was for her.", missed: "The at-bats didn't add up." },
     // The Lantern's still says "She drove in a run."; the Finale's says it her way.
     finale: { met: "A run came home on her.", missed: "No run came home on her." },
     none: "Senior year. The pencil stub is down to an inch.",
@@ -504,8 +515,8 @@ const SENIOR_STILLS: Partial<Record<CharacterId, SeniorStills>> = {
     none: "Senior year. The notebook is on its last ruled page.",
   },
   miki: {
-    stretch: { met: "She put the bat on a breaking ball.", missed: "The breaking ball never met the bat." },
-    series: { met: "She came up with runners on.", missed: "She never came up with runners on." },
+    stretch: { met: "She put the bat on a breaking ball.", missed: "The breaking balls won that one." },
+    series: { met: "The North bench leaned on the rail for her.", missed: "The bases stayed lonely around her." },
     finale: { met: "Five trips. She never went down on strikes.", missed: "She went down on strikes." },
     none: "Senior year. Gary still clanks.",
   },
@@ -516,14 +527,14 @@ const SENIOR_STILLS: Partial<Record<CharacterId, SeniorStills>> = {
     none: "Senior year. Ninety-six, she says, and means it.",
   },
   kira: {
-    stretch: { met: "She asked for the eighth and got four outs, two of them punchouts.", missed: "She asked for the eighth. The save didn't come together." },
-    series: { met: "A clean ninth. Nobody scored.", missed: "A run got in." },
+    stretch: { met: "She asked for the eighth and got four outs, two of them punchouts.", missed: "She asked for the eighth. The four outs didn't go her way." },
+    series: { met: "A clean ninth. Nobody scored.", missed: "Somebody reached in the ninth." },
     finale: { met: "The tying run started on first. It never got home.", missed: "The tying run came around." },
     none: "Senior year. The bag by the bullpen door is still packed.",
   },
   // Yuki's own branch in yearStillLine says the games she sat; this is her line before any.
   yuki: {
-    stretch: { met: "She stole with a runner in scoring position.", missed: "The steal with a runner in scoring position didn't come." },
+    stretch: { met: "She stole with a runner in scoring position.", missed: "It got away from her on the bases." },
     series: { met: "She stole third.", missed: "The steal of third didn't come." },
     finale: { met: "She stole late.", missed: "The late steal didn't come." },
     none: "Senior year. Already stretched. Already on her way.",

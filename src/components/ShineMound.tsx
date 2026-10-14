@@ -14,7 +14,7 @@
  * timings, when to save) is MoundController's; this is its view. It draws the
  * snapshot, turns the cues into sounds, and makes the store calls.
  */
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type MutableRefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MutableRefObject } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
 import {
   CHROME_MS,
@@ -78,7 +78,9 @@ import { hitterAdaptation, pitcherRivalBat, rivalBatSlot } from "@/shine/rivals.
 import { useShine } from "@/shine/store.ts";
 import type { TraineeRun } from "@/shine/types.ts";
 import type { GameKind } from "@/shine/featured-game.ts";
-import { LetterMarks } from "./LetterMarks";
+import { previewPracticeRep } from "@/shine/run.ts";
+import { LetterMarks, RepWork, WorkChips } from "./LetterMarks";
+import { morningAfter } from "./work-day";
 
 function kindFor(turn: number): GameKind {
   if (morningKind(turn) === "practice") return "practice";
@@ -498,6 +500,10 @@ function MoundFrame({
   const who = sheet(run.characterId);
   const practice = game.kind === "practice";
   const morning = morningKind(run.turn) === "practice";
+  // The rep's real work, read before leave applies it (same seed, same roll), and what
+  // yesterday's pick did: this morning never shows the complex, so its chips ride here.
+  const rep = useMemo(() => (morning ? previewPracticeRep(run) : null), [morning, run]);
+  const yesterday = useMemo(() => (morning ? morningAfter(run).chips : []), [morning, run]);
   const ask = practice ? null : officialFor(run.characterId, run.turn);
   const parkId = featuredParkId({ kind: game.kind, homePark: who.parkId });
   const park = parkSrc(parkId);
@@ -627,6 +633,7 @@ function MoundFrame({
     beatLabel: showingBeat && spec ? spec.label : null,
     banner: game.banner,
     morning,
+    characterId: run?.characterId ?? null,
   });
   const goLabel = stage === "dead" ? "Back on the rubber" : RACE_COPY.go;
   // The middle innings' montage says its newest inning out loud.
@@ -808,10 +815,12 @@ function MoundFrame({
             The walk-in card owns the screen until it leaves; then the glove and Go are the choice. */}
         {titleUp ? null : (
         <section ref={coachRef} className="shine-race-coach" aria-label="The Coach">
-          {morning ? <LetterMarks run={run} /> : null}
+          {morning && picking && !doneUp ? <WorkChips chips={yesterday} label="What yesterday's work did" kind="yesterday" /> : null}
+          {/* At the done panel the letter reads where the rep's work leaves her. */}
+          {morning ? <LetterMarks run={doneUp && rep ? rep.after : run} rep /> : null}
           {/* One live region for the whole date, so the closing line is heard when the panel swaps in. */}
           <p className="sr-only" aria-live="polite">
-            {doneUp ? [closeLine, panel?.under].filter(Boolean).join(" ") : (middleSay ?? caption)}
+            {doneUp ? [closeLine, rep?.result.line, panel?.under].filter(Boolean).join(" ") : (middleSay ?? caption)}
           </p>
           {savedChip && picking ? <p className="shine-saved-chip shine-mound-saved">Saved</p> : null}
           {doneUp ? (
@@ -820,6 +829,7 @@ function MoundFrame({
               <DoneHeader met={practice ? null : game.pgMet} label={RACE_COPY.doneLabel} headline={closeLine ?? ""} reduced={reduced} paused={paused} />
               <DayStrip chips={dayChips} label="Batter by batter" reduced={reduced} paused={paused} />
               {readUnder ? <p className="text-center font-story text-sm text-cream/85">{readUnder}</p> : null}
+              {rep ? <RepWork result={rep.result} /> : null}
               {panel?.under ? <p className="text-center font-story text-sm text-cream/85" data-morning-next>{panel.under}</p> : null}
               {resultLine ? (
                 <p className="text-center font-story text-sm text-gold" data-finale-result>

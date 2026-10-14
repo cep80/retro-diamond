@@ -28,7 +28,10 @@ export type HitterPgId =
   | "score-no-hit"
   | "steal-risp"
   | "score-from-first"
-  | "steal-third";
+  | "steal-third"
+  | "hits-2"
+  | "contact-breaking-2"
+  | "steal-risp-score";
 
 export type HitterSgId =
   | "see-4"
@@ -53,7 +56,9 @@ export type PitcherPgId =
   | "clean-ninth"
   | "k-consecutive"
   | "escape-jam"
-  | "escape-loaded-jam";
+  | "escape-loaded-jam"
+  | "innings-5-k7"
+  | "perfect-ninth";
 
 export type PitcherSgId =
   | "out-1"
@@ -83,6 +88,13 @@ const VERB_TO_ID: [RegExp, GoalId][] = [
   [/^reach base twice$/i, "reach-twice"],
   [/^reach base$/i, "reach"],
   [/^drive in a run$/i, "rbi"],
+  // Check-in 35: Aoi's Series, Miki's Stretch, Yuki's Stretch, Reina's and Sol's Lantern
+  // and Kira's Series got new asks. The verbs they replaced stay below for older saves.
+  [/^get two hits$/i, "hits-2"],
+  [/^make contact on 2 breaking balls$/i, "contact-breaking-2"],
+  [/^steal with risp and score$/i, "steal-risp-score"],
+  [/^pitch 5\+ innings, 7\+ k$/i, "innings-5-k7"],
+  [/^three up, three down$/i, "perfect-ninth"],
   [/^get a hit in the 9th$/i, "hit-late"],
   // Retired Stretch verb. Older saves still name the 7th.
   [/^get a hit in the 7th\+$/i, "hit-late"],
@@ -132,10 +144,10 @@ const SPOKEN_GOAL: Record<string, string> = {
   "Three quality at-bats": "Three balls in play",
   "Hit with RISP": "A hit with runners on",
   "Quality start": "A long start",
-  "See 3 pitches in one PA": "Three pitches in one look",
-  "See 4 pitches in one PA": "Four pitches in one look",
-  "See 5 pitches in one PA": "Five pitches in one look",
-  "See 2 pitches in one PA": "Two pitches in one look",
+  "See 3 pitches in one PA": "Three pitches in one at-bat",
+  "See 4 pitches in one PA": "Four pitches in one at-bat",
+  "See 5 pitches in one PA": "Five pitches in one at-bat",
+  "See 2 pitches in one PA": "Two pitches in one at-bat",
   "Get a hit in the 9th": "A hit in the 9th",
   "Get a hit in the 7th+": "A hit late",
   "Enter with inherited runners and strand": "Come in with runners and strand them",
@@ -151,6 +163,11 @@ const SPOKEN_GOAL: Record<string, string> = {
   "Escape a jam": "Get out of the jam",
   "Strike out 2": "Two strikeouts",
   "Strike out 3": "Three strikeouts",
+  "Pitch 5+ innings, 7+ K": "Five innings, seven punchouts",
+  "Three up, three down": "Three up, three down",
+  "Get two hits": "Two hits",
+  "Make contact on 2 breaking balls": "Bat on two breaking balls",
+  "Steal with RISP and score": "Steal with runners on, then score",
 };
 
 export function speakGoal(verb: string): string {
@@ -202,6 +219,12 @@ export function goalDefinition(id: GoalId): string {
       return "She scores a run in a trip around the bases that started without a hit.";
     case "steal-risp":
       return "Steal safely while a runner is already in scoring position.";
+    case "steal-risp-score":
+      return "Steal safely while a runner is already in scoring position, then score on that same trip.";
+    case "hits-2":
+      return "Two base hits in the game. A bunt she beats out counts.";
+    case "contact-breaking-2":
+      return "Put the bat on two sliders, curves, or changeups. Fouls count.";
     case "see-4":
       return "See four pitches across the game.";
     case "see-3":
@@ -224,6 +247,10 @@ export function goalDefinition(id: GoalId): string {
       return "Two strikeouts.";
     case "innings-5":
       return "Five innings with three or fewer earned runs.";
+    case "innings-5-k7":
+      return "Five innings, seven or more strikeouts, and three or fewer earned runs.";
+    case "perfect-ninth":
+      return "Three outs. Nobody reaches base, and nobody scores.";
     case "quality-start":
       return "Six innings with one or fewer earned runs.";
     case "hold-one-run":
@@ -315,6 +342,12 @@ export function evalHitterPg(id: HitterPgId, g: HitterGoalView): boolean {
       return ev.some((e) => e.t === "score" && e.runner === "self" && e.selfReachedBy !== null && e.selfReachedBy !== "hit");
     case "steal-risp":
       return ev.some((e) => e.t === "stealResult" && e.safe && e.risp);
+    case "steal-risp-score":
+      return ev.some((s) => s.t === "stealResult" && s.safe && s.risp && ev.some((e) => e.t === "score" && e.runner === "self" && e.pa === s.pa));
+    case "hits-2":
+      return g.hits >= 2;
+    case "contact-breaking-2":
+      return ev.filter((e, i) => e.t === "contact" && e.tier !== "miss" && lastPitchBefore(ev, i)?.type !== "fastball").length >= 2;
   }
 }
 
@@ -376,6 +409,8 @@ export interface PitcherGoalView {
   curveForStrike: boolean;
   done: boolean;
   role: "ace" | "closer";
+  /** Batters she faced. A 1-2-3 ninth is three batters for three outs. */
+  battersFaced: number;
   /** Most strikeouts in any single inning of the outing. */
   bestInningKs: number;
 }
@@ -490,6 +525,10 @@ export function evalPitcherPg(id: PitcherPgId, g: PitcherGoalView): boolean {
       return g.strikeouts >= 3;
     case "innings-5":
       return g.inningsOuts >= 15 && g.earnedRuns <= 3;
+    case "innings-5-k7":
+      return g.inningsOuts >= 15 && g.earnedRuns <= 3 && g.strikeouts >= 7;
+    case "perfect-ninth":
+      return g.outsRecorded >= 3 && g.earnedRuns === 0 && !g.blown && g.battersFaced <= g.outsRecorded;
     case "quality-start":
       return g.inningsOuts >= 18 && g.earnedRuns <= 1;
     case "hold-one-run":
@@ -559,6 +598,9 @@ const HITTER_PG = new Set<GoalId>([
   "steal-risp",
   "score-from-first",
   "steal-third",
+  "hits-2",
+  "contact-breaking-2",
+  "steal-risp-score",
 ]);
 const HITTER_SG = new Set<GoalId>(["see-4", "see-3", "see-2-one-pa", "see-3-one-pa", "outfield-ball", "full-count", "reach", "draw-walk"]);
 const PITCHER_PG = new Set<GoalId>([
@@ -575,6 +617,8 @@ const PITCHER_PG = new Set<GoalId>([
   "k-consecutive",
   "escape-jam",
   "escape-loaded-jam",
+  "innings-5-k7",
+  "perfect-ninth",
 ]);
 const PITCHER_SG = new Set<GoalId>(["out-1", "outs-3", "k-2", "k-3", "curve-strike", "escape-jam", "strand-inherited", "walk-nobody"]);
 
@@ -604,9 +648,14 @@ export function proofLine(id: GoalId, ev: PlateEvent[]): string | null {
     case "hit-late":
     case "reach-once":
     case "reach-twice":
+    case "hits-2":
     case "reach": {
       const e = find("reach", (x) => x.via === "hit" || id === "reach-once" || id === "reach-twice" || id === "reach");
       return e ? `Her ${timeUp(e.pa)} time up: reached on a ${e.via === "hit" ? "base hit" : e.via}.` : null;
+    }
+    case "steal-risp-score": {
+      const e = find("stealResult", (x) => x.safe && x.risp && ev.some((s) => s.t === "score" && s.runner === "self" && s.pa === x.pa));
+      return e ? `Stole ${e.from === 1 ? "2nd" : "3rd"} in the ${ordinal(e.inning)}, and came all the way home.` : null;
     }
     case "steal":
     case "steal-late":

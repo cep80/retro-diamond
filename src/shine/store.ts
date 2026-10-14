@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { clubhouseOpen, dateLabel, facilityUnlock, morningKind, turnMeta } from "./calendar.ts";
+import { clubhouseOpen, dateLabel, facilityUnlock, morningKind, plateKindFor, turnMeta } from "./calendar.ts";
 import {
   applyGameResult,
   leavePostgame,
@@ -240,7 +240,8 @@ export const useShine = create<ShineState>()(
       closeWeekly: () => {
         const { run } = get();
         set({
-          screen: run ? "complex" : "title",
+          // Back to wherever her day is: a practice morning goes back to its rep, never the tiles.
+          screen: run ? screenFor(run) : "title",
           weeklyGuest: null,
           lastLine: "Lantern Classic does not sunset.",
         });
@@ -298,6 +299,8 @@ export const useShine = create<ShineState>()(
         const { run, lastLine } = get();
         if (!run) return;
         if (run.turn === 1) return;
+        // A practice morning is the rep, not a pick: no tile skips it, old saves included.
+        if (morningKind(run.turn) === "practice") return;
         // A facility still shut on the ladder (or the other side's) is not a tap that works.
         if (!stationOpen(run, station).open) return;
         const next = structuredClone(run);
@@ -348,7 +351,7 @@ export const useShine = create<ShineState>()(
         if (kind === "weekly") {
           const { run } = get();
           set({
-            screen: run ? "complex" : "title",
+            screen: run ? screenFor(run) : "title",
             weeklyGuest: null,
             liveGame: null,
             lastLine: "That's the week's look. Lantern Classic does not sunset.",
@@ -357,6 +360,10 @@ export const useShine = create<ShineState>()(
         }
         const { run } = get();
         if (!run) return;
+        // Only the game this turn plays can finish it. A done panel left over from the turn before
+        // (a double tap on leave, a key repeat) must not spend a date as a practice rep, and a date
+        // already played must not be counted twice.
+        if (kind !== plateKindFor(run.turn) || run.phase === "postgame" || run.phase === "year-end") return;
         const next = structuredClone(run);
         applyGameResult(next, kind, pg, sg, reached, hr, lastSpurt, box, carry);
         // The ending quote says the Finale the way its done panel did.

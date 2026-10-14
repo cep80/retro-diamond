@@ -55,7 +55,7 @@ export interface MiddleInning {
 
 /** The dates long enough to summarize: an innings ask. */
 export function longStart(game: Pick<PitchingGame, "pgId" | "kind">): boolean {
-  return game.kind !== "practice" && (game.pgId === "innings-5" || game.pgId === "quality-start");
+  return game.kind !== "practice" && (game.pgId === "innings-5" || game.pgId === "innings-5-k7" || game.pgId === "quality-start");
 }
 
 /** The innings ask can no longer be met: more than three runs are in. */

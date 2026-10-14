@@ -8,7 +8,8 @@ import type { Stage } from "../shine/beats.ts";
 import type { PitchType } from "../shine/core/zone.ts";
 import type { PlateEvent } from "../shine/events.ts";
 import { PITCH_NAME } from "../shine/race-controller.ts";
-import { moundBatterLine, moundResultChip, RACE_COPY, type ChipTone, type MoundResult } from "./race-ui.ts";
+import type { CharacterId } from "../shine/types.ts";
+import { moundBatterLine, moundResultChip, morningPrompt, RACE_COPY, type ChipTone, type MoundResult } from "./race-ui.ts";
 
 /** The per-batter card holds this long once the stamp has cleared, before the next wind-up. */
 export const MOUND_CARD_MS = 1400;
@@ -169,10 +170,12 @@ export function moundCaption(o: {
   banner: string;
   /** A practice morning: one throw, said before Go. */
   morning?: boolean;
+  /** Whose morning it is: she asks for the throw herself (check-in 35). */
+  characterId?: CharacterId | null;
 }): string {
   if (o.stage === "prepare") return o.vsName ? `${o.vsName} steps in.` : "Set.";
   if (o.stage === "flight") return "";
-  if (o.picking && o.firstPitch && !o.done) return o.morning ? RACE_COPY.practiceMorningMound : RACE_COPY.moundFirstPick;
+  if (o.picking && o.firstPitch && !o.done) return o.morning ? morningPrompt(o.characterId, true) : RACE_COPY.moundFirstPick;
   if (o.practice) return o.banner;
   if (o.paLine) return o.paLine;
   if (o.beatLabel) return o.beatLabel;

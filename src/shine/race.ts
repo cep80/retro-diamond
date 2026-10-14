@@ -217,11 +217,11 @@ export function releaseTimingErr(u: number): number {
   return t * 0.05;
 }
 
-/** One sentence for the reaction, only when the Coach released. */
+/** The reaction, only when the Coach released: the band word, then one baseball sentence. */
 export function releaseLine(band: ReleaseBand): string {
-  if (band === "early") return "Early, she was ahead of it.";
-  if (band === "late") return "Late, she was behind it.";
-  return "On time, she met it.";
+  if (band === "early") return "Early. She was out in front of it.";
+  if (band === "late") return "Late. It got in on her.";
+  return "On time. She was right on it.";
 }
 
 /** Her decision on one pitch. `r` is the seeded source for this pitch. */

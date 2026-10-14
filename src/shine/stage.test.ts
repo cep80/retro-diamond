@@ -82,14 +82,14 @@ describe("style sit and miss read", () => {
     game.pgId = "see-3-one-pa";
     game.kind = "gate";
     game.maxPaPitches = 3;
-    assert.equal(plateRead(run, game), "Three pitches in one look. The Gate opened.");
-    // Check-in 25: the Finale no longer asks for three pitches, so a Finale look reads like any other.
+    assert.equal(plateRead(run, game), "Three pitches in one at-bat. The Gate opened.");
+    // Check-in 25: the Finale no longer asks for three pitches, so a Finale at-bat reads like any other.
     game.kind = "finale";
-    assert.equal(plateRead(run, game), "Three pitches in one look.");
+    assert.equal(plateRead(run, game), "Three pitches in one at-bat.");
     game.kind = "gate";
     game.pgMet = false;
     game.maxPaPitches = 2;
-    assert.equal(plateRead(run, game), "Two pitches in the look. She needed three.");
+    assert.equal(plateRead(run, game), "Two pitches in the at-bat. She needed three.");
     game.pgId = "no-k";
     game.kind = "first-light";
     game.pgMet = true;
@@ -119,22 +119,22 @@ describe("style sit and miss read", () => {
     game.kind = "lantern-classic";
     game.pgMet = true;
     game.maxPaPitches = 4;
-    assert.equal(plateRead(run, game), "Four pitches in one look.");
+    assert.equal(plateRead(run, game), "Four pitches in one at-bat.");
     game.pgMet = false;
     game.maxPaPitches = 3;
-    assert.equal(plateRead(run, game), "Three pitches in the look. She needed four.");
+    assert.equal(plateRead(run, game), "Three pitches in the at-bat. She needed four.");
     game.maxPaPitches = 0;
-    assert.equal(plateRead(run, game), "The look never got to four pitches.");
+    assert.equal(plateRead(run, game), "The at-bat never got to four pitches.");
     game.pgId = "see-5-one-pa";
     game.kind = "night-classic";
     game.pgMet = true;
     game.maxPaPitches = 5;
-    assert.equal(plateRead(run, game), "Five pitches in one look.");
+    assert.equal(plateRead(run, game), "Five pitches in one at-bat.");
     game.pgMet = false;
     game.maxPaPitches = 4;
-    assert.equal(plateRead(run, game), "Four pitches in the look. She needed five.");
+    assert.equal(plateRead(run, game), "Four pitches in the at-bat. She needed five.");
     game.maxPaPitches = 1;
-    assert.equal(plateRead(run, game), "One pitch in the look. She needed five.");
+    assert.equal(plateRead(run, game), "One pitch in the at-bat. She needed five.");
     game.pgId = "contact-breaking";
     game.kind = "stretch";
     game.pgMet = true;

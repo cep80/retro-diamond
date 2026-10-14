@@ -263,6 +263,14 @@ describe("the middle innings: only the long starts", () => {
     }
     assert.ok(plans > 20, `plans found (${plans})`);
   });
+
+  it("the Lantern's seven-punchout ask is a long start, and the retired five-inning ask still is (check-in 35)", () => {
+    const g = startPitchingGame(starter("reina", 28, "k7"), "lantern-classic");
+    assert.equal(g.pgId, "innings-5-k7");
+    assert.equal(longStart(g), true);
+    assert.equal(longStart({ pgId: "innings-5", kind: "lantern-classic" }), true);
+    assert.equal(longStart({ pgId: "innings-5-k7", kind: "practice" }), false);
+  });
 });
 
 describe("the middle innings: the lines", () => {
