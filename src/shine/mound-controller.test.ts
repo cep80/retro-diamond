@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { resultStamp, STAMP_DELAY_MS, stampHoldMs, stampVisible } from "./action-art.ts";
 import { moundBeatSpec, PREPARE_MS_REDUCED } from "./beats.ts";
 import { MOUND_LAND_U, MoundController, type MoundControllerOptions, type MoundCue, type MoundSnapshot, type MoundTimers } from "./mound-controller.ts";
-import { DELIVERY_DUR, moundFieldBeat, type MoundBeat } from "./pitching.ts";
+import { DELIVERY_DUR, moundFieldBeat, ONE_THROW_LINE, type MoundBeat } from "./pitching.ts";
 import { VirtualScheduler } from "./plate-harness.ts";
 import { RACE_PACE } from "./race.ts";
 import { newRun } from "./run.ts";
@@ -122,6 +122,22 @@ describe("mound controller: Go and watch mode", () => {
     assert.equal(s.beat, null);
     assert.notEqual(s.film, null);
     assert.equal(s.stage, "reaction");
+  });
+
+  it("a practice morning is one throw, and Go takes no pitch type", () => {
+    assert.equal(MoundController.prototype.throw.length, 0);
+    const m = mound("reina", "one-throw", { kind: "practice", looks: 1 });
+    assert.equal(m.c.throw(), true);
+    assert.ok(until(m, () => m.c.getSnapshot().game.done));
+    const s = m.c.getSnapshot();
+    assert.equal(s.game.pitchCount, 1);
+    assert.equal(of(m, "windup").length, 1);
+    assert.equal(s.game.banner, ONE_THROW_LINE);
+    const winds = of(m, "windup").length;
+    m.sched.advance(20_000);
+    assert.equal(of(m, "windup").length, winds);
+    assert.equal(m.c.getSnapshot().game.pitchCount, 1);
+    assert.equal(m.c.getSnapshot().game.done, true);
   });
 });
 

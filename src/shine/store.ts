@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { clubhouseOpen, dateLabel, facilityUnlock, turnMeta } from "./calendar.ts";
+import { clubhouseOpen, dateLabel, facilityUnlock, morningKind, turnMeta } from "./calendar.ts";
 import {
   applyGameResult,
   leavePostgame,
@@ -117,10 +117,10 @@ export interface ShineState {
   restoreBackup: (index: number) => void;
 }
 
-function screenFor(run: TraineeRun): ShineScreen {
+export function screenFor(run: TraineeRun): ShineScreen {
   if (run.phase === "year-end") return "year-end";
   if (run.phase === "postgame") return "postgame";
-  if (run.phase === "plate") return "plate";
+  if (run.phase === "plate" || morningKind(run.turn) === "practice") return "plate";
   return "complex";
 }
 

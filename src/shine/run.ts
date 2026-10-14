@@ -1,5 +1,5 @@
 import { hashId, makeRng, uid } from "./core/rng.ts";
-import { PLATE_TURNS, turnMeta, yearOf } from "./calendar.ts";
+import { morningKind, PLATE_TURNS, turnMeta, yearOf } from "./calendar.ts";
 import { memoryLine } from "./relationship.ts";
 import { isPitcherStyle, officialFor, sheet } from "./bible.ts";
 
@@ -205,7 +205,7 @@ function advance(run: TraineeRun) {
       return;
     }
   }
-  if (PLATE_TURNS.includes(next.type)) {
+  if (PLATE_TURNS.includes(next.type) || morningKind(run.turn) === "practice") {
     run.phase = "plate";
   } else if (next.type === "forced-scene") {
     run.phase = "year-end";
@@ -417,6 +417,16 @@ export const PG_INDEX: Record<Exclude<FeaturedKind, "practice">, number> = {
 
 export type PlateBox = { hits?: number; walks?: number; ks?: number; won?: boolean };
 
+export const FAN_MORE = "More people came to the park for her.";
+export const FAN_FEWER = "Fewer people came to the park for her.";
+
+/** One sentence when a date moves her crowd. Zero stays quiet. A threshold line still wins. */
+export function fanAnnouncement(before: number, after: number): string | null {
+  if (after > before) return FAN_MORE;
+  if (after < before) return FAN_FEWER;
+  return null;
+}
+
 function tickFanBeat(run: TraineeRun) {
   if (run.fans >= 100 && run.fanStory < 100) {
     run.fanStory = 100;
@@ -460,6 +470,11 @@ export function applyGameResult(
 ) {
   if (carry?.tells) run.tells = { ...carry.tells };
   if (kind === "practice") {
+    // A practice morning is the station she already has. The tutorial cage keeps the old finish.
+    if (morningKind(run.turn) === "practice") {
+      resolveTrainingTurn(run, isPitcherStyle(sheet(run.characterId).style) ? "side" : "cage");
+      return;
+    }
     applyEnergy(run, PRACTICE_PA_ENERGY * 3);
     logTurn(run, null, "game");
     advance(run);
@@ -525,6 +540,7 @@ export function applyGameResult(
       });
     }
   }
+  const fansBefore = run.fans;
   if (pgMet) {
     run.fans = Math.min(100, run.fans + 5);
     applyMood(run, 2);
@@ -570,6 +586,10 @@ export function applyGameResult(
   if (hr) run.fans = Math.min(100, run.fans + 5);
   if (lastSpurt) run.fans = Math.min(100, run.fans + 3);
   tickFanBeat(run);
+  if (run.fanBeat === null) {
+    const line = fanAnnouncement(fansBefore, run.fans);
+    if (line) run.fanBeat = line;
+  }
 
   logTurn(run, null, "game");
   awardGameSparks(run, pgMet, sgMet);

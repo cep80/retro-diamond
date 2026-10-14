@@ -15,11 +15,37 @@ import { resultStamp, SCORE_STAMP_HOLD_MS, STAMP_DELAY_MS, stampHoldMs } from ".
 import { sheet } from "./bible.ts";
 import type { CoachCardId, DuelCall } from "./duel.ts";
 import type { PlateEvent } from "./events.ts";
-import { featuredLi, fieldBeatFor, type EncounterConfig, type FeaturedGame, type FieldBeat, type GameKind, type SwingKind } from "./featured-game.ts";
+import {
+  dealPitch,
+  ensureExhibitionScratch,
+  featuredLi,
+  fieldBeatFor,
+  finishExhibitionPitch,
+  resolveSwing,
+  resolveTake,
+  takeExhibitionPitch,
+  type EncounterConfig,
+  type FeaturedGame,
+  type FieldBeat,
+  type GameKind,
+  type LivePitch,
+  type SwingKind,
+} from "./featured-game.ts";
 import { gutsActive, leverageIndex } from "./oracle.ts";
 import { PlateController, realScheduler, type PlateCue, type PlateScheduler, type PlateSnapshot } from "./plate-controller.ts";
+import { morningDeparture } from "./ending.ts";
 import { decideSwing, heldMeetU, paCardLine, RACE_MODS, RACE_PACE, releaseBand, releaseTimingErr, type RacePick, type ReleaseBand, type SwingDecision } from "./race.ts";
 import type { TraineeRun } from "./types.ts";
+
+/** Their half is still open. A function so the side can flip to hers inside the at-bat. */
+function theirHalfOpen(board: FeaturedGame): boolean {
+  return !board.done && Boolean(board.encounter?.fullGame) && board.batting === "theirs";
+}
+
+/** The next pitch starts. Until then the film keeps the half that just ended. */
+function releaseHalfShown(board: FeaturedGame) {
+  if (board.encounter?.fullGame) board.halfShown = null;
+}
 
 export type RacePhase = "pick" | "racing" | "pa-card" | "done";
 
@@ -149,6 +175,8 @@ export interface RaceControllerOptions {
   pace?: Partial<typeof RACE_PACE>;
   /** Later expansion. 1.0 career and exhibition are sit + Go. */
   duel?: boolean;
+  /** One pitch, then the morning is over. The tutorial cage leaves this off. */
+  oneRep?: boolean;
 }
 
 export class RaceController {
@@ -161,6 +189,8 @@ export class RaceController {
   private card: PaCard | null = null;
   private paAtGo = 1;
   private watching = false;
+  /** Their half just ended. The next pick is hers: sit, then Go. */
+  private handHerTheBat = false;
   private nextPa = false;
   private pending: "pitch" | "card" | null = null;
   private pendingHandle: unknown = null;
@@ -174,6 +204,7 @@ export class RaceController {
   private readonly sched: PlateScheduler;
   private readonly reduced: boolean;
   private readonly pace: typeof RACE_PACE;
+  private readonly oneRep: boolean;
   private snap: RaceSnapshot | null = null;
   private subs = new Set<() => void>();
   private cueSubs = new Set<(cue: RaceCue) => void>();
@@ -183,6 +214,7 @@ export class RaceController {
     this.run = opts.run;
     this.reduced = opts.reducedMotion ?? false;
     this.pace = { ...RACE_PACE, ...(opts.pace ?? {}) };
+    this.oneRep = opts.oneRep ?? false;
     this.plate = new PlateController({
       run: opts.run,
       kind: opts.kind,
@@ -299,11 +331,84 @@ export class RaceController {
     this.decision = null;
     this.released = false;
     this.releaseInfo = null;
+    const fullGame = Boolean(snap.game.encounter?.fullGame);
+    const batting = snap.game.batting;
+    if (fullGame) {
+      snap.game.cutaway = null;
+      releaseHalfShown(snap.game);
+    }
     this.cue({ t: "go", pa: this.paAtGo, introMs: intro });
     this.changed();
+    if (fullGame && batting === "theirs") {
+      if (intro > 0) this.later("pitch", () => this.playTheirAtBat(), intro);
+      else this.playTheirAtBat();
+      return true;
+    }
     if (intro > 0) this.later("pitch", () => this.plate.startPitch(), intro);
     else this.plate.startPitch();
     return true;
+  }
+
+  /**
+   * Their half is a watched at-bat: the same swing rules, then the beat the
+   * plate already named. She does not sit this one.
+   */
+  private playTheirAtBat() {
+    if (this.phase !== "racing") return;
+    const board = this.plate.getSnapshot().game;
+    if (!theirHalfOpen(board)) return;
+    const side = ensureExhibitionScratch(this.run, board);
+    const scratch = side.game;
+    const strike: LivePitch = { type: "fastball", loc: { x: 1.5, y: 1.5 }, inZone: true, speed: 0.6, recognizeAt: 0, family: "hard" };
+    let swings = 0;
+    while (!scratch.done && swings < 16) {
+      swings += 1;
+      if (scratch.paPitches >= 8) {
+        takeExhibitionPitch(this.run, board, strike);
+        break;
+      }
+      const pitch = dealPitch(side.run, scratch);
+      const who = sheet(side.run.characterId);
+      const r = makeRng(hashId(`${side.run.rngSeed}|exhibit|${scratch.paIndex}|p${scratch.pitchesSeen}`));
+      const decision = decideSwing(
+        {
+          stats: side.run.stats,
+          style: who.style,
+          count: scratch.count,
+          pitch: { loc: pitch.loc, speed: pitch.speed, family: pitch.family, stuff: pitch.stuff },
+          pick: { sit: { row: 1, col: 1 }, call: "sit-cell" },
+          practice: false,
+          guts: false,
+        },
+        r,
+      );
+      if (decision.swing) resolveSwing(side.run, scratch, pitch, decision.aim, decision.timingErr, decision.kind, RACE_MODS);
+      else resolveTake(side.run, scratch, pitch);
+    }
+    let takes = 0;
+    while (!scratch.done && takes < 6) {
+      takes += 1;
+      takeExhibitionPitch(this.run, board, strike);
+    }
+    if (scratch.done && board.sidePlate) finishExhibitionPitch(board);
+    if (board.batting === "hers" && !board.done) this.handHerTheBat = true;
+    const cut = board.cutaway;
+    const beat = cut?.beat ?? fieldBeatFor(board);
+    const swung = cut ? cut.swung : true;
+    const hold =
+      beat === "hr"
+        ? this.reduced
+          ? this.pace.hrHoldMsReduced
+          : this.pace.hrHoldMs
+        : beat === "k" || beat === "walk"
+          ? this.reduced
+            ? this.pace.moneyHoldMsReduced
+            : this.pace.moneyHoldMs
+          : 0;
+    const stampLeft = resultStamp(beat, swung) !== null ? STAMP_DELAY_MS + stampHoldMs(beat) : 0;
+    this.resolvedAt = this.sched.now();
+    this.changed();
+    this.later("card", () => this.closePa(board), Math.max(hold, stampLeft));
   }
 
   /**
@@ -352,6 +457,13 @@ export class RaceController {
     this.plate.resume();
     if (this.nextPa && this.phase === "pick") {
       this.nextPa = false;
+      if (this.handHerTheBat) {
+        this.handHerTheBat = false;
+        this.watching = false;
+        this.plate.getSnapshot().game.cutaway = null;
+        this.changed();
+        return;
+      }
       this.go();
     }
   }
@@ -423,6 +535,12 @@ export class RaceController {
         this.later("pitch", () => this.plate.startPitch(), this.between());
         return;
       }
+      // A practice morning is the one pitch she already saw. A pitch that
+      // ended the plate appearance has its own banner; this one replaces it.
+      if (this.oneRep && game.pitchesSeen >= 1 && game.paIndex === this.paAtGo) {
+        game.banner = morningDeparture(this.run).line;
+        if (!game.done) game.done = true;
+      }
       if (game.done || game.paIndex !== this.paAtGo) {
         // The money clip (HR / K / walk) plays past the plate's reaction
         // beat; the card waits for it.
@@ -489,6 +607,7 @@ export class RaceController {
     this.clearPending();
     this.watching = false;
     this.nextPa = false;
+    releaseHalfShown(this.plate.getSnapshot().game);
     this.phase = "done";
     this.cue({ t: "done" });
     this.changed();
@@ -534,14 +653,22 @@ export class RaceController {
   }
 
   private finishPa(game: FeaturedGame): PaCard {
-    const beat = fieldBeatFor(game);
+    const cut = game.cutaway;
+    const beat = cut?.beat ?? fieldBeatFor(game);
     const reached = beat === "single" || beat === "double" || beat === "hr" || beat === "walk" || beat === "bunt-down";
-    const rbiThisPa = game.events.reduce((n, e) => (e.t === "rbi" && e.pa === this.paAtGo ? n + e.runs : n), 0);
+    const rbiThisPa = cut ? (cut.scored ? 1 : 0) : game.events.reduce((n, e) => (e.t === "rbi" && e.pa === this.paAtGo ? n + e.runs : n), 0);
     const line = paCardLine({ beat, banner: game.banner, reached, struckOut: beat === "k", rbi: rbiThisPa });
     // The stamp said its words first; the verdict doesn't say them again.
     const stamped = [resultStamp(beat, true), resultStamp(beat, false)].map((st) => (st ? ` ${st.en}.` : "")).join("");
-    const scored = game.kind !== "practice" && scoredOnPa(game.events, this.paAtGo);
-    const card: PaCard = { pa: this.paAtGo, beat, line, reached, verdict: cardVerdict(line + stamped, game.lastVerdict), scored };
+    const scored = cut ? cut.scored : game.kind !== "practice" && scoredOnPa(game.events, this.paAtGo);
+    const card: PaCard = {
+      pa: this.paAtGo,
+      beat,
+      line,
+      reached,
+      verdict: cut ? "" : cardVerdict(line + stamped, game.lastVerdict),
+      scored,
+    };
     this.card = card;
     this.cue({ t: "pa-card", pa: this.paAtGo, beat, line, reached, scored });
     return card;
@@ -566,6 +693,14 @@ export class RaceController {
     }
     if (snap.paused) {
       this.nextPa = true;
+      return;
+    }
+    if (this.handHerTheBat) {
+      this.handHerTheBat = false;
+      this.watching = false;
+      this.nextPa = false;
+      snap.game.cutaway = null;
+      this.changed();
       return;
     }
     this.nextPa = false;

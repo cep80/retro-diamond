@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { PlateEvent } from "../shine/events.ts";
+import { newAoiRun } from "../shine/run.ts";
 import { heldMeetU, releaseBand, releaseLine, releaseTimingErr } from "../shine/race.ts";
 import { FORBIDDEN_IN_STORY } from "../shine/story.ts";
 import {
@@ -11,13 +12,20 @@ import {
   dayChipLabel,
   DONE_STAMP,
   bookStamp,
+  cageTutorialRead,
   doneStamp,
+  exhibitionCaptionVerdict,
+  exhibitionFrame,
   exhibitionDayLine,
+  exhibitionHalfLine,
+  exhibitionHudPhase,
+  exhibitionScoreLine,
   firstLookRead,
   genericRead,
   leaveLabel,
   metHeadline,
   middleRead,
+  morningPanel,
   moundBatterLine,
   moundDayChips,
   moundRead,
@@ -52,6 +60,7 @@ describe("race sitelines", () => {
       "",
     );
     assert.equal(moundRead({ kind: "practice", pgMet: true }), "Three looks. The glove is real.");
+    assert.equal(moundRead({ kind: "practice", pgMet: true, looks: 1 }), "One throw. The glove is real.");
     assert.equal(moundRead({ kind: "gate", pgMet: true }), "Three outs. The Gate opened.");
     assert.equal(moundRead({ kind: "gate", pgMet: false }), "The Gate still opens.");
     assert.equal(moundRead({ kind: "first-light", pgMet: false, outsRecorded: 5, strikeouts: 0 }), "The outs came. The punchouts didn't.");
@@ -112,6 +121,9 @@ describe("race sitelines", () => {
     assert.equal(RACE_COPY.firstPick, "Tap the box she's sitting on. Then Go. Swing when it arrives.");
     assert.doesNotMatch(RACE_COPY.firstPick, /zone/i);
     assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 0, practice: true }), RACE_COPY.practicePick);
+    assert.equal(pickPrompt({ phase: "pick", pitchesSeen: 0, morning: true }), RACE_COPY.practiceMorning);
+    assert.equal(RACE_COPY.practiceMorning, "One pitch before tomorrow. Tap her box, press Go, and swing when it arrives.");
+    assert.equal(RACE_COPY.practiceMorningMound, "One throw before tomorrow. Set the glove, then press Go.");
     assert.match(firstLookRead({ row: 1, col: 1 }, true), /middle.*middle/);
     assert.match(firstLookRead({ row: 0, col: 0 }, false), /another box/);
   });
@@ -120,6 +132,14 @@ describe("race sitelines", () => {
     assert.equal(leaveLabel({ practice: true }), RACE_COPY.leavePractice);
     assert.equal(leaveLabel({ practice: false }), RACE_COPY.leave);
     assert.equal(RACE_COPY.leavePractice, "Back to the complex");
+    const morning = newAoiRun();
+    morning.turn = 17;
+    assert.equal(leaveLabel({ practice: true, morning: true, run: morning }), "First Light");
+    assert.equal(morningPanel(morning, "One pitch, and First Light is tomorrow.").under, null);
+    assert.equal(morningPanel(morning, "Gone.").under, "One pitch, and First Light is tomorrow.");
+    assert.equal(morningPanel(morning, "Gone.").leave, "First Light");
+    assert.equal(cageTutorialRead(true, { row: 1, col: 1 }, true), null);
+    assert.match(cageTutorialRead(false, { row: 1, col: 1 }, true) ?? "", /middle/);
   });
 
   it("keeps the plate siteline on the same score words", () => {
@@ -343,8 +363,10 @@ describe("the done panel", () => {
   });
 
   it("closes the exhibition without saying the button's words above it", () => {
-    assert.equal(RACE_COPY.exhibitionClose("Kira"), "Nothing carries.");
-    assert.doesNotMatch(RACE_COPY.exhibitionClose("Kira"), new RegExp(RACE_COPY.again, "i"));
+    assert.equal(RACE_COPY.exhibitionClose(0, 1), "They won, 1 to 0.");
+    assert.equal(RACE_COPY.exhibitionClose(2, 0), "She won, 2 to 0.");
+    assert.doesNotMatch(RACE_COPY.exhibitionClose(0, 1), new RegExp(RACE_COPY.again, "i"));
+    assert.doesNotMatch(RACE_COPY.exhibitionClose(2, 0), new RegExp(RACE_COPY.again, "i"));
   });
 });
 
@@ -544,6 +566,31 @@ describe("the date's chrome copy", () => {
     assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 3, lookNeed: 3 }), "Three pitches in one look.");
     assert.equal(raceCaption({ ...racing, stage: "idle", lookSeen: 0 }), "Watched it. Strike two.");
     assert.equal(raceCaption({ ...racing, stage: "idle", lookNeed: null }), "Watched it. Strike two.");
+    assert.equal(exhibitionHudPhase("pick", true), "pa-card");
+    assert.equal(exhibitionHudPhase("pick", false), "pick");
+    assert.equal(exhibitionCaptionVerdict("Sat on it. In play. Out.", true), "");
+    assert.equal(exhibitionCaptionVerdict("Sat on it. In play. Out.", false), "Sat on it. In play. Out.");
+    const cutaway = exhibitionFrame(
+      {
+        inning: 2,
+        batting: "theirs",
+        banner: "Their turn.",
+        lastVerdict: "Sat on it. In play. Out.",
+        runnerLine: "She is on second.",
+        cutaway: { batterId: "miki" },
+        runsFor: 0,
+        runsAgainst: 0,
+      },
+      "pa-card",
+      false,
+      "aoi",
+      { stage: "idle", card: { verdict: "Sat on it. In play." } },
+    );
+    assert.equal(cutaway.caption, "");
+    assert.equal(cutaway.cardVerdict, "");
+    assert.equal(cutaway.basepath, "");
+    assert.equal(cutaway.film, "miki");
+    assert.equal(cutaway.inning, "Top of the 2nd");
     assert.equal(lookHoldLine(2, 4), "Two pitches in the look.");
     for (const line of ["One pitch in the look.", "Two pitches in the look.", "Five pitches in one look."]) {
       assert.doesNotMatch(line, /\bPA\b/);
@@ -561,7 +608,17 @@ describe("the date's chrome copy", () => {
       RACE_COPY.moundFirstPick,
       RACE_COPY.doneLabel,
       RACE_COPY.doneLabelExhibition,
-      RACE_COPY.exhibitionClose("Kira"),
+      RACE_COPY.exhibitionPick,
+      RACE_COPY.exhibitionWatch,
+      RACE_COPY.exhibitionClose(0, 1),
+      RACE_COPY.exhibitionClose(2, 0),
+      exhibitionHalfLine(1, "theirs"),
+      exhibitionHalfLine(10, "hers"),
+      exhibitionScoreLine(0, 0),
+      "Their turn",
+      "Her turn",
+      "Their turn.",
+      "Her turn.",
       metHeadline("HOLD"),
       ...Object.values(DONE_STAMP).map((s) => s.en),
       exhibitionDayLine({ hits: 2, walks: 1, ks: 0, runs: 2, events: [] }, "Kira"),

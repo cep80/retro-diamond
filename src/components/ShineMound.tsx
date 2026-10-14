@@ -29,6 +29,7 @@ import {
   isBigDate,
   leaveLabel,
   middleRead,
+  morningPanel,
   moundDayChips,
   moundRead,
   RACE_COPY,
@@ -62,12 +63,13 @@ import type { Cell } from "@/shine/core/zone.ts";
 import type { PitchType } from "@/shine/core/zone.ts";
 import { moundBeatSpec, PREPARE_MS_REDUCED } from "@/shine/beats.ts";
 import { cheerLines, crowdStem, ouenSwell } from "@/shine/culture.ts";
+import { morningDeparture } from "@/shine/ending.ts";
 import { featuredParkId, kitAccent } from "@/shine/stage.ts";
 import { parkSrc, portraitMood, portraitSrc, officialFor, sceneBustSrc, sheet } from "@/shine/bible.ts";
 import { finaleDonePicture, finaleWinPicture } from "@/shine/ending-pictures.ts";
 import { decodePicture } from "@/components/preload";
 import { finaleExtrasBug, finaleResultLine, finaleTeamWon, speakGoal } from "@/shine/goals.ts";
-import { dateLabel, turnMeta } from "@/shine/calendar.ts";
+import { dateLabel, morningKind, turnMeta } from "@/shine/calendar.ts";
 import { HR_STAMP_HOLD_MS, montageStillAt, montageStills, STAMP_DELAY_MS, stillFor, type ActionManifest, type ActionView, type StingFlags } from "@/shine/action-art.ts";
 import { ARM_GONE_TANK, leadoffWalkPending, moundFieldBeat, type MoundBeat } from "@/shine/pitching.ts";
 import { batterInBox, MoundController, MOUND_LAND_U, moundGutsOn, type MiddleUp, type MoundCue } from "@/shine/mound-controller.ts";
@@ -76,8 +78,10 @@ import { hitterAdaptation, pitcherRivalBat, rivalBatSlot } from "@/shine/rivals.
 import { useShine } from "@/shine/store.ts";
 import type { TraineeRun } from "@/shine/types.ts";
 import type { GameKind } from "@/shine/featured-game.ts";
+import { LetterMarks } from "./LetterMarks";
 
 function kindFor(turn: number): GameKind {
+  if (morningKind(turn) === "practice") return "practice";
   const t = turnMeta(turn).type;
   if (t === "tutorial-plate") return "practice";
   if (t === "gate") return "gate";
@@ -154,6 +158,7 @@ export function ShineMound() {
     const c = new MoundController({
       run,
       kind,
+      looks: morningKind(run.turn) === "practice" ? 1 : undefined,
       restore: saved ? { game: saved.game, aim: saved.aim } : undefined,
       initialAim: aimRef.current,
       reducedMotion: reducedRef.current,
@@ -492,6 +497,7 @@ function MoundFrame({
 
   const who = sheet(run.characterId);
   const practice = game.kind === "practice";
+  const morning = morningKind(run.turn) === "practice";
   const ask = practice ? null : officialFor(run.characterId, run.turn);
   const parkId = featuredParkId({ kind: game.kind, homePark: who.parkId });
   const park = parkSrc(parkId);
@@ -540,7 +546,7 @@ function MoundFrame({
 
   function leave() {
     if (!game.done) return;
-    finishGame(game.kind, game.pgMet, game.sgMet, game.outsRecorded >= 3, false, moundRead(game), game.spurtFired, undefined, {
+    finishGame(game.kind, game.pgMet, game.sgMet, game.outsRecorded >= 3, false, morning ? morningDeparture(run).line : moundRead(game), game.spurtFired, undefined, {
       tells: game.tells,
       record: { events: game.events, arm: "academy", pgId: game.pgId },
       outs: game.outs,
@@ -579,6 +585,7 @@ function MoundFrame({
     : null;
   // The headline carries the read when it can; the line under it only says what the headline didn't.
   const readUnder = closeRead && closeLine && !closeLine.includes(closeRead) && !(game.pgMet && genericRead(closeRead)) ? closeRead : null;
+  const panel = morning ? morningPanel(run, closeLine ?? "") : null;
   const middle = game.done ? middleRead(game.simLog) : null;
   // The finish at a glance (C6b): one chip per batter she finished, in her side's tones.
   const dayChips = doneUp ? moundDayChips(game.events) : [];
@@ -619,6 +626,7 @@ function MoundFrame({
     paLine: paEnd?.line ?? null,
     beatLabel: showingBeat && spec ? spec.label : null,
     banner: game.banner,
+    morning,
   });
   const goLabel = stage === "dead" ? "Back on the rubber" : RACE_COPY.go;
   // The middle innings' montage says its newest inning out loud.
@@ -800,9 +808,10 @@ function MoundFrame({
             The walk-in card owns the screen until it leaves; then the glove and Go are the choice. */}
         {titleUp ? null : (
         <section ref={coachRef} className="shine-race-coach" aria-label="The Coach">
+          {morning ? <LetterMarks run={run} /> : null}
           {/* One live region for the whole date, so the closing line is heard when the panel swaps in. */}
           <p className="sr-only" aria-live="polite">
-            {doneUp ? closeLine : (middleSay ?? caption)}
+            {doneUp ? [closeLine, panel?.under].filter(Boolean).join(" ") : (middleSay ?? caption)}
           </p>
           {savedChip && picking ? <p className="shine-saved-chip shine-mound-saved">Saved</p> : null}
           {doneUp ? (
@@ -811,6 +820,7 @@ function MoundFrame({
               <DoneHeader met={practice ? null : game.pgMet} label={RACE_COPY.doneLabel} headline={closeLine ?? ""} reduced={reduced} paused={paused} />
               <DayStrip chips={dayChips} label="Batter by batter" reduced={reduced} paused={paused} />
               {readUnder ? <p className="text-center font-story text-sm text-cream/85">{readUnder}</p> : null}
+              {panel?.under ? <p className="text-center font-story text-sm text-cream/85" data-morning-next>{panel.under}</p> : null}
               {resultLine ? (
                 <p className="text-center font-story text-sm text-gold" data-finale-result>
                   {resultLine}
@@ -819,7 +829,7 @@ function MoundFrame({
               {middle ? <p className="text-center font-story text-sm text-cream/80">{middle}</p> : null}
               {/* The way forward wears Go's gold (C16). */}
               <PixelBtn className="shine-go h-12" onClick={leave}>
-                {leaveLabel({ practice })}
+                {panel ? panel.leave : leaveLabel({ practice })}
               </PixelBtn>
             </div>
           ) : (

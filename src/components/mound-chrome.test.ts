@@ -149,6 +149,10 @@ describe("the mound's caption", () => {
   it("says where the glove goes at the first aim of the day, practice too", () => {
     assert.equal(moundCaption({ ...base, firstPitch: true }), RACE_COPY.moundFirstPick);
     assert.equal(moundCaption({ ...base, firstPitch: true, practice: true, banner: "Sit the glove. Then Go." }), RACE_COPY.moundFirstPick);
+    assert.equal(
+      moundCaption({ ...base, firstPitch: true, practice: true, morning: true, banner: "Sit the glove. Then Go." }),
+      RACE_COPY.practiceMorningMound,
+    );
     assert.equal(moundCaption({ ...base, firstPitch: false }), "Next batter.");
   });
 

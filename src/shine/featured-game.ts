@@ -68,7 +68,8 @@ import {
   type Adaptation,
   type RivalArmId,
 } from "./rivals.ts";
-import { EMPTY_TELLS, type Tells, type TraineeRun } from "./types.ts";
+import { newRun } from "./run.ts";
+import { EMPTY_TELLS, type CharacterId, type Tells, type TraineeRun } from "./types.ts";
 
 export function aoiHeat(run: TraineeRun) {
   return heatMap(traineeBatter(run));
@@ -121,6 +122,10 @@ export interface EncounterConfig {
   appearances: number;
   /** Start neutral: empty bases, 0-0 count, tied score. For exhibitions. */
   neutral?: boolean;
+  /** Nine innings, both sides. Career dates leave this off. */
+  fullGame?: boolean;
+  /** One plate appearance, then stop. The other side's scratch at-bat. */
+  plateOnly?: boolean;
 }
 
 export interface FeaturedGame {
@@ -327,6 +332,20 @@ export function startFeaturedGame(run: TraineeRun, kind: GameKind, encounter?: E
     callback: null,
     runnerLine: null,
   };
+  if (encounter?.fullGame) {
+    game.batting = "theirs";
+    game.runsFor = 0;
+    game.runsAgainst = 0;
+    game.winnerLine = null;
+    game.cutaway = null;
+    game.sidePlate = null;
+    game.inning = 1;
+    game.outs = 0;
+    game.bases = emptyBases();
+    game.scoreDiff = 0;
+    game.paTarget = 999;
+    game.banner = "Their turn.";
+  }
   syncBases(game);
   push(game.events, { t: "paStart", pa: 1, inning: game.inning, outs: game.outs, bases: { ...game.bases } });
   return game;
@@ -623,7 +642,7 @@ function reachBase(run: TraineeRun, game: FeaturedGame, r: () => number, via: Re
   if (via === "hit" || via === "bunt") game.hits += 1;
   else if (via === "walk") game.walks += 1;
   game.stealArmed = hitKind !== "hr" && stealAutoArm(sheet(run.characterId).style, game.outs);
-  if (game.pgId === "steal-risp" && game.selfOnBase === 1) {
+  if (game.pgId === "steal-risp" && game.selfOnBase === 1 && !game.encounter?.plateOnly) {
     game.bases = { first: false, second: false, third: true };
     syncBases(game);
   }
@@ -647,6 +666,14 @@ function outWithRunners(game: FeaturedGame, r: () => number, how: "k" | "in-play
 function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedThisPa: boolean, hitThisPa = false) {
   if (game.lastContact === "hit" || game.lastContact === "barrel") game.qualityAbs += 1;
   push(game.events, { t: "paComplete", pa: game.paIndex, pitches: game.paPitches, reached: reachedThisPa, hit: hitThisPa });
+  if (game.encounter?.plateOnly) {
+    game.done = true;
+    return;
+  }
+  if (game.encounter?.fullGame) {
+    closeFullInningPa(game, reachedThisPa);
+    return;
+  }
   evaluateGoals(game);
   const verb = sheet(run.characterId).pgVerb;
 
@@ -983,6 +1010,25 @@ export type FieldBeat =
   | "take-strike"
   | "ball";
 
+/** A full game's extra board. Career saves leave every field unset. */
+export interface FeaturedGame {
+  /** Visitors bat the top. She bats the bottom. */
+  batting?: "theirs" | "hers";
+  /** Her runs. */
+  runsFor?: number;
+  /** Their runs. */
+  runsAgainst?: number;
+  winnerLine?: string | null;
+  /** The other side's live at-bat, and the throwaway run it belongs to. */
+  sidePlate?: { run: TraineeRun; game: FeaturedGame } | null;
+  cutaway?: { beat: FieldBeat; swung: boolean; batterId: CharacterId; scored: boolean } | null;
+  /**
+   * The half the film and the card still belong to. Set when the third out
+   * moves the board on, and cleared once that card leaves.
+   */
+  halfShown?: { inning: number; batting: "theirs" | "hers"; banner: string } | null;
+}
+
 /** What the field beat should show for the most recent pitch, from the record alone. */
 export function fieldBeatFor(game: FeaturedGame): FieldBeat {
   const ev = game.events;
@@ -1017,6 +1063,169 @@ export function fieldBeatFor(game: FeaturedGame): FieldBeat {
     if (e.t === "take") return e.strike ? "take-strike" : "ball";
   }
   return "miss";
+}
+
+const EXHIBITION_HITTERS = ["aoi", "miki", "yuki"] as const;
+
+/** The other side's hitter: a girl who is not on the mound, and not the girl at home. */
+export function exhibitionOtherHitter(host: CharacterId): CharacterId {
+  for (const id of EXHIBITION_HITTERS) if (id !== host) return id;
+  return "miki";
+}
+
+/** Who won, once both halves of the ninth (or later) are done. Never call this on a tie. */
+export function exhibitionWinnerLine(runsFor: number, runsAgainst: number): string {
+  if (runsFor > runsAgainst) return `She won, ${runsFor} to ${runsAgainst}.`;
+  return `They won, ${runsAgainst} to ${runsFor}.`;
+}
+
+function swungThisPitch(game: FeaturedGame): boolean {
+  const ev = game.events;
+  let start = -1;
+  for (let i = ev.length - 1; i >= 0; i--) {
+    if (ev[i]!.t === "pitch") {
+      start = i;
+      break;
+    }
+  }
+  if (start < 0) return false;
+  for (let i = start + 1; i < ev.length; i++) {
+    const e = ev[i]!;
+    if (e.t === "swing") return true;
+    if (e.t === "paStart" || e.t === "pitch" || e.t === "out" || e.t === "reach" || e.t === "paComplete") return false;
+  }
+  return false;
+}
+
+function pitchAlreadyStamped(game: FeaturedGame): boolean {
+  const want = game.paPitches + 1;
+  for (let i = game.events.length - 1; i >= 0; i--) {
+    const e = game.events[i]!;
+    if (e.t === "paStart") return false;
+    if (e.t === "pitch" && e.n === want && e.pa === game.paIndex) return true;
+  }
+  return false;
+}
+
+function stampExhibitionPitch(game: FeaturedGame, pitch: LivePitch) {
+  if (pitchAlreadyStamped(game)) return;
+  push(game.events, { t: "pitch", pa: game.paIndex, n: game.paPitches + 1, type: pitch.type, inZone: pitch.inZone });
+}
+
+/**
+ * One plate appearance in a nine-inning game. The winner is only checked
+ * after the bottom half. A tie, including 0–0, plays on.
+ */
+function closeFullInningPa(game: FeaturedGame, reached: boolean) {
+  const beforeFor = game.runsFor ?? 0;
+  const beforeAgainst = game.runsAgainst ?? 0;
+  const scored = game.scoreDiff - (beforeFor - beforeAgainst);
+  if (game.batting === "theirs") game.runsAgainst = beforeAgainst + scored;
+  else game.runsFor = beforeFor + scored;
+  game.scoreDiff = (game.runsFor ?? 0) - (game.runsAgainst ?? 0);
+  if (!reached) game.outs += 1;
+  game.count = { balls: 0, strikes: 0 };
+  game.live = null;
+  game.paPitches = 0;
+  game.struckOut = false;
+  game.reached = false;
+  syncBases(game);
+  if (game.outs < 3) {
+    game.paIndex += 1;
+    push(game.events, { t: "paStart", pa: game.paIndex, inning: game.inning, outs: game.outs, bases: { ...game.bases } });
+    game.banner = game.batting === "theirs" ? "Their turn." : "Her turn.";
+    return;
+  }
+  // The film and the card still belong to the half that just ended.
+  game.halfShown = {
+    inning: game.inning,
+    batting: game.batting === "hers" ? "hers" : "theirs",
+    banner: game.banner,
+  };
+  game.outs = 0;
+  game.bases = emptyBases();
+  syncBases(game);
+  game.selfOnBase = null;
+  game.selfReachedBy = null;
+  game.sidePlate = null;
+  game.paIndex += 1;
+  if (game.batting === "theirs") {
+    game.batting = "hers";
+    push(game.events, { t: "paStart", pa: game.paIndex, inning: game.inning, outs: game.outs, bases: { ...game.bases } });
+    game.banner = "Her turn.";
+    return;
+  }
+  const runsFor = game.runsFor ?? 0;
+  const runsAgainst = game.runsAgainst ?? 0;
+  if (game.inning >= 9 && runsFor !== runsAgainst) {
+    game.done = true;
+    game.winnerLine = exhibitionWinnerLine(runsFor, runsAgainst);
+    game.banner = game.winnerLine;
+    return;
+  }
+  game.inning += 1;
+  game.batting = "theirs";
+  push(game.events, { t: "inning", inning: game.inning });
+  push(game.events, { t: "paStart", pa: game.paIndex, inning: game.inning, outs: game.outs, bases: { ...game.bases } });
+  game.banner = "Their turn.";
+}
+
+/** The other side's scratch at-bat, kept on the board until that plate appearance ends. */
+export function ensureExhibitionScratch(host: TraineeRun, board: FeaturedGame): { run: TraineeRun; game: FeaturedGame } {
+  if (board.sidePlate) return board.sidePlate;
+  const run = newRun(exhibitionOtherHitter(host.characterId));
+  const game = startFeaturedGame(run, "lantern-classic", { arm: board.arm, appearances: 1, neutral: true, plateOnly: true });
+  game.bases = { ...board.bases };
+  game.outs = board.outs;
+  game.scoreDiff = 0;
+  game.rbi = 0;
+  game.runs = 0;
+  syncBases(game);
+  board.sidePlate = { run, game };
+  return board.sidePlate;
+}
+
+/** Fold a finished scratch at-bat onto the board and name the beat the film should cut to. */
+export function finishExhibitionPitch(board: FeaturedGame): FieldBeat | null {
+  const side = board.sidePlate;
+  if (!side || !side.game.done) return null;
+  const scratch = side.game;
+  const beat = fieldBeatFor(scratch);
+  const swung = swungThisPitch(scratch);
+  board.cutaway = { beat, swung, batterId: side.run.characterId, scored: scratch.scoreDiff > 0 };
+  board.scoreDiff += scratch.scoreDiff;
+  board.bases = { ...scratch.bases };
+  syncBases(board);
+  const reached = scratch.reached;
+  board.sidePlate = null;
+  closeFullInningPa(board, reached);
+  return beat;
+}
+
+/**
+ * One taken pitch. Their half resolves on a throwaway plate and cuts away
+ * when the at-bat ends. Her half resolves on the live game. An unfinished
+ * count returns null.
+ */
+export function takeExhibitionPitch(run: TraineeRun, board: FeaturedGame, pitch: LivePitch): FieldBeat | null {
+  if (board.done) return null;
+  if (board.encounter?.fullGame && board.batting === "theirs") {
+    const side = ensureExhibitionScratch(run, board);
+    const scratch = side.game;
+    if (scratch.done) return finishExhibitionPitch(board);
+    stampExhibitionPitch(scratch, pitch);
+    const before = scratch.events.length;
+    resolveTake(side.run, scratch, pitch);
+    const completed = scratch.done || scratch.events.slice(before).some((e) => e.t === "paComplete");
+    if (!completed) return null;
+    return finishExhibitionPitch(board);
+  }
+  stampExhibitionPitch(board, pitch);
+  const before = board.events.length;
+  resolveTake(run, board, pitch);
+  const completed = board.done || board.events.slice(before).some((e) => e.t === "paComplete");
+  if (!completed) return null;
+  return fieldBeatFor(board);
 }
 
 export function hitterHasRunnersOn(game: FeaturedGame) {

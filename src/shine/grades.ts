@@ -87,6 +87,32 @@ export function statFill(value: number): number {
   return Math.max(0, Math.min(1, value / STAT_SCALE));
 }
 
+export interface LetterFill {
+  grade: Grade;
+  /** 0..1 inside the letter she already has, toward the next floor. S is full. */
+  fill: number;
+  next: Grade | null;
+}
+
+/** How full the letter she already has is. Reads the 1–20 value and the floors. Changes neither. */
+export function letterFill(value: number): LetterFill {
+  const n = Math.round(value);
+  const i = gradeIndex(n);
+  const grade = GRADES[i]!;
+  const floor = GRADE_FLOORS[i]!;
+  const nextFloor = GRADE_FLOORS[i + 1];
+  if (nextFloor === undefined) return { grade, fill: 1, next: null };
+  const span = nextFloor - floor;
+  const raw = span <= 0 ? 1 : (n - floor) / span;
+  return { grade, fill: Math.max(0, Math.min(1, raw)), next: GRADES[i + 1]! };
+}
+
+/** One sentence for the morning. The name is the panel's word (Contact, Stuff), never "stat". */
+export function letterFillLine(en: string, value: number): string {
+  const mark = letterFill(value);
+  return mark.next ? `${en} is ${mark.grade}, on the way to ${mark.next}.` : `${en} is ${mark.grade}.`;
+}
+
 export interface GradeMove {
   stat: TraineeStatKey;
   from: Grade;

@@ -21,7 +21,7 @@ import {
   type ScreenMusic,
 } from "@/shine/audio.ts";
 import { ShineHelp, ShineSettings } from "@/components/ShineSettings";
-import { nextNamedBeat, nextDateLine, turnMeta, dateLabel, daysAwayLabel, yearOf, PLATE_TURNS, FINALE_POSTGAME } from "@/shine/calendar.ts";
+import { nextNamedBeat, nextDateLine, turnMeta, dateLabel, daysAwayLabel, yearOf, morningKind, PLATE_TURNS, FINALE_POSTGAME } from "@/shine/calendar.ts";
 import { BIBLE, careerFilmSrc, endingClipSrc, endingFilmSrc, isPitcherStyle, parkSrc, sceneBustSrc, sceneFilmSrc, sheet, yearStillLine, type PortraitMood } from "@/shine/bible.ts";
 import { NEVER_SOLD, SKUS, cosmeticClasses, previewClaimable } from "@/shine/commerce.ts";
 import { kitAccent } from "@/shine/stage.ts";
@@ -1824,10 +1824,11 @@ export function ShineApp() {
         next.turn = turn;
         next.year = yearOf(turn);
         const type = turnMeta(turn).type;
-        next.phase = type === "forced-scene" ? "year-end" : PLATE_TURNS.includes(type) ? "plate" : "complex";
+        const plate = PLATE_TURNS.includes(type) || morningKind(turn) === "practice";
+        next.phase = type === "forced-scene" ? "year-end" : plate ? "plate" : "complex";
         useShine.setState({
           run: next,
-          screen: type === "forced-scene" ? "year-end" : PLATE_TURNS.includes(type) ? "plate" : "complex",
+          screen: type === "forced-scene" ? "year-end" : plate ? "plate" : "complex",
           liveGame: null,
           establishing: false,
           calendarPeek: false,

@@ -102,7 +102,15 @@ export interface PitchingGame {
    * in which inning. Absent on every other date and on saves from before it.
    */
   extras?: FinaleExtras | null;
+  /** Practice throws before the morning ends. Omitted means the tutorial's three. */
+  looks?: number;
 }
+
+/** The tutorial bullpen, and any practice date that does not name a shorter morning. */
+export const THREE_LOOKS_LINE = "Three looks. The glove is real.";
+
+/** A practice morning on the mound: one throw, then she is done. */
+export const ONE_THROW_LINE = "One throw. The glove is real.";
 
 /**
  * A Finale never ends level (check-in 27, N2): a lead blown to a tie is played out from the
@@ -478,7 +486,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   game.pgMet = evaluatePg(run, game);
 
   const gateDone = game.kind === "gate" && game.outsRecorded >= 3;
-  const practiceDone = game.kind === "practice" && game.pitchCount >= 3;
+  const practiceDone = game.kind === "practice" && game.pitchCount >= (game.looks ?? 3);
   const act1Done = game.role === "ace" && game.act === 1 && game.battersFaced >= ACE_ACT1_BATTERS;
   const kGoalDone =
     (game.pgId === "k-3" && game.strikeouts >= 3) || (game.pgId === "k-consecutive" && game.maxKStreak >= 2);
@@ -678,10 +686,10 @@ export function resolveDelivery(
     push(game.events, { t: "take", pa: game.battersFaced, strike: ok });
     game.banner = ok ? "That's the glove." : "Missed the window.";
     if (ok) game.sgMet = true;
-    if (game.pitchCount >= 3) {
+    if (game.pitchCount >= (game.looks ?? 3)) {
       game.done = true;
       game.pgMet = true;
-      game.banner = "Three looks. The glove is real.";
+      game.banner = (game.looks ?? 3) <= 1 ? ONE_THROW_LINE : THREE_LOOKS_LINE;
     }
     return;
   }

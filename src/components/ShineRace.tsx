@@ -26,19 +26,24 @@ import {
   dateTier,
   dateTitle,
   FINALE_PLATE,
-  firstLookRead,
+  cageTutorialRead,
   genericRead,
   goLabel,
   headToHead,
   headToHeadLine,
   isBigDate,
   leaveLabel,
+  morningPanel,
   lookNeed,
   pickPrompt,
   RACE_COPY,
   raceCaption,
   raceDayChips,
   runningClose,
+  exhibitionDayLine,
+  exhibitionFrame,
+  exhibitionHalfLine,
+  exhibitionHudPhase,
   scorePhrase,
   showSitGrid,
   situationParts,
@@ -70,18 +75,20 @@ import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMoo
 import { finaleWinPicture } from "@/shine/ending-pictures.ts";
 import { decodePicture } from "@/components/preload";
 import { finaleExtrasBug, finaleResultLine, finaleTeamWon, speakGoal } from "@/shine/goals.ts";
-import { dateLabel, turnMeta } from "@/shine/calendar.ts";
+import { dateLabel, morningKind, turnMeta } from "@/shine/calendar.ts";
 import { crowdStem } from "@/shine/culture.ts";
 import { settleBug, type BugState } from "@/components/race-bug";
-import { type EncounterConfig, type FeaturedGame, type GameKind, type LivePitch } from "@/shine/featured-game.ts";
+import { exhibitionOtherHitter, type EncounterConfig, type FeaturedGame, type GameKind, type LivePitch } from "@/shine/featured-game.ts";
 import type { PlateCue } from "@/shine/plate-controller.ts";
 import { pitchReadout, RaceController, READOUT_FROM_U, type RaceCue } from "@/shine/race-controller.ts";
 import { heldMeetU, RACE_PACE, releaseLine } from "@/shine/race.ts";
 import { rivalProfile, type RivalArmId } from "@/shine/rivals.ts";
 import { newRun } from "@/shine/run.ts";
+import { morningDeparture } from "@/shine/ending.ts";
 import { featuredParkId, kitAccent, plateRead } from "@/shine/stage.ts";
 import { useShine } from "@/shine/store.ts";
 import type { CharacterId, TraineeRun } from "@/shine/types.ts";
+import { LetterMarks } from "./LetterMarks";
 import { ShineMound } from "./ShineMound";
 
 const EXHIBITION_APPEARANCES = 3;
@@ -110,6 +117,7 @@ function exhibitionArmName(game: FeaturedGame): string {
 
 function kindFor(run: TraineeRun, weekly: boolean): GameKind {
   if (weekly) return "weekly";
+  if (morningKind(run.turn) === "practice") return "practice";
   const t = turnMeta(run.turn).type;
   if (t === "tutorial-plate") return "practice";
   if (t === "gate") return "gate";
@@ -192,7 +200,7 @@ function swapView() {
   useShine.getState().bumpView();
 }
 
-/** The exhibition: any hitter against any arm, three plate appearances, in memory only. */
+/** The exhibition: any hitter against any arm, nine innings, in memory only. */
 export function ShineExhibition() {
   const [matchup, setMatchup] = useState<Matchup | null>(matchupFromUrl);
   const [last, setLast] = useState<Matchup>({ batter: "aoi", arm: "reina" });
@@ -221,7 +229,7 @@ export function ShineExhibition() {
 
 function ExhibitionGame({ matchup, onChange }: { matchup: Matchup; onChange: () => void }) {
   const [attempt, setAttempt] = useState(1);
-  const encounter = useMemo<EncounterConfig>(() => ({ arm: matchup.arm, appearances: EXHIBITION_APPEARANCES, neutral: true }), [matchup.arm]);
+  const encounter = useMemo<EncounterConfig>(() => ({ arm: matchup.arm, appearances: EXHIBITION_APPEARANCES, neutral: true, fullGame: true }), [matchup.arm]);
   const run = useMemo(() => {
     const r = newRun(matchup.batter);
     if (typeof window !== "undefined") {
@@ -339,6 +347,7 @@ function RaceSession(props: SessionProps) {
       reducedMotion: reducedAtMount,
       restore: p.restore,
       uniqueStings: p.mode !== "exhibition",
+      oneRep: p.mode === "career" && morningKind(p.run.turn) === "practice",
     });
     setRace(c);
     return () => {
@@ -365,8 +374,10 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const snap = useSyncExternalStore(race.subscribe, race.getSnapshot, race.getSnapshot);
   const plate = snap.plate;
   const game = plate.game;
+  const fullGame = Boolean(game.encounter?.fullGame);
   const stage = plate.stage;
   const practice = game.kind === "practice";
+  const morning = mode === "career" && morningKind(run.turn) === "practice";
   // Every career date starts on an empty sit. Exhibition and weekly keep one-tap Go.
   // A restored attempt continues from its saved pick.
   const sitNeeded = mode === "career";
@@ -463,6 +474,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // The at-bat the last Go started, and the scorebug as it stood during it.
   const goPa = useRef<number | null>(null);
   const heldBug = useRef<BugState | null>(null);
+  // One clock for their cutaway, so the clip does not restart on every redraw.
+  const cutawayClock = useRef<{ key: string; at: number | null }>({ key: "", at: null });
 
   // The film's clock: performance.now() with every pause cut out. The stamp, the
   // home run and the money clip run on it, so Time holds the moment where it
@@ -494,7 +507,9 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     let alive = true;
     // The cap runs from step-in, so a stalled manifest can't hold Go shut either.
     const cap = new Promise<void>((r) => window.setTimeout(r, FILM_WARM_CAP_MS));
-    const girls = [run.characterId, game.arm];
+    const girls = fullGame
+      ? [run.characterId, game.arm, exhibitionOtherHitter(run.characterId)]
+      : [run.characterId, game.arm];
     const loaded = loadActionManifest().then((m) => {
       if (!alive) return;
       setManifest(m);
@@ -513,7 +528,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     return () => {
       alive = false;
     };
-  }, [run.characterId, game.arm]);
+  }, [run.characterId, game.arm, fullGame]);
 
   // Audio + film cues from the plate; sequencing cues from the race.
   useEffect(() => {
@@ -552,7 +567,10 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         setReadPitch(cue.pitch);
         if (!clipsWarmed.current) {
           clipsWarmed.current = true;
-          loadActionManifest().then((m) => preloadActionClips(m, [run.characterId, game.arm]));
+          const girls = fullGame
+            ? [run.characterId, game.arm, exhibitionOtherHitter(run.characterId)]
+            : [run.characterId, game.arm];
+          loadActionManifest().then((m) => preloadActionClips(m, girls));
         }
       }
       if (cue.t === "resolved") {
@@ -603,7 +621,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       if (game.kind !== "practice") stopMusic();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [race, run.characterId, game.arm, parkId, kind, clock, walkUp]);
+  }, [race, run.characterId, game.arm, fullGame, parkId, kind, clock, walkUp]);
 
   // The VS card's two stills (her set, the batter's stance): only for a cast arm with both drawn.
   const vsSides = useMemo<{ left: VsSide; right: VsSide } | null>(() => {
@@ -744,6 +762,16 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   // the last pitch stamped can finish and clear. (A closing beat swapped in at done plays no stamp.)
   const [stampTick, setStampTick] = useState(false);
   const pausedNow = snap.plate.paused;
+  const cutKey =
+    fullGame && game.cutaway
+      ? `${game.inning}:${game.batting ?? ""}:${game.paIndex}:${game.cutaway.beat}:${game.cutaway.batterId}`
+      : "";
+  if (cutawayClock.current.key !== cutKey) {
+    cutawayClock.current = { key: cutKey, at: cutKey ? clock() : null };
+  }
+  const cutawayLive = Boolean(
+    fullGame && game.cutaway && (snap.phase === "racing" || snap.phase === "pa-card" || snap.watching),
+  );
   useEffect(() => {
     const at = actionCue.resolvedAtMs;
     if (at === null || pausedNow) return;
@@ -762,7 +790,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   useEffect(() => {
     // Paused: the film clock is frozen, so there's nothing to redraw at 60 fps.
     if (pausedNow) return;
-    if (stage !== "flight" && stage !== "field" && stage !== "reaction" && !clipMayShow) return;
+    if (stage !== "flight" && stage !== "field" && stage !== "reaction" && !clipMayShow && !cutawayLive) return;
     let raf = 0;
     const tick = () => {
       // The plate's flight has its own pause-aware clock; the film reads ours.
@@ -772,27 +800,45 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [stage, race, clipMayShow, clock, pausedNow]);
+  }, [stage, race, clipMayShow, cutawayLive, clock, pausedNow]);
 
   // The pitch readout sits just under the bug's foot, wherever its band wraps to
   // (a career goal can take the band to two lines): --bug-foot, measured.
+  // A practice morning adds the letter line above Go. The sit grid gives up
+  // height at its foot (--coach-h) so that line stays off the boxes.
   const screenRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const screen = screenRef.current;
-    const hud = screen?.querySelector(".shine-race-hud");
-    if (!screen || !hud || typeof ResizeObserver === "undefined") return;
+    if (!screen || typeof ResizeObserver === "undefined") return;
     const measure = () => {
       const b = screen.querySelector(".shine-race-hud .shine-scorebug");
-      if (!b) {
-        screen.style.removeProperty("--bug-foot");
+      if (!b) screen.style.removeProperty("--bug-foot");
+      else {
+        const foot = b.getBoundingClientRect().bottom - screen.getBoundingClientRect().top;
+        screen.style.setProperty("--bug-foot", `${Math.round(foot + 8)}px`);
+      }
+      const coach = screen.querySelector(".shine-race-coach");
+      if (!coach) {
+        screen.style.removeProperty("--coach-h");
         return;
       }
-      const foot = b.getBoundingClientRect().bottom - screen.getBoundingClientRect().top;
-      screen.style.setProperty("--bug-foot", `${Math.round(foot + 8)}px`);
+      const screenBottom = screen.getBoundingClientRect().bottom;
+      let top = screenBottom;
+      for (const child of coach.children) {
+        const style = getComputedStyle(child);
+        if (style.position === "absolute" || style.position === "fixed") continue;
+        const box = child.getBoundingClientRect();
+        if (box.height < 1 || box.width < 1) continue;
+        top = Math.min(top, box.top);
+      }
+      if (top < screenBottom) screen.style.setProperty("--coach-h", `${Math.max(0, Math.round(screenBottom - top))}px`);
     };
     measure();
     const ro = new ResizeObserver(measure);
-    ro.observe(hud);
+    const hud = screen.querySelector(".shine-race-hud");
+    if (hud) ro.observe(hud);
+    const coach = screen.querySelector(".shine-race-coach");
+    if (coach) ro.observe(coach);
     return () => ro.disconnect();
   }, []);
 
@@ -923,7 +969,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       game.sgMet,
       game.reached,
       game.hr,
-      plateRead(run, game),
+      morning ? morningDeparture(run).line : plateRead(run, game),
       game.spurtFired,
       {
         hits: game.hits,
@@ -943,26 +989,49 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   }
 
   const paused = plate.paused;
-  const parts = situationParts(game, snap.watching && snap.phase === "pick" ? "pa-card" : snap.phase);
-  const prompt = pickPrompt({ phase: snap.phase, pitchesSeen: game.pitchesSeen, practice });
+  const hudPhase = exhibitionHudPhase(snap.phase, snap.watching);
+  const frame = fullGame
+    ? exhibitionFrame(game, snap.phase, snap.watching, run.characterId, {
+        stage,
+        arm: practice ? null : armCallName(game.arm),
+        release: snap.release ? releaseLine(snap.release.band) : null,
+        lookSeen: game.paPitches,
+        lookNeed: null,
+        card: snap.card,
+      })
+    : null;
+  const parts = frame
+    ? { inning: frame.inning, score: frame.score, atBat: frame.atBat }
+    : situationParts(game, hudPhase);
+  // Their opening is a watch. She sits, with the same first line, only once the side is hers.
+  const theirLead = fullGame && game.batting === "theirs" && snap.phase === "pick" && !snap.watching;
+  const herStepIn = fullGame && game.batting === "hers" && snap.phase === "pick" && !snap.watching;
+  const prompt = theirLead
+    ? RACE_COPY.exhibitionWatch
+    : herStepIn
+      ? RACE_COPY.firstPick
+      : pickPrompt({ phase: snap.phase, pitchesSeen: game.pitchesSeen, practice, morning });
   const scoutingLine = snap.phase === "pick" && !snap.watching && game.pitchesSeen === 0 && !practice && !exhibition ? rivalProfile(game.arm).tells[0] : null;
   // The title card owns the walk-in. The sit and Go come up when it leaves.
-  const sitGrid = showSitGrid({ phase: snap.phase, stage }) && !snap.watching && !titleUp;
+  const sitGrid = showSitGrid({ phase: snap.phase, stage }) && !snap.watching && !titleUp && !theirLead;
   // The wind-up names her: "Kira comes set." (the mound's "Set." from the other side).
   // Between pitches a look says how far this at-bat has gotten.
-  const caption = raceCaption({
-    phase: snap.phase,
-    stage,
-    verdict: game.lastVerdict,
-    banner: game.banner,
-    arm: practice ? null : armCallName(game.arm),
-    lookSeen: game.paPitches,
-    lookNeed: practice || exhibition ? null : lookNeed(game.pgId),
-    release: snap.release ? releaseLine(snap.release.band) : null,
-  });
+  const caption = frame
+    ? frame.caption || null
+    : raceCaption({
+        phase: snap.phase,
+        stage,
+        verdict: game.lastVerdict,
+        banner: game.banner,
+        arm: practice ? null : armCallName(game.arm),
+        lookSeen: game.paPitches,
+        lookNeed: practice || exhibition ? null : lookNeed(game.pgId),
+        release: snap.release ? releaseLine(snap.release.band) : null,
+      });
   // Only the at-bat that just ended: at the done panel an earlier at-bat's steal line
   // never stands under the last one's (the exhibition's headline is the whole day).
-  const basepath = basepathRead(game.runnerLine);
+  const basepath = frame ? frame.basepath || null : basepathRead(game.runnerLine);
+  const cardVerdict = frame ? frame.cardVerdict : (snap.card?.verdict ?? "");
   const countDate =
     snap.phase === "done" &&
     (game.pgId === "foul-two-strike" ||
@@ -970,7 +1039,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       game.pgId === "contact-breaking" ||
       game.pgId === "runners-on-at-bat" ||
       (game.pgId === "see-3-one-pa" && game.kind === "finale"));
-  const readLine = snap.phase === "done" ? plateRead(run, game) : null;
+  const readLine = snap.phase === "done" && !morning ? plateRead(run, game) : null;
   const running =
     !countDate &&
     (runningClose(basepath) || runningClose(readLine) || runningClose(snap.card?.line ?? null)) &&
@@ -1011,6 +1080,22 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     reduced,
     settled,
   };
+  const filmed: ActionView =
+    cutawayLive && game.cutaway
+      ? {
+          stage: "reaction",
+          beat: game.cutaway.beat,
+          swung: game.cutaway.swung,
+          swingKind: null,
+          call: null,
+          u: 0,
+          tappedAtU: null,
+          resolvedAtMs: cutawayClock.current.at,
+          nowMs,
+          reduced,
+          settled: null,
+        }
+      : actionView;
   const twoStrikeHold = (() => {
     for (let i = game.events.length - 1; i >= 0; i--) {
       const e = game.events[i]!;
@@ -1057,7 +1142,11 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     snap.phase !== "done" || practice
       ? null
       : {
-          inning: extrasBug ? extrasBug.inning : (playBug?.inning ?? null),
+          inning: fullGame
+            ? exhibitionHalfLine(game.inning, game.batting ?? "hers")
+            : extrasBug
+              ? extrasBug.inning
+              : (playBug?.inning ?? null),
           score: game.kind === "weekly" ? null : game.scoreDiff,
           atBat: "",
           count: { ...game.count },
@@ -1065,31 +1154,49 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           bases: { ...game.bases },
           self: null,
         };
-  const bug = snap.phase === "done" ? finalBug : playBug;
+  const bug = snap.phase === "done" ? finalBug : fullGame ? liveBug : playBug;
   // The date's name rides the bug's band (the exhibition, and the career date with her goal in gold).
   const bugTag = exhibition ? RACE_COPY.exhibitionChip : dateLabel(turnMeta(run.turn), who.style);
   // Her ask in plain words ("Reach base once"), never the style's bare verb.
   const bugGoal = ask ? speakGoal(ask.verb) : undefined;
-  const hrUp = hrMomentUp(actionView);
+  const hrUp = hrMomentUp(filmed);
 
   // The done panel: her stamp and the day's headline over the strip of at-bats.
   const doneUp = snap.phase === "done";
   const doneMet = exhibition || practice || weekly ? null : game.pgMet;
   const headline = doneUp
-    ? dateHeadline({
-        exhibition,
-        practice,
-        pgMet: game.pgMet,
-        verb: who.pgVerb,
-        banner: game.banner,
-        cardLine: snap.card?.line ?? null,
-        pgId: game.pgId,
-        read: exhibition || practice ? null : readLine,
-        day: exhibition ? { hits: game.hits, walks: game.walks, ks: game.ks, runs: game.runs, events: game.events, arm: exhibitionArmName(game) } : null,
-      })
+    ? fullGame && game.winnerLine
+      ? game.winnerLine
+      : dateHeadline({
+          exhibition,
+          practice,
+          pgMet: game.pgMet,
+          verb: who.pgVerb,
+          banner: game.banner,
+          cardLine: snap.card?.line ?? null,
+          pgId: game.pgId,
+          read: exhibition || practice ? null : readLine,
+          day: exhibition ? { hits: game.hits, walks: game.walks, ks: game.ks, runs: game.runs, events: game.events, arm: exhibitionArmName(game) } : null,
+        })
     : "";
   // The line under it: the exhibition's close, or her read when the headline didn't already say it.
-  const closeLine = !doneUp ? null : exhibition ? RACE_COPY.exhibitionClose(exhibitionArmName(game)) : readLine && !headline.includes(readLine) && !(game.pgMet && genericRead(readLine)) ? readLine : null;
+  const panel = morning ? morningPanel(run, headline) : null;
+  const tutorialLook = practice ? cageTutorialRead(morning, plate.aim, game.reached) : null;
+  // A practice morning names the next beat. The cage tutorial keeps its own read.
+  const closeLine = !doneUp
+    ? null
+    : exhibition
+      ? fullGame && game.winnerLine
+        ? exhibitionDayLine(
+            { hits: game.hits, walks: game.walks, ks: game.ks, runs: game.runs, events: game.events },
+            exhibitionArmName(game),
+          )
+        : RACE_COPY.exhibitionClose(game.runsFor ?? 0, game.runsAgainst ?? 0)
+      : panel
+        ? panel.under
+        : readLine && !headline.includes(readLine) && !(game.pgMet && genericRead(readLine))
+          ? readLine
+          : null;
   const dayChips = doneUp ? raceDayChips(game.events) : [];
   const resultLine = doneUp && mode === "career" ? finaleResultLine(game, "hitter") : null;
 
@@ -1141,8 +1248,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         {/* The film, edge to edge. */}
         <ActionStage
           bleed
-          view={actionView}
-          batterId={run.characterId}
+          view={filmed}
+          batterId={frame ? frame.film : run.characterId}
           armId={game.arm}
           manifest={manifest}
           pitch={plate.pitch}
@@ -1197,7 +1304,15 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
             {bug ? (
               <Scorebug
                 inning={bug.inning}
-                score={bug.score === null ? null : snap.phase === "done" && extrasBug ? extrasBug.score : scorePhrase(bug.score)}
+                score={
+                  bug.score === null
+                    ? null
+                    : frame
+                      ? frame.score
+                      : snap.phase === "done" && extrasBug
+                        ? extrasBug.score
+                        : scorePhrase(bug.score)
+                }
                 atBat={bug.atBat}
                 count={bug.count}
                 outs={bug.outs}
@@ -1237,6 +1352,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
             The walk-in card covers this; the sit is the choice once it is gone. */}
         {titleUp ? null : (
         <section className="shine-race-coach" aria-label="The Coach">
+          {morning ? <LetterMarks run={run} /> : null}
           {snap.phase === "pick" && snap.watching ? (
             <p className="min-h-10 text-center font-story text-sm text-cream/90" aria-live="polite">
               {snap.card?.line ?? game.banner}
@@ -1279,7 +1395,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
             >
               <span className="shine-atbat-line">{snap.card.line}</span>
               {basepath ? <span className="shine-atbat-path">{basepath}</span> : null}
-              {snap.card.verdict ? <span className="shine-atbat-verdict">{snap.card.verdict}</span> : null}
+              {cardVerdict ? <span className="shine-atbat-verdict">{cardVerdict}</span> : null}
               <span className="shine-atbat-next">
                 {RACE_COPY.next}
                 <svg viewBox="0 0 12 12" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -1295,8 +1411,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
               <DayStrip chips={dayChips} reduced={reduced} paused={paused} />
               {/* The exhibition's headline already told the whole day, runs and steals included. */}
               {basepath && !countDate && !exhibition ? <p className="text-center font-story text-sm text-gold">{basepath}</p> : null}
-              {closeLine ? <p className="text-center font-story text-sm text-cream/85">{closeLine}</p> : null}
-              {practice ? <p className="text-center font-story text-sm text-cream/90" data-first-look-read>{firstLookRead(plate.aim, game.reached)}</p> : null}
+              {closeLine ? <p className="text-center font-story text-sm text-cream/85" data-morning-next={panel?.under ? "" : undefined}>{closeLine}</p> : null}
+              {tutorialLook ? <p className="text-center font-story text-sm text-cream/90" data-first-look-read>{tutorialLook}</p> : null}
               {/* The scoreboard under her read (N1, N2): how a tie came out, or "They lost." on a met ask. */}
               {resultLine ? (
                 <p className="text-center font-story text-sm text-gold" data-finale-result>
@@ -1318,7 +1434,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
                 </>
               ) : (
                 <PixelBtn className="shine-go h-12" onClick={leave}>
-                  {leaveLabel({ practice })}
+                  {panel ? panel.leave : leaveLabel({ practice })}
                 </PixelBtn>
               )}
             </div>

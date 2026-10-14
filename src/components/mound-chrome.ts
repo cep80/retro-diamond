@@ -167,10 +167,12 @@ export function moundCaption(o: {
   paLine: string | null;
   beatLabel: string | null;
   banner: string;
+  /** A practice morning: one throw, said before Go. */
+  morning?: boolean;
 }): string {
   if (o.stage === "prepare") return o.vsName ? `${o.vsName} steps in.` : "Set.";
   if (o.stage === "flight") return "";
-  if (o.picking && o.firstPitch && !o.done) return RACE_COPY.moundFirstPick;
+  if (o.picking && o.firstPitch && !o.done) return o.morning ? RACE_COPY.practiceMorningMound : RACE_COPY.moundFirstPick;
   if (o.practice) return o.banner;
   if (o.paLine) return o.paLine;
   if (o.beatLabel) return o.beatLabel;

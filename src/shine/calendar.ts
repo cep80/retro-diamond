@@ -49,6 +49,21 @@ export function turnMeta(turn: number) {
   return CAREER_CALENDAR[turn - 1] ?? CAREER_CALENDAR[0]!;
 }
 
+export type MorningKind = "practice" | "coaching";
+
+/**
+ * The work morning before a named plate date is one practice rep.
+ * Every other morning, including the tutorial and a turn the calendar does not have, stays a coaching pick.
+ */
+export function morningKind(turn: number): MorningKind {
+  const beat = turnMeta(turn);
+  if (beat.turn !== turn || beat.type !== "work") return "coaching";
+  const next = CAREER_CALENDAR[turn];
+  if (!next || next.turn !== turn + 1) return "coaching";
+  if (!PLATE_TURNS.includes(next.type) || next.type === "tutorial-plate") return "coaching";
+  return "practice";
+}
+
 /** The date name the Coach sees. Work is a morning. Pitchers do not get a cage night. */
 export function dateLabel(beat: Pick<CalendarBeat, "type" | "label">, style: StyleId): string {
   const pitcher = style === "ace" || style === "closer";

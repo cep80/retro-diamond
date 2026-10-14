@@ -258,6 +258,8 @@ export interface MoundControllerOptions {
   vsStill?: (id: CharacterId, pose: "set" | "stance") => string;
   /** A long start's middle innings play as a montage (default); false plays every pitch (tests compare the two). */
   middleSummary?: boolean;
+  /** Practice throws in this outing. Omitted keeps the tutorial's three. */
+  looks?: number;
 }
 
 export class MoundController {
@@ -320,6 +322,7 @@ export class MoundController {
     this.reduced = opts.reducedMotion ?? false;
     this.vsStill = opts.vsStill ?? ((id) => portraitSrc(id, "focused"));
     this.game = opts.restore ? structuredClone(opts.restore.game) : startPitchingGame(opts.run, opts.kind);
+    if (opts.looks !== undefined) this.game.looks = opts.looks;
     this.aim = opts.restore?.aim ?? opts.initialAim ?? { row: 1, col: 1 };
     this.restored = Boolean(opts.restore);
     this.middleSummary = opts.middleSummary ?? true;

@@ -87,6 +87,19 @@ export function postgameLeaveLabel(run: TraineeRun, finale: boolean) {
 }
 
 /**
+ * Where a practice morning sends her, read before she leaves.
+ * The next beat is tomorrow. A locked Finale ends the year instead.
+ */
+export function morningDeparture(run: TraineeRun): { label: string; line: string; screen: "plate" | "year-end" } {
+  const next = turnMeta(run.turn + 1);
+  const yearEnds = run.turn >= 60 || (next.turn === run.turn + 1 && next.type === "finale" && !finaleUnlocked(run));
+  if (yearEnds) {
+    return { label: "The year", line: "One pitch, and the year ends here.", screen: "year-end" };
+  }
+  return { label: next.label, line: `One pitch, and ${next.label} is tomorrow.`, screen: "plate" };
+}
+
+/**
  * The fan counts each rank asks for. endingRank and endingWhy both read these.
  * neverQuit is A's bar on purpose: never-quit is A-level devotion without the A-level year.
  */

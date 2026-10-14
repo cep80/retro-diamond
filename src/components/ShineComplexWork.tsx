@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
+import { LetterMarks } from "@/components/LetterMarks";
 import { ShineMute } from "@/components/ShineMute";
 import { ShineBack, ShineRoundBtn } from "@/components/ShineRoundBtn";
 import { dateLabel, daysAwayLabel, type CalendarBeat } from "@/shine/calendar.ts";
@@ -278,6 +279,7 @@ export function ShineComplexWork({
                 </span>
               ))}
             </button>
+            <LetterMarks run={run} />
             <div className="shine-goal-chip shine-work-goal">
               <p className="shine-work-goal-top">
                 <span className="shine-kana text-[11px] text-gold">

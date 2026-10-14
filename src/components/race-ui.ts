@@ -8,20 +8,43 @@
 import { resultStamp } from "../shine/action-art.ts";
 import type { Stage } from "../shine/beats.ts";
 import { isPitcherStyle, sheet } from "../shine/bible.ts";
+import { morningKind } from "../shine/calendar.ts";
+import { morningDeparture } from "../shine/ending.ts";
 import { FINALE_WON_BANNER, finaleTeamWon, type FinaleExtras } from "../shine/goals.ts";
 import { parkById } from "../shine/core/parks.ts";
 import type { Cell } from "../shine/core/zone.ts";
 import { recapLine } from "../shine/culture.ts";
 import { opposingArm, pitcherRivalBat } from "../shine/rivals.ts";
-import type { CharacterId, GoalMark } from "../shine/types.ts";
+import type { CharacterId, GoalMark, TraineeRun } from "../shine/types.ts";
 import type { PlateEvent } from "../shine/events.ts";
 import type { FeaturedGame, FieldBeat } from "../shine/featured-game.ts";
-import { inningForPa } from "../shine/featured-game.ts";
+import { exhibitionOtherHitter, exhibitionWinnerLine, inningForPa } from "../shine/featured-game.ts";
+import { ONE_THROW_LINE, THREE_LOOKS_LINE } from "../shine/pitching.ts";
 import type { RacePhase } from "../shine/race-controller.ts";
 
-/** Leave the race the same way the campus said she left. */
-export function leaveLabel(opts: { practice: boolean }): string {
+/** Leave the race the same way the campus said she left. A practice morning names the next beat. */
+export function leaveLabel(opts: { practice: boolean; morning?: boolean; run?: TraineeRun }): string {
+  if (opts.morning && opts.run && morningKind(opts.run.turn) === "practice") return morningDeparture(opts.run).label;
   return opts.practice ? RACE_COPY.leavePractice : RACE_COPY.leave;
+}
+
+/**
+ * The practice morning's done panel. The headline already said the one pitch
+ * when it matches `line`; otherwise `under` names where she goes next.
+ */
+export function morningPanel(run: TraineeRun, headline: string): { leave: string; line: string; under: string | null } {
+  const next = morningDeparture(run);
+  return {
+    leave: next.label,
+    line: next.line,
+    under: headline === next.line ? null : next.line,
+  };
+}
+
+/** The cage tutorial explains the sit. A practice morning does not. */
+export function cageTutorialRead(morning: boolean, sit: Cell, reached: boolean): string | null {
+  if (morning) return null;
+  return firstLookRead(sit, reached);
 }
 
 export const RACE_COPY = {
@@ -33,6 +56,10 @@ export const RACE_COPY = {
   practicePick: "The first toss is down the middle. Tap where she should wait, then Go. Swing when it arrives.",
   /** The mound's twin: the grid is where the glove sits (shown in place of the caption at pitch 0). */
   moundFirstPick: "Set the glove where you want it, then press Go.",
+  /** A practice morning at the plate: one pitch, then tomorrow's date. */
+  practiceMorning: "One pitch before tomorrow. Tap her box, press Go, and swing when it arrives.",
+  /** A practice morning on the mound: one throw, glove then Go. */
+  practiceMorningMound: "One throw before tomorrow. Set the glove, then press Go.",
   /** The done panel's label, the same on both dates; the exhibition keeps its park. */
   doneLabel: "Her day",
   doneLabelExhibition: "Under the lanterns",
@@ -45,18 +72,21 @@ export const RACE_COPY = {
   title: "Title",
   paused: "Time",
   exhibitionChip: "Exhibition",
-  exhibitionPick: "Three at-bats under the lanterns. Nothing carries.",
+  exhibitionPick: "Nine innings under the lanterns. She bats last.",
+  /** Their half opens the game. Go starts the watch; she sits when the side flips. */
+  exhibitionWatch: "They bat first. Go, and watch.",
   atThePlate: "At the plate",
   onTheMound: "On the mound",
   playBall: "Play ball",
   otherMatchup: "Pick another pair",
   // The button under it says "Run it again"; the line doesn't say it first.
-  exhibitionClose: (_arm: string) => "Nothing carries.",
+  exhibitionClose: (runsFor: number, runsAgainst: number) => exhibitionWinnerLine(runsFor, runsAgainst),
 } as const;
 
 /** The coach line under the pick, or null once she has seen a pitch. */
-export function pickPrompt(opts: { phase: RacePhase; pitchesSeen: number; practice?: boolean }): string | null {
+export function pickPrompt(opts: { phase: RacePhase; pitchesSeen: number; practice?: boolean; morning?: boolean }): string | null {
   if (opts.phase !== "pick" || opts.pitchesSeen > 0) return null;
+  if (opts.morning) return RACE_COPY.practiceMorning;
   return opts.practice ? RACE_COPY.practicePick : RACE_COPY.firstPick;
 }
 
@@ -106,8 +136,180 @@ export function inningLabel(inning: number): string {
   return inning >= 9 ? "9th" : inning === 1 ? "1st" : inning === 2 ? "2nd" : inning === 3 ? "3rd" : `${inning}th`;
 }
 
-export function situationParts(game: Pick<FeaturedGame, "kind" | "inning" | "scoreDiff" | "paIndex" | "paTarget">, phase?: RacePhase): SituationParts | null {
+/** 1st, 2nd, 3rd, 4th … 11th. The exhibition says the inning it is actually in. */
+export function exhibitionOrdinal(inning: number): string {
+  const n = Math.max(1, Math.floor(inning));
+  const teen = n % 100;
+  const suf = teen >= 11 && teen <= 13 ? "th" : n % 10 === 1 ? "st" : n % 10 === 2 ? "nd" : n % 10 === 3 ? "rd" : "th";
+  return `${n}${suf}`;
+}
+
+/** "Top of the 1st" while they bat, "Bottom of the 10th" while she does. */
+export function exhibitionHalfLine(inning: number, batting: "theirs" | "hers"): string {
+  return `${batting === "theirs" ? "Top" : "Bottom"} of the ${exhibitionOrdinal(inning)}`;
+}
+
+/** Visitor runs, then hers, with the scoreboard dash. "0–0" is a new game. */
+export function exhibitionScoreLine(runsAgainst: number, runsFor: number): string {
+  return `${runsAgainst}\u2013${runsFor}`;
+}
+
+export type ExhibitionHalfShown = { inning: number; batting: "theirs" | "hers"; banner: string };
+
+/**
+ * The half on the film and the scorebug. While the play is still up — the
+ * race, the card, and the watched gap before the next pitch — that is the
+ * half that just ended. go() is what reads the live board.
+ */
+function halfHeld(
+  game: { inning: number; batting?: "theirs" | "hers"; banner?: string; halfShown?: ExhibitionHalfShown | null },
+  phase?: RacePhase,
+): ExhibitionHalfShown {
+  const hold = phase === "racing" || phase === "pa-card" ? game.halfShown : null;
+  if (hold?.batting) return hold;
+  return {
+    inning: game.inning,
+    batting: game.batting === "hers" ? "hers" : "theirs",
+    banner: game.banner ?? "",
+  };
+}
+
+/** A pick that is still showing the last play reads as that card. */
+export function exhibitionHudPhase(phase: RacePhase, watching: boolean): RacePhase {
+  return watching && phase === "pick" ? "pa-card" : phase;
+}
+
+/** Every player-visible field of the exhibition play still on screen. */
+export type ExhibitionFrame = {
+  half: ExhibitionHalfShown;
+  inning: string;
+  atBat: string;
+  score: string;
+  banner: string;
+  film: CharacterId;
+  caption: string;
+  cardVerdict: string;
+  basepath: string;
+};
+
+/**
+ * One read of the play on screen. A cutaway keeps the half that just ended
+ * and leaves the caption, the card's verdict, and the basepath blank.
+ */
+export function exhibitionFrame(
+  game: {
+    inning: number;
+    batting?: "theirs" | "hers";
+    banner?: string;
+    halfShown?: ExhibitionHalfShown | null;
+    cutaway?: { batterId: CharacterId } | null;
+    lastVerdict?: string;
+    runnerLine?: string | null;
+    runsFor?: number;
+    runsAgainst?: number;
+  },
+  phase: RacePhase,
+  watching: boolean,
+  hostId: CharacterId,
+  opts?: {
+    stage?: Stage;
+    arm?: string | null;
+    release?: string | null;
+    lookSeen?: number;
+    lookNeed?: 2 | 3 | 4 | 5 | null;
+    card?: { verdict: string } | null;
+  },
+): ExhibitionFrame {
+  const half = halfHeld(game, exhibitionHudPhase(phase, watching));
+  const cutawayUp = Boolean(game.cutaway && (phase === "racing" || phase === "pa-card" || watching));
+  const film: CharacterId =
+    cutawayUp && game.cutaway
+      ? game.cutaway.batterId
+      : half.batting === "theirs"
+        ? exhibitionOtherHitter(hostId)
+        : hostId;
+  const caption = cutawayUp
+    ? ""
+    : (raceCaption({
+        phase,
+        stage: opts?.stage ?? "idle",
+        verdict: game.lastVerdict ?? "",
+        banner: half.banner,
+        arm: opts?.arm,
+        lookSeen: opts?.lookSeen,
+        lookNeed: opts?.lookNeed ?? null,
+        release: opts?.release,
+      }) ?? "");
+  return {
+    half,
+    inning: exhibitionHalfLine(half.inning, half.batting),
+    atBat: half.batting === "theirs" ? "Their turn" : "Her turn",
+    score: exhibitionScoreLine(game.runsAgainst ?? 0, game.runsFor ?? 0),
+    banner: half.banner,
+    film,
+    caption,
+    cardVerdict: cutawayUp ? "" : (opts?.card?.verdict ?? ""),
+    basepath: cutawayUp ? "" : (basepathRead(game.runnerLine) ?? ""),
+  };
+}
+
+export function exhibitionShown(
+  game: { inning: number; batting?: "theirs" | "hers"; banner?: string; halfShown?: ExhibitionHalfShown | null },
+  phase?: RacePhase,
+): ExhibitionHalfShown {
+  return exhibitionFrame(game, phase ?? "pick", false, "aoi").half;
+}
+
+/** Their cutaway does not speak her last at-bat. The line under the picture stays blank. */
+export function exhibitionCaptionVerdict(verdict: string, cutawayLive: boolean): string {
+  const frame = exhibitionFrame(
+    {
+      inning: 1,
+      lastVerdict: verdict,
+      cutaway: cutawayLive ? { batterId: "miki" } : null,
+    },
+    "racing",
+    false,
+    "aoi",
+    { stage: "idle" },
+  );
+  return cutawayLive ? frame.caption : verdict;
+}
+
+/** Who the film shows. A live cutaway names her. Otherwise the half on screen does. */
+export function exhibitionFilmBatter(
+  host: CharacterId,
+  game: {
+    inning: number;
+    batting?: "theirs" | "hers";
+    banner?: string;
+    halfShown?: ExhibitionHalfShown | null;
+    cutaway?: { batterId: CharacterId } | null;
+  },
+  phase: RacePhase | undefined,
+  cutawayLive: boolean,
+): CharacterId {
+  return exhibitionFrame(
+    cutawayLive ? game : { ...game, cutaway: null },
+    phase ?? "pick",
+    Boolean(cutawayLive) && phase !== "racing" && phase !== "pa-card",
+    host,
+  ).film;
+}
+
+type SituationGame = Pick<FeaturedGame, "kind" | "inning" | "scoreDiff" | "paIndex" | "paTarget"> &
+  Partial<Pick<FeaturedGame, "encounter" | "batting" | "runsFor" | "runsAgainst" | "banner" | "halfShown">>;
+
+export function situationParts(game: SituationGame, phase?: RacePhase): SituationParts | null {
   if (phase === "done") return null;
+  if (game.encounter?.fullGame && game.batting) {
+    const shown = exhibitionShown(game, phase);
+    return {
+      inning: exhibitionHalfLine(shown.inning, shown.batting),
+      score: exhibitionScoreLine(game.runsAgainst ?? 0, game.runsFor ?? 0),
+      atBat: shown.batting === "theirs" ? "Their turn" : "Her turn",
+    };
+  }
   const card = phase === "pa-card";
   const pa = card ? Math.max(1, game.paIndex - 1) : game.paIndex;
   const inning = card ? inningForPa(game.kind, pa) : game.inning;
@@ -505,8 +707,10 @@ export function moundRead(game: {
   scoreDiff?: number;
   /** A Finale blown to a tie and played out (check-in 27, N2). */
   extras?: FinaleExtras | null;
+  /** Practice throws. Omitted means the tutorial's three. */
+  looks?: number;
 }): string {
-  if (game.kind === "practice") return "Three looks. The glove is real.";
+  if (game.kind === "practice") return (game.looks ?? 3) <= 1 ? ONE_THROW_LINE : THREE_LOOKS_LINE;
   if (!game.pgMet && game.scoreDiff !== undefined && finaleTeamWon({ kind: game.kind, scoreDiff: game.scoreDiff, blown: game.blown, extras: game.extras })) {
     // Won in extras after the tie got in on her: that's what she didn't get, whatever the punchouts.
     if (game.blown) return `${FINALE_WON_BANNER} The tying run scored on her.`;

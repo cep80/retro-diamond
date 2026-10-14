@@ -14,7 +14,9 @@ import {
   scoredOnPa,
   type RaceCue,
 } from "./race-controller.ts";
-import { RACE_PACE } from "./race.ts";
+import { exhibitionFrame, raceCaption } from "../components/race-ui.ts";
+import type { Stage } from "./beats.ts";
+import { RACE_PACE, releaseLine } from "./race.ts";
 import { newRun } from "./run.ts";
 import { FORBIDDEN_IN_STORY } from "./story.ts";
 
@@ -166,6 +168,194 @@ describe("race controller", () => {
     assert.ok(s.card, "the last PA still has its card");
     assert.ok(cues.some((q) => q.t === "done"));
     assert.equal(c.go(), false);
+  });
+
+  it("their half hands her the bat", () => {
+    const sched = new VirtualScheduler();
+    const run = newRun("aoi");
+    run.rngSeed = "exhibit-handoff";
+    const c = new RaceController({
+      run,
+      kind: "lantern-classic",
+      encounter: { arm: "kira", appearances: 3, neutral: true, fullGame: true },
+      scheduler: sched,
+      uniqueStings: false,
+    });
+    const open = c.getSnapshot();
+    assert.equal(open.phase, "pick");
+    assert.equal(open.plate.game.batting, "theirs");
+    assert.equal(open.plate.game.inning, 1);
+    assert.equal(open.watching, false);
+    assert.equal(c.go(), true);
+    const start = sched.t;
+    let snap = c.getSnapshot();
+    while (!(snap.plate.game.batting === "hers" && snap.phase === "pick" && snap.watching === false) && sched.t - start < 180_000) {
+      sched.advance(50);
+      snap = c.getSnapshot();
+    }
+    assert.equal(snap.plate.game.batting, "hers");
+    assert.equal(snap.phase, "pick");
+    assert.equal(snap.watching, false);
+    assert.equal(snap.plate.stage, "idle");
+    assert.equal(snap.plate.pitch, null);
+    assert.equal(snap.plate.game.inning, 1);
+    assert.equal(snap.plate.game.pitchesSeen, 0);
+    assert.equal(c.go(), true);
+    assert.equal(c.getSnapshot().phase, "racing");
+  });
+
+  it("the card keeps the half that just ended", () => {
+    const sched = new VirtualScheduler();
+    const run = newRun("aoi");
+    run.rngSeed = "spot-half-flip";
+    const c = new RaceController({
+      run,
+      kind: "lantern-classic",
+      encounter: { arm: "kira", appearances: 3, neutral: true, fullGame: true },
+      scheduler: sched,
+      uniqueStings: false,
+    });
+    assert.equal(c.go(), true);
+    const start = sched.t;
+    type Seen = {
+      live: string;
+      line: string;
+      atBat: string;
+      banner: string;
+      film: string;
+      caption: string;
+      cardVerdict: string;
+      basepath: string;
+      storedVerdict: string;
+      cardLine: string;
+      stage: Stage;
+      lastVerdict: string;
+      held: string;
+    };
+    const see = (): Seen => {
+      const snap = c.getSnapshot();
+      const g = snap.plate.game;
+      const frame = exhibitionFrame(g, snap.phase, snap.watching, run.characterId, {
+        stage: snap.plate.stage,
+        card: snap.card,
+      });
+      return {
+        live: `${g.batting} ${g.inning}`,
+        line: frame.inning,
+        atBat: frame.atBat,
+        banner: frame.banner,
+        film: frame.film,
+        caption: frame.caption,
+        cardVerdict: frame.cardVerdict,
+        basepath: frame.basepath,
+        storedVerdict: snap.card?.verdict ?? "",
+        cardLine: snap.card?.line ?? "",
+        stage: snap.plate.stage,
+        lastVerdict: g.lastVerdict,
+        held: g.halfShown ? `${g.halfShown.batting} ${g.halfShown.inning}` : "none",
+      };
+    };
+    let theirRacing: Seen | null = null;
+    let theirCard: Seen | null = null;
+    let sit: Seen | null = null;
+    let hersRacing: Seen | null = null;
+    let hersCard: Seen | null = null;
+    let gap: Seen | null = null;
+    let theirNext: Seen | null = null;
+    let handed = false;
+    let last = "";
+    while (sched.t - start < 180_000 && (!theirRacing || !theirCard || !sit || !hersRacing || !hersCard || !gap || !theirNext)) {
+      const snap = c.getSnapshot();
+      const g = snap.plate.game;
+      const phase = snap.phase;
+      last = `${phase}${snap.watching ? " watching" : ""} inning ${g.inning} batting ${g.batting} outs ${g.outs} half ${g.halfShown ? `${g.halfShown.batting} ${g.halfShown.inning} ${g.halfShown.banner}` : "none"} card ${snap.card?.verdict ?? ""} t ${sched.t}`;
+      if (phase === "pick") c.setCall("take");
+      const theirThird = Boolean(g.halfShown && g.batting === "hers" && g.inning === 1 && g.outs === 0 && g.halfShown.batting === "theirs");
+      const herLast = Boolean(g.halfShown && g.batting === "theirs" && g.inning === 2 && g.halfShown.inning === 1 && g.halfShown.batting === "hers");
+      if (theirThird && phase === "racing" && !theirRacing) theirRacing = see();
+      if (theirThird && phase === "pa-card" && !theirCard) theirCard = see();
+      if (!sit && theirCard && phase === "pick" && !snap.watching && g.batting === "hers" && g.inning === 1) sit = see();
+      if (sit && herLast && phase === "racing" && (!hersRacing || (hersRacing.caption === "" && see().caption !== ""))) hersRacing = see();
+      if (sit && herLast && phase === "pa-card" && !hersCard) hersCard = see();
+      if (!gap && hersCard && phase === "pick" && snap.watching && herLast) gap = see();
+      if (gap && phase === "pa-card" && g.inning === 2 && g.batting === "theirs" && g.cutaway && g.lastVerdict && !theirNext) theirNext = see();
+      if (sit && !handed && phase === "pick" && !snap.watching) {
+        handed = true;
+        c.setCall("take");
+        assert.equal(c.go(), true);
+        continue;
+      }
+      sched.advance(50);
+    }
+    const cutawayBlank = (seen: Seen) => {
+      assert.equal(seen.caption, "");
+      assert.equal(seen.cardVerdict, "");
+      assert.equal(seen.basepath, "");
+      assert.equal(seen.storedVerdict, "");
+      assert.equal(seen.film, "miki");
+    };
+    assert.ok(theirRacing, `their third out stayed on screen (${last})`);
+    assert.equal(theirRacing.live, "hers 1");
+    assert.equal(theirRacing.line, "Top of the 1st");
+    assert.equal(theirRacing.atBat, "Their turn");
+    assert.notEqual(theirRacing.banner, "Her turn.");
+    cutawayBlank(theirRacing);
+    assert.ok(theirCard, `their third out's card stayed on their half (${last})`);
+    assert.notEqual(theirCard.cardLine, "");
+    assert.equal(theirCard.live, "hers 1");
+    assert.equal(theirCard.line, "Top of the 1st");
+    assert.equal(theirCard.atBat, "Their turn");
+    assert.notEqual(theirCard.banner, "Her turn.");
+    cutawayBlank(theirCard);
+    assert.ok(sit, `she is handed the bat (${last})`);
+    assert.equal(sit.line, "Bottom of the 1st");
+    assert.equal(sit.atBat, "Her turn");
+    assert.equal(sit.film, "aoi");
+    assert.equal(sit.held, "theirs 1");
+    assert.equal(sit.caption, "");
+    assert.ok(hersRacing, `her last out stayed on her half (${last})`);
+    assert.equal(hersRacing.live, "theirs 2");
+    assert.equal(hersRacing.line, "Bottom of the 1st");
+    assert.equal(hersRacing.atBat, "Her turn");
+    assert.notEqual(hersRacing.banner, "Their turn.");
+    assert.equal(hersRacing.film, "aoi");
+    assert.equal(
+      hersRacing.caption,
+      raceCaption({
+        phase: "racing",
+        stage: hersRacing.stage,
+        verdict: hersRacing.lastVerdict,
+        banner: hersRacing.banner,
+        lookNeed: null,
+      }) ?? "",
+    );
+    assert.notEqual(hersRacing.caption, "");
+    assert.ok(hersCard, `her last out's card kept her verdict (${last})`);
+    assert.equal(hersCard.live, "theirs 2");
+    assert.equal(hersCard.line, "Bottom of the 1st");
+    assert.equal(hersCard.atBat, "Her turn");
+    assert.notEqual(hersCard.banner, "Their turn.");
+    assert.equal(hersCard.film, "aoi");
+    assert.equal(hersCard.caption, "");
+    assert.notEqual(hersCard.storedVerdict, "");
+    assert.equal(hersCard.cardVerdict, hersCard.storedVerdict);
+    assert.ok(gap, `the out stays up until the next pitch (${last})`);
+    assert.equal(gap.live, "theirs 2");
+    assert.equal(gap.line, "Bottom of the 1st");
+    assert.equal(gap.atBat, "Her turn");
+    assert.notEqual(gap.banner, "Their turn.");
+    assert.equal(gap.film, "aoi");
+    assert.equal(gap.cardLine, "Out.");
+    assert.equal(gap.caption, "");
+    assert.notEqual(gap.storedVerdict, "");
+    assert.equal(gap.cardVerdict, gap.storedVerdict);
+    assert.ok(theirNext, `their next card stayed blank after she had a line (${last})`);
+    assert.notEqual(theirNext.cardLine, "");
+    assert.equal(theirNext.line, "Top of the 2nd");
+    assert.equal(theirNext.atBat, "Their turn");
+    assert.notEqual(theirNext.lastVerdict, "");
+    assert.notEqual(theirNext.storedVerdict, theirNext.lastVerdict);
+    cutawayBlank(theirNext);
   });
 
   it("a pause between pitches does not stall the race", () => {
@@ -329,6 +519,49 @@ describe("race controller", () => {
     assert.ok(kRate > 0.06 && kRate < 0.4, `K rate ${kRate.toFixed(2)}`);
     assert.ok(reachRate > 0.18 && reachRate < 0.55, `reach rate ${reachRate.toFixed(2)}`);
     assert.ok(walkRate > 0.02, `walk rate ${walkRate.toFixed(2)}`);
+  });
+
+  it("a practice morning is one pitch, and the release names early, on time, or late", () => {
+    const bands = [
+      { u: 0.5, band: "early" as const, line: "Early, she was ahead of it." },
+      { u: 0.92, band: "now" as const, line: "On time, she met it." },
+      { u: 1.2, band: "late" as const, line: "Late, she was behind it." },
+    ];
+    for (const want of bands) {
+      const { c, sched, run } = race(`one-rep-${want.band}`, { kind: "practice", oneRep: true, duel: false, encounter: undefined });
+      run.turn = 17;
+      c.setSit({ row: 1, col: 1 });
+      assert.equal(c.go(), true);
+      let guard = 0;
+      while (c.getSnapshot().plate.stage !== "flight" && guard++ < 400) sched.advance(20);
+      assert.equal(c.getSnapshot().plate.stage, "flight");
+      assert.equal(c.release(want.u), true);
+      assert.equal(c.getSnapshot().release?.band, want.band);
+      assert.equal(releaseLine(want.band), want.line);
+      const s = untilPhase(c, sched, "done");
+      assert.equal(s.phase, "done");
+      assert.equal(s.plate.game.pitchesSeen, 1);
+      assert.equal(s.release?.band, want.band);
+      assert.equal(s.plate.game.banner, "One pitch, and First Light is tomorrow.");
+      assert.doesNotMatch(s.plate.game.banner, /complex/i);
+      assert.ok(s.card);
+      assert.doesNotMatch(s.card.line, /complex/i);
+    }
+  });
+
+  it("a practice morning with no release still finishes on her sheet", () => {
+    const { c, sched, run } = race("one-rep-quiet", { kind: "practice", oneRep: true, duel: false, encounter: undefined });
+    run.turn = 17;
+    c.setSit({ row: 1, col: 1 });
+    assert.equal(c.go(), true);
+    const s = untilPhase(c, sched, "done");
+    assert.equal(s.phase, "done");
+    assert.equal(s.release, null);
+    assert.equal(s.plate.game.pitchesSeen, 1);
+    assert.equal(s.plate.game.banner, "One pitch, and First Light is tomorrow.");
+    assert.doesNotMatch(s.plate.game.banner, /complex/i);
+    assert.ok(s.card);
+    assert.doesNotMatch(s.card.line, /complex/i);
   });
 });
 
