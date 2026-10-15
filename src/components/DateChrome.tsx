@@ -382,7 +382,8 @@ export function FinaleWinMoment({
                 <span className="shine-kana">{jp}</span>{" "}
               </>
             ) : null}
-            {name} · Diamond Finale
+            {/* The PA's call, the one big moment that's his to say (voice v2). */}
+            Your Diamond Finale champion, {name}!
           </p>
         </div>
       </div>

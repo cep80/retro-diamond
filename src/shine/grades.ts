@@ -121,12 +121,23 @@ export function letterFill(value: number, potential = STAT_SCALE): LetterFill {
  */
 export function letterFillLine(en: string, value: number, potential = STAT_SCALE): string {
   const mark = letterFill(value, potential);
-  if (mark.ceiling) return `${en} is ${mark.grade}. That's as high as hers goes.`;
-  if (!mark.next) return `${en} is ${mark.grade}.`;
-  if (mark.fill < 0.34) return `${en} is ${mark.grade}. ${mark.next} is a ways off.`;
-  // Two thirds (G's 3, the one letter three wide) is "Nearly".
-  if (mark.fill < 0.66) return `${en} is ${mark.grade}. Halfway to ${mark.next}.`;
-  return `${en} is ${mark.grade}. Nearly ${mark.next}.`;
+  // Said the way a coach says it to the other coaches: "Her contact's about halfway to a D."
+  const her = `Her ${en.toLowerCase()}`;
+  if (mark.ceiling) return `${her}'s ${aGrade(mark.grade)}, and that's as high as she's going to take it.`;
+  if (!mark.next) return `${her}'s an S. There's nothing above that.`;
+  if (mark.fill < 0.34) return `${her}'s ${aGrade(mark.grade)} now. ${capFirst(aGrade(mark.next))}'s still a ways off.`;
+  // Two thirds (G's 3, the one letter three wide) is "almost".
+  if (mark.fill < 0.66) return `${her}'s ${aGrade(mark.grade)}, about halfway to ${aGrade(mark.next)}.`;
+  return `${her}'s ${aGrade(mark.grade)}, and she's almost at ${aGrade(mark.next)}.`;
+}
+
+/** "a C", "an A": the article a grade takes out loud. */
+export function aGrade(g: Grade): string {
+  return `${g === "A" || g === "E" || g === "F" || g === "S" ? "an" : "a"} ${g}`;
+}
+
+function capFirst(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export interface GradeMove {

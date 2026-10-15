@@ -18,8 +18,8 @@ import { opposingArm, pitcherRivalBat } from "../shine/rivals.ts";
 import type { CharacterId, GoalMark, TraineeRun } from "../shine/types.ts";
 import type { PlateEvent } from "../shine/events.ts";
 import type { FeaturedGame, FieldBeat } from "../shine/featured-game.ts";
-import { exhibitionOtherHitter, exhibitionWinnerLine, inningForPa } from "../shine/featured-game.ts";
-import { ONE_THROW_LINE, THREE_LOOKS_LINE } from "../shine/pitching.ts";
+import { exhibitionOtherHitter, exhibitionWinnerLine, GATE_MISSED_BANNER, inningForPa } from "../shine/featured-game.ts";
+import { HOLD_SLIPPED_BANNER, MISSED_BANNER, ONE_THROW_LINE, THREE_LOOKS_LINE } from "../shine/pitching.ts";
 import type { RacePhase } from "../shine/race-controller.ts";
 
 /** Leave the race the same way the campus said she left. A practice morning names the next beat. */
@@ -52,43 +52,140 @@ export const RACE_COPY = {
    * The one line on the first pitch of a date. The grid starts empty, so it names
    * the box and the swing in plain words. "Sit" is the word everywhere after it.
    */
-  firstPick: "Tap the box she's sitting on. Then Go. Swing when it arrives.",
-  practicePick: "The first toss is down the middle. Tap where she should wait, then Go. Swing when it arrives.",
+  firstPick: "Tap where she should look for the pitch, then press Go. Hit Swing while it's in the air.",
+  practicePick: "This first toss comes right down the middle. Tap the square where she should look, then press Go.",
   /** The mound's twin: the grid is where the glove sits (shown in place of the caption at pitch 0). */
-  moundFirstPick: "Set the glove where you want it, then press Go.",
+  moundFirstPick: "Tap where you want the catcher's glove, then press Go.",
   /**
    * A practice morning at the plate: one pitch, then tomorrow's date. The fallback when the
    * girl isn't known; `morningPrompt` puts her own ask in front of the instruction.
    */
-  practiceMorning: "One pitch before tomorrow. Pick her box, Go, then Swing.",
+  practiceMorning: "One pitch before tomorrow's game. Pick a square, press Go, then Swing.",
   /** A practice morning on the mound: one throw, glove then Go. */
-  practiceMorningMound: "One throw before tomorrow. Set the glove, then Go.",
-  /** The done panel's label, the same on both dates; the exhibition keeps its park. */
-  doneLabel: "Her day",
+  practiceMorningMound: "One throw before tomorrow's game. Set the glove, then press Go.",
+  /** The done panel's fallback label; `doneLabelFor` names the game when it can. */
+  doneLabel: "Postgame",
   doneLabelExhibition: "Under the lanterns",
   go: "Go",
   goPractice: "Go",
   next: "Next",
-  again: "Run it again",
+  again: "Play again",
   leave: "Leave the park",
   leavePractice: "Back to the complex",
-  title: "Title",
+  title: "Title screen",
   paused: "Time",
   exhibitionChip: "Exhibition",
-  exhibitionPick: "Nine innings under the lanterns. She bats last.",
+  exhibitionPick: "Nine innings under the lanterns. Her team's at home, so they bat second.",
   /** Their half opens the game. Go starts the watch; she sits when the side flips. */
-  exhibitionWatch: "They bat first. Go, and watch.",
+  exhibitionWatch: "The visitors bat first. Press Go and watch their half.",
   atThePlate: "At the plate",
   onTheMound: "On the mound",
   playBall: "Play ball",
-  otherMatchup: "Pick another pair",
+  otherMatchup: "Pick a new matchup",
   // The button under it says "Run it again"; the line doesn't say it first.
   exhibitionClose: (runsFor: number, runsAgainst: number) => exhibitionWinnerLine(runsFor, runsAgainst),
 } as const;
 
+/**
+ * The done panel's small label: what this was, in plain words. "Her day" over a practice
+ * throw was a label that meant nothing (voice v2), so it names the game, or the morning.
+ */
+export function doneLabelFor(kind: string, opts: { morning?: boolean; mound?: boolean } = {}): string {
+  if (opts.morning) return "Morning practice";
+  if (kind === "practice") return opts.mound ? "In the bullpen" : "In the cage";
+  if (kind === "weekly") return "Under the lanterns";
+  if (isBigDate(kind)) return DATE_NAMES[kind].en;
+  return RACE_COPY.doneLabel;
+}
+
+/**
+ * Her own word at the end of a date, in quotes, under the headline (voice v2: after a date, let
+ * her react). Lines from her voice sheet that hold whatever the box score was; three a side, by turn.
+ */
+const DATE_VOICE: Record<CharacterId, { met: readonly string[]; missed: readonly string[] }> = {
+  aoi: {
+    met: [
+      "I got on! I… sorry. I reached base, Coach.",
+      "Mom's going to put a sticker on the sign. The sign is mostly stickers now.",
+      "Can we go by the shop? I want to tell Mom before somebody else does.",
+    ],
+    missed: [
+      "Can we skip the shop tonight? She'll be nice about it, and I can't do nice right now.",
+      "I'm writing this one down so I remember it. All of it.",
+      "Um, sorry, Coach. Next time. I mean it.",
+    ],
+  },
+  miki: {
+    met: [
+      "Cool. Cool cool cool. I'm gonna go stand behind the dugout and not cry.",
+      "Section 4 brought a second cowbell. That's the most anyone's ever spent on me.",
+      "So. Don't make it a thing. ...Okay. Make it a little bit of a thing.",
+    ],
+    missed: [
+      "Don't do the talk. I know the talk. Just buy me a melon pan and walk slow.",
+      "Cool. It's fine. Gary's going to be so disappointed in me.",
+      "So. You're still coming back tomorrow, right? Cool. Just checking.",
+    ],
+  },
+  yuki: {
+    met: [
+      "Did you see? Already! Write it down, Stopwatch.",
+      "Shaved ice. Strawberry, milk on top. I'm eating it too fast and I don't care.",
+      "Already done. Already hungry. Let's go, Stopwatch.",
+    ],
+    missed: [
+      "Next time. I'd go again. Don't make the face.",
+      "That was slow. I hate slow. Again tomorrow.",
+      "Leg's fine. ...It's fine. Don't write it down.",
+    ],
+  },
+  reina: {
+    met: [
+      "Again tomorrow. Same time.",
+      "Eat? ...Fine. One onigiri. Salt plum. Don't make it a thing.",
+      "I counted every pitch. Don't ask me how many. I know.",
+    ],
+    missed: ["Don't talk yet. I'm finishing the row.", "I know which pitch it was. You don't have to tell me.", "Again. Tomorrow. Earlier."],
+  },
+  sol: {
+    met: [
+      "Ninety-seven. That's happy, Jefe. Don't make me say it louder.",
+      "Luz is going to be unbearable about this.",
+      "Fine. Good. Elote's on me. Don't tell anyone.",
+    ],
+    missed: [
+      "I can ice my own arm. Stay, though. I don't like the quiet after.",
+      "Ninety-nine. Give me a minute, Jefe.",
+      "Don't tell Luz yet. I'll tell her.",
+    ],
+  },
+  kira: {
+    met: [
+      "That's the deal, Partner. I closed it.",
+      "You saw me point? That one was for the door. The next one's yours.",
+      "Home before the last bus, Partner. That's the whole dream.",
+    ],
+    missed: [
+      "I'll be at the door. You can come to the door. That's allowed.",
+      "Bad deal. New deal tomorrow, Partner.",
+      "That's me being dumb in an exciting new way. Don't worry about it.",
+    ],
+  },
+};
+
+/**
+ * What she says as the date closes, in quotes. The date's rung on the ladder picks the line, so
+ * two big dates in a row never say the same thing (`kind` may also be a number, for tests).
+ */
+export function dateQuote(who: CharacterId, met: boolean, kind: string | number): string {
+  const lines = DATE_VOICE[who][met ? "met" : "missed"];
+  const at = typeof kind === "number" ? kind : Math.max(0, BIG_DATES.indexOf(kind as BigDate));
+  return `"${lines[Math.abs(Math.floor(at)) % lines.length]}"`;
+}
+
 /** The practice morning's instruction, short, after she asks for the rep. */
-const MORNING_DO_PLATE = "Pick her box, Go, then Swing.";
-const MORNING_DO_MOUND = "Set the glove, then Go.";
+const MORNING_DO_PLATE = "Pick a square, press Go, then Swing.";
+const MORNING_DO_MOUND = "Set the glove, then press Go.";
 
 /** Check-in 35: the morning before her big game, she asks for the one rep in her own voice. */
 const MORNING_ASK: Record<CharacterId, string> = {
@@ -116,10 +213,13 @@ export function pickPrompt(opts: { phase: RacePhase; pitchesSeen: number; practi
 /** The first cage look explains what the Coach's box did, including a miss. */
 export function firstLookRead(sit: Cell, reached: boolean): string {
   const middle = sit.row === 1 && sit.col === 1;
-  if (middle) return reached ? "You sat middle. The toss came middle. She was ready for it." : "You sat middle. The toss came middle. She missed this one, but she was in the right place.";
+  if (middle)
+    return reached
+      ? "You had her looking down the middle, and that's where it came. She was ready for it."
+      : "You had her looking down the middle, and that's where it came. She missed it, but she was looking in the right place.";
   return reached
-    ? "The toss came middle. She found a hit from the box you chose. Next time, watch where it crosses."
-    : "The toss came middle. She waited in another box. Now you know what the sit changes.";
+    ? "The toss came down the middle, and she still found a hit. Next time, watch where the pitch crosses."
+    : "The toss came down the middle, but she was looking somewhere else. That's what picking the square does.";
 }
 
 /** The Go button's label. */
@@ -371,17 +471,19 @@ export function dateHeadline(opts: {
 }): string {
   if (opts.exhibition && opts.day) return exhibitionDayLine(opts.day, opts.day.arm);
   if (opts.exhibition || opts.practice) return opts.cardLine ?? opts.banner;
-  if (opts.pgId === "foul-two-strike") return "Two strikes. You watched her.";
   if (opts.pgMet) return metHeadline(opts.verb, opts.read);
-  if (opts.banner === "HOLD slipped." && (opts.pgId === "k-side" || opts.pgId === "k-2")) return opts.cardLine ?? "The punchouts weren't there.";
+  const slipped = opts.banner === HOLD_SLIPPED_BANNER || opts.banner === RETIRED_HOLD_SLIPPED;
+  if (slipped && (opts.pgId === "k-side" || opts.pgId === "k-2")) return opts.cardLine ?? "She couldn't get the strikeouts she wanted.";
   // A miss says what slipped (her read), under the 未達成 stamp that already says it did.
-  if (opts.banner === "HOLD slipped." || opts.banner === MISSED_LINE) return opts.read || MISSED_LINE;
+  if (slipped || opts.banner === MISSED_LINE) return opts.read || MISSED_LINE;
   // A Finale won short of her ask: the read says both ("They won. One punchout. She wanted two.").
   if (opts.banner === FINALE_WON_BANNER) return opts.read || FINALE_WON_BANNER;
   return opts.banner || opts.cardLine || MISSED_LINE;
 }
 
-const MISSED_LINE = "It got away from her.";
+const MISSED_LINE = MISSED_BANNER;
+/** A closer's miss banner saved before voice v2 (an attempt picked up mid-game still holds it). Don't edit. */
+const RETIRED_HOLD_SLIPPED = "HOLD slipped.";
 
 /** A met goal's headline: what she did. The 達成 stamp above already says she did it; a read that adds nothing leaves her verb. */
 export function metHeadline(verb: string, read?: string | null): string {
@@ -403,7 +505,7 @@ export const DONE_STAMP = {
   met: { jp: "達成", en: "She did it", tone: "gold" },
   missed: { jp: "未達成", en: "Not this time", tone: "slate" },
   /** A big ask missed, and the smaller one held: the scrapbook's chip, not the done panel's. */
-  saved: { jp: "小さな達成", en: "The little one", tone: "teal" },
+  saved: { jp: "小さな達成", en: "Small win", tone: "teal" },
 } as const;
 
 export function doneStamp(met: boolean): (typeof DONE_STAMP)["met"] | (typeof DONE_STAMP)["missed"] {
@@ -452,15 +554,15 @@ export function exhibitionDayLine(day: ExhibitionDay, arm: string): string {
   const cameHome = day.runs > homers;
   const times = (n: number) => (n === 1 ? "once" : n === 2 ? "twice" : `${countWord(n)} times`);
   const who = capital(arm);
-  if (homers > 0) return homers === 1 ? "She went deep." : `She went deep ${times(homers)}.`;
+  if (homers > 0) return homers === 1 ? "She hit one out of the park." : `She hit it out ${times(homers)}.`;
   if (on > 0) {
-    const then = cameHome ? " and came home" : steals > 0 ? ` and stole ${steals === 1 ? "a base" : `${countWord(steals)} bases`}` : "";
+    const then = cameHome ? " and came around to score" : steals > 0 ? ` and stole ${steals === 1 ? "a base" : `${countWord(steals)} bases`}` : "";
     return `She got on ${times(on)}${then}.`;
   }
-  if (cameHome) return "No hit, but she came home.";
+  if (cameHome) return "No hits, but she still came around to score.";
   if (day.ks >= 2) return `${who} had her number today.`;
-  if (day.ks === 1) return `Nothing fell today. ${who} won this one.`;
-  return "She put it in play. Nothing fell today.";
+  if (day.ks === 1) return `${who} got the better of her today.`;
+  return "She kept putting it in play, and they kept catching it.";
 }
 
 export type ChipTone = "gold" | "coral" | "teal" | "slate";
@@ -599,7 +701,7 @@ export function moundDayChips(events: readonly PlateEvent[]): DayChip[] {
 }
 
 function outsDown(outs: number): string {
-  if (outs >= 3) return "Side retired.";
+  if (outs >= 3) return "That's the inning.";
   if (outs === 2) return "Two down.";
   if (outs === 1) return "One down.";
   return "";
@@ -617,11 +719,11 @@ export function moundBatterLine(opts: { name: string; result: MoundResult; swung
   const runs = opts.runs ?? 0;
   const down = outsDown(opts.outs);
   const join = (a: string, b: string) => (b ? `${a} ${b}` : a);
-  if (result === "k") return join(`${name}, ${opts.swung ? "swinging" : "looking"}.`, down);
-  if (result === "out") return join(opts.air === true ? `${name} flies out.` : opts.air === false ? `${name} grounds out.` : `${name} puts it in play.`, down);
-  if (result === "walk") return runs > 0 ? `${name} takes first. A run walks in.` : `${name} takes first.`;
-  if (result === "hit") return runs === 0 ? `${name} is on.` : runs === 1 ? `${name} is on. A run scores.` : `${name} is on. ${capital(countWord(runs))} runs score.`;
-  return runs > 1 ? `${name} takes her deep. ${capital(countWord(runs))} runs.` : `${name} takes her deep.`;
+  if (result === "k") return join(`${name} strikes out ${opts.swung ? "swinging" : "looking"}.`, down);
+  if (result === "out") return join(opts.air === true ? `${name} flies out.` : opts.air === false ? `${name} grounds out.` : `${name} makes an out.`, down);
+  if (result === "walk") return runs > 0 ? `${name} draws a walk, and that forces in a run.` : `${name} draws a walk.`;
+  if (result === "hit") return runs === 0 ? `${name} gets a hit.` : runs === 1 ? `${name} gets a hit, and a run scores.` : `${name} gets a hit, and ${countWord(runs)} runs score.`;
+  return runs > 1 ? `${name} takes her deep. That's ${countWord(runs)} runs.` : `${name} takes her deep.`;
 }
 
 function capital(s: string): string {
@@ -707,7 +809,7 @@ export function moundSituation(game: {
   count: { balls: number; strikes: number };
   done?: boolean;
 }): string {
-  if (game.kind === "practice") return "Bullpen looks";
+  if (game.kind === "practice") return "Bullpen";
   if (game.done) return "";
   return `Inn ${game.inning} · ${game.outs} out · ${scorePhrase(game.scoreDiff)} · ${game.count.balls}-${game.count.strikes}`;
 }
@@ -732,106 +834,148 @@ export function moundRead(game: {
   extras?: FinaleExtras | null;
   /** Practice throws. Omitted means the tutorial's three. */
   looks?: number;
+  /** Whose date it is: a blown lead and Kira's 1-2-3 are said by her, or about her. */
+  who?: CharacterId | null;
 }): string {
   if (game.kind === "practice") return (game.looks ?? 3) <= 1 ? ONE_THROW_LINE : THREE_LOOKS_LINE;
   if (!game.pgMet && game.scoreDiff !== undefined && finaleTeamWon({ kind: game.kind, scoreDiff: game.scoreDiff, blown: game.blown, extras: game.extras })) {
     // Won in extras after the tie got in on her: that's what she didn't get, whatever the punchouts.
-    if (game.blown) return `${FINALE_WON_BANNER} The tying run scored on her.`;
+    if (game.blown) return `${FINALE_WON_BANNER} The tying run scored on her, though.`;
     return `${FINALE_WON_BANNER} ${finaleShortOf(game)}`;
   }
+  const er = game.earnedRuns ?? 0;
   if (game.pgMet) {
-    if (game.kind === "gate") return "Three outs. The Gate opened.";
+    if (game.kind === "gate") return "She got all three outs at the Academy Gate.";
     // The punchouts she got, which can be more than the ask.
     if (game.pgId === "k-2" || game.pgId === "k-3") {
       const k = Math.max(game.pgId === "k-2" ? 2 : 3, game.strikeouts ?? 0);
-      return `${capital(countWord(k))} punchouts.`;
+      return `She struck out ${countWord(k)} hitters.`;
     }
-    if (game.pgId === "k-consecutive") return "Two punchouts, back to back.";
-    if (game.pgId === "hold-one-run") return "The lead held.";
+    if (game.pgId === "k-consecutive") return "She struck out two in a row.";
+    if (game.pgId === "hold-one-run") return "She kept the lead. That's the whole job, and she did it.";
     if (game.pgId === "k-side") return "She struck out the side.";
-    if (game.pgId === "strand-inherited") return "She came in with runners and stranded them.";
-    if (game.pgId === "four-out") return "Four outs, two punchouts. The lead held.";
-    if (game.pgId === "clean-ninth") return "Three outs. No runs.";
-    if (game.pgId === "perfect-ninth") return "Three up. Three down.";
-    if (game.pgId === "innings-5-k7") return `Five innings. ${capital(countWord(Math.max(7, game.strikeouts ?? 0)))} punchouts.`;
-    if (game.pgId === "innings-5") return "Five innings. Three runs or fewer.";
-    if (game.pgId === "quality-start") return "Six innings. One run or fewer.";
-    if (game.pgId === "escape-jam") return "Runners on. The inning ended.";
-    if (game.pgId === "escape-loaded-jam") return "Bases loaded. The inning ended.";
+    if (game.pgId === "strand-inherited") return "She came in with runners on and left every one of them standing there.";
+    if (game.pgId === "four-out") return "Four outs, two of them strikeouts, and the lead still standing.";
+    if (game.pgId === "clean-ninth") return "A clean ninth. Three outs, and nobody scored.";
+    if (game.pgId === "perfect-ninth") return game.who === "kira" ? "\"One, two, three, Partner. That's the deal, and I closed it.\"" : "Three up, three down. Nobody even reached first.";
+    if (game.pgId === "innings-5-k7") return `She went five innings and struck out ${countWord(Math.max(7, game.strikeouts ?? 0))}.`;
+    if (game.pgId === "innings-5") return `She went five innings and gave up ${runsAllowed(er)}.`;
+    if (game.pgId === "quality-start") return `She went six innings and gave up ${runsAllowed(er)}.`;
+    if (game.pgId === "escape-jam") return "Runners on, and she got out of the inning without a run.";
+    if (game.pgId === "escape-loaded-jam") return "Bases loaded, and she got out of it without a run.";
     return "She got what she came for.";
   }
+  const gone = leadGone(game);
   if (game.pgId === "k-2") {
     // A Finale or a save asks her to keep the lead too; First Light never loses one.
-    if (game.blown) return "The lead is gone.";
-    if ((game.strikeouts ?? 0) === 1) return "One punchout. She needed two.";
-    if ((game.strikeouts ?? 0) === 0 && game.kind !== "first-light") return "No punchouts. She needed two.";
+    if (game.blown) return gone;
+    if ((game.strikeouts ?? 0) === 1) return "She got one strikeout. She needed two.";
+    if ((game.strikeouts ?? 0) === 0 && game.kind !== "first-light") return "She didn't get a strikeout. She needed two.";
   }
   if (game.pgId === "k-3") {
     const k = game.strikeouts ?? 0;
-    if (k === 1) return "One punchout. She needed three.";
-    if (k === 2) return "Two punchouts. She needed three.";
+    if (k === 1) return "She got one strikeout. She needed three.";
+    if (k === 2) return "She got two strikeouts. She needed three.";
   }
   if (game.pgId === "k-consecutive") {
     // Say the punchouts she got; the streak is only what made them not count.
     const k = game.strikeouts ?? 0;
-    if (k === 0) return "No punchouts. She needed two in a row.";
-    if (k === 1) return "One punchout. She needed two in a row.";
-    return `${k === 2 ? "Two" : k === 3 ? "Three" : k === 4 ? "Four" : String(k)} punchouts, never back to back.`;
+    if (k === 0) return "She didn't get a strikeout. She needed two in a row.";
+    if (k === 1) return "She got one strikeout. She needed two in a row.";
+    return `She struck out ${countWord(k)}, but never two in a row.`;
   }
-  if (game.pgId === "hold-one-run") return "The lead is gone.";
+  if (game.pgId === "hold-one-run") return gone;
   if (game.pgId === "k-side") {
     const k = game.bestInningKs ?? 0;
-    if (k >= 3) return "The lead is gone.";
-    if (k === 1) return "One punchout. She needed the side.";
-    if (k === 2) return "Two punchouts. She needed the side.";
-    return "The side wasn't struck out.";
+    if (k >= 3) return gone;
+    if (k === 1) return "She struck out one in the inning. She wanted the whole side.";
+    if (k === 2) return "She struck out two in the inning. She wanted all three.";
+    return "She never struck out the side.";
   }
   if (game.pgId === "strand-inherited") {
-    if ((game.inherited ?? 0) <= 0) return "She never came in with runners.";
-    if (game.inheritedStranded === false) return "The runners scored.";
-    return "The lead is gone.";
+    if ((game.inherited ?? 0) <= 0) return "She never got to come in with runners on.";
+    if (game.inheritedStranded === false) return "The runners she inherited came around to score.";
+    return gone;
   }
   if (game.pgId === "four-out") {
-    if (game.blown) return "The lead is gone.";
+    if (game.blown) return gone;
     const n = game.outsRecorded ?? 0;
     if (n < 4) {
       const word = n === 1 ? "out" : "outs";
-      return `She got ${n} ${word}. She needed four.`;
+      return `She got ${countWord(n)} ${word}. She needed four.`;
     }
     const k = game.strikeouts ?? 0;
-    if (k === 1) return "One punchout. She needed two.";
-    if (k === 0) return "No punchouts. She needed two.";
-    return "Four outs, but not the way she asked for them.";
+    if (k === 1) return "She got her four outs, but only one strikeout. She needed two.";
+    if (k === 0) return "She got her four outs, but no strikeouts. She needed two.";
+    return "She got four outs, just not the way she wanted them.";
   }
   if (game.pgId === "clean-ninth") {
-    if ((game.earnedRuns ?? 0) > 0) return "A run scored.";
-    return "The lead is gone.";
+    if (er > 0) return "A run scored on her in the ninth.";
+    return gone;
   }
   if (game.pgId === "perfect-ninth") {
-    if ((game.earnedRuns ?? 0) > 0) return "A run scored.";
-    if (game.blown) return "The lead is gone.";
-    return "Somebody got aboard. The lead held.";
+    if (er > 0) return "A run scored on her in the ninth.";
+    if (game.blown) return gone;
+    return "Somebody got on, so it wasn't three up, three down. The lead held, though.";
   }
-  if (game.pgId === "escape-jam" || game.pgId === "escape-loaded-jam") return "A run scored.";
+  if (game.pgId === "escape-jam" || game.pgId === "escape-loaded-jam") return "A run scored before she could get out of the inning.";
   if (game.pgId === "innings-5" || game.pgId === "innings-5-k7" || game.pgId === "quality-start") {
     const need = game.pgId === "quality-start" ? 18 : 15;
     const asked = game.pgId === "quality-start" ? "six" : "five";
     const outs = game.inningsOuts ?? 0;
-    const er = game.earnedRuns ?? 0;
     if (outs < need) {
       const innings = Math.floor(outs / 3);
       const word = innings === 1 ? "inning" : "innings";
-      return `She got ${innings} ${word}. She needed ${asked}.`;
+      return `She lasted ${countWord(innings)} ${word}. She needed ${asked}.`;
     }
     const cap = game.pgId === "quality-start" ? "one or fewer" : "three or fewer";
-    if (game.pgId !== "innings-5-k7" || er > 3) return `She got the innings. ${er} runs. She needed ${cap}.`;
+    if (game.pgId !== "innings-5-k7" || er > 3) return `She got the innings, but gave up ${runsAllowed(er)}. She needed ${cap}.`;
     const k = game.strikeouts ?? 0;
-    const got = k === 0 ? "No punchouts" : k === 1 ? "One punchout" : `${capital(countWord(k))} punchouts`;
-    return `Five innings. ${got}. She needed seven.`;
+    const got = k === 0 ? "no strikeouts" : k === 1 ? "one strikeout" : `${countWord(k)} strikeouts`;
+    return `She went five innings with ${got}. She needed seven.`;
   }
-  if (game.kind === "gate") return "The Gate still opens.";
-  if ((game.outsRecorded ?? 0) > 0 && (game.strikeouts ?? 0) === 0) return "The outs came. The punchouts didn't.";
+  if (game.kind === "gate") return GATE_MISSED_BANNER;
+  if ((game.outsRecorded ?? 0) > 0 && (game.strikeouts ?? 0) === 0) return "She got her outs, but none of them were strikeouts.";
   return MISSED_LINE;
+}
+
+/** "nothing" / "one run" / "four runs": what she gave up, in words. */
+function runsAllowed(er: number): string {
+  if (er <= 0) return "nothing";
+  return er === 1 ? "one run" : `${countWord(er)} runs`;
+}
+
+/**
+ * A lead she lost, said about her by somebody who'd notice, and never the same way at every
+ * date (it can come at five of them). The date's place on the ladder picks the line.
+ */
+const LEAD_GONE: Partial<Record<CharacterId, readonly string[]>> = {
+  reina: [
+    "The lead is gone. Reina won't look at the scoreboard. She's already counting why.",
+    "The lead is gone. Reina fixes the dirt on the mound, very carefully, and says nothing.",
+    "The lead is gone, and Reina's lips are moving. She's replaying every pitch.",
+  ],
+  sol: [
+    "The lead is gone. Sol stares at the scoreboard like it owes her money.",
+    "The lead is gone. Sol says one word in Spanish, and nobody asks what it was.",
+    "The lead is gone. Sol's already walking off before anyone can come get the ball.",
+  ],
+  kira: [
+    "The lead is gone, and Kira's already looking at the bullpen door.",
+    "Kira taps her glove on her leg twice. The lead is gone, and she knows it.",
+    "The lead is gone. Kira tries to laugh it off, and it doesn't quite work.",
+  ],
+};
+const LEAD_GONE_ANY = [
+  "They came back on her, and the lead is gone.",
+  "The lead is gone. She stands there a second before she hands over the ball.",
+  "The lead is gone, and the dugout goes quiet.",
+];
+
+function leadGone(game: { kind: string; who?: CharacterId | null }): string {
+  const lines = (game.who && LEAD_GONE[game.who]) || LEAD_GONE_ANY;
+  const at = Math.max(0, BIG_DATES.indexOf(game.kind as BigDate));
+  return lines[at % lines.length]!;
 }
 
 /**
@@ -842,30 +986,30 @@ function finaleShortOf(game: { pgId?: string | null; strikeouts?: number; bestIn
   const k = game.strikeouts ?? 0;
   if (game.pgId === "k-2" || game.pgId === "k-3") {
     const want = game.pgId === "k-2" ? "two" : "three";
-    const got = k === 0 ? "No punchouts." : k === 1 ? "One punchout." : `${capital(countWord(k))} punchouts.`;
+    const got = k === 0 ? "She didn't get a strikeout, though." : k === 1 ? "She got one strikeout, though." : `She got ${countWord(k)} strikeouts, though.`;
     return `${got} She wanted ${want}.`;
   }
   if (game.pgId === "k-side") {
     const best = game.bestInningKs ?? 0;
-    return best === 0 ? "No punchouts. She wanted the side." : `${best === 1 ? "One punchout" : `${capital(countWord(best))} punchouts`}. She wanted the side.`;
+    return best === 0 ? "She didn't strike out the side, though." : `She struck out ${countWord(best)} in an inning, though. She wanted the whole side.`;
   }
-  if (game.pgId === "clean-ninth") return "A run got in. She wanted it clean.";
-  return "What she came for didn't come.";
+  if (game.pgId === "clean-ninth") return "A run got in, though. She wanted it clean.";
+  return "She didn't get what she came for, though.";
 }
 
 /** The unseen middle of a Derby start, in one sentence. The inning log stays off the card. */
 export function middleRead(log: readonly string[]): string | null {
   if (!log.length) return null;
-  if (log.some((line) => line.includes("ERA"))) return "The runs got away.";
-  if (log.some((line) => line.includes("lifted"))) return "The arm is gone.";
+  if (log.some((line) => line.includes("ERA"))) return "She gave up too many runs in the middle innings, and they took her out.";
+  if (log.some((line) => line.includes("lifted"))) return "Her arm ran out of gas, and they took her out.";
   let runs = 0;
   for (const line of log) {
     const found = line.match(/(\d+) ER/);
     if (found) runs += Number(found[1]);
   }
-  if (runs === 0) return "The middle held. No runs.";
-  if (runs === 1) return "The middle held. One run.";
-  return `The middle held. ${runs} runs.`;
+  if (runs === 0) return "She got through the middle innings without giving up a run.";
+  if (runs === 1) return "She got through the middle innings and gave up one run.";
+  return `She got through the middle innings and gave up ${countWord(runs)} runs.`;
 }
 
 /** The sit grid is on the frame only while the Coach can move it. */
@@ -897,10 +1041,10 @@ export function lookHoldLine(seen: number, need: 2 | 3 | 4 | 5): string | null {
   if (seen <= 0) return null;
   if (seen >= need) {
     const got = LOOK_HOLD[need];
-    return got ? `${got} in one at-bat.` : null;
+    return got ? `${got} in one at-bat. That's what she wanted.` : null;
   }
   const soFar = LOOK_HOLD[seen];
-  return soFar ? `${soFar} into the at-bat.` : null;
+  return soFar ? `${soFar} so far this at-bat. She wants to see ${LOOK_HOLD[need]!.split(" ")[0]!.toLowerCase()}.` : null;
 }
 
 /**
@@ -936,13 +1080,25 @@ export function boxLine(_game: Pick<FeaturedGame, "hits" | "walks" | "ks" | "rbi
   return "";
 }
 
+/**
+ * The record keeps its short words (a seeded golden hashes them); the player hears a whole
+ * sentence. Anything not listed is already one.
+ */
+const BASEPATH_SAY: Record<string, string> = {
+  "She came around.": "She came around to score.",
+  "She scored.": "A teammate drove her in, and she scored.",
+  "She scored from first on a single.": "She scored all the way from first on a single.",
+  "Caught stealing.": "She got caught stealing.",
+};
+
 /** The trip around the bases, without the stranded leftover. */
 export function basepathRead(line: string | null | undefined): string | null {
   if (!line) return null;
   const kept = line
     .split(/(?<=\.)\s+/)
     .map((s) => s.trim())
-    .filter((s) => s.length > 0 && !s.startsWith("Left on ") && !s.startsWith("Stranded at "));
+    .filter((s) => s.length > 0 && !s.startsWith("Left on ") && !s.startsWith("Stranded at "))
+    .map((s) => BASEPATH_SAY[s] ?? s);
   return kept.length ? kept.join(" ") : null;
 }
 
@@ -1063,15 +1219,15 @@ export function headToHead(id: CharacterId, kind: string, results: readonly Goal
   return { rival, meeting: hers + theirs + 1, hers, theirs };
 }
 
-const ORDINALS = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh"];
-
-/** "Third meeting. Aoi leads 2–0." Null the first time they meet: there's nothing to count yet. */
+/** "These two have met twice before. Aoi leads, 2–0." Null the first time they meet: there's nothing to count yet. */
 export function headToHeadLine(h: HeadToHead | null, herName: string): string | null {
   if (!h || h.meeting < 2) return null;
-  const nth = ORDINALS[h.meeting - 1] ?? `${h.meeting}th`;
-  if (h.hers === h.theirs) return `${nth} meeting. Even at ${h.hers}–${h.theirs}.`;
+  const before = h.meeting - 1;
+  const times = before === 1 ? "once" : before === 2 ? "twice" : `${countWord(before)} times`;
+  const met = `These two have met ${times} before.`;
+  if (h.hers === h.theirs) return `${met} It's even, ${h.hers}–${h.theirs}.`;
   const leader = h.hers > h.theirs ? herName : sheet(h.rival).name;
-  return `${nth} meeting. ${leader} leads ${Math.max(h.hers, h.theirs)}–${Math.min(h.hers, h.theirs)}.`;
+  return `${met} ${leader} leads, ${Math.max(h.hers, h.theirs)}–${Math.min(h.hers, h.theirs)}.`;
 }
 
 /**
@@ -1086,14 +1242,14 @@ export const FINALE_NIGHT: Record<CharacterId, { met: string; missed: string; wo
     wonShort: "Row J is on its feet, and Aoi circles the at-bat she wanted back.",
   },
   reina: {
-    met: "She walks off counting under her breath. Nobody asks what.",
-    missed: "She sits on the bench with the scarf in her lap. She doesn't fix the stitch.",
-    wonShort: "She walks off counting under her breath, and starts the count over.",
+    met: "Reina walks off counting under her breath. Nobody asks what.",
+    missed: "Reina sits on the bench with the scarf in her lap. She doesn't fix the stitch.",
+    wonShort: "Reina walks off counting under her breath, and starts the count over.",
   },
   miki: {
     met: "Section 4 rings both cowbells until the ushers stop asking.",
-    missed: "The bell in Section 4 is still going when the lights come down.",
-    wonShort: "Section 4 rings both cowbells, and she looks for you before she looks up at them.",
+    missed: "The cowbell in Section 4 is still going when the lights come down.",
+    wonShort: "Section 4 rings both cowbells, and Miki looks for you before she looks up at them.",
   },
   sol: {
     met: "Luz throws a bag of churros over the rail in row one. It lands on the dugout roof.",
@@ -1101,25 +1257,25 @@ export const FINALE_NIGHT: Record<CharacterId, { met: string; missed: string; wo
     wonShort: "Luz throws the churros anyway. Sol holds up one finger, not two.",
   },
   kira: {
-    met: "She takes the seat in the dugout. Nobody asks her to move.",
-    missed: "She sits in the dugout anyway, the tin of transfers in her lap, until the last bus.",
-    wonShort: "She takes the seat in the dugout and doesn't say the save wasn't hers.",
+    met: "Kira takes the seat in the dugout. Nobody asks her to move.",
+    missed: "Kira sits in the dugout anyway, the tin of transfers in her lap, until the last bus.",
+    wonShort: "Kira takes the seat in the dugout and doesn't say the save wasn't hers.",
   },
   yuki: {
-    met: "She hands the stopwatch back. It's still running.",
-    missed: "After everyone's gone, she stretches the left leg on the grass, the way she does every morning.",
-    wonShort: "She hands the stopwatch back and says the time was wrong.",
+    met: "Yuki hands the stopwatch back. It's still running.",
+    missed: "After everyone's gone, Yuki stretches her left leg on the grass, the way she does every morning.",
+    wonShort: "Yuki hands the stopwatch back and says the time was wrong.",
   },
 };
 
 /** The Finale's postgame line when she got what she came for and her side lost (check-in 27, N1). */
 export const FINALE_NIGHT_LOST_MET: Record<CharacterId, string> = {
-  aoi: "They lost. Row J stays anyway, and Aoi writes the final in the scorebook before she looks up.",
-  reina: "They lost. She walks off counting under her breath, and gets the count right.",
-  miki: "They lost. Section 4 rings both cowbells anyway, and she lets them.",
+  aoi: "They lost. Row J stays anyway, and Aoi writes the final in her scorebook before she looks up.",
+  reina: "They lost. Reina walks off counting under her breath, and gets the count right.",
+  miki: "They lost. Section 4 rings both cowbells anyway, and Miki lets them.",
   sol: "They lost. Luz throws the churros anyway, and Sol catches one.",
-  kira: "They lost. She kept her end of the deal, and sits in the dugout with the tin of transfers until the last bus.",
-  yuki: "They lost. She hands the stopwatch back and says the time was good.",
+  kira: "They lost. Kira kept her end of the deal, and she sits in the dugout with the tin of transfers until the last bus.",
+  yuki: "They lost. Yuki hands the stopwatch back and says the time was good.",
 };
 
 const FILLER_OFFSET: Record<CharacterId, number> = { aoi: 0, reina: 1, miki: 2, sol: 3, kira: 4, yuki: 5 };

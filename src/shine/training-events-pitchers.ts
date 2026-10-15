@@ -34,7 +34,7 @@ const REINA: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Buy two and carry them for her.",
+        label: "I'll buy two and carry them for you.",
         reply: [
           reina("Don't put them in the same pocket. They'll touch."),
           nar("She eats the first one on the walk to the park, in the same four bites as always. She doesn't mention the shelf again."),
@@ -59,7 +59,7 @@ const REINA: TrainingEvent[] = [
     place: "Koi Park dugout · rain delay, the tarp slapping in the wind",
     beats: [
       nar("Reina is knitting a gray scarf with the needles close to her face. The rows are so even they look printed."),
-      nar("She stops. She counts back with one finger. Twelve rows down, there's a loop that isn't where it should be."),
+      nar("She stops and counts back with one finger. Twelve rows down, there's a loop that isn't where it should be."),
       reina("Dropped stitch. Twelve rows.", "crushed"),
       aoi("That's the third scarf this month. I've been keeping track.", "neutral"),
       reina("Keep better track. It's the fourth.", "focused"),
@@ -67,10 +67,10 @@ const REINA: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Hold the yarn while she pulls it out.",
+        label: "I'll hold the yarn while you pull it out.",
         reply: [
           reina("Wind it into a ball. Tight. …Not that tight."),
-          nar("Twelve rows come out. You wind them. She watches your hands the whole time, like she's checking your arm slot."),
+          nar("Twelve rows come out, and you wind them. She watches your hands the whole time, like she's checking your arm slot."),
           reina("Fine. You can wind. Don't make it a thing."),
         ],
         effect: { mood: 1, energy: 10 },
@@ -100,7 +100,7 @@ const REINA: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Walk her up and wait till the light's off.",
+        label: "I'll walk you up and wait for your light.",
         reply: [
           reina("You're going to stand under my window. That's strange."),
           reina("…Stay till it's off."),
@@ -112,7 +112,7 @@ const REINA: TrainingEvent[] = [
         label: "Ten in the pen, then bed.",
         reply: [
           reina("Ten. Not eleven.", "focused"),
-          nar("Ten pitches under the one bulb. Nine pop in the same spot. She goes to bed angry about the tenth, which is a kind of tired."),
+          nar("She throws ten under the one bulb, and nine of them pop in the same spot. She goes to bed angry about the tenth, which is its own kind of tired."),
         ],
         effect: { stat: { key: "control", delta: 1 }, energy: -5 },
       },
@@ -129,12 +129,12 @@ const REINA: TrainingEvent[] = [
       nar("Plum blossoms keep blowing onto the mound. She brushes each one off the rubber before she throws."),
       nar("She hands you a new notebook. Last year's is full: two hundred and nine pages."),
       reina("Not two hundred and ten. I checked twice.", "focused"),
-      nar("Inside the cover, where last year's had nothing, there's a word in careful block letters. COACH."),
+      nar("Inside the cover, where last year's had nothing, there's a word in careful block letters: COACH."),
       reina("It's a label. I label things. Don't read into it.", "neutral"),
     ],
     choices: [
       {
-        label: "Tell her you'll keep this one forever.",
+        label: "I'm keeping this one forever.",
         reply: [
           reina("Forever isn't a number."),
           reina("…Keep it anyway, Coach.", "elated"),
@@ -143,10 +143,10 @@ const REINA: TrainingEvent[] = [
         effect: { mood: 1, energy: 10 },
       },
       {
-        label: "Open to page one. First pitch, now.",
+        label: "Page one. Let's have the first pitch.",
         reply: [
           reina("Good. Again.", "focused"),
-          nar("Eleven pitches. On the twelfth, without looking up, she asks it: \"Slot, Coach?\" Then she hears herself and pretends she didn't."),
+          nar("She throws eleven. On the twelfth, without looking up, she asks it: \"Slot, Coach?\" Then she hears herself and pretends she didn't."),
         ],
         effect: { stat: { key: "wit", delta: 1 }, energy: -5 },
       },
@@ -166,7 +166,7 @@ const REINA: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Take her to 6-4-3 for okonomiyaki.",
+        label: "Come on. Okonomiyaki at 6-4-3.",
         reply: [
           nar("Haruko doesn't ask how it went. She says \"You look hungry\" and turns the grill up."),
           reina("Two. I ate two whole ones. Don't tell Aoi.", "elated"),
@@ -175,10 +175,10 @@ const REINA: TrainingEvent[] = [
         effect: { mood: 1, energy: 10 },
       },
       {
-        label: "Hand her the needles. One row.",
+        label: "Here are your needles. Just one row.",
         reply: [
           reina("One row."),
-          nar("She knits one row. She checks it twice. It's perfect. She sets the needles down like they're hot."),
+          nar("She knits one row and checks it twice. It's perfect, and she sets the needles down like they're hot."),
           reina("Not yet, Coach. Soon. Let's throw.", "focused"),
         ],
         effect: { stat: { key: "guts", delta: 1 } },
@@ -200,16 +200,16 @@ const REINA: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Tell her to say it to Sol herself.",
+        label: "Say it to Sol yourself.",
         reply: [
           reina("Coach.", "crushed"),
-          nar("Sol laughs with her whole body, then looks annoyed about it. \"Tell her the fridge was fine.\""),
-          nar("Reina's next pitch misses a foot outside. On purpose. It's the first ball she's ever thrown on purpose where anyone could see."),
+          nar("She says it anyway. Sol laughs with her whole body, then looks annoyed about it. \"Tell her the fridge was fine.\""),
+          nar("Reina's next pitch misses a foot outside, on purpose. It's the first ball she's ever thrown on purpose where anyone could see."),
         ],
         effect: { stat: { key: "guts", delta: 1 } },
       },
       {
-        label: "Keep it between the two of you.",
+        label: "It stays between us.",
         reply: [
           reina("Good. Somebody has to keep things.", "neutral"),
           nar("She stops throwing and watches Sol's next twenty. On the walk out she tells you where Sol's catcher set up for every one, in order, and which two Sol shook off."),
@@ -227,13 +227,13 @@ const REINA: TrainingEvent[] = [
     place: "Koi Park clubhouse · senior spring, the lockers repainted",
     beats: [
       nar("The lockers got a coat of green over the winter. Reina is emptying hers so the paint can dry, one thing at a time, in order."),
-      nar("At the bottom of her glove bag is the scouting card. The blue ink has gone soft and gray. Doesn't walk anyone."),
+      nar("At the bottom of her glove bag is the scouting card. The blue ink has gone soft and gray, but you can still read it: Doesn't walk anyone."),
       reina("It's fading. I didn't do that. It just happened.", "neutral"),
       reina("Write me one, Coach. A card. What you'd put on it.", "focused"),
     ],
     choices: [
       {
-        label: "Write her a new card in your own hand.",
+        label: "Give me a pen. I'll write you a new one.",
         reply: [
           nar("You write it on the back of a bus timetable, because that's what's in your pocket. She reads it three times."),
           reina("That's two lines. The old one was one.", "elated"),
@@ -242,7 +242,7 @@ const REINA: TrainingEvent[] = [
         effect: { mood: 1, energy: 10 },
       },
       {
-        label: "Tell her to go write it on the mound.",
+        label: "Go write it yourself, on the mound.",
         reply: [
           reina("That's a very coach thing to say.", "neutral"),
           reina("…It's also right. Again. Tell me when the slot drops.", "focused"),
@@ -258,7 +258,7 @@ const REINA: TrainingEvent[] = [
     place: "Koi Park bullpen · a week before the Stretch, cicadas warming up",
     beats: [
       nar("She's asked you to stand in with a bat. \"Don't swing. Just stand there. Be a person.\""),
-      nar("She goes to three balls and two strikes on purpose. Eleven times. She comes back all eleven."),
+      nar("She runs the count full on purpose eleven times, and all eleven times she comes back and throws strike three."),
       nar("The twelfth is low by an inch. You both watch it into the glove."),
       reina("That was ball four.", "crushed"),
       reina("To you. The first one I've ever thrown to somebody with a name.", "crushed"),
@@ -266,7 +266,7 @@ const REINA: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Tell her it counts. Take your base.",
+        label: "It counts. I'm taking my base.",
         reply: [
           nar("You walk to the ball bucket that's playing first base, and stand on it."),
           reina("One walk. Written down. In pen.", "focused"),
@@ -275,7 +275,7 @@ const REINA: TrainingEvent[] = [
         effect: { stat: { key: "guts", delta: 2 }, energy: -10 },
       },
       {
-        label: "Tell her that's hers to decide.",
+        label: "That's yours to decide, not mine.",
         reply: [
           reina("Then it doesn't count. Yet.", "neutral"),
           reina("I'd like to decide in front of people. Stand in again tomorrow.", "focused"),
@@ -295,11 +295,11 @@ const REINA: TrainingEvent[] = [
       reina("They're holes.", "focused"),
       kira("Decorative holes!", "elated"),
       nar("Reina's mouth twitches at one corner. Kira sees it and pumps a fist."),
-      nar("In Reina's own lap, the Finale scarf. A dropped stitch in the third row. She found it this morning. It's still there."),
+      nar("In Reina's own lap is the Finale scarf, with a dropped stitch in the third row. She found it this morning, and she's left it there."),
     ],
     choices: [
       {
-        label: "Ask Kira how she leaves them in.",
+        label: "Kira, how do you leave them in?",
         reply: [
           reina("She can't teach anything. She laughs before the end.", "neutral"),
           reina("…Fine. Show me, Kira. Slowly.", "elated"),
@@ -307,7 +307,7 @@ const REINA: TrainingEvent[] = [
         effect: { mood: 1, energy: 10 },
       },
       {
-        label: "Both of you, to the pen. Series soon.",
+        label: "Both of you, to the pen. The Series is soon.",
         reply: [
           reina("Kira's catching. She'll hate it.", "focused"),
           nar("Kira hates it loudly for twenty minutes. Reina doesn't miss once. The scarf stays on the bench, stitch and all."),
@@ -326,7 +326,7 @@ const SOL: TrainingEvent[] = [
     slot: 0,
     place: "The Dusters' dorm · a windowsill of coffee cans",
     beats: [
-      nar("Six coffee cans on her windowsill, each with a pepper plant. Five are fat with red. The one on the end is all leaves, drooping."),
+      nar("There are six coffee cans on her windowsill, each with a pepper plant in it. Five are fat with red peppers. The one on the end is all leaves, and drooping."),
       coach("How are you?"),
       sol("Ninety-four.", "neutral"),
       sol("That one won't fruit. Luz gave it to me. The others I grew from seeds out of the truck.", "neutral"),
@@ -334,7 +334,7 @@ const SOL: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Drive her and the plant to Luz's truck.",
+        label: "Get in. We're taking it to Luz.",
         reply: [
           nar("Luz takes one look and says it wants more sun and less staring at. She gives Sol a second elote, extra chili, and doesn't charge her."),
           sol("She's right. Don't tell her she's right. Ninety-six.", "elated"),
@@ -357,7 +357,7 @@ const SOL: TrainingEvent[] = [
     slot: 1,
     place: "The Dusters' bullpen · a hundred degrees and a dust devil",
     beats: [
-      nar("Fuentes, the Dusters' catcher, puts down two fingers. Sol shakes. Two fingers. Shake. Two fingers."),
+      nar("Fuentes, the Dusters' catcher, puts down two fingers, and Sol shakes her off. Two fingers again, and another shake. Then two fingers again."),
       nar("Fuentes stands up, pulls off her mask and looks straight at you."),
       sol("She wants the curve. She wants it every day. She's very consistent.", "neutral"),
       sol("Give me a reason, Jefe. A real one.", "focused"),
@@ -388,15 +388,15 @@ const SOL: TrainingEvent[] = [
     slot: 2,
     place: "The Dusters' bullpen · after dark, crickets louder than the lights",
     beats: [
-      nar("The pen should be empty. There's one bag of balls, one bulb, and one girl, and for once the pitches aren't loud."),
-      nar("The ball leaves her hand like a fastball and gets there late, tumbling, and drops into the net like it's tired. Then another one. Perfect."),
-      nar("She sees you. She closes the glove."),
+      nar("The pen should be empty, but the bulb is on, and Sol is under it with a bag of balls. For once the pitches aren't loud."),
+      nar("The ball leaves her hand like a fastball and gets there late, tumbling, and drops into the net like it's tired. She throws another one, and it's perfect."),
+      nar("Then she sees you, and she closes the glove."),
       sol("You didn't see that.", "focused"),
       sol("That's nothing. A thing I do at night. Like brushing my teeth.", "neutral"),
     ],
     choices: [
       {
-        label: "Say nothing. Walk her to Luz's truck.",
+        label: "I didn't see anything. Let's go see Luz.",
         reply: [
           sol("Good answer.", "neutral"),
           nar("Luz is closing up. She looks at her sister's face, looks at you, and hands out two elotes without asking a single question."),
@@ -405,7 +405,7 @@ const SOL: TrainingEvent[] = [
         effect: { mood: 1, energy: 10 },
       },
       {
-        label: "Ask for ten more, and count them.",
+        label: "Throw me ten more. I'll count.",
         reply: [
           sol("You're not counting. Reina counts.", "focused"),
           sol("…Fine. Ten. Don't say its name out loud. It's bad luck.", "neutral"),
@@ -424,13 +424,13 @@ const SOL: TrainingEvent[] = [
     beats: [
       kira("Sol! Leave me one! A sad one! I'll bring my own out!", "elated"),
       nar("Sol throws harder. The catcher says ow, quietly, into her mitt."),
-      nar("By the bullpen door, Kira's bag is on her shoulder. It's zipped. It's always zipped."),
+      nar("By the bullpen door, Kira has her bag on her shoulder, zipped shut the way it always is."),
       sol("Don't look at the bag, Jefe.", "focused"),
       sol("It's packed. It's always packed. I can take people looking. Kira can't. That's the difference.", "neutral"),
     ],
     choices: [
       {
-        label: "Go stand by the door with Kira.",
+        label: "I'm going to go stand with Kira.",
         reply: [
           sol("Good. Stand there. Don't look at the bag.", "neutral"),
           nar("From the mound, Sol watches you get there. Her next fastball is the hardest of the day, and Kira cheers it like it was hers. Then Sol comes over, sits on the step by the door, and doesn't throw again."),
@@ -461,16 +461,16 @@ const SOL: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Walk her to the pen and catch it yourself.",
+        label: "Come on. I'll catch it myself.",
         reply: [
-          nar("Under the one bulb. She throws it twelve times. Eleven of them fall off the table and into your mitt."),
+          nar("Under the one bulb, she throws it twelve times, and eleven of them fall off the table into your mitt."),
           sol("Luz's pitch.", "neutral"),
           sol("…Mine too, maybe. Ask me Saturday.", "elated"),
         ],
         effect: { stat: { key: "stuff", delta: 2 }, energy: -10 },
       },
       {
-        label: "Buy an elote and talk about anything else.",
+        label: "Two elotes. Let's talk about anything else.",
         reply: [
           sol("Anything else. Okay. The pepper on the end fruited.", "elated"),
           sol("One pepper. Tiny. Very angry. Like me.", "elated"),
@@ -492,7 +492,7 @@ const SOL: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Ask what Luz said after that.",
+        label: "What did Luz say after that?",
         reply: [
           sol("She cried. In the truck. With a customer at the window.", "elated"),
           sol("The customer got a free elote. Ninety-seven. That's happy. Don't make me say it louder.", "elated"),
@@ -527,7 +527,7 @@ const SOL: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Make them split the last elote.",
+        label: "Split the last elote, you two.",
         reply: [
           sol("Half. Exact half. She'll measure.", "neutral"),
           nar("Reina cuts it with a butter knife and a ruler from her bag. Sol eats her half laughing, and Reina eats hers standing up, and neither of them leaves."),
@@ -535,7 +535,7 @@ const SOL: TrainingEvent[] = [
         effect: { mood: 1, energy: 10 },
       },
       {
-        label: "Bet them: closest to the corner wins.",
+        label: "Closest to the corner wins. Bet?",
         reply: [
           sol("Against Reina? On control? Jefe, that's how people die.", "neutral"),
           sol("…I'm in. Loser buys elote.", "elated"),
@@ -558,7 +558,7 @@ const SOL: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Call the slider. Loud, so Luz hears.",
+        label: "Slider. Loud enough for Luz to hear.",
         reply: [
           nar("It breaks late and off the plate, and the catcher has to reach for it. In the lawn chair, Luz uncrosses her arms."),
           sol("Ninety-six, Jefe. Don't look at her. She's crying and she'll say it's the chili.", "elated"),
@@ -566,7 +566,7 @@ const SOL: TrainingEvent[] = [
         effect: { stat: { key: "stuff", delta: 1 }, energy: -10 },
       },
       {
-        label: "Ask Luz to throw a few first.",
+        label: "Luz, want to throw a few first?",
         reply: [
           nar("Luz walks out to the mound in her apron. She throws four pitches, no fastball, none of them over seventy, and every one goes exactly where she wanted it."),
           sol("That's where I got it. All of it.", "elated"),
@@ -588,7 +588,7 @@ const SOL: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Promise to keep it alive.",
+        label: "I promise I'll keep it alive.",
         reply: [
           sol("Don't promise. Water it. Tuesday.", "focused"),
           sol("If it dies, I'm telling everybody. Ninety-six. That's good.", "elated"),
@@ -596,7 +596,7 @@ const SOL: TrainingEvent[] = [
         effect: { mood: 1, energy: 10 },
       },
       {
-        label: "Bring it to the pen. It can watch.",
+        label: "Let's bring it to the pen. It can watch.",
         reply: [
           sol("A pepper doesn't watch, Jefe.", "neutral"),
           nar("She sets it on the bench anyway, facing the mound, and throws all four pitches to it, in order."),
@@ -616,23 +616,23 @@ const KIRA: TrainingEvent[] = [
     slot: 0,
     place: "The Stars Park stop · a warm night, the curb still hot",
     beats: [
-      nar("Kira is on the curb with a tuna-mayo onigiri in one hand and a tin open on her knees. Paper bus transfers, filed on their edges."),
+      nar("Kira is on the curb with a tuna-mayo onigiri in one hand and a tin open on her knees, full of paper bus transfers filed on their edges."),
       kira("Partner! Don't touch. They're in route order. Color order is for amateurs.", "elated"),
       kira("Nine. One from every stop I ever lived near. The last one's Stars Park. Mom punched it the day we moved in.", "neutral"),
       kira("Here's the deal. You tell me your stop, I give you a transfer, and then you're in the tin. That's big. Nobody's in the tin.", "focused"),
     ],
     choices: [
       {
-        label: "Tell her your stop and take the transfer.",
+        label: "Elm and Fourth. That's my stop.",
         reply: [
           kira("Elm and Fourth? Route twelve. The green one.", "elated"),
-          nar("She tears it carefully along the perforation. Half for you. Half goes in the tin, in route order."),
+          nar("She tears it carefully along the perforation. Half is for you, and the other half goes in the tin, in route order."),
           kira("Now you're a place, Partner. Don't make me get off.", "neutral"),
         ],
         effect: { mood: 1, energy: 10 },
       },
       {
-        label: "Counteroffer: ten more pitches first.",
+        label: "Counteroffer. Ten more pitches first.",
         reply: [
           kira("Ooh. A counteroffer. Partner, I respect that.", "elated"),
           kira("Ten pitches, then the transfer, then juice. You're buying the juice. That part's not negotiable.", "focused"),
@@ -654,15 +654,15 @@ const KIRA: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Ride the loop with them to the end.",
+        label: "Mind if I ride the loop with you?",
         reply: [
           kira("Back row, left side. The heater still works. Barely.", "elated"),
-          nar("Forty minutes out, forty back. Kira falls asleep against the window around the eighth stop, and her mother drives the rest of the way a little slower."),
+          nar("It's forty minutes out and forty back. Kira falls asleep against the window around the eighth stop, and her mother drives the rest of the way a little slower."),
         ],
         effect: { energy: 15 },
       },
       {
-        label: "Say hello, then early bullpen tomorrow.",
+        label: "Nice to meet you. Early bullpen tomorrow.",
         reply: [
           kira("Mom! Coach says early!", "elated"),
           kira("…She says good. She says you look like you need an onigiri. Partner, she likes you. That's very bad for me.", "neutral"),
@@ -677,24 +677,24 @@ const KIRA: TrainingEvent[] = [
     slot: 2,
     place: "Stars Park · the bullpen door to the mound, two days before First Light",
     beats: [
-      nar("She's timing the run from the bullpen door to the mound. Door, grass, chalk, rubber. Again. Again."),
+      nar("She's timing the run from the bullpen door to the mound: door, grass, chalk, rubber. Then she does it again, and again."),
       kira("Forty-four steps. I want thirty-eight. Shorter's better.", "focused"),
       coach("Why shorter?"),
-      kira("Short, nobody gets attached. You go in, you get three, you go home. It's clean. It's so—", "elated"),
+      kira("Short, nobody gets attached. You go in, you get three, you go home. It's clean. It's so…", "elated"),
       nar("She's laughing before she gets there, and she never does get there."),
     ],
     choices: [
       {
-        label: "Walk it with her once. Slowly.",
+        label: "Walk it with me once. Slowly.",
         reply: [
           kira("Slow? Partner, I don't know slow. …Fine. Once.", "neutral"),
-          nar("Fifty-two steps. She notices the dew on the grass, the chalk, the crack in the rubber that looks like a bus route. She's quiet all the way back to the door."),
+          nar("It takes fifty-two steps. She notices the dew on the grass, and a crack in the rubber that looks like a bus route. She's quiet all the way back to the door."),
           kira("The mound's soft on the first-base side, Partner. Nobody told me. I saw it.", "focused"),
         ],
         effect: { stat: { key: "wit", delta: 1 } },
       },
       {
-        label: "Time her. Get it to thirty-eight.",
+        label: "I'll time you. Let's get it to thirty-eight.",
         reply: [
           kira("Thirty-nine. Thirty-nine. Thirty-eight!", "elated"),
           kira("Deal's a deal, Partner. That's a juice. I'm keeping a list.", "elated"),
@@ -718,10 +718,10 @@ const KIRA: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Pour her some tea in it.",
+        label: "Here. Let me pour you some tea in it.",
         reply: [
           kira("…Okay. Now I can't put it back in the bag. It's wet. That's a trick, Partner.", "elated"),
-          nar("She sets it on the bench. At the end of practice it's still there. So is she."),
+          nar("She sets it on the bench. At the end of practice it's still there, and so is she."),
         ],
         effect: { mood: 1, energy: 10 },
       },
@@ -744,13 +744,13 @@ const KIRA: TrainingEvent[] = [
       nar("The gutter over the bullpen door overflowed in the storm. Kira's bag was right under it, where it always is."),
       nar("Now everything she owns is laid out on the pen bench to dry. Two shirts, a toothbrush, a hoodie from her third school, and the tin, open."),
       kira("Partner. Don't look at the shirts. Look at the transfers. The transfers are the emergency.", "crushed"),
-      nar("Nine of them and your half, in route order down the bench. Your half is dry. The water got in at the hinge, at the back of the tin, and the back is where Stars Park goes. The ink has run into a blue cloud."),
+      nar("Her nine transfers and your half are laid out in route order down the bench. Your half is dry. The water got in at the hinge, at the back of the tin, and the back is where Stars Park goes. The ink has run into a blue cloud."),
       kira("The hole's fine, though. Mom punched it. The hole's the important part.", "neutral"),
       kira("Here's the deal. If I leave them out, they dry. If I leave them out, they're here all night without me. I've never left anything anywhere.", "focused"),
     ],
     choices: [
       {
-        label: "Leave them on the bench overnight.",
+        label: "Leave them out overnight. They'll be here.",
         reply: [
           kira("Overnight. Okay. I'm going home with an empty tin. It's so light. It's wrong.", "neutral"),
           nar("She texts you at 1:40 a.m. to ask if the pen roof leaks. At six she's at the door before the groundskeeper, and all nine are there, and your half, flat and dry, in route order."),
@@ -774,17 +774,17 @@ const KIRA: TrainingEvent[] = [
     slot: 2,
     place: "The Dusters' park · the visitors' bullpen door, the ninth inning",
     beats: [
-      nar("Sol is finishing another one. Nine innings, a hundred and twelve pitches. Kira has been warm since the sixth, for nothing."),
+      nar("Sol is finishing another one, nine innings and a hundred and twelve pitches. Kira has been warm since the sixth, for nothing."),
       kira("Sol! Leave me one! A one-run one! I'm not picky!", "elated"),
       nar("Sol strikes out the last hitter. On the way off, she stops at the door."),
       sol("You're warm. Go home and sleep.", "neutral"),
       sol("And unpack something else. The mug's lonely.", "focused"),
-      nar("Kira laughs. Then she doesn't."),
+      nar("Kira laughs, and then she stops."),
       kira("How does she know about the mug, Partner?", "neutral"),
     ],
     choices: [
       {
-        label: "Tell her Sol looks out for her.",
+        label: "Sol looks out for you, you know.",
         reply: [
           kira("Sol? Sol throws at people.", "neutral"),
           kira("…Okay. Okay, that's nice. I'm going to be weird about it for a week.", "elated"),
@@ -792,7 +792,7 @@ const KIRA: TrainingEvent[] = [
         effect: { mood: 1, energy: 10 },
       },
       {
-        label: "Catch an inning for her. Don't waste it.",
+        label: "Don't waste that warmup. I'll catch you.",
         reply: [
           kira("A private ninth? Partner. That's the nicest thing anybody's ever done with my warmup.", "elated"),
           nar("Three pretend outs to three pretend hitters. She celebrates every one like the stadium was full."),
@@ -809,7 +809,7 @@ const KIRA: TrainingEvent[] = [
     slot: 0,
     place: "The Academy steps · class photo day, a photographer on a stepladder",
     beats: [
-      nar("Two hundred girls on the Academy steps, in rows. The photographer on the stepladder keeps saying \"Closer.\""),
+      nar("There are two hundred girls on the Academy steps, in rows. The photographer on the stepladder keeps saying \"Closer.\""),
       nar("Kira is on the very edge of the back row with her bag over her shoulder."),
       kira("Partner. Here's the thing. I've never been in one of these.", "neutral"),
       kira("Five schools. I always left before picture day. Every time.", "neutral"),
@@ -817,7 +817,7 @@ const KIRA: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Take her bag so her hands are free.",
+        label: "Give me the bag. Hands free for the picture.",
         reply: [
           nar("She hands it over. The photographer says closer, and for once she goes closer."),
           kira("Get a copy, Partner. Two. One for the tin. …It won't fit in the tin. That's fine. I'll get a wall.", "elated"),
@@ -825,7 +825,7 @@ const KIRA: TrainingEvent[] = [
         effect: { mood: 1, energy: 10 },
       },
       {
-        label: "Put her front row. Pen after.",
+        label: "Front row, Kira. Then the pen.",
         reply: [
           kira("Front row? Partner, people look at the front row!", "neutral"),
           kira("…Deal. Front row, then the pen, then I'm buying the picture. Maybe two.", "elated"),
@@ -847,7 +847,7 @@ const KIRA: TrainingEvent[] = [
     ],
     choices: [
       {
-        label: "Tell her it's a thing. Keep throwing.",
+        label: "It's a thing. Keep throwing.",
         reply: [
           kira("Hypothetically, okay. Forty-two. Forty-three.", "focused"),
           nar("She stops at sixty. She doesn't look at the door once the whole second half."),
@@ -856,7 +856,7 @@ const KIRA: TrainingEvent[] = [
         effect: { stat: { key: "stamina", delta: 1 }, mood: 1, energy: -15 },
       },
       {
-        label: "Tell her to ask you properly, at the door.",
+        label: "Ask me properly. At the door.",
         reply: [
           kira("At the door? Partner, the door is for big deals.", "neutral"),
           kira("…Okay. Next week. At the door. Don't come early, I have to practice asking.", "elated"),
@@ -872,14 +872,14 @@ const KIRA: TrainingEvent[] = [
     place: "The Stars Park stop · the last bus, a cool night after the Stretch",
     beats: [
       nar("The last bus pulls in. Her mother sets the brake and leans out the door, which she has never done at this stop."),
-      nar("She hands Kira a transfer. Stars Park, punched tonight."),
+      nar("She hands Kira a Stars Park transfer, punched tonight."),
       kira("You don't need a transfer at the end of the line. There's nowhere to transfer to.", "neutral"),
       kira("…That's two. I've never had two of anywhere, Partner.", "crushed"),
       kira("I'm going to cry on a municipal vehicle.", "elated"),
     ],
     choices: [
       {
-        label: "Ride the loop with her one more time.",
+        label: "One more loop? I'll ride with you.",
         reply: [
           kira("Back row, left side. The heater still barely works.", "elated"),
           nar("She doesn't fall asleep this time. She talks the whole way round, stop by stop, and tells you which ones she lived near and which ones she liked."),
@@ -887,7 +887,7 @@ const KIRA: TrainingEvent[] = [
         effect: { energy: 15 },
       },
       {
-        label: "Tuck it in her cap and go throw.",
+        label: "Tuck it in your cap. Let's go throw.",
         reply: [
           kira("In the cap? For luck? Partner, luck is for amateurs.", "neutral"),
           nar("She tucks it in the band anyway and checks it with two fingers, twice, like the door."),

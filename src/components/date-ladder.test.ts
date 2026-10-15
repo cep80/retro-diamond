@@ -70,22 +70,22 @@ describe("head to head", () => {
     const results: GoalMark[] = ["met", "met", "missed", "met", "missed", "met", "pending"];
     const h = headToHead("aoi", "finale", results)!;
     assert.deepEqual(h, { rival: "reina", meeting: 6, hers: 3, theirs: 2 });
-    assert.equal(headToHeadLine(h, "Aoi"), "Sixth meeting. Aoi leads 3–2.");
+    assert.equal(headToHeadLine(h, "Aoi"), "These two have met five times before. Aoi leads, 3–2.");
   });
 
   it("says nothing the first time they meet, and calls an even record even", () => {
     assert.equal(headToHeadLine(headToHead("aoi", "gate", SEVEN_PENDING), "Aoi"), null);
     const even = headToHead("aoi", "lantern-classic", ["met", "missed", "pending", "pending", "pending", "pending", "pending"]);
-    assert.equal(headToHeadLine(even, "Aoi"), "Third meeting. Even at 1–1.");
+    assert.equal(headToHeadLine(even, "Aoi"), "These two have met twice before. It's even, 1–1.");
     const behind = headToHead("aoi", "lantern-classic", ["missed", "missed", "pending", "pending", "pending", "pending", "pending"]);
-    assert.equal(headToHeadLine(behind, "Aoi"), "Third meeting. Reina leads 2–0.");
+    assert.equal(headToHeadLine(behind, "Aoi"), "These two have met twice before. Reina leads, 2–0.");
   });
 
   it("gives a pitcher her rival's bat at every date", () => {
     const h = headToHead("sol", "series", ["met", "met", "met", "missed", "met", "pending", "pending"])!;
     assert.equal(h.rival, "aoi");
     assert.equal(h.meeting, 6);
-    assert.equal(headToHeadLine(h, "Sol"), "Sixth meeting. Sol leads 4–1.");
+    assert.equal(headToHeadLine(h, "Sol"), "These two have met five times before. Sol leads, 4–1.");
   });
 
   it("has no record on a date that isn't a big one", () => {
@@ -96,7 +96,7 @@ describe("head to head", () => {
 
 describe("the Finale's postgame", () => {
   it("never says the year is over; it says the last one is behind her, and leaves for what's after", () => {
-    assert.equal(nextDateLine(60, "finale"), "Three years. That was the last one.");
+    assert.equal(nextDateLine(60, "finale"), "That was the last big game of her three years.");
     assert.equal(FINALE_POSTGAME.leave, "Afterward");
     assert.doesNotMatch(nextDateLine(60, "finale"), /year is over/i);
   });

@@ -79,7 +79,7 @@ describe("action art: cue → picture", () => {
     const hit = pictureFor(view({ stage: "idle", beat: "single", swung: true, resolvedAtMs: 0, nowMs: CONTACT_HOLD_MS }));
     assert.equal(hit.batter, "follow");
     assert.equal(hit.angle, "three_quarter");
-    assert.equal(hit.card, "Through the hole.");
+    assert.equal(hit.card, "Base hit!");
     const take = pictureFor(view({ stage: "idle", beat: "take-strike", swung: false, resolvedAtMs: 0, nowMs: CONTACT_HOLD_MS }));
     assert.equal(take.batter, "take");
     assert.equal(take.cutIn, null);
@@ -117,7 +117,7 @@ describe("action art: cue → picture", () => {
     const at = pictureFor({ ...base, nowMs: 1000 });
     assert.equal(at.batter, "contact");
     assert.deepEqual(at.cutIn, ["load", "cut", "contact"]);
-    assert.equal(at.card, "Through the hole.");
+    assert.equal(at.card, "Base hit!");
     const later = pictureFor({ ...base, nowMs: 1000 + CONTACT_HOLD_MS });
     assert.equal(later.batter, "follow");
     assert.equal(later.pitcher, "follow");
@@ -130,7 +130,7 @@ describe("action art: cue → picture", () => {
     const take = pictureFor(view({ stage: "reaction", beat: "take-strike", swung: false, resolvedAtMs: 0 }));
     assert.equal(take.batter, "take");
     assert.equal(take.cutIn, null);
-    assert.equal(take.card, "Strike. Looking.");
+    assert.equal(take.card, "Called strike.");
   });
 
   it("holds the pitcher on follow when the ball is in play", () => {
@@ -142,7 +142,7 @@ describe("action art: cue → picture", () => {
 
   it("names a two-strike foul on the card", () => {
     const p = pictureFor(view({ stage: "reaction", beat: "foul", swung: true, resolvedAtMs: 0 }), {}, true);
-    assert.equal(p.card, "Foul. Pulled. Still two.");
+    assert.equal(p.card, "Fouled off. Still two strikes.");
   });
 
   it("names hr / k / walk with their own still once the swing settles", () => {
@@ -180,7 +180,7 @@ describe("action art: the done panel settles her face", () => {
     assert.equal(done({ beat: "hr", swung: true, resolvedAtMs: null }).batter, "contact", "the bug: no clock, no settle");
     const met = done({ beat: "hr", swung: true, resolvedAtMs: null, settled: "met" });
     assert.equal(met.batter, "celebrate");
-    assert.equal(met.card, "Gone.", "the beat keeps its card and family under the settled face");
+    assert.equal(met.card, "That ball is gone!", "the beat keeps its card and family under the settled face");
     assert.equal(met.family, "hit");
   });
 

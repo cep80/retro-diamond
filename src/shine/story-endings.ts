@@ -35,7 +35,7 @@ const ENDINGS: Record<CharacterId, Scenes> = {
         { who: "narration", text: "Haruko climbs down. Under 6-4-3, in fresh white letters, it says: AND 1-B." },
         { who: "aoi", text: "One-B. First base. That's…", mood: "crushed" },
         { who: "aoi", text: "That's me standing on first, Coach. On the sign. Forever.", mood: "elated" },
-        { who: "narration", text: "She pulls off her batting glove and holds it up next to the sign. Coach. Day one. Said top. The pencil is nearly gone." },
+        { who: "narration", text: "She pulls off her batting glove and holds it up next to the sign. The pencil is nearly gone, but it still says Coach. Day one. Said top." },
         { who: "aoi", text: "You told me what you saw. Every time. Come in. She's making the extra-bonito one, and you're allowed to look at the sign now.", mood: "elated" },
       ],
     },
@@ -45,9 +45,9 @@ const ENDINGS: Record<CharacterId, Scenes> = {
         { who: "narration", text: "The grill is off. Aoi is at the counter with the scorebook open to the Finale, pencil stub in hand, not writing." },
         { who: "aoi", text: "I'm writing all of it. Every pitch I saw, and the outs too. You write the outs. That's the rule.", mood: "focused" },
         { who: "narration", text: "Haruko comes down in her slippers, turns the grill back on, and doesn't ask." },
-        { who: "aoi", text: "She didn't change the sign. She put a sticker on it. A little diamond, a bit crooked.", mood: "neutral" },
+        { who: "aoi", text: "She didn't change the sign. She put a sticker on it. It's a little diamond, and it's a bit crooked.", mood: "neutral" },
         { who: "aoi", text: "It's a very good sticker, Coach. I looked at it for a long time.", mood: "elated" },
-        { who: "narration", text: "She closes the book. Then she opens it again and writes one more line at the bottom. You don't get to see it." },
+        { who: "narration", text: "She closes the book, then opens it again and writes one more line at the bottom. She doesn't let you see it." },
       ],
     },
     short: {
@@ -89,7 +89,7 @@ const ENDINGS: Record<CharacterId, Scenes> = {
     short: {
       place: "The salt-plum onigiri shop · the same shelf",
       beats: [
-        { who: "narration", text: "Two salt-plum onigiri on the shelf, the way there always are. She takes one and hands you the other." },
+        { who: "narration", text: "There are two salt-plum onigiri on the shelf, the way there always are. She takes one and hands you the other." },
         { who: "reina", text: "It isn't a start day. I'm buying them anyway. Don't make it a thing.", mood: "neutral" },
         { who: "reina", text: "The Academy's done with me. The card got me in. The card didn't keep me.", mood: "crushed" },
         { who: "reina", text: "And I sleep now. The night before. All night.", mood: "focused" },
@@ -118,7 +118,7 @@ const ENDINGS: Record<CharacterId, Scenes> = {
         { who: "miki", text: "We didn't make the top. And you came back here anyway. Nobody's ever come back here.", mood: "crushed" },
         { who: "coach", text: "See you week one-fifty-seven." },
         { who: "miki", text: "…Don't. You'll make me do the thing.", mood: "elated" },
-        { who: "narration", text: "She hands you a melon pan. The spare. It's been in her jacket all game." },
+        { who: "narration", text: "She hands you a melon pan, the spare. It's been in her jacket all game." },
         { who: "miki", text: "Same time next week, Coach. I'm scratching next week's mark on Gary tonight. In advance. Don't make me a liar.", mood: "neutral" },
       ],
     },
@@ -127,7 +127,7 @@ const ENDINGS: Record<CharacterId, Scenes> = {
       beats: [
         { who: "narration", text: "The Academy letter is taped to Gary with duct tape. She's swinging anyway, in two shirts." },
         { who: "miki", text: "So. That's the letter. Cool. I'm fine. I've been left before.", mood: "neutral" },
-        { who: "narration", text: "She stops swinging. She looks at you. Then at the ball machine. Then at you again." },
+        { who: "narration", text: "She stops swinging and looks at you, then at the ball machine, then back at you." },
         { who: "miki", text: "…Except you're still standing there. Why are you still standing there.", mood: "crushed" },
         { who: "coach", text: "Week one-fifty-seven starts Monday." },
         { who: "miki", text: "That's not how it works. Nobody gets to week one-fifty-seven when it goes wrong.", mood: "crushed" },
@@ -141,7 +141,7 @@ const ENDINGS: Record<CharacterId, Scenes> = {
       beats: [
         { who: "narration", text: "The truck has a new hand-painted board next to the menu: ELOTE, EXTRA CHILI. AND A CHANGEUP, ON REQUEST." },
         { who: "sol", text: "She painted it last night. I told her it's false advertising. She doesn't have a fastball.", mood: "elated" },
-        { who: "narration", text: "Luz leans out the window and hands you an elote. Extra chili. She taps the inside of Sol's glove, where the grip is drawn in ballpoint." },
+        { who: "narration", text: "Luz leans out the window and hands you an elote with extra chili. Then she taps the inside of Sol's glove, where the grip is drawn in ballpoint." },
         { who: "sol", text: "All four, Jefe. All the way to the top. You gave me a reason every time. Out loud.", mood: "focused" },
         { who: "sol", text: "Some of them were bad reasons. I threw them anyway.", mood: "neutral" },
         { who: "coach", text: "How are you?" },
@@ -151,7 +151,7 @@ const ENDINGS: Record<CharacterId, Scenes> = {
     finale: {
       place: "The Dusters' bullpen · after the Finale, the lights going off one bank at a time",
       beats: [
-        { who: "narration", text: "She's alone in the pen with a bucket of balls. She throws a changeup into the net. Perfect. Then another." },
+        { who: "narration", text: "She's alone in the pen with a bucket of balls. She throws a changeup into the net, and it's perfect. Then she throws another one." },
         { who: "sol", text: "Luz stood up on the first pitch. In row one. She's never stood up for anything but a late customer.", mood: "focused" },
         { who: "sol", text: "I'm not doing the rest yet, Jefe. Tonight it was one pitch long.", mood: "neutral" },
         { who: "narration", text: "She throws one more changeup. It dives under where a bat would be." },
@@ -181,7 +181,7 @@ const ENDINGS: Record<CharacterId, Scenes> = {
         { who: "kira", text: "I don't want to go home. I mean I do, but I just found out where it is, so. See the problem?", mood: "crushed" },
         { who: "coach", text: "New deal?" },
         { who: "kira", text: "No deal. Deals end. I'm just going to be here. Tomorrow, and the day after, and the one after that, and…", mood: "elated" },
-        { who: "narration", text: "She's laughing before she gets to the end. There isn't one. Two taps of the glove on the door, and she goes and sits in the dugout." },
+        { who: "narration", text: "She's laughing before she gets to the end, and there isn't one. She taps her glove on the door twice, then goes and sits in the dugout." },
       ],
     },
     finale: {
@@ -190,10 +190,10 @@ const ENDINGS: Record<CharacterId, Scenes> = {
         { who: "narration", text: "Her mother drives. Kira sits in the back row, where the heater barely works, the tin open on her knees." },
         { who: "kira", text: "Finale's over, Partner. Here's the deal. We don't talk about it till the end of the line.", mood: "neutral" },
         { who: "kira", text: "Any other year I'd have packed the bag tonight and been on this bus with it on my knees.", mood: "neutral" },
-        { who: "narration", text: "She holds up the tin. There's no bag. Just the tin." },
+        { who: "narration", text: "She holds up the tin. She didn't bring the bag, just the tin." },
         { who: "kira", text: "I'm riding the loop because I like the loop. Then back to the dorm. Everything I own is in a drawer, Partner. A drawer.", mood: "focused" },
         { who: "kira", text: "See you in the spring, Partner.", mood: "elated" },
-        { who: "narration", text: "She hears it, and she's laughing before she can take it back." },
+        { who: "narration", text: "She hears herself say it, and she's laughing before she can take it back." },
       ],
     },
     short: {
@@ -212,7 +212,7 @@ const ENDINGS: Record<CharacterId, Scenes> = {
     show: {
       place: "The Palms · six in the morning, the stand not open yet",
       beats: [
-        { who: "narration", text: "Gray light over the right-field wall. Her stretch is done, and she's on the plate, waiting for you. You've got the stopwatch." },
+        { who: "narration", text: "Gray light is coming up over the right-field wall. Her stretch is done, and she's standing on the plate, waiting for you and the stopwatch." },
         { who: "yuki", text: "Top of the Academy. Already. …It took three years. I know. Let me say already.", mood: "elated" },
         { who: "narration", text: "She takes off down the line, touches the bag, and then does something you've never seen her do. She walks back." },
         { who: "yuki", text: "Slow. On purpose. It's horrible. Aoi does this for fun.", mood: "elated" },
@@ -223,11 +223,11 @@ const ENDINGS: Record<CharacterId, Scenes> = {
       place: "The shaved-ice stand · behind the first-base side",
       beats: [
         { who: "narration", text: "Two strawberry shaved ice, milk on top. She eats hers too fast and presses the heel of her hand to her forehead." },
-        { who: "yuki", text: "Don't do tonight yet. It's still in my legs. I can feel all of it, every—", mood: "focused" },
+        { who: "yuki", text: "Don't do tonight yet. It's still in my legs. I can feel all of it, every…", mood: "focused" },
         { who: "narration", text: "She eats yours too, slower, and watches the stand lady pull the shutter down one clank at a time." },
         { who: "narration", text: "Aoi comes around the corner of the stand with her scorebook under her arm, and stops when she sees Yuki, like she's been caught at something." },
         { who: "aoi", text: "Um, sorry. I was going to leave this on your bench. It's the back page.", mood: "neutral" },
-        { who: "narration", text: "Three years of Yuki's steals, copied out in pencil. Every one has a star next to it. Some of the stars are smaller." },
+        { who: "narration", text: "It's three years of Yuki's steals, copied out in pencil, with a star next to every one. Some of the stars are smaller." },
         { who: "yuki", text: "What are the little ones.", mood: "focused" },
         { who: "aoi", text: "The times you were out. Out by a step still counts as going. That's my rule.", mood: "elated" },
         { who: "narration", text: "Yuki looks at the page for a long time, which for Yuki is about four seconds. Then she tears the rim off her cup, draws a star on it, badly, and gives it to Aoi." },
@@ -251,10 +251,10 @@ const ENDINGS: Record<CharacterId, Scenes> = {
 const NEVER_QUIT: { place: string; beats: Beat[] } = {
   place: "North Field · Section 4, after everyone else has gone home",
   beats: [
-    { who: "narration", text: "The stands are empty except for Section 4. Both cowbells. The second one still has the price tag on it, three years on." },
+    { who: "narration", text: "The stands are empty except for Section 4, and they've got both cowbells going. The second one still has the price tag on it, three years later." },
     { who: "miki", text: "Finale's over. They're still ringing. Somebody should tell them.", mood: "neutral" },
     { who: "miki", text: "Two cowbells and three years. That's the most anyone's ever spent on me, Coach.", mood: "crushed" },
-    { who: "narration", text: "Section 4 rings both bells at once. Neither of them has ever found the beat. They don't stop." },
+    { who: "narration", text: "Section 4 rings both bells at once. Neither of them has ever found the beat, and they don't stop." },
     { who: "miki", text: "Week one-fifty-seven. You're still here. They're still here. I'm going to go stand behind the dugout for a minute.", mood: "elated" },
     { who: "miki", text: "…Come with me. Walk slow.", mood: "neutral" },
   ],

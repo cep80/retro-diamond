@@ -62,13 +62,15 @@ describe("Sol's Finale: the lead held, the punchouts didn't come", () => {
         short += 1;
         assert.equal(g.banner, FINALE_WON_BANNER);
         // Check-in 27: a lead blown to a tie is played out, and a won extra-innings night says the tie got in on her.
-        assert.match(read, g.extras ? /^They won\. The tying run scored on her\.$/ : /^They won\. (No punchouts|One punchout)\. She wanted two\.$/);
+        assert.match(read, g.extras ? /^They won\. The tying run scored on her, though\.$/ : /^They won\. She (didn't get a strikeout|got one strikeout), though\. She wanted two\.$/);
         assert.equal(head, read);
         assert.doesNotMatch(`${g.banner} ${read} ${head}`, LOSS);
       } else if (!g.pgMet) {
         lost += 1;
         assert.equal(g.blown, true, "a missed ask that isn't a won night is a lost lead");
-        assert.equal(read, "The lead is gone.");
+        assert.match(read, /lead is gone/);
+        // Voice v2: said about her, by her own tells (Sol's is the scoreboard that owes her money).
+        assert.match(moundRead({ ...g, who: "sol" }), /^The lead is gone\. Sol /);
         assert.doesNotMatch(read, /They won/);
       }
     }
@@ -169,15 +171,15 @@ describe("after the Finale: postgame, the book, the ending", () => {
     run.finaleTeamWon = true;
     run.finaleRead = "They won. One punchout. She wanted two.";
     assert.equal(endingRank(run, true, false), "B");
-    assert.equal(endingQuote(run, "B"), "Diamond Finale. They won. One punchout. She wanted two.");
+    assert.equal(endingQuote(run, "B"), "They won the Diamond Finale. One punchout. She wanted two.");
     const why = endingWhy(run, "B", true, false);
-    assert.match(why, /They won the Finale, short of what she came for\./);
-    assert.match(why, /A needs the Finale she came for\./);
+    assert.match(why, /They won the Finale, but she didn't get what she came for\./);
+    assert.match(why, /An A would have taken the Finale she came for\./);
     assert.doesNotMatch(`${endingQuote(run, "B")} ${why}`, /one win away|came up short|a Finale win/);
     assert.deepEqual(rankGap(run, "A", true, false), ["the Finale she came for"]);
     // An old save (no read kept) still says they won.
     run.finaleRead = null;
-    assert.equal(endingQuote(run, "B"), "Diamond Finale. They won. What she came for didn't come.");
+    assert.equal(endingQuote(run, "B"), "They won the Diamond Finale. She didn't get the thing she came for, but she was smiling in the dugout anyway.");
     // A lost Finale keeps its lines.
     run.finaleTeamWon = false;
     assert.match(endingQuote(run, "B"), /one win away|asked for more/);
@@ -188,22 +190,22 @@ describe("after the Finale: postgame, the book, the ending", () => {
 describe("senior stills say only what she met (check-in 24)", () => {
   const MARKS: GoalMark[] = ["met", "missed", "pending"];
   const DATES: { i: number; name: RegExp }[] = [
-    { i: 4, name: /The Stretch/ },
+    { i: 4, name: /Stretch/ },
     { i: 5, name: /Skyline Series/ },
     { i: 6, name: /Diamond Finale/ },
   ];
   const MET: Partial<Record<CharacterId, RegExp[]>> = {
-    kira: [/got four outs/, /A clean ninth\. Nobody scored/, /never got home/],
-    reina: [/She got out of it/, /One run or fewer/, /Nobody scored/],
-    sol: [/She got out of it/, /One run or fewer/, /Two punchouts in the ninth/],
+    kira: [/got four outs/, /clean ninth and nobody scored/, /never got home/],
+    reina: [/she got out of it/, /one run or fewer/, /nobody scored/],
+    sol: [/she got out of it/, /one run or fewer/, /two punchouts in the ninth/],
     // Check-in 35: Miki's Series is on base twice; the line is true under the old ask too.
-    miki: [/She put the bat on a breaking ball/, /The North bench leaned on the rail/, /She never went down on strikes/],
+    miki: [/she put the bat on a breaking ball/, /the North bench leaned on the rail/, /never struck out/],
     // Check-in 25: the scoring-position steal is her Stretch, the late steal her Finale.
     // Check-in 29: her Series is third base.
-    yuki: [/She stole with a runner in scoring position/, /She stole third/, /She stole late/],
+    yuki: [/she stole with a runner in scoring position/, /she stole third/, /she stole a base late/],
     // Check-in 28: her Finale is "Drive in a run".
-    // Check-in 35: her Series is two hits; "The at-bats added up" holds under either ask.
-    aoi: [/She hit late/, /The at-bats added up/, /A run came home on her/],
+    // Check-in 35: her Series is two hits; "her at-bats added up" holds under either ask.
+    aoi: [/she got a hit late/, /at-bats added up/, /a run came home on her/],
   };
 
   it("every combination, every girl, and every Finale scoreboard", () => {
@@ -225,25 +227,25 @@ describe("senior stills say only what she met (check-in 24)", () => {
                 if (met && results[d.i] !== "met") assert.doesNotMatch(line, met, tag);
                 if (met && results[d.i] === "met") assert.match(line, met, tag);
               }
-              if (f === "missed" && won === true && c.id !== "yuki") assert.match(line, /Diamond Finale\. They won\./, tag);
-              if (f !== "missed" || won !== true) assert.doesNotMatch(line, /They won/, tag);
+              if (f === "missed" && won === true && c.id !== "yuki") assert.match(line, /In the Diamond Finale, they won, but/, tag);
+              if (f !== "missed" || won !== true) assert.doesNotMatch(line, /they won/i, tag);
             }
     }
   });
 
   it("Kira's senior still in her results", () => {
     const k = (a: GoalMark, b: GoalMark, f: GoalMark) => yearStillLine("kira", 60, ["met", "met", "met", "met", a, b, f]);
-    assert.equal(k("met", "met", "met"), "The Stretch. She asked for the eighth and got four outs, two of them punchouts. Skyline Series. A clean ninth. Nobody scored. Diamond Finale. The tying run started on first. It never got home.");
-    assert.equal(k("met", "missed", "pending"), "The Stretch. She asked for the eighth and got four outs, two of them punchouts. Skyline Series. Somebody reached in the ninth.");
-    assert.equal(k("missed", "missed", "missed"), "The Stretch, Skyline Series, and Diamond Finale. She came up short in all three.");
-    assert.equal(k("pending", "pending", "pending"), "Senior year. The bag by the bullpen door is still packed.");
+    assert.equal(k("met", "met", "met"), "At the Stretch, she asked for the eighth too and got four outs, two of them punchouts. In the Skyline Series, she threw a clean ninth and nobody scored. In the Diamond Finale, the tying run started on first and never got home.");
+    assert.equal(k("met", "missed", "pending"), "At the Stretch, she asked for the eighth too and got four outs, two of them punchouts. In the Skyline Series, somebody got on against her in the ninth.");
+    assert.equal(k("missed", "missed", "missed"), "She came up short at the Stretch, in the Skyline Series and in the Diamond Finale.");
+    assert.equal(k("pending", "pending", "pending"), "It's her senior year, and the bag by the bullpen door is still packed.");
     assert.doesNotMatch(sheet("kira").yearStills.senior, /Three up/);
   });
 
   it("Sol's won-short Finale says they won; a lost lead says so", () => {
     const results: GoalMark[] = ["met", "met", "met", "met", "met", "met", "missed"];
-    assert.match(yearStillLine("sol", 60, results, null, null, true), /Diamond Finale\. They won\. The two punchouts didn't come\.$/);
-    assert.match(yearStillLine("sol", 60, results, null, null, false), /Diamond Finale\. The lead didn't hold\.$/);
-    assert.match(yearStillLine("sol", 60, results), /Diamond Finale\. The two punchouts didn't come\.$/, "an old save claims neither");
+    assert.match(yearStillLine("sol", 60, results, null, null, true), /In the Diamond Finale, they won, but the two punchouts never came\.$/);
+    assert.match(yearStillLine("sol", 60, results, null, null, false), /In the Diamond Finale, the lead got away\.$/);
+    assert.match(yearStillLine("sol", 60, results), /In the Diamond Finale, the two punchouts never came\.$/, "an old save claims neither");
   });
 });

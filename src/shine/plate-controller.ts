@@ -561,7 +561,7 @@ export class PlateController {
         this.clock = null;
         this.pitch = null;
         this.stage = "dead";
-        this.game = { ...this.game, banner: "Time. She steps out, then back in." };
+        this.game = { ...this.game, banner: "She called time, stepped out, and now she's back in." };
         this.cue({ t: "dead" });
         this.cue({ t: "resumed" });
         this.changed();

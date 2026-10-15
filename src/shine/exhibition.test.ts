@@ -82,9 +82,9 @@ function theirOneRunHalf(run: TraineeRun, game: ReturnType<typeof openExhibition
 
 describe("exhibition", () => {
   it("opens as nine innings, in one voice", () => {
-    assert.equal(RACE_COPY.exhibitionPick, "Nine innings under the lanterns. She bats last.");
+    assert.equal(RACE_COPY.exhibitionPick, "Nine innings under the lanterns. Her team's at home, so they bat second.");
     assert.doesNotMatch(RACE_COPY.exhibitionPick, /three at-bats/i);
-    assert.equal(RACE_COPY.exhibitionWatch, "They bat first. Go, and watch.");
+    assert.equal(RACE_COPY.exhibitionWatch, "The visitors bat first. Press Go and watch their half.");
     assert.doesNotMatch(RACE_COPY.exhibitionWatch, /three at-bats/i);
     assert.equal(exhibitionWinnerLine(2, 0), "She won, 2 to 0.");
     assert.equal(exhibitionWinnerLine(0, 1), "They won, 1 to 0.");

@@ -24,7 +24,9 @@ import {
   dateCrowdLevel,
   dateHeadline,
   dateTier,
+  dateQuote,
   dateTitle,
+  doneLabelFor,
   FINALE_PLATE,
   cageTutorialRead,
   genericRead,
@@ -143,7 +145,7 @@ function armPlate(arm: RivalArmId): { name: string; jp: string | null; number: n
 
 /** The pitcher as the caption names her at the wind-up ("Kira comes set."). */
 function armCallName(arm: RivalArmId): string {
-  return arm === "academy" ? "The Academy arm" : sheet(arm).name;
+  return arm === "academy" ? "The Academy pitcher" : sheet(arm).name;
 }
 
 /** The last spurt's band: the words the campus says before her last look. */
@@ -1001,7 +1003,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     ? exhibitionFrame(game, snap.phase, snap.watching, run.characterId, {
         stage,
         arm: practice ? null : armCallName(game.arm),
-        release: snap.release ? releaseLine(snap.release.band) : null,
+        // Her own word on the Coach's swing (voice v2): she says how it felt.
+        release: snap.release ? releaseLine(snap.release.band, run.characterId, game.pitchesSeen) : null,
         lookSeen: game.paPitches,
         lookNeed: null,
         card: snap.card,
@@ -1033,7 +1036,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         arm: practice ? null : armCallName(game.arm),
         lookSeen: game.paPitches,
         lookNeed: practice || exhibition ? null : lookNeed(game.pgId),
-        release: snap.release ? releaseLine(snap.release.band) : null,
+        release: snap.release ? releaseLine(snap.release.band, run.characterId, game.pitchesSeen) : null,
       });
   // Only the at-bat that just ended: at the done panel an earlier at-bat's steal line
   // never stands under the last one's (the exhibition's headline is the whole day).
@@ -1206,6 +1209,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           ? readLine
           : null;
   const dayChips = doneUp ? raceDayChips(game.events) : [];
+  // Her own word as the date closes (voice v2): a career date with a goal, not the cage, a morning or the exhibition.
+  const herLine = doneUp && doneMet !== null && !morning ? dateQuote(run.characterId, game.pgMet, game.kind) : null;
   const resultLine = doneUp && mode === "career" ? finaleResultLine(game, "hitter") : null;
 
   return (
@@ -1285,7 +1290,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
                 if (sitNeeded) setSitPicked(true);
               }}
               ghost={ghost}
-              label="Sit"
+              label="Where she looks"
             />
           ) : null}
         </ActionStage>
@@ -1417,7 +1422,12 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
 
           {doneUp ? (
             <div className="shine-race-done flex flex-col gap-2" data-race-done={game.kind} data-long-head={headline.length > 44 ? "" : undefined}>
-              <DoneHeader met={doneMet} label={exhibition ? RACE_COPY.doneLabelExhibition : RACE_COPY.doneLabel} headline={headline} reduced={reduced} paused={paused} />
+              <DoneHeader met={doneMet} label={exhibition ? RACE_COPY.doneLabelExhibition : doneLabelFor(game.kind, { morning })} headline={headline} reduced={reduced} paused={paused} />
+              {herLine ? (
+                <p className="text-center font-story text-sm italic text-cream" data-her-line>
+                  {herLine}
+                </p>
+              ) : null}
               <DayStrip chips={dayChips} reduced={reduced} paused={paused} />
               {/* The exhibition's headline already told the whole day, runs and steals included. */}
               {basepath && !countDate && !exhibition ? <p className="text-center font-story text-sm text-gold">{basepath}</p> : null}

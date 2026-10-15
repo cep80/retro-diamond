@@ -122,26 +122,26 @@ function word(n: number): string {
 
 function punchouts(n: number): string {
   if (n <= 0) return "";
-  return n === 1 ? "One punchout." : `${word(n)} punchouts.`;
+  return `She struck out ${word(n).toLowerCase()}.`;
 }
 
 /**
- * One inning of the montage in a line, broadcast-short: how it went, then her
- * punchouts. "1-2-3. Two punchouts." · "A run scores. One punchout." ·
- * "Two on. Both stranded." · "Taken deep. Two runs."
+ * One inning of the montage in a line, the way the booth sums an inning up: how it
+ * went, then her strikeouts. "Three up, three down. She struck out two." ·
+ * "A run scored. She struck out one." · "Two got on, and she stranded both."
  */
 export function middleInningLine(s: { ks: number; hits: number; hrs: number; walks: number; runs: number; jam?: boolean }): string {
   const on = s.hits + s.walks;
   if (on === 0) {
-    if (s.ks >= 3) return "Struck out the side.";
-    return s.ks > 0 ? `1-2-3. ${punchouts(s.ks)}` : "1-2-3.";
+    if (s.ks >= 3) return "She struck out the side.";
+    return s.ks > 0 ? `Three up, three down. ${punchouts(s.ks)}` : "Three up, three down.";
   }
   let what: string;
-  if (s.hrs > 0) what = s.runs <= 1 ? "Taken deep." : `Taken deep. ${word(s.runs)} runs.`;
-  else if (s.runs === 1) what = "A run scores.";
-  else if (s.runs > 1) what = `${word(s.runs)} runs score.`;
-  else if (s.jam) what = on >= 3 ? "Bases loaded. She gets out of it." : "Two on. She gets out of it.";
-  else what = on === 1 ? "One on. Stranded." : on === 2 ? "Two on. Both stranded." : "Bases loaded. All stranded.";
+  if (s.hrs > 0) what = s.runs <= 1 ? "Somebody took her deep." : `Somebody took her deep, and ${word(s.runs).toLowerCase()} runs scored.`;
+  else if (s.runs === 1) what = "A run scored.";
+  else if (s.runs > 1) what = `${word(s.runs)} runs scored.`;
+  else if (s.jam) what = on >= 3 ? "Bases loaded, and she got out of it." : "Two on, and she got out of it.";
+  else what = on === 1 ? "One got on, and stayed there." : on === 2 ? "Two got on, and she stranded both." : "Bases loaded, and she left them all there.";
   const k = punchouts(s.ks);
   return k ? `${what} ${k}` : what;
 }
@@ -173,7 +173,7 @@ export function moundCaption(o: {
   /** Whose morning it is: she asks for the throw herself (check-in 35). */
   characterId?: CharacterId | null;
 }): string {
-  if (o.stage === "prepare") return o.vsName ? `${o.vsName} steps in.` : "Set.";
+  if (o.stage === "prepare") return o.vsName ? `${o.vsName} steps in.` : "She comes set.";
   if (o.stage === "flight") return "";
   if (o.picking && o.firstPitch && !o.done) return o.morning ? morningPrompt(o.characterId, true) : RACE_COPY.moundFirstPick;
   if (o.practice) return o.banner;

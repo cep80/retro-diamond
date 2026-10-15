@@ -62,8 +62,8 @@ export function finaleUnlocked(run: TraineeRun) {
 }
 
 export function finaleGap(run: TraineeRun) {
-  if (finaleFloorMet(run)) return "The Diamond Finale is still ahead.";
-  return "The Diamond Finale is still ahead. She hasn't grown all the way into it.";
+  if (finaleFloorMet(run)) return "That's the Series done. The Diamond Finale is next, and she's ready for it.";
+  return "That's the Series done. The Diamond Finale is next, and she's still growing into the player it needs.";
 }
 
 export function careerClosesEarly(run: TraineeRun) {
@@ -79,7 +79,7 @@ export function seriesFinaleLine(run: TraineeRun): string | null {
 
 /** The fold sentence is the two-miss close. Miki's path stays a countdown. */
 export function yearFoldLine(run: TraineeRun, dateName: string, countdown: string) {
-  return careerClosesEarly(run) ? `Her Academy days end here, at ${dateName}.` : countdown;
+  return careerClosesEarly(run) ? `That was her last big game. Her Academy days end tonight, after ${dateName}.` : countdown;
 }
 
 export function postgameLeaveLabel(run: TraineeRun, finale: boolean) {
@@ -153,7 +153,7 @@ function listed(items: string[]): string {
 }
 
 function gamesLost(run: TraineeRun): string {
-  return run.pgMisses === 0 ? "every big game kept her in it" : run.pgMisses === 1 ? "one big game cost her" : `${run.pgMisses} big games cost her`;
+  return run.pgMisses === 0 ? "she never lost a big game that counted" : run.pgMisses === 1 ? "one big game got away from her" : `${run.pgMisses} big games got away from her`;
 }
 
 /**
@@ -166,12 +166,13 @@ export function endingWhy(run: TraineeRun, rank: EndingRank, finalePlayed: boole
   // "Won the Finale" only when her side did (check-in 27, N1); a save from before the scoreboard reads her ask.
   const teamWon = finalePlayed && (run.finaleTeamWon ?? finalePg);
   const finaleSaid = teamWon ? "she won the Finale" : "she did what she came for in the Finale, and they lost it";
-  if (rank === "S") return `${fans}, ${lost}, and ${finaleSaid}. There's nothing above this.`;
-  if (rank === "A") return `${fans}, ${lost}, and ${finaleSaid}. S needs ${listed(rankGap(run, "S", finalePlayed, finalePg))}.`;
+  // Said the way you'd explain it to her: what she did, then what the next letter up would have taken.
+  if (rank === "S") return `She finished with ${fans}, ${lost}, and ${finaleSaid}. There's nothing above this.`;
+  if (rank === "A") return `She finished with ${fans}, ${lost}, and ${finaleSaid}. An S would have taken ${listed(rankGap(run, "S", finalePlayed, finalePg))}.`;
   if (rank === "never-quit") {
     // Miki always plays the Finale (finaleUnlocked); this rank is the one where she never grew all the way into it.
     const finale = finalePg && teamWon ? "She won the Finale" : teamWon ? "They won the Finale" : finalePg ? "She did what she came for in a Finale they lost" : "She played the Finale";
-    return `${fans}. ${finale} before she'd grown all the way into it, and Section 4 stayed anyway. A needs ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
+    return `She finished with ${fans}. ${finale} before she'd grown all the way into it, and Section 4 stayed anyway. An A would have taken ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
   }
   if (rank === "B") {
     const finale = !finalePlayed
@@ -179,24 +180,24 @@ export function endingWhy(run: TraineeRun, rank: EndingRank, finalePlayed: boole
       : finalePg
         ? teamWon
           ? " She won the Finale."
-          : " She did what she came for in the Finale. They lost it."
+          : " She did what she came for in the Finale, and they lost it."
         : finaleWonShortRun(run, finalePlayed, finalePg)
-          ? " They won the Finale, short of what she came for."
+          ? " They won the Finale, but she didn't get what she came for."
           : " She played the Finale and came up short.";
-    return `${fans}, ${lost}.${finale} A needs ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
+    return `She finished with ${fans}, and ${lost}.${finale} An A would have taken ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
   }
-  if (rank === "C") return `Her Academy days ended early. ${fans}. B needs her to reach the Diamond Finale.`;
-  return `Her Academy days ended early. ${fans}. C needs ${RANK_FANS.C} fans.`;
+  if (rank === "C") return `Her Academy days ended early, with ${fans}. A B would have taken getting all the way to the Diamond Finale.`;
+  return `Her Academy days ended early, with ${fans}. A C would have taken ${RANK_FANS.C} fans.`;
 }
 
 /** Her quote when she got what she came for and her side lost the Finale (check-in 27, N1). */
 export const FINALE_LOST_MET_QUOTES: Record<TraineeRun["characterId"], string> = {
-  aoi: "Diamond Finale. A run came home on her. Koi lost it, and she wrote the score down anyway, in pencil.",
-  reina: "Diamond Finale. She did her part to the pitch. They lost it, and she wrote the count in the notebook anyway.",
-  miki: "Diamond Finale. Five trips, never on strikes. They lost, and Section 4 rang the cowbell anyway.",
-  sol: "Diamond Finale. She did her part. They lost it, and she iced the arm on Luz's tailgate and called it ninety-six.",
-  kira: "Diamond Finale. She held up her end of the deal. They lost it, and she still caught the last bus.",
-  yuki: "Diamond Finale. She did what she came for. They lost it, and she was stretching again before the lights went off.",
+  aoi: "A run came home on her in the Diamond Finale. Koi lost it anyway, and she wrote the final score down in pencil.",
+  reina: "She did her part in the Diamond Finale, pitch for pitch. They lost it, and she wrote the count in the notebook anyway.",
+  miki: "She never struck out in the Diamond Finale, not once. They lost, and Section 4 rang the cowbell anyway.",
+  sol: "She did her part in the Diamond Finale. They lost it, and she iced her arm on Luz's tailgate and called it ninety-six.",
+  kira: "She held up her end of the deal in the Diamond Finale. They lost it, and she still caught the last bus home.",
+  yuki: "She did what she came for in the Diamond Finale. They lost it, and she was stretching again before the lights went off.",
 };
 
 function closingDateLabel(run: TraineeRun): string | null {
@@ -207,7 +208,7 @@ function closingDateLabel(run: TraineeRun): string | null {
 
 export function endingQuote(run: TraineeRun, rank: EndingRank) {
   const who = sheet(run.characterId);
-  if (rank === "never-quit") return "She peels the price tag off the second cowbell and hands it to you.";
+  if (rank === "never-quit") return "Miki peels the price tag off Section 4's second cowbell and hands it to you. \"Cool,\" she says, and this time she means it.";
   // The chip already says S or A, and the frame line carries the 胴上げ; the quote is hers alone.
   // Her ask met and her side lost the Finale (check-in 27, N1): the quote says both, never a win.
   if (finaleLostMetRun(run) && (rank === "S" || rank === "A" || rank === "B")) return FINALE_LOST_MET_QUOTES[run.characterId];
@@ -215,20 +216,20 @@ export function endingQuote(run: TraineeRun, rank: EndingRank) {
   if (rank === "B") {
     const finale = officialFor(run.characterId, 60);
     // Each pitcher's Finale ask, said as what she did.
-    if (run.pgResults[6] === "met" && finale?.pgId === "clean-ninth") return "Diamond Finale. Ball four to lead off. She threw the next one, and nobody scored.";
-    if (run.pgResults[6] === "met" && finale?.pgId === "k-2") return "Diamond Finale. Two punchouts in the ninth, and the lead held.";
-    if (run.pgResults[6] === "met" && finale?.pgId === "hold-one-run") return "Diamond Finale. The tying run started on first. It never got home.";
-    if (run.pgResults[6] === "met") return "She won the Diamond Finale. The top of the Academy takes more than one night.";
+    if (run.pgResults[6] === "met" && finale?.pgId === "clean-ninth") return "She took the ninth inning of the Diamond Finale, got her three outs, and nobody scored.";
+    if (run.pgResults[6] === "met" && finale?.pgId === "k-2") return "She struck out two in the Diamond Finale's ninth, and the lead held.";
+    if (run.pgResults[6] === "met" && finale?.pgId === "hold-one-run") return "She came in to protect a one-run lead in the Diamond Finale, and it was still a lead when she walked off.";
+    if (run.pgResults[6] === "met") return "She won the Diamond Finale. The top of the Academy takes more than one good night, though, and she knows it.";
     // Her side won the Finale and her ask missed: say both, never "one win away" (check-in 24).
     if (finaleWonShortRun(run, run.pgResults[6] !== "pending", false)) {
-      const read = run.finaleRead?.startsWith("They won.") ? run.finaleRead : "They won. What she came for didn't come.";
-      return `Diamond Finale. ${read}`;
+      const rest = run.finaleRead?.startsWith("They won.") ? run.finaleRead.slice("They won.".length).trim() : "";
+      return `They won the Diamond Finale. ${rest || "She didn't get the thing she came for, but she was smiling in the dugout anyway."}`;
     }
     // "One win away" only when winning the Finale is all that stood between her and A.
     if (run.pgResults[6] !== "pending")
       return rankGap(run, "A", true, true).length === 0
-        ? "She played the Diamond Finale. The top stayed one win away."
-        : "She played the Diamond Finale. The top asked for more than that.";
+        ? "She played in the Diamond Finale and lost it. That left her one win away from the top."
+        : "She played in the Diamond Finale and lost it. The top needed more from her than one night.";
     return who.endings.dugout;
   }
   if (rank === "D") {
@@ -383,10 +384,10 @@ export function sparkGapLine(cards: ClubhouseCard[]) {
   const who = sheet(last.characterId);
   const next = nextGirlName(last.characterId);
   const floor = styleFloors(who.style)[0];
-  if (!floor) return `Next: Coach ${next}.`;
+  if (!floor) return `${next} is next.`;
   const spark = last.sparks.find((s) => s.kind === floor.key);
-  if (!spark) return `Next: Coach ${next}. ${WAITING[nextGirlId(last.characterId)]}`;
-  return `${who.name} passes on what she learned about ${SPARK_LESSON[spark.kind]}. Next: Coach ${next}.`;
+  if (!spark) return `${next} is next. ${WAITING[nextGirlId(last.characterId)]}`;
+  return `${who.name} passes on what she learned about ${SPARK_LESSON[spark.kind]}. ${next} is next.`;
 }
 
 /** What a passed-on habit is about, in baseball words: "her fastball", never the bare "stuff". */
@@ -441,17 +442,17 @@ export function pickInheritSparks(from: Spark[], chosen: Spark[]) {
 }
 
 export function sparkEffectLine(kind: SparkKind) {
-  if (kind === "contact") return "She finds more of the barrel";
-  if (kind === "power") return "The ball travels farther";
-  if (kind === "eye") return "The hand gives it up sooner";
-  if (kind === "guts") return "She's calmer in the big spots";
-  if (kind === "speed") return "The first step is hers";
-  if (kind === "wit") return "She remembers the last three pitches";
-  if (kind === "stuff") return "Her other pitches bite";
-  if (kind === "control") return "She hits the glove";
-  if (kind === "stamina") return "Her arm lasts longer";
+  if (kind === "contact") return "She squares the ball up more often";
+  if (kind === "power") return "The ball carries farther off her bat";
+  if (kind === "eye") return "She picks up the pitch out of the hand sooner";
+  if (kind === "guts") return "She's calmer when the game is on the line";
+  if (kind === "speed") return "She gets a quicker first step";
+  if (kind === "wit") return "She remembers what the pitcher just threw her";
+  if (kind === "stuff") return "Her pitches move more";
+  if (kind === "control") return "She hits the catcher's glove more often";
+  if (kind === "stamina") return "Her arm lasts deeper into games";
   if (kind === "legend") return "A habit nobody taught her";
-  return "A little extra shine";
+  return "A little extra polish";
 }
 
 export function sparkCount(sparks: Spark[], kind: SparkKind) {
@@ -563,7 +564,7 @@ export const HEADER_LINES: Record<TraineeRun["characterId"], HeaderLines> = {
   },
   kira: {
     none: "You never made one drill the deal. She liked that. Nothing to pack.",
-    split: (a, b) => `${capFirst(a)} and ${b}: two deals, she called them. She kept both.`,
+    split: (a, b) => `${capFirst(a)} and ${b}. Two deals, she called them, and she kept both.`,
     same: (w) => `${capFirst(w)}, every day. The one deal she never tried to change.`,
     mentor: "The Bullpen Coach stayed late with her by the door. Nobody missed the last bus.",
     noMentor: "The Bullpen Coach never caught her after the ninth. She always made the last bus.",
@@ -651,7 +652,7 @@ export function endingStageLabel(stage: EndingStage): { jp: string; en: string }
 
 /** The button on the ending scene: "To the stage" only when there is one. */
 export function endingStageCta(stage: EndingStage): string {
-  return stage === "live" ? "To the stage" : "Walk off";
+  return stage === "live" ? "To the stage" : "One last bow";
 }
 
 /** The rank as the reveal sets it: one big letter, and its name under it. */
@@ -733,14 +734,14 @@ export function careerStill(run: TraineeRun): CareerStill {
   const pitcher = isPitcherStyle(sheet(run.characterId).style);
   // Each line on the results screen says something the others don't: the quote is her, the
   // frame is the moment, the why line is the numbers.
-  let frame = "A crowd stayed for her.";
-  // The 胴上げ is for a won Finale (check-in 27, N1): an S or A whose side lost it bows with her letter.
+  let frame = "A crowd still came out to see her off.";
+  // The toss (胴上げ) is for a won Finale (check-in 27, N1): an S or A whose side lost it bows with her letter.
   const lostMet = finaleLostMetRun(run);
-  if (rank === "S") frame = lostMet ? "They lost the Finale. The park stood for her anyway." : "胴上げ. Up she goes, and up again.";
-  else if (rank === "A") frame = lostMet ? "They lost the Finale. She did what she came for." : "胴上げ. Up she goes.";
-  else if (rank === "never-quit") frame = "The bell is still going.";
-  else if (rank === "B") frame = "Three years, all the way to the Finale.";
-  else if (rank === "D") frame = pitcher ? "She still took the ball." : "The bat stays up.";
+  if (rank === "S") frame = lostMet ? "They lost the Finale, and the whole park stood up for her anyway." : "The team throws her in the air, and then again, and then once more.";
+  else if (rank === "A") frame = lostMet ? "They lost the Finale, but she did what she came for." : "The team throws her up in the air, and she's laughing on the way down.";
+  else if (rank === "never-quit") frame = "Section 4 is still ringing the cowbell.";
+  else if (rank === "B") frame = "Three years, and she made it all the way to the Finale.";
+  else if (rank === "D") frame = pitcher ? "Her Academy days are over, and she still wants the ball." : "Her Academy days are over, and she still won't put the bat down.";
   return {
     rank,
     quote: endingQuote(run, rank),

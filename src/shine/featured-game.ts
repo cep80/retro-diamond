@@ -293,7 +293,7 @@ export function startFeaturedGame(run: TraineeRun, kind: GameKind, encounter?: E
     spurtFired: false,
     stealArmed: false,
     betweenLine: null,
-    banner: sit?.label ?? (kind === "practice" ? "See the ball. Trust the window." : who.pgVerb),
+    banner: sit?.label ?? (kind === "practice" ? "Watch it all the way in." : who.pgVerb),
     done: false,
     skipped: false,
     live: null,
@@ -513,6 +513,7 @@ function runSelfBetweenPas(run: TraineeRun, game: FeaturedGame, r: () => number)
     game.runs += 1;
     game.scoreDiff += 1;
     game.selfOnBase = null;
+    // The record's words: the seeded-draws golden hashes them. race-ui basepathRead says them to the player.
     lines.push(from === 1 && on === "single" ? "She scored from first on a single." : on === "steal" || on === "wild" ? "She came around." : "She scored.");
   };
 
@@ -698,17 +699,17 @@ function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedT
   if (skipBlowout(game)) {
     game.skipped = true;
     game.done = true;
-    game.banner = "Game ends. She walks off.";
+    game.banner = "It's a blowout, so she walks off early.";
     return;
   }
 
   if (game.paIndex >= game.paTarget) {
     game.done = true;
     settleFinaleTie(run, game);
-    if (game.kind === "weekly") game.banner = "That's the week's look.";
+    if (game.kind === "weekly") game.banner = "That's it for this week.";
     else if (game.pgMet) game.banner = `${verb}.`;
-    else if (game.kind === "gate") game.banner = "The Gate still opens.";
-    else if (game.kind === "practice") game.banner = "That's the look. Back to the complex.";
+    else if (game.kind === "gate") game.banner = GATE_MISSED_BANNER;
+    else if (game.kind === "practice") game.banner = "That's the swing. Back to the complex.";
     // Her side can win the Finale while her ask misses: the banner says they won.
     else game.banner = finaleTeamWon(game) ? FINALE_WON_BANNER : "It got away from her.";
     return;
@@ -750,8 +751,11 @@ function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedT
     ? "This is the one she trained for."
     : armChanged
       ? `${rivalProfile(arm).name} comes in from the pen.`
-      : (game.betweenLine ?? "Next look.");
+      : (game.betweenLine ?? "She's back up.");
 }
+
+/** A missed Gate doesn't end her year: she's still in (both sides of the Gate say it). */
+export const GATE_MISSED_BANNER = "She missed it, but she's still in.";
 
 /**
  * A career Finale never ends level (check-in 27, N2): tied after her last at-bat, the rest
@@ -776,6 +780,7 @@ function setVerdict(game: FeaturedGame, pitch: LivePitch, outcome: VerdictOutcom
     card: game.cardArmed,
     strikes: game.count.strikes,
     balls: game.count.balls,
+    seed: game.pitchesSeen,
   });
 }
 
@@ -797,7 +802,7 @@ export function resolveTake(run: TraineeRun, game: FeaturedGame, pitch: LivePitc
   }
   if (pitch.inZone) {
     game.count.strikes += 1;
-    game.banner = "Strike. Looking.";
+    game.banner = "Called strike.";
     setVerdict(game, pitch, game.count.strikes >= 3 ? "k" : "take-strike");
     if (game.count.strikes >= 3) {
       game.struckOut = true;
@@ -816,7 +821,7 @@ export function resolveTake(run: TraineeRun, game: FeaturedGame, pitch: LivePitc
   if (!pitch.inZone && game.count.strikes >= 2) noteCallback(run, game, "eye");
   if (game.count.balls >= 4) {
     const scored = reachBase(run, game, r, "walk", "walk");
-    game.banner = scored ? "Walk. A run walks in." : "Walk.";
+    game.banner = scored ? "Ball four, and a run walks in." : "Ball four. She takes her base.";
     finishPa(run, game, r, true, false);
     return;
   }
@@ -862,7 +867,7 @@ export function resolveSwing(
       game.lastContact = "miss";
       push(game.events, { t: "contact", pa: game.paIndex, tier: "miss", quality: 0 });
       game.count.strikes += 1;
-      game.banner = "Bunt miss.";
+      game.banner = "She missed the bunt.";
       if (game.count.strikes >= 3) {
         game.struckOut = true;
         game.ks += 1;
@@ -877,7 +882,7 @@ export function resolveSwing(
       game.lastQuality = contact.quality;
       game.lastContact = "hit";
       push(game.events, { t: "contact", pa: game.paIndex, tier: "hit", quality: contact.quality });
-      game.banner = "Bunt — out.";
+      game.banner = "She bunted, and they got her at first.";
       outWithRunners(game, r, "bunt", false);
       finishPa(run, game, r, false, false);
       return;
@@ -886,7 +891,7 @@ export function resolveSwing(
     game.lastContact = contact.quality > 0.8 ? "barrel" : "hit";
     push(game.events, { t: "contact", pa: game.paIndex, tier: game.lastContact, quality: contact.quality });
     reachBase(run, game, r, "bunt", "single");
-    game.banner = "Bunt down.";
+    game.banner = "She beat out the bunt.";
     finishPa(run, game, r, true, true);
     return;
   }
@@ -917,7 +922,7 @@ export function resolveSwing(
     game.lastContact = "miss";
     push(game.events, { t: "contact", pa: game.paIndex, tier: "miss", quality: 0 });
     game.count.strikes += 1;
-    game.banner = "Swing and miss.";
+    game.banner = "Swing and a miss.";
     setVerdict(game, pitch, game.count.strikes >= 3 ? "k" : "miss", aim);
     if (game.count.strikes >= 3) {
       game.struckOut = true;
@@ -934,7 +939,7 @@ export function resolveSwing(
     game.lastQuality = contact.quality;
     game.lastContact = contact.foulKind === "tip" ? "foul-tip" : "foul";
     push(game.events, { t: "contact", pa: game.paIndex, tier: game.lastContact, quality: contact.quality });
-    game.banner = contact.foulKind === "tip" ? "Foul tip. Almost." : "Foul. Pulled.";
+    game.banner = contact.foulKind === "tip" ? "Foul tip. She just got a piece of it." : "Fouled off.";
     const twoStrike = game.count.strikes >= 2;
     push(game.events, { t: "foul", pa: game.paIndex, twoStrike });
     if (!twoStrike) game.count.strikes += 1;
@@ -962,7 +967,7 @@ export function resolveSwing(
     game.outfield = true;
     if (swing === "power") noteCallback(run, game, "power");
     const scored = reachBase(run, game, r, "hit", "hr");
-    game.banner = scored > 1 ? `Gone. ${scored} runs.` : "Gone.";
+    game.banner = scored > 1 ? `That ball is gone, and ${scored} runs score!` : "That ball is gone!";
     finishPa(run, game, r, true, true);
     return;
   }
@@ -981,16 +986,17 @@ export function resolveSwing(
     const double = contact.timingQ * contact.locationQ > DOUBLE_SQUARE && r() < DOUBLE_BASE + (swing === "power" ? 0.2 : 0);
     if (swing === "power" && double) noteCallback(run, game, "power");
     const scored = reachBase(run, game, r, "hit", double ? "double" : "single");
-    game.banner = scored > 0 ? (double ? `Doubled. ${scored} in.` : `Lined. ${scored} in.`) : contact.quality > 0.7 ? "Lined." : "In play.";
+    const runs = scored === 1 ? "a run scores" : `${scored} runs score`;
+    game.banner = scored > 0 ? (double ? `A double, and ${runs}.` : `A base hit, and ${runs}.`) : double ? "Into the gap for a double." : contact.quality > 0.7 ? "A line drive, and she's on." : "She's on.";
     if (li >= 2 && game.kind !== "practice") noteCallback(run, game, "guts");
     finishPa(run, game, r, true, hit || game.kind === "practice");
     return;
   }
 
-  game.banner = "In play — out.";
+  game.banner = "She put it in play, and they got her.";
   setVerdict(game, pitch, "out", aim);
   outWithRunners(game, r, "in-play", inAir);
-  if (game.events.at(-1)?.t === "rbi") game.banner = "Fly out. The run scores.";
+  if (game.events.at(-1)?.t === "rbi") game.banner = "She flies out, but the run scores.";
   finishPa(run, game, r, false, false);
 }
 

@@ -123,7 +123,7 @@ describe("goals", () => {
     ];
     assert.equal(evalHitterPg("score-from-first", hitterView(walkThenSteal)), true);
     assert.equal(evalHitterPg("score-from-first-single", hitterView(walkThenSteal)), false, "the old ask wanted the single from first");
-    assert.match(proofLine("score-from-first", walkThenSteal) ?? "", /second time up: on at first/);
+    assert.match(proofLine("score-from-first", walkThenSteal) ?? "", /second time up, she got on at first/);
     const double: PlateEvent[] = [
       { t: "paStart", pa: 1, inning: 1, outs: 0, bases: emptyBases() },
       { t: "reach", pa: 1, via: "hit", base: 2 },
@@ -154,7 +154,7 @@ describe("goals", () => {
     assert.equal(evalHitterPg("steal-third", hitterView(caught)), false);
     const both: PlateEvent[] = [...second, { t: "stealResult", pa: 3, from: 2, safe: true, inning: 6, risp: false }];
     assert.equal(evalHitterPg("steal-third", hitterView(both)), true);
-    assert.equal(proofLine("steal-third", both), "Stole 3rd in the 6th.");
+    assert.equal(proofLine("steal-third", both), "She stole 3rd in the 6th.");
     assert.ok(goalDefinition("steal-third").length > 10);
     assert.ok(goalDefinition("score-from-first").length > 10);
   });
@@ -288,7 +288,7 @@ describe("goals", () => {
     assert.equal(evalHitterPg("steal-risp-score", hitterView(laterTrip)), false, "she scored on another trip");
     const home: PlateEvent[] = [...stole, { t: "score", pa: 2, runner: "self", from: 2, on: "single", selfReachedBy: "walk" }];
     assert.equal(evalHitterPg("steal-risp-score", hitterView(home)), true);
-    assert.equal(proofLine("steal-risp-score", home), "Stole 2nd in the 5th, and came all the way home.");
+    assert.equal(proofLine("steal-risp-score", home), "She stole 2nd in the 5th and came all the way home.");
     for (const id of ["innings-5-k7", "perfect-ninth", "hits-2", "contact-breaking-2", "steal-risp-score"] as const) {
       assert.ok(goalDefinition(id).length > 10, id);
     }

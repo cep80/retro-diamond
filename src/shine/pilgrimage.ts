@@ -37,55 +37,55 @@ export const WEEKLY_LOOKS: WeeklySit[] = [
     label: "Lantern Classic · 7th · 0-2 · RISP",
     inning: 7, balls: 0, strikes: 2, risp: true, scoreDiff: 1, outs: 2,
     arm: "reina", weather: "dusk",
-    context: "Reina has not walked anyone tonight. She will not start now. The runner on second is the tying run.",
+    context: "Reina hasn't walked anybody tonight, and she isn't about to start. That runner on second is the tying run.",
   },
   {
     label: "Lantern Classic · 9th · 3-1 · trailing",
     inning: 9, balls: 3, strikes: 1, risp: false, scoreDiff: 1, outs: 1,
     arm: "kira", weather: "night",
-    context: "Kira came through the bullpen door in the eighth. 3-1 is a hitter's count against anyone else.",
+    context: "Kira came through the bullpen door in the eighth. Against anybody else, 3-1 would be a hitter's count.",
   },
   {
     label: "Lantern Classic · 8th · 1-2 · full house",
     inning: 8, balls: 1, strikes: 2, risp: true, scoreDiff: 0, outs: 2,
     arm: "kira", weather: "night",
-    context: "Bases loaded, tie game, two out. Kira works fast when the crowd is loud. Do not let the pace pick the pitch.",
+    context: "It's a tie game with the bases loaded and two out. Kira works fast when the crowd is loud, so don't let her pace pick your pitch.",
   },
   {
     label: "Lantern Classic · 6th · 3-0 · take the zone",
     inning: 6, balls: 3, strikes: 0, risp: false, scoreDiff: 0, outs: 0,
     arm: "reina", weather: "clear",
-    context: "Three straight off the plate from Reina, which never happens. The next one is a strike. What you do with it is the whole look.",
+    context: "Reina just missed three straight times, which never happens. The next one's going to be a strike, and it's all about what you do with it.",
   },
   {
     label: "Night Classic · 5th · 2-2 · heat",
     inning: 5, balls: 2, strikes: 2, risp: true, scoreDiff: -2, outs: 1,
     arm: "sol", weather: "heat",
-    context: "A hundred and one at first pitch. Sol has thrown eleven straight fastballs. The twelfth might not be.",
+    context: "Sol hit a hundred and one on her first pitch, and she's thrown eleven straight fastballs since. The twelfth might not be one.",
   },
   {
     label: "Night Classic · 7th · 0-0 · first pitch",
     inning: 7, balls: 0, strikes: 0, risp: false, scoreDiff: 0, outs: 0,
     arm: "sol", weather: "heat",
-    context: "Sol has seen you swing at the first pitch twice tonight. The scouting card says so. So does she.",
+    context: "You've swung at the first pitch twice tonight. It's on the scouting card, and Sol saw it too.",
   },
   {
     label: "Lantern Classic · 4th · 1-1 · wind in",
     inning: 4, balls: 1, strikes: 1, risp: false, scoreDiff: 0, outs: 2,
     arm: "reina", weather: "wind",
-    context: "The flags are pointing at the plate. Nothing leaves tonight. Reina is pitching to contact and letting the wind field it.",
+    context: "The flags are pointing straight at the plate, so nothing's leaving the park tonight. Reina is pitching to contact and letting the wind field it.",
   },
   {
     label: "Lantern Classic · 9th · 0-1 · drizzle",
     inning: 9, balls: 0, strikes: 1, risp: true, scoreDiff: 1, outs: 2,
     arm: "kira", weather: "drizzle",
-    context: "The grounds crew is on the tarp. Kira's grip is not. The slider has been late all inning.",
+    context: "The grounds crew is standing by the tarp, and Kira can't get a grip on the wet ball. Her slider has been late all inning.",
   },
   {
     label: "Lantern Classic · 3rd · 2-0 · early",
     inning: 3, balls: 2, strikes: 0, risp: false, scoreDiff: 0, outs: 1,
     arm: "reina", weather: "clear",
-    context: "Nothing is on the line yet. That is the trick. Reina throws her best strike when the game is quiet.",
+    context: "Nothing's on the line yet, and that's the trick. Reina throws her best strikes when the game is quiet.",
   },
   {
     label: "Night Classic · 8th · 3-2 · cold snap",
@@ -97,13 +97,13 @@ export const WEEKLY_LOOKS: WeeklySit[] = [
     label: "Lantern Classic · 6th · 0-2 · after the foul",
     inning: 6, balls: 0, strikes: 2, risp: false, scoreDiff: 2, outs: 0,
     arm: "reina", weather: "dusk",
-    context: "You just fouled off her best pitch. Reina does not throw the same pitch twice after that. She never has.",
+    context: "You just fouled off her best pitch. Reina never throws the same pitch twice after that, and she isn't going to start now.",
   },
   {
     label: "Lantern Classic · 9th · 1-0 · walk-off",
     inning: 9, balls: 1, strikes: 0, risp: true, scoreDiff: 0, outs: 1,
     arm: "kira", weather: "night",
-    context: "Runner on third, one out, tie game, bottom nine. A fly ball wins it. Kira knows that. Kira will not throw it high.",
+    context: "It's a tie game in the bottom of the ninth, with a runner on third and one out. A fly ball wins it, and Kira knows it, so she's keeping everything down.",
   },
 ];
 
@@ -114,18 +114,18 @@ export function weeklySit(week = shineIsoWeek()): WeeklySit {
 export function weatherLine(w: Weather) {
   switch (w) {
     case "dusk":
-      return "Lanterns coming on.";
+      return "The lanterns are just coming on.";
     case "night":
-      return "Lights on. Full house.";
+      return "The lights are on, and it's a full house.";
     case "heat":
-      return "Heat off the dirt.";
+      return "The heat's coming right up off the dirt.";
     case "wind":
-      return "Wind in, flags stiff.";
+      return "The wind's blowing in, and the flags are stiff.";
     case "drizzle":
-      return "Drizzle. Tarp crew waiting.";
+      return "It's drizzling, and the tarp crew is waiting.";
     case "cold":
-      return "Cold snap. Breath visible.";
+      return "It's cold enough to see your breath.";
     default:
-      return "Clear. Perfect.";
+      return "Clear skies. It's a perfect night for it.";
   }
 }

@@ -35,7 +35,7 @@ import {
   resolveContact,
 } from "./oracle.ts";
 import { gaussianFrom, statSigma } from "./duel.ts";
-import type { FieldBeat, GameKind } from "./featured-game.ts";
+import { GATE_MISSED_BANNER, type FieldBeat, type GameKind } from "./featured-game.ts";
 import { hitterAdaptation, pitcherRivalBat, recordPitcherTell, rivalBatSlot, rivalLineup } from "./rivals.ts";
 import { EMPTY_TELLS, type Tells, type TraineeRun } from "./types.ts";
 
@@ -107,10 +107,33 @@ export interface PitchingGame {
 }
 
 /** The tutorial bullpen, and any practice date that does not name a shorter morning. */
-export const THREE_LOOKS_LINE = "Three looks. The glove is real.";
+export const THREE_LOOKS_LINE = "Three throws, and she's ready for a real hitter.";
 
 /** A practice morning on the mound: one throw, then she is done. */
-export const ONE_THROW_LINE = "One throw. Then the arm rests for tomorrow.";
+export const ONE_THROW_LINE = "That's her one throw. Her arm rests until tomorrow.";
+
+/** The bullpen throw, in her own voice: on the glove or off it. Unknown girls get the booth's plain call. */
+const BULLPEN_VOICE: Partial<Record<TraineeRun["characterId"], { hit: readonly string[]; miss: readonly string[] }>> = {
+  reina: {
+    hit: ["Right on the glove. Again.", "That's where I said. Write it down.", "On the glove. Exactly."],
+    miss: ["A quarter-inch up. You didn't see it. I did.", "Off the glove. Again.", "That missed. Don't say it was close."],
+  },
+  sol: {
+    hit: ["Ninety-six, right on the glove.", "Right there, Jefe. Heat goes where I say.", "On the glove. Tell Luz."],
+    miss: ["Missed the glove. Don't say it, Jefe.", "Ninety-nine. Leave me alone.", "That one got away. Again."],
+  },
+  kira: {
+    hit: ["Bang. Right on the glove, Partner.", "On the glove! That's a deal.", "Right there. Juice is on you."],
+    miss: ["Okay, that one missed. Doesn't count. New deal.", "Whoops. Warm-up pitch. Obviously.", "Missed. I was still bouncing."],
+  },
+};
+
+/** Her word on a bullpen throw, in quotes, picked by the throw. */
+export function bullpenLine(who: TraineeRun["characterId"], onGlove: boolean, seed: number): string {
+  const lines = BULLPEN_VOICE[who]?.[onGlove ? "hit" : "miss"];
+  if (!lines) return onGlove ? "Right on the glove." : "That one missed the glove.";
+  return `"${lines[Math.abs(Math.floor(seed)) % lines.length]}"`;
+}
 
 /**
  * A Finale never ends level (check-in 27, N2): a lead blown to a tie is played out from the
@@ -149,7 +172,7 @@ function throwLeadoffBall(run: TraineeRun, game: PitchingGame, type: PitchType) 
   push(game.events, { t: "pitch", pa: LEADOFF_WALK_PA, n: thrown, type, inZone: false });
   push(game.events, { t: "take", pa: LEADOFF_WALK_PA, strike: false });
   game.count = { balls: game.count.balls + 1, strikes: game.count.strikes };
-  game.banner = "Ball.";
+  game.banner = thrown < 4 ? `Ball ${COUNT_WORDS[thrown]}.` : "Ball four.";
   if (thrown < 4) {
     game.leadoffWalk = thrown;
     return;
@@ -163,7 +186,29 @@ function throwLeadoffBall(run: TraineeRun, game: PitchingGame, type: PitchType) 
 }
 
 /** Ball four is in (the card under it says the Coach stays in the dugout): the ninth her ask is about. */
-export const LEADOFF_WALK_BANNER = "Ball four to lead off. The next one.";
+export const LEADOFF_WALK_BANNER = "Ball four to lead off. Now watch her throw the next one.";
+
+/** A closer's miss that isn't a blown lead: the done panel reads it by this banner. */
+export const HOLD_SLIPPED_BANNER = "She couldn't close it out.";
+/** The miss everyone else's done panel reads by. */
+export const MISSED_BANNER = "It got away from her.";
+
+/** She's pulled: the arm's gone, or the runs were too many. */
+export const PULLED_BANNER = "That's it for her today. The bullpen coach is walking out for the ball.";
+
+/** Her goal came, said like the booth says it. */
+function metBanner(game: Pick<PitchingGame, "role">): string {
+  return game.role === "closer" ? "She closed it out." : "She got what she came for.";
+}
+
+const NEXT_UP = ["Next hitter's coming up.", "Here comes the next one.", "New hitter in the box."] as const;
+
+/** Between hitters, three ways, so a long start doesn't say one line twenty times. */
+function nextBatterBanner(game: Pick<PitchingGame, "battersFaced">): string {
+  return NEXT_UP[game.battersFaced % NEXT_UP.length]!;
+}
+
+const COUNT_WORDS = ["", "one", "two", "three"] as const;
 
 function goalView(game: PitchingGame): PitcherGoalView {
   return game;
@@ -182,14 +227,14 @@ function noteCallback(run: TraineeRun, game: PitchingGame, what: "stuff" | "cont
   if (run.lastWork.stat !== what) return;
   game.callback =
     what === "stuff"
-      ? "Bullpen. That one bit."
+      ? "All that bullpen work. That pitch had real bite on it."
       : what === "control"
-        ? "Bullpen. The glove was a target."
+        ? "All that bullpen work. She hit the glove like it was painted there."
         : what === "stamina"
-          ? "The poles. She still has the arm."
+          ? "All those runs on the poles. She's still got plenty left in her arm."
           : what === "guts"
-            ? "Situational. Runners on, and the window held."
-            : "Charting. She knew what she was sitting on.";
+            ? "Runners on, and she came through. That's the whole job, and she did it."
+            : "All that charting paid off. She knew exactly where to throw it.";
 }
 
 function stagePark(run: TraineeRun, kind: string) {
@@ -288,48 +333,48 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
     done: false,
     banner:
       kind === "practice"
-        ? "Sit the glove. Then Go."
+        ? "Set the glove, then press Go."
         : walkFirst
-          ? "Ninth. A one-run lead. Nobody on."
+          ? "Ninth inning, up by one, nobody on."
           : kind === "finale" && pgId === "hold-one-run"
-            ? "Ninth. The tying run is on first."
+            ? "Ninth inning, and the tying run is already on first."
             : pgId === "k-2" && sit.inning === 9
-              ? "Ninth. Two punchouts. Keep the lead."
+              ? "Ninth inning. She wants two strikeouts, and she wants the lead."
         : role === "closer"
           ? pgId === "k-side"
-            ? "Ninth. Strike out the side."
+            ? "Ninth inning. She wants to strike out the side."
             : pgId === "perfect-ninth"
-              ? "Ninth. Three up, three down."
+              ? "Ninth inning. She wants three up and three down."
             : pgId === "four-out"
-              ? "Two outs. HOLD the lead."
+              ? "Two outs in the eighth. She has to get four outs and keep the lead."
               : kind === "gate"
-                ? "Three outs. The Gate opens."
+                ? "Ninth inning at the Academy Gate. Three outs to go."
                 : pgId === "strand-inherited"
-                  ? "Runners on. Strand them."
+                  ? "Runners on, and her job is to leave them there."
                   : sit.inherited > 0
-                    ? "Runners on. HOLD the lead."
-                    : "Ninth. HOLD the lead."
+                    ? "Runners on, and she has to keep the lead."
+                    : "Ninth inning. She has to keep the lead."
           : pgId === "escape-loaded-jam"
-            ? "Bases loaded. The inning has to end."
+            ? "Bases loaded. She has to get out of the inning."
             : pgId === "escape-jam"
-              ? "Runners on. The inning has to end."
+              ? "Runners on. She has to get out of the inning."
               : pgId === "k-side"
-                ? "Ninth. Strike out the side."
+                ? "Ninth inning. She wants to strike out the side."
                 : pgId === "innings-5-k7"
-                  ? "Five innings. Seven punchouts."
+                  ? "She wants five innings and seven strikeouts."
                 : pgId === "innings-5"
-                  ? "Five innings. Three runs or fewer."
+                  ? "She wants five innings with three runs or fewer."
                   : pgId === "quality-start"
-                    ? "Six innings. One run or fewer."
+                    ? "She wants six innings with one run or fewer."
                     : pgId === "k-2"
-                      ? "Two punchouts."
+                      ? "She wants two strikeouts."
                       : pgId === "k-3"
-                      ? "Three punchouts."
+                      ? "She wants three strikeouts."
                       : pgId === "k-consecutive"
-                        ? "Two punchouts, back to back."
+                        ? "She wants two strikeouts in a row."
                         : kind === "gate"
-                          ? "Three outs. The Gate opens."
-                          : "COMMAND. One time through.",
+                          ? "Three outs at the Academy Gate."
+                          : "Once through the lineup.",
     simLog: [],
     hotCell: hot,
     consecutiveInnings: 1,
@@ -505,20 +550,18 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
     game.pgMet = evaluatePg(run, game);
     settleFinaleTie(run, game);
     game.banner = game.pgMet
-      ? game.role === "closer"
-        ? "HOLD."
-        : "COMMAND."
+      ? metBanner(game)
       : game.kind === "gate"
-        ? "The Gate still opens."
+        ? GATE_MISSED_BANNER
         : game.role === "closer"
           ? finaleTeamWon(game)
             ? FINALE_WON_BANNER
             : game.blown
-              ? "Blown. The lead is gone."
-              : "HOLD slipped."
+              ? "They came back on her. The lead is gone."
+              : HOLD_SLIPPED_BANNER
           : finaleTeamWon(game)
             ? FINALE_WON_BANNER
-            : "It got away from her.";
+            : MISSED_BANNER;
     tickPitcherSg(run, game);
     return;
   }
@@ -531,11 +574,11 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
       if (pull === "runs") game.simLog = ["ERA crossed 6. She's lifted."];
       game.done = true;
       game.pgMet = evaluatePg(run, game);
-      game.banner = pull ? "Pulled. The bullpen takes it." : game.pgMet ? "COMMAND." : "It got away from her.";
+      game.banner = pull ? PULLED_BANNER : game.pgMet ? metBanner(game) : MISSED_BANNER;
       tickPitcherSg(run, game);
       return;
     }
-    game.banner = "Next batter.";
+    game.banner = nextBatterBanner(game);
     tickPitcherSg(run, game);
     return;
   }
@@ -543,7 +586,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   if (jamDate && (game.earnedRuns > 0 || game.inning > 7)) {
     game.done = true;
     game.pgMet = evaluatePg(run, game);
-    game.banner = game.pgMet ? "COMMAND." : "It got away from her.";
+    game.banner = game.pgMet ? metBanner(game) : MISSED_BANNER;
     tickPitcherSg(run, game);
     return;
   }
@@ -553,7 +596,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
     game.pgMet = evaluatePg(run, game);
     settleFinaleTie(run, game);
     // A Finale can be won short of her ask (Sol's lead held, one punchout): it says they won.
-    game.banner = game.pgMet ? "COMMAND." : finaleTeamWon(game) ? FINALE_WON_BANNER : "It got away from her.";
+    game.banner = game.pgMet ? metBanner(game) : finaleTeamWon(game) ? FINALE_WON_BANNER : MISSED_BANNER;
     tickPitcherSg(run, game);
     return;
   }
@@ -561,14 +604,14 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
   if (act1Done && !jamDate && !aceSide) {
     game.done = true;
     game.pgMet = evaluatePg(run, game);
-    game.banner = game.pgMet ? "COMMAND." : "It got away from her.";
+    game.banner = game.pgMet ? metBanner(game) : MISSED_BANNER;
     tickPitcherSg(run, game);
     return;
   }
 
   game.lastSpurt = maybeLastSpurtCloser(game);
   if (game.lastSpurt) game.spurtFired = true;
-  game.banner = game.lastSpurt ? "Last Spurt. HOLD." : "Next batter.";
+  game.banner = game.lastSpurt ? "It's a one-run game now. This is the one she trained for." : nextBatterBanner(game);
   tickPitcherSg(run, game);
 }
 
@@ -637,11 +680,11 @@ export function resolveMiddle(run: TraineeRun, game: PitchingGame, r?: () => num
     game.done = true;
     game.act = 2;
     game.pgMet = evaluatePg(run, game);
-    game.banner = "Pulled. The bullpen takes it.";
+    game.banner = PULLED_BANNER;
     return;
   }
   game.act = 2;
-  game.banner = "Innings 2–5. The middle holds.";
+  game.banner = "She got through the middle innings.";
   game.pgMet = evaluatePg(run, game);
 }
 
@@ -653,7 +696,7 @@ export function enterSeventh(run: TraineeRun, game: PitchingGame, r?: () => numb
   game.outs = 0;
   game.runners = rng() < 0.4 ? 1 : 0;
   game.count = { balls: 0, strikes: 0 };
-  game.banner = "Seventh. The stretch.";
+  game.banner = "Seventh inning. The crowd stands to stretch, and she stays on the mound.";
   game.pgMet = evaluatePg(run, game);
 }
 
@@ -689,12 +732,13 @@ export function resolveDelivery(
     const ok = release < 0.45 && kick < 0.45;
     push(game.events, { t: "pitch", pa: game.battersFaced, n: game.pitchCount, type, inZone: ok });
     push(game.events, { t: "take", pa: game.battersFaced, strike: ok });
-    game.banner = ok ? "That's the glove." : "Missed the window.";
+    game.banner = bullpenLine(run.characterId, ok, game.pitchCount);
     if (ok) game.sgMet = true;
     if (game.pitchCount >= (game.looks ?? 3)) {
       game.done = true;
       game.pgMet = true;
-      game.banner = (game.looks ?? 3) <= 1 ? ONE_THROW_LINE : THREE_LOOKS_LINE;
+      // A practice morning's one throw closes on what she said about it; the tutorial on its three.
+      game.banner = (game.looks ?? 3) <= 1 ? game.banner : THREE_LOOKS_LINE;
     }
     return;
   }
@@ -718,18 +762,18 @@ export function resolveDelivery(
     if (inZone) {
       game.count.strikes += 1;
       if (type === "curve") game.curveForStrike = true;
-      game.banner = "Strike. Looking.";
+      game.banner = `Strike ${COUNT_WORDS[Math.min(2, game.count.strikes)]}, looking.`;
       push(game.events, { t: "take", pa: game.battersFaced, strike: true });
       if (game.count.strikes >= 3) {
         recordK(game);
         retireInning(game, "k");
-        game.banner = "Struck out looking.";
+        game.banner = "Strike three, looking. She froze her.";
         finishBatter(run, game, r);
       }
       return;
     }
     game.count.balls += 1;
-    game.banner = "Ball.";
+    game.banner = `Ball ${COUNT_WORDS[Math.min(3, game.count.balls)]}.`;
     push(game.events, { t: "take", pa: game.battersFaced, strike: false });
     if (game.count.balls >= 4) {
       game.walks += 1;
@@ -746,7 +790,7 @@ export function resolveDelivery(
         push(game.events, { t: "pitcherRun", runs: 1, earned: true });
         if ((game.role === "closer" || game.kind === "finale") && game.scoreDiff <= 0) game.blown = true;
       }
-      game.banner = "Walk.";
+      game.banner = forced ? "Ball four, and that walks in a run." : "Ball four. She walks her.";
       finishBatter(run, game, r);
     }
     return;
@@ -769,13 +813,13 @@ export function resolveDelivery(
 
   if (!contact.reach) {
     game.count.strikes += 1;
-    game.banner = "Swing and miss.";
+    game.banner = `Swing and a miss. Strike ${COUNT_WORDS[Math.min(2, game.count.strikes)]}.`;
     push(game.events, { t: "swing", pa: game.battersFaced, kind: "contact", timingErr: swing.error });
     push(game.events, { t: "contact", pa: game.battersFaced, tier: "miss", quality: 0 });
     if (game.count.strikes >= 3) {
       recordK(game);
       retireInning(game, "k");
-      game.banner = "K.";
+      game.banner = "Strike three, swinging!";
       if (li >= 1.5) noteCallback(run, game, "guts");
       finishBatter(run, game, r);
     }
@@ -794,7 +838,7 @@ export function resolveDelivery(
     push(game.events, { t: "pitcherRun", runs: scored, earned: true });
     if (game.inherited > 0) game.inheritedStranded = false;
     if ((game.role === "closer" || game.kind === "finale") && game.scoreDiff <= 0) game.blown = true;
-    game.banner = "Gone.";
+    game.banner = scored > 1 ? `That ball is gone, and ${scored} runs score.` : "That ball is gone.";
     finishBatter(run, game, r);
     return;
   }
@@ -807,13 +851,13 @@ export function resolveDelivery(
     }
     game.runners = Math.min(3, game.runners + 1);
     if ((game.role === "closer" || game.kind === "finale") && game.scoreDiff <= 0) game.blown = true;
-    game.banner = "In play — hit.";
+    game.banner = "That's a base hit.";
     finishBatter(run, game, r);
     return;
   }
 
   retireInning(game, "in-play");
-  game.banner = "In play — out.";
+  game.banner = "Put in play, and they make the out.";
   finishBatter(run, game, r);
 }
 

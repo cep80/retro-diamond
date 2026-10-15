@@ -81,10 +81,10 @@ export function yearCard(year: 1 | 2 | 3): { kana: string; name: string; sub: st
 
 /** The line under the Call. It names the still, not a pose she does not have. */
 export function curtainCaption(id: CharacterId) {
-  if (id === "aoi") return "Cap in hand.";
-  if (id === "yuki") return "She's going.";
-  if (isPitcherStyle(sheet(id).style)) return "The glove stays.";
-  return "The bat is down.";
+  if (id === "aoi") return "She takes her cap off for the crowd.";
+  if (id === "yuki") return "She's already running, of course.";
+  if (isPitcherStyle(sheet(id).style)) return "She holds the glove up to the stands.";
+  return "She sets the bat down and just listens.";
 }
 
 /** Ending rank as the emotional frame label (before sparks / box score). */
@@ -118,10 +118,10 @@ export function parkCulture(parkId: string): ParkCulture {
 
 /** Work-day open. Same stations; the light is the park. */
 export function workMorningLine(parkId: string) {
-  if (parkId === "koi") return "Morning at the complex. 朝練.";
-  if (parkId === "heat" || parkId === "dusters" || parkId === "range") return "Early work. The sun is already up.";
-  if (parkId === "north") return "Morning. The poles wait if she'll go.";
-  return "Early work. The complex is already awake.";
+  if (parkId === "koi") return "Seven in the morning at Koi Park. The heron's in the pond, and she's already in the cage.";
+  if (parkId === "heat" || parkId === "dusters" || parkId === "range") return "It's early, and the sun's already baking the bullpen dirt.";
+  if (parkId === "north") return "Morning at North. Gary the heater is clanking, so somebody's already in the cage.";
+  return "It's early, and the complex is already awake.";
 }
 
 /** Story, not a gacha. Mentor C rotates at year-start. She does not change parks. */
@@ -134,8 +134,8 @@ const RETIRED_K = "She struck out. The sit never found the pitch.";
 /** The year-start line. A pitcher's rotating mentor is the Bullpen Coach, a hitter's the Cage Coach. */
 export function yearVoice(year: 1 | 2 | 3, pitcher = false) {
   if (year === 2) return `Last year's ${pitcher ? "Bullpen" : "Cage"} Coach took a job in Osaka. The new one shows up with donuts.`;
-  if (year === 3) return "The Stretch is next.";
-  return "The year is open.";
+  if (year === 3) return "Senior year. The Stretch is next, and everybody at the complex knows it.";
+  return "Rookie year. Everything starts now.";
 }
 
 /** A saved miss line from before the reach count still names what she did. */
@@ -149,8 +149,8 @@ export function dateSpeech(line: string) {
 export function fanLetter(run: { characterId: CharacterId; highlights?: { kind: string; label: string; line: string }[] }): string {
   const last = [...(run.highlights ?? [])].reverse().find((h) => h.kind === "game");
   const who = sheet(run.characterId);
-  if (!last) return `They wrote from the seats. They've started wearing ${who.number}.`;
-  return `${last.label}. ${last.line} Row J kept the napkin. They've started wearing ${who.number}.`;
+  if (!last) return `A letter came from the seats. Somebody out there has started wearing number ${who.number}.`;
+  return `A letter from Row J, about the ${last.label}: "${last.line}" They kept the napkin, and they've started wearing number ${who.number}.`;
 }
 
 /** Campus speech. A saved year-start line from before the coach rewrite still speaks the new one. */
@@ -201,6 +201,11 @@ export function curtainSkin(parkId: string): "otachidai" | "dugout" {
 
 /** Lantern's Call is お立ち台. The sheet line stays the home-park dugout for Kings. */
 export function curtainCallLine(call: string, skin: "otachidai" | "dugout"): string {
+  const UP = "Up on the hero's platform, ";
+  const DOWN = "Back in the dugout, ";
+  if (skin === "otachidai" && call.startsWith(DOWN)) return UP + call.slice(DOWN.length);
+  if (skin === "dugout" && call.startsWith(UP)) return DOWN + call.slice(UP.length);
+  // The older fragment openers, kept so a retired line still swaps.
   if (skin === "otachidai" && call.startsWith("Dugout.")) return `お立ち台.${call.slice("Dugout.".length)}`;
   if (skin === "dugout" && call.startsWith("お立ち台.")) return `Dugout.${call.slice("お立ち台.".length)}`;
   return call;
@@ -221,34 +226,34 @@ export function verseTier(fans: number): 0 | 1 | 2 | 3 {
 /** 6 girls × 3 fan-tier verses = 18 lines. Audio/visual only. */
 export const VERSES: Record<CharacterId, [string, string, string]> = {
   aoi: [
-    "アオイ — First Light, take the bag.",
-    "Lantern towels. Reach, then go first-to-third.",
-    "They start it in the on-deck circle. アオイ.",
+    "The bleachers chant \"Take the bag!\" for Aoi. Her mom is the loudest one.",
+    "The Koi seats wave towels for her. Somebody brought a sign that just says 1.",
+    "They start her song while she's still in the on-deck circle.",
   ],
   reina: [
-    "レイナ — Cold Count. One more strike.",
-    "The 応援団 holds the note until she nods.",
-    "They start it before she leaves the bullpen. レイナ.",
+    "The Koi section counts her strikes out loud. She'd correct them if they were wrong.",
+    "The cheering section holds one long note until she nods to the catcher.",
+    "They start her song before she's even out of the bullpen.",
   ],
   miki: [
-    "Cowbell for Miki. They do not wait for a win.",
-    "North still sings when it's 8–1.",
-    "The bell is already going when she leaves the on-deck circle.",
+    "Section 4 rings the cowbell for Miki. They don't wait for a win.",
+    "North is still singing, and it's 8–1. That's North for you.",
+    "The cowbell's already going before she's out of the on-deck circle.",
   ],
   sol: [
-    "Red Mesa on the organ. The radar gun reads a hundred and one.",
-    "Gulf wind in the walk-up. She does not smile.",
-    "They start it at the warning track. Sol.",
+    "The organ plays her song. The radar gun says a hundred and one.",
+    "Her walk-up music is still echoing. She doesn't smile. Luz does.",
+    "The crowd starts her song while she's still out by the warning track.",
   ],
   kira: [
-    "Two taps of her glove. The whole section taps back.",
-    "The section waves bus transfers. She laughs every time.",
-    "They start it the second the bullpen door opens.",
+    "She taps her glove twice, and the whole section taps back.",
+    "The section waves old bus transfers at her. She laughs every single time.",
+    "They start her song the second the bullpen door opens.",
   ],
   yuki: [
-    "Palm steal. She does not wait on a walk.",
-    "Dirt all over the white pants. Nobody's surprised.",
-    "They start it as she takes her lead.",
+    "The Palms crowd yells \"Go!\" the second she takes a lead. She hates it. She goes anyway.",
+    "There's dirt all over her white pants already. Nobody's surprised.",
+    "They start her song as soon as she takes her lead.",
   ],
 };
 
@@ -258,51 +263,53 @@ export function cheerLines(id: CharacterId, fans: number): string[] {
   return VERSES[id].slice(0, tier);
 }
 
+// The park's own people between innings: whole sentences, and nobody's inning number,
+// since the same line can land in the 1st or the 9th.
 const RECAP_JP = [
-  "終盤. She tips the cap to the bleachers.",
-  "Lantern Field dirt still on the spikes.",
-  "応援団 does not sit down.",
-  "お立ち台 waits if she earned it.",
-  "The towels keep time with her name.",
-  "The bleachers kept the verse.",
-  "Koi holds. The booth stays quiet.",
+  "Haruko's in the third-base seats with a spatula in her hand. She came straight from the grill.",
+  "The Koi cheering section hasn't sat down since the first pitch.",
+  "A kid in the bleachers is keeping score with a pencil stub, the way Aoi does.",
+  "The towels in right field are going in time with her name.",
+  "There's a heron in the pond past left field. It hasn't moved all game.",
+  "The booth at Koi goes quiet and lets the crowd do the talking.",
+  "Haruko yells something from the stands. Nobody can hear it, and everybody agrees with it.",
   "She bows to the field before she bows to anyone else.",
-  "The last verse is still in the bleachers.",
-  "The pinch of dirt stays in the pocket.",
+  "The cheering section starts the next verse before the last one's even done.",
+  "She's got Koi dirt on her spikes, and she isn't wiping it off.",
 ];
 
 const RECAP_BLEND = [
-  "Cowbell in the 7th. North does not wait.",
-  "North Field. Nobody claps, but the bell never stops.",
-  "They sing anyway. Neither mail carrier knows the second verse.",
-  "Inning turns. The bell does not.",
-  "North Field keeps the losing crowd.",
-  "She heard the bell before the pitch.",
-  "The radio booth has run out of ways to say 'fouled back.'",
-  "Rain on the cowbell. Still going.",
-  "The bell says what the scoreboard won't.",
-  "Section 4 rang both cowbells, a little out of time with each other.",
+  "Section 4 rings the cowbell. They don't need a reason.",
+  "Nobody at North claps much, but the cowbell never stops.",
+  "The two mail carriers in Section 4 sing anyway. Neither one knows the second verse.",
+  "The inning turns over. The cowbell doesn't.",
+  "North's crowd has seen a lot of losing. They came anyway.",
+  "She can hear the cowbell before the pitch, every single time.",
+  "The radio guy has run out of ways to say 'fouled back.'",
+  "It's drizzling on the cowbell. It's still going.",
+  "The cowbell says what the scoreboard won't.",
+  "Section 4 brought two cowbells today, and they're not quite in time with each other.",
 ];
 
 const RECAP_US = [
-  "Walk-up sting. The dugout stays put.",
-  "The organ plays her four bars. She's already in the box.",
-  "In the 7th, the organ finds her.",
-  "Dugout step. Cap. Crowd.",
-  "The booth stays with her. The score can wait.",
-  "Harbor wind. The lights stay on.",
-  "A man behind the dugout eats a hot dog like it owes him money.",
+  "Her walk-up song hits, and the whole dugout leans on the rail.",
+  "The organist plays her four bars. She's already in the box.",
+  "The organ finds her name and leans on it.",
+  "She comes up the dugout steps, tugs her cap, and the crowd gets loud.",
+  "The booth stays on her. The score can wait.",
+  "The lights are buzzing, and the wind's picked up.",
+  "A guy behind the dugout is eating a hot dog like it owes him money.",
 ];
 
 /** The Finale's house: every seat sold, both fan sections in one building. */
 const RECAP_DIAMOND = [
-  "Every seat is sold. Nobody is sitting in one.",
-  "Both ends of the stadium have brought their own songs.",
-  "Gold bunting on the rail. The booth has stopped reading the lineup.",
-  "The lights hum. Somebody in the upper deck is crying already.",
-  "Her number is on towels in sections she's never played to.",
-  "The organ holds a chord. The whole house waits for the pitch.",
-  "Towels in one end, cowbells in the other. It's the last night.",
+  "Every seat is sold, and nobody is sitting in one.",
+  "Both ends of the stadium brought their own songs, and they're singing over each other.",
+  "There's gold bunting on every rail, and the crowd's too loud to hear the announcer.",
+  "The lights hum. Somebody in the upper deck is already crying.",
+  "Her number's on towels in sections she's never even played to.",
+  "The organ holds one chord, and the whole house waits for the pitch.",
+  "Towels at one end, cowbells at the other. It's the last night of the year.",
 ];
 
 /** Lines only a hitter's day can say: the box, the walk-up, a foul, the spikes. */

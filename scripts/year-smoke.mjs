@@ -687,10 +687,10 @@ async function checkFrames(s) {
 
 // ── one action per look ────────────────────────────────────────────────────────
 
-const REST = /^(Off day|Trainer's room)$/i;
+const REST = /^(Off day|Day off|Trainer's room)$/i;
 // Catch with Coach is once a year and not a training: keep it out of the rotation, so the
 // low-energy five-tile work screen (Clubhouse still open) actually shows up, and play it late.
-const NOT_TRAINING = /^(Off day|Trainer's room|Clubhouse)$/i;
+const NOT_TRAINING = /^(Off day|Day off|Trainer's room|Clubhouse|Play catch)$/i;
 const CATCH_FROM_TURN = 17;
 let stationIdx = 0;
 let sceneLines = 0;
@@ -783,12 +783,12 @@ async function act(s) {
         if (!c) return stuckAt(s, "a run is saved but the title has no Continue", s.buttons.map((x) => x.name).join(", "));
         return press(s, byName(c.name), c.name);
       }
-      return press(s, page.getByRole("button", { name: /^Begin her year/ }), "Begin her year");
+      return press(s, page.getByRole("button", { name: /^(Begin her year|Start coaching)/ }), "Start coaching");
     }
 
     case "select": {
       if (s.sub !== opts.girl) return press(s, page.getByRole("button", { name: new RegExp(`^${girl.name}[,.]`) }), `${girl.name}'s face`);
-      const go = s.buttons.find((x) => new RegExp(`^Coach ${girl.name}`, "i").test(x.name) || /film is not in/i.test(x.name));
+      const go = s.buttons.find((x) => new RegExp(`^Coach ${girl.name}`, "i").test(x.name) || /film is not in|^Not ready yet$/i.test(x.name));
       if (!go) return stuckAt(s, "the pick has no Coach button", s.buttons.map((x) => x.name).join(", "));
       if (go.disabled) {
         goWaitSince ??= Date.now();
@@ -845,9 +845,9 @@ async function act(s) {
       if (!open.length) return stuckAt(s, "a tap finds no enabled primary action", "every station is shut");
       let pick;
       if (open.length === 1) pick = open[0];
-      else if (s.energy !== null && s.energy < 40 && open.some((x) => REST.test(x.label))) pick = open.find((x) => /^Off day$/i.test(x.label)) ?? open.find((x) => REST.test(x.label));
-      // Once a year: late in each year (Day 17 of 20), not every Clubhouse tile from Day 17 of the career on.
-      else if (((s.turn - 1) % 20) + 1 >= CATCH_FROM_TURN && open.some((x) => /^Clubhouse$/i.test(x.label))) pick = open.find((x) => /^Clubhouse$/i.test(x.label));
+      else if (s.energy !== null && s.energy < 40 && open.some((x) => REST.test(x.label))) pick = open.find((x) => /^(Off day|Day off)$/i.test(x.label)) ?? open.find((x) => REST.test(x.label));
+      // Once a year: late in each year (Day 17 of 20), not every catch tile from Day 17 of the career on.
+      else if (((s.turn - 1) % 20) + 1 >= CATCH_FROM_TURN && open.some((x) => /^(Clubhouse|Play catch)$/i.test(x.label))) pick = open.find((x) => /^(Clubhouse|Play catch)$/i.test(x.label));
       else {
         const train = open.filter((x) => !NOT_TRAINING.test(x.label));
         pick = train.length ? train[stationIdx++ % train.length] : open[0];
@@ -857,7 +857,7 @@ async function act(s) {
     }
 
     case "shell": {
-      const b = s.buttons.find((x) => /^(Morning|Listen|Toss it back)$/i.test(x.name));
+      const b = s.buttons.find((x) => /^(Morning|Start the morning|Listen|Toss it back)$/i.test(x.name));
       if (!b) return stuckAt(s, "a tap finds no enabled primary action", s.buttons.map((x) => x.name).join(", "));
       if (!opts.career && s.turn >= 21 && /Classic Spring/i.test(s.chip ?? "")) {
         await press(s, byName(b.name), `${b.name} (Classic Spring)`);
@@ -969,7 +969,7 @@ async function act(s) {
     }
 
     case "year-end": {
-      const b = s.buttons.find((x) => /^(Classic year|Senior year)$/i.test(x.name));
+      const b = s.buttons.find((x) => /^(Classic year|Senior year|On to her Classic year|On to her senior year)$/i.test(x.name));
       if (!b) return stuckAt(s, "a tap finds no enabled primary action", s.buttons.map((x) => x.name).join(", "));
       return press(s, byName(b.name), b.name);
     }
@@ -978,9 +978,9 @@ async function act(s) {
       careerOver = true;
       report.endingRank = s.sub;
       report.closedEarly = s.turn !== null && s.turn < 60;
-      const b = s.buttons.find((x) => /^(The scrapbook|Clubhouse)$/i.test(x.name));
+      const b = s.buttons.find((x) => /^(The scrapbook|Open her scrapbook|Clubhouse|To the Clubhouse wall)$/i.test(x.name));
       if (!b) return stuckAt(s, "a tap finds no enabled primary action", s.buttons.map((x) => x.name).join(", "));
-      if (/^Clubhouse$/i.test(b.name)) await shotOnce(`t${pad(s.turn)}-winning-live-scrapbook`);
+      if (/Clubhouse( wall)?$/i.test(b.name)) await shotOnce(`t${pad(s.turn)}-winning-live-scrapbook`);
       return press(s, byName(b.name), b.name);
     }
 

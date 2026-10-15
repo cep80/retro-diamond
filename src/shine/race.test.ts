@@ -4,7 +4,8 @@ import { hashId, makeRng } from "./core/rng.ts";
 import { cellLoc } from "./core/zone.ts";
 import { resolveContact } from "./oracle.ts";
 import { newRun } from "./run.ts";
-import { barrelCell, decideSwing, offPlate, paCardLine, RACE_MODS, swingChance, swingKindFor, swingProgress, timingSigma, type SwingContext } from "./race.ts";
+import { FORBIDDEN_IN_STORY } from "./story.ts";
+import { atBatQuote, barrelCell, decideSwing, offPlate, paCardLine, RACE_MODS, swingChance, swingKindFor, swingProgress, timingSigma, type SwingContext } from "./race.ts";
 
 function ctx(over: Partial<SwingContext> = {}): SwingContext {
   const run = newRun("aoi");
@@ -139,10 +140,26 @@ describe("race: her swing decision", () => {
   });
 
   it("the PA card names the beat in one line", () => {
-    assert.equal(paCardLine({ beat: "hr", banner: "", reached: true, struckOut: false, rbi: 1 }), "Gone.");
-    assert.equal(paCardLine({ beat: "hr", banner: "", reached: true, struckOut: false, rbi: 3 }), "Gone. 3 runs.");
-    assert.equal(paCardLine({ beat: "k", banner: "", reached: false, struckOut: true, rbi: 0 }), "Sat down on strikes.");
-    assert.equal(paCardLine({ beat: "walk", banner: "", reached: true, struckOut: false, rbi: 0 }), "She takes first.");
-    assert.equal(paCardLine({ beat: "fly-out", banner: "x", reached: false, struckOut: false, rbi: 0 }), "Out.");
+    assert.equal(paCardLine({ beat: "hr", banner: "", reached: true, struckOut: false, rbi: 1 }), "She hit it out of the park!");
+    assert.equal(paCardLine({ beat: "hr", banner: "", reached: true, struckOut: false, rbi: 3 }), "She hit it out, and three runs score!");
+    assert.equal(paCardLine({ beat: "k", banner: "", reached: false, struckOut: true, rbi: 0 }), "She's out on strikes.");
+    assert.equal(paCardLine({ beat: "walk", banner: "", reached: true, struckOut: false, rbi: 0 }), "She takes her base.");
+    assert.equal(paCardLine({ beat: "fly-out", banner: "x", reached: false, struckOut: false, rbi: 0 }), "Caught in the air. She's out.");
+    // The same beat, another at-bat: three versions, so a career doesn't hear one line.
+    const outs = new Set([0, 1, 2].map((seed) => paCardLine({ beat: "grounder-out", banner: "", reached: false, struckOut: false, rbi: 0, seed })));
+    assert.equal(outs.size, 3);
+    assert.equal(paCardLine({ beat: "single", banner: "", reached: true, struckOut: false, rbi: 2 }), "She's on, and two runs score!");
+    // She says how it went, in quotes, in her own voice; a beat that didn't end an at-bat says nothing.
+    assert.equal(atBatQuote("aoi", "grounder-out", 0), '"I hit it! Um. Right at somebody. Moral victory?"');
+    assert.match(atBatQuote("miki", "k", 0) ?? "", /Cool/);
+    assert.match(atBatQuote("yuki", "single", 1) ?? "", /Stopwatch/);
+    assert.equal(atBatQuote("aoi", "ball", 0), null);
+    for (const who of ["aoi", "miki", "yuki", "reina", "sol", "kira"] as const) {
+      for (const beat of ["hr", "single", "walk", "k", "fly-out", "sac-fly"]) {
+        const q = atBatQuote(who, beat, 2) ?? "";
+        assert.match(q, /^"[^"]+"$/, `${who} ${beat}`);
+        assert.doesNotMatch(q, FORBIDDEN_IN_STORY, q);
+      }
+    }
   });
 });

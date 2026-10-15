@@ -7,7 +7,7 @@ import { memoryLine } from "./relationship.ts";
 import { artKey, isBustSrc, isPitcherStyle, parkSrc, sceneBustSrc, sheet, stillSrc, type PortraitMood } from "./bible.ts";
 import { datePark } from "./culture.ts";
 import { eventsOfPa, type PlateEvent } from "./events.ts";
-import { proofLine, type GoalId } from "./goals.ts";
+import { ordinalInning, proofLine, type GoalId } from "./goals.ts";
 import type { RivalArmId } from "./rivals.ts";
 import type { CharacterId, CoachMemory, DefiningPa, Highlight, Keepsake, TraineeRun } from "./types.ts";
 
@@ -47,32 +47,94 @@ export function gameHighlight(run: TraineeRun, kind: string, pgMet: boolean, sgM
  */
 export function scrapbookLine(id: CharacterId, line: string): string {
   line = line.replace("The goal she came for slipped", "It got away from her").replace("The smaller one held.", "The smaller ask held.");
-  if (!isPitcherStyle(sheet(id).style)) return line;
-  line = line.replaceAll(" vs the Academy arm", "");
-  if (line === "The first-hit ball, kept." || line === "She kept the first-hit ball.") return "The last-out ball, kept.";
-  if (line === "The Gate: she reached.") return "The Gate: three outs.";
-  if (line === "The Gate: she did not reach, and you kept her.") return "The Gate: the outs weren't there.";
-  return line;
+  const pitcher = isPitcherStyle(sheet(id).style);
+  if (pitcher) {
+    line = line.replaceAll(" vs the Academy arm", "");
+    // Pitcher years used to mint the hitter's lines.
+    if (line === "The Gate: she reached.") line = "The Gate: three outs.";
+    if (line === "The Gate: she did not reach, and you kept her.") line = "The Gate: the outs weren't there.";
+  }
+  const kept = RETIRED_KEEPSAKE_PAGES[line];
+  if (kept) return keepsakeLine(id, kept) ?? line;
+  return RETIRED_MEMORY_LINES[line] ?? line;
 }
 
 export function memoryHighlight(m: CoachMemory): Highlight {
   return { turn: m.turn, label: turnMeta(m.turn).label, line: memoryLine(m), kind: "memory" };
 }
 
+/** Her Gate, as you'd remember it later: a whole sentence, never "The Gate: she reached." */
+export const GATE_NOTE = {
+  hitterMet: "The Gate. She got on base, and she grinned about it the whole bus ride home.",
+  hitterShort: "The Gate. She got on, just not the way she needed to, and she asked you what she should have done.",
+  hitterMissed: "The Gate. She never got on base, and you kept her anyway. She noticed.",
+  pitcherMet: "The Gate. She got her three outs and walked off like it was nothing. It wasn't nothing.",
+  pitcherMissed: "The Gate. The outs didn't come, and you sat with her on the bench after.",
+} as const;
+
+/** What she kept, as a memory: who kept it, and where it lives now. */
+export const KEEPSAKE_NOTE = {
+  dirt: "She kept a pinch of dirt from the baseline, wrapped up in a sock.",
+  firstHit: "She kept the ball from her first hit. It sits on her shelf now.",
+  lastOut: "She kept the ball from the last out. It lives in her glove bag now.",
+} as const;
+
+/** Her own keepsake page, where she has one: the same thing kept, in her world. */
+const KEEPSAKE_PAGE: Partial<Record<CharacterId, string>> = {
+  aoi: "It's on her shelf now, right next to the pencil stub.",
+  miki: "She told you not to tell anyone. It's in her locker, behind the melon pan.",
+  yuki: "She wrote the date on it in marker, fast, and the ink smeared.",
+  reina: "She wrote the pitch count on it in very small numbers.",
+  sol: "Luz says it's going on the dashboard of the truck.",
+  kira: "It went in the tin with her bus transfers.",
+};
+
+/** The keepsake as the book says it: what she kept, then where it lives, in her own world. */
+export function keepsakeLine(id: CharacterId, keepsake: Keepsake): string | null {
+  if (keepsake !== "dirt" && keepsake !== "ball") return null;
+  const what =
+    keepsake === "dirt"
+      ? "She kept a pinch of dirt from the baseline."
+      : isPitcherStyle(sheet(id).style)
+        ? "She kept the ball from the last out."
+        : "She kept the ball from her first hit.";
+  const where = KEEPSAKE_PAGE[id];
+  return where ? `${what} ${where}` : what;
+}
+
+/**
+ * Retired memory and keepsake lines old saves still hold, word for word, and what the book says
+ * for them now. Don't edit the keys: they're how a saved line is recognized.
+ */
+export const RETIRED_MEMORY_LINES: Record<string, string> = {
+  "The Gate: she reached.": GATE_NOTE.hitterMet,
+  "The Gate: three outs.": GATE_NOTE.pitcherMet,
+  "The Gate: the outs weren't there.": GATE_NOTE.pitcherMissed,
+  "The Gate: she reached, but not the way she needed to.": GATE_NOTE.hitterShort,
+  "The Gate: she did not reach, and you kept her.": GATE_NOTE.hitterMissed,
+  "She kept a pinch of baseline dirt.": KEEPSAKE_NOTE.dirt,
+  "She kept the ball from the last out.": KEEPSAKE_NOTE.lastOut,
+  "She kept the first-hit ball.": KEEPSAKE_NOTE.firstHit,
+};
+
+/** Retired keepsake pages ("The first-hit ball, kept."), which the book now says through keepsakeLine. */
+const RETIRED_KEEPSAKE_PAGES: Record<string, Keepsake> = {
+  "A pinch of dirt from the baseline, kept.": "dirt",
+  "The first-hit ball, kept.": "ball",
+  "The last-out ball, kept.": "ball",
+  "She kept the first-hit ball.": "ball",
+};
+
 /** Clubhouse wall. A pitcher ball is the last out. A hitter ball is the first hit. */
 export function keepsakeWallLine(id: CharacterId, keepsake: Keepsake): string | null {
-  if (keepsake === "dirt") return "A pinch of dirt from the baseline.";
-  if (keepsake === "ball") return isPitcherStyle(sheet(id).style) ? "The last-out ball." : "The first-hit ball.";
+  if (keepsake === "dirt") return "She kept a pinch of dirt from the baseline.";
+  if (keepsake === "ball") return isPitcherStyle(sheet(id).style) ? "She kept the ball from her last out." : "She kept the ball from her first hit.";
   return null;
 }
 
 export function keepsakeHighlight(run: TraineeRun): Highlight | null {
-  if (run.keepsake === "dirt") return { turn: run.turn, label: turnMeta(run.turn).label, line: "A pinch of dirt from the baseline, kept.", kind: "keepsake" };
-  if (run.keepsake === "ball") {
-    const line = isPitcherStyle(sheet(run.characterId).style) ? "The last-out ball, kept." : "The first-hit ball, kept.";
-    return { turn: run.turn, label: turnMeta(run.turn).label, line, kind: "keepsake" };
-  }
-  return null;
+  const line = keepsakeLine(run.characterId, run.keepsake);
+  return line ? { turn: run.turn, label: turnMeta(run.turn).label, line, kind: "keepsake" } : null;
 }
 
 export function rivalHighlight(run: TraineeRun, arm: RivalArmId): Highlight | null {
@@ -83,7 +145,7 @@ export function rivalHighlight(run: TraineeRun, arm: RivalArmId): Highlight | nu
   return {
     turn: run.turn,
     label: turnMeta(run.turn).label,
-    line: n === 1 ? `First look at ${name}.` : `Third look at ${name}. She has a book on you now, and you on her.`,
+    line: n === 1 ? `First time facing ${name}.` : `Third time facing ${name}. She knows your habits by now, and you know hers.`,
     kind: "rival",
   };
 }
@@ -197,19 +259,31 @@ export function replayLines(pa: DefiningPa, who: CharacterId): string[] {
   const pitcher = isPitcherStyle(sheet(who).style);
   const rival = pa.rival ? sheet(pa.rival).name : "the Academy arm";
   const bases = pa.bases.first || pa.bases.second || pa.bases.third
-    ? `runner${Number(pa.bases.first) + Number(pa.bases.second) + Number(pa.bases.third) > 1 ? "s" : ""} on ${[pa.bases.first && "1st", pa.bases.second && "2nd", pa.bases.third && "3rd"].filter(Boolean).join(" & ")}`
+    ? `runner${Number(pa.bases.first) + Number(pa.bases.second) + Number(pa.bases.third) > 1 ? "s" : ""} on ${[pa.bases.first && "1st", pa.bases.second && "2nd", pa.bases.third && "3rd"].filter(Boolean).join(" and ")}`
     : "bases empty";
-  const matchup = pitcher ? `${name} on the mound` : `${name} vs ${rival}`;
-  const lines = [`${turnMeta(pa.turn).label}. Inning ${replayInning(pa, pitcher)}, ${pa.outs} out, ${bases}. ${matchup}.`];
+  const matchup = pitcher ? `${name} on the mound` : `${name} against ${rival}`;
+  const outs = pa.outs === 0 ? "nobody out" : `${pa.outs} out`;
+  const lines = [`${turnMeta(pa.turn).label}. ${ordinalInning(replayInning(pa, pitcher))} inning, ${outs}, ${bases}. ${matchup}.`];
   let balls = 0;
   let strikes = 0;
   for (const p of pa.pitches) {
-    lines.push(`${balls}-${strikes} ${p.type}${p.inZone ? "" : " off the plate"} — ${p.result}.`);
+    // Read like the scorebook Aoi keeps: the count, the pitch, then what happened.
+    const result = p.result.charAt(0).toUpperCase() + p.result.slice(1);
+    lines.push(`${balls}-${strikes}, ${/^[aeiou]/i.test(p.type) ? "an" : "a"} ${p.type}${p.inZone ? "" : " off the plate"}. ${result}.`);
     if (p.result === "ball") balls += 1;
     else if (p.result === "called strike" || p.result === "swing and miss" || p.result === "foul") strikes += 1;
   }
-  lines.push(replayOutcome(pa));
+  lines.push(sayOutcome(replayOutcome(pa), pitcher));
   return lines;
+}
+
+/** The saved outcome ("Struck out.") said as a whole sentence, from her side of it. */
+function sayOutcome(outcome: string, pitcher: boolean): string {
+  if (outcome === "Struck out.") return pitcher ? "She struck her out." : "She struck out.";
+  if (outcome === "Out.") return pitcher ? "She got the out." : "She made an out.";
+  if (outcome === "She reached.") return "She got on base.";
+  if (outcome === "A run came in.") return "A run came in on her.";
+  return outcome;
 }
 
 /** A minted book kept "Out." for a mound punchout. Three strikes is the strikeout. */
@@ -266,15 +340,15 @@ function bigGameOf(turn: number): BigGame | null {
 export const PAGE_CAPTIONS: Record<BigGame, { met: [hitter: string, pitcher: string]; missed: [hitter: string, pitcher: string] }> = {
   gate: {
     met: ["Her first big game, and she got on.", "She took the ball before anyone offered it and gave it back with the inning done."],
-    missed: ["Nothing fell her way. She asked to hit again anyway.", "The outs didn't come. She sat on the bench until they turned the lights off."],
+    missed: ["Nothing fell her way, and she asked to hit again anyway.", "The outs didn't come, and she sat on the bench until they turned the lights off."],
   },
   "first-light": {
     met: ["She came to do one thing and did it before the lights warmed up.", "She finished what she started and walked off slow."],
-    missed: ["Nothing fell. She wrote the pitches down on the bus.", "It got loud, and for an inning the zone got small. She remembers which inning."],
+    missed: ["Nothing fell in for her, so she wrote down every pitch on the bus home.", "It got loud, and for one inning she couldn't find the strike zone. She still remembers which inning."],
   },
   "lantern-classic": {
-    met: ["The lanterns were up, and so was she.", "The lanterns came on in the fifth. She was still out there."],
-    missed: ["The lanterns stayed lit. It wasn't her night.", "She left before the lanterns did."],
+    met: ["The lanterns were up, and so was she.", "The lanterns came on in the fifth, and she was still out there."],
+    missed: ["The lanterns stayed lit, but it wasn't her night.", "She left the game before the lanterns went out."],
   },
   "night-classic": {
     met: ["Somebody else's park, a full house, and it went her way.", "A road crowd, loud from the first pitch. She quieted it."],
@@ -286,7 +360,7 @@ export const PAGE_CAPTIONS: Record<BigGame, { met: [hitter: string, pitcher: str
   },
   series: {
     met: ["She put the Finale on the calendar herself.", "She pitched her way into the Finale."],
-    missed: ["It slipped. She kept the ticket stub anyway.", "She threw everything she had. It wasn't quite enough."],
+    missed: ["It slipped away from her, and she kept the ticket stub anyway.", "She threw everything she had, and it wasn't quite enough."],
   },
   finale: {
     met: ["The biggest night of the three years, and she won it.", "The last out of three years was hers."],
@@ -444,7 +518,7 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "She asked for the eighth and got it, and the inning didn't go the way she'd made the deal.",
     },
     series: {
-      met: "Three up, three down, with the Stars Park transfer tucked in her cap.",
+      met: "She went three up, three down with a Stars Park bus transfer tucked in her cap.",
       missed: "Somebody reached, and she took the transfer out of her cap and put it back in the tin.",
     },
     finale: {
@@ -475,7 +549,7 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
     },
     series: {
       met: "She took third standing up, and Reina looked at her once, too late.",
-      missed: "She never stole third, and the lighthouse box stayed shut on the trunk.",
+      missed: "She never stole third, and that night she didn't even open her new puzzle.",
     },
     finale: {
       met: "She stole late and was gone before you finished saying go.",
@@ -518,12 +592,12 @@ function rivalFromLine(line: string): string | null {
 }
 
 function meetingLine(name: string, n: number): string {
-  if (n === 1) return `First time across from ${name}.`;
-  if (n === 2) return `${name} again.`;
-  if (n === 3) return `${name}, a third time. They know each other's habits by now.`;
-  if (n === 4) return `${name}, a fourth time.`;
-  if (n === 5) return `${name} again. Neither of them was surprised.`;
-  return `${name}, one more time.`;
+  if (n === 1) return `It was her first time facing ${name}.`;
+  if (n === 2) return `${name} again. They'd seen each other once before.`;
+  if (n === 3) return `Third time against ${name}. By now they knew each other's habits.`;
+  if (n === 4) return `Fourth time against ${name}, and neither one blinked.`;
+  if (n === 5) return `${name} again, five times now. Nobody was surprised.`;
+  return `${name} one more time. They'd both stopped counting.`;
 }
 
 export interface BookPicture {
@@ -646,7 +720,7 @@ export function scrapbookBook(id: CharacterId, highlights: readonly Highlight[],
       const wonShort = game === "finale" && !met && /^They won\b/.test(h.line);
       const caption = wonShort ? FINALE_WON_SHORT_CAPTIONS[id] : pageCaption(id, game, met);
       const saved = !met && /smaller (ask|one) held/i.test(h.line);
-      const smaller = saved ? " She still got the little one." : "";
+      const smaller = saved ? " She did get the smaller thing she was after, though." : "";
       const page: BookPage = {
         turn: h.turn,
         game,
@@ -683,7 +757,7 @@ export function scrapbookBook(id: CharacterId, highlights: readonly Highlight[],
 export function letterPage(id: CharacterId, finalePlayed: boolean): { kicker: string; text: string } | null {
   if (!finalePlayed) return null;
   const text = sheet(id).letters.trim();
-  return text ? { kicker: "A letter from the stands.", text } : null;
+  return text ? { kicker: "A letter from the stands", text } : null;
 }
 
 export function addHighlight(run: TraineeRun, h: Highlight | null) {

@@ -18,8 +18,8 @@ const SMALLER_DONE: Record<string, string> = {
   "Reach base": "She reached base.",
   "Record 1 out": "She got her out.",
   "Record 3 outs": "She got her three outs.",
-  "See 2 pitches in one PA": "She saw two pitches in one look.",
-  "See 3 pitches in one PA": "She saw three pitches in one look.",
+  "See 2 pitches in one PA": "She saw two pitches in one at-bat.",
+  "See 3 pitches in one PA": "She saw three pitches in one at-bat.",
   "See 3 pitches": "She saw three pitches.",
   "See 4 pitches": "She saw four pitches.",
   "Strand inherited runners": "She stranded the runners she came in with.",
@@ -34,7 +34,7 @@ const SMALLER_DONE: Record<string, string> = {
 export function smallerAskLine(sgVerb: string | null | undefined): string {
   const done = sgVerb ? SMALLER_DONE[sgVerb] : undefined;
   if (done === "") return KEEPS_HER_IN;
-  return done ? `${done} ${KEEPS_HER_IN}` : `She got the smaller one. ${KEEPS_HER_IN}`;
+  return done ? `${done} ${KEEPS_HER_IN}` : `She still got the smaller thing she was after. ${KEEPS_HER_IN}`;
 }
 
 /** A coach line is relief (the smaller ask held) or a warning (a miss that counts). */
@@ -42,7 +42,7 @@ export function coachWarningTone(line: string): "relief" | "warning" {
   return line.includes(SMALLER_ASK_HELD) || line.includes(KEEPS_HER_IN) ? "relief" : "warning";
 }
 import { awardGameSparks, awardStatSparks, awardTrainingSpark, careerClosesEarly, finaleUnlocked, inheritSparks, isMikiPath, mintClubhouseCard } from "./ending.ts";
-import { addHighlight, definingPaFrom, gameHighlight, keepsakeHighlight, rivalHighlight, type GameRecord } from "./scrapbook.ts";
+import { addHighlight, definingPaFrom, GATE_NOTE, gameHighlight, KEEPSAKE_NOTE, keepsakeHighlight, keepsakeLine, rivalHighlight, type GameRecord } from "./scrapbook.ts";
 import {
   EMPTY_TELLS,
   type CharacterId,
@@ -248,7 +248,7 @@ function dateNext(turn: number) {
 
 export function resolveOffDay(run: TraineeRun) {
   if (dateNext(run.turn) && run.energy < 70) {
-    remember(run, { kind: "rest-before-date", turn: run.turn, note: `You rested her the day before ${turnMeta(run.turn + 1).label}.`, warm: true });
+    remember(run, { kind: "rest-before-date", turn: run.turn, note: `You gave her the day off before ${turnMeta(run.turn + 1).label}, and she noticed.`, warm: true });
   }
   applyEnergy(run, REST_ENERGY);
   applyMood(run, 0.5);
@@ -366,7 +366,8 @@ export function resolveTrainingTurn(run: TraineeRun, station: StationId, intensi
   }
   if (run.lastBreakthrough) {
     const coach = isPitcherStyle(sheet(run.characterId).style) ? "Bullpen Coach" : "Cage Coach";
-    remember(run, { kind: "breakthrough", turn: run.turn, note: `${coach} stayed late, and her ${run.lastBreakthrough} jumped.`, warm: true });
+    const what = run.lastBreakthrough === "speed" ? "her first step got quicker overnight" : "something in her swing finally clicked";
+    remember(run, { kind: "breakthrough", turn: run.turn, note: `The ${coach} stayed late with her, and ${what}.`, warm: true });
   }
   run.lastWork = { stat, turn: run.turn, from: before, to: run.stats[stat], outcome, station, ...(sec ? { sec } : {}) };
 
@@ -391,12 +392,17 @@ export function resolveCatchWithCoach(run: TraineeRun) {
   advance(run);
 }
 
+const YEAR_NAME: Record<1 | 2 | 3, string> = { 1: "Rookie year", 2: "Classic year", 3: "senior year" };
+
 export function resolveYearScene(run: TraineeRun) {
   if (run.clubhouseCard) return;
   remember(run, {
     kind: "year-end",
     turn: run.turn,
-    note: run.pgMisses === 0 ? `Year ${run.year} ended with every big game going her way.` : `Year ${run.year} ended with ${run.pgMisses === 1 ? "one big game" : `${run.pgMisses} big games`} that got away.`,
+    note:
+      run.pgMisses === 0
+        ? `Her ${YEAR_NAME[run.year]} ended with every big game going her way. She didn't believe it until you showed her the scorebook.`
+        : `Her ${YEAR_NAME[run.year]} ended with ${run.pgMisses === 1 ? "one big game" : `${run.pgMisses} big games`} gone the wrong way so far. She still brings ${run.pgMisses === 1 ? "it" : "them"} up.`,
     warm: run.pgMisses === 0,
   });
   logTurn(run, null, "scene");
@@ -433,18 +439,43 @@ export const FAN_FEWER = "Fewer people came to the park for her.";
 /** Her own crowd, when a date moves it: her park, her people (narrative director, check-in 35). */
 export const FAN_LINES: Record<CharacterId, { more: string; fewer: string }> = {
   aoi: { more: "Haruko ran out of 6-4-3 flags and started cutting new ones.", fewer: "A couple of the 6-4-3 regulars stayed home." },
-  reina: { more: "More scorecards behind the plate at Koi.", fewer: "A few empty seats behind the plate at Koi." },
+  reina: { more: "There were more scorecards than ever behind the plate at Koi.", fewer: "There were a few empty seats behind the plate at Koi." },
   miki: { more: "Section 4 had to make room on the bench.", fewer: "Section 4 was a little quieter. The cowbell still came." },
   sol: { more: "Luz sold out of elote before the third.", fewer: "Luz had elote left over after the game." },
   kira: { more: "More people stayed past the eighth to see her come in.", fewer: "A few more people left for the last bus before the ninth." },
   yuki: { more: "The shaved-ice line went all the way to first base.", fewer: "The shaved-ice stand closed early." },
 };
 
+/**
+ * Her crowd shows up after most big games, so each girl's crowd has two more takes after the
+ * first (FAN_LINES), picked by the day. The first take is still what an unnamed day says.
+ */
+export const FAN_MORE_TAKES: Record<CharacterId, [string, string]> = {
+  aoi: [
+    "There's a line out the door at 6-4-3 after the game. Haruko is thrilled about it.",
+    "Somebody behind the dugout has started keeping score with a pencil stub, the way Aoi does.",
+  ],
+  reina: ["Somebody behind the plate brought a sign that just says ZERO WALKS.", "The seats behind home plate filled up early. They came to watch her throw."],
+  miki: ["Section 4 brought a third cowbell. Nobody knows where they got it.", "Even the people who never clap at North were clapping."],
+  sol: ["Luz had to send somebody out for more corn by the fifth inning.", "The radar-gun crowd behind the plate doubled. They cheer every hundred."],
+  kira: ["Half the section was waving old bus transfers when the bullpen door opened.", "People stayed in their seats for the ninth just to watch her jog in."],
+  yuki: ["Kids along the first-base line were timing her with their phones.", "The Palms crowd was yelling for her to run before she even got on base."],
+};
+export const FAN_FEWER_TAKES: Record<CharacterId, [string, string]> = {
+  aoi: ["The 6-4-3 crowd was a little thinner tonight. Haruko saved them seats anyway.", "Haruko had okonomiyaki left over after the game. That never happens."],
+  reina: ["The scorecard crowd behind the plate thinned out a little.", "A few regulars left early. Reina noticed, and she counted them."],
+  miki: ["North was half empty tonight. The cowbell didn't care.", "A few seats in Section 4 sat empty. The cowbell rang for them too."],
+  sol: ["The line at Luz's truck was shorter tonight. She gave Sol the extra.", "A few fans left before the ninth. Luz stayed, like always."],
+  kira: ["The stands were thinner by the ninth. The bus schedule won.", "Fewer people waited around for the bullpen door to open tonight."],
+  yuki: ["The first-base seats were a little emptier tonight.", "The shaved-ice line was short tonight. She got hers fast, at least."],
+};
+
 /** Her line when a date moves her crowd. Zero stays quiet. A threshold line still wins. */
-export function fanAnnouncement(before: number, after: number, id: CharacterId): string | null {
+export function fanAnnouncement(before: number, after: number, id: CharacterId, turn?: number): string | null {
   const lines = FAN_LINES[id];
-  if (after > before) return lines?.more ?? FAN_MORE;
-  if (after < before) return lines?.fewer ?? FAN_FEWER;
+  const take = turn === undefined ? 0 : Math.abs(turn) % 3;
+  if (after > before) return (take && FAN_MORE_TAKES[id]?.[take - 1]) || (lines?.more ?? FAN_MORE);
+  if (after < before) return (take && FAN_FEWER_TAKES[id]?.[take - 1]) || (lines?.fewer ?? FAN_FEWER);
   return null;
 }
 
@@ -454,13 +485,13 @@ function tickFanBeat(run: TraineeRun) {
     run.fanBeat = "The kids at the gate are wearing her number now.";
   } else if (run.fans >= 80 && run.fanStory < 80) {
     run.fanStory = 80;
-    run.fanBeat = "Fan Favorite. Her Clubhouse card goes gold.";
+    run.fanBeat = "People in the stands are calling her a fan favorite now. Her Clubhouse card is going to be gold.";
   } else if (run.fans >= 60 && run.fanStory < 60) {
     run.fanStory = 60;
-    run.fanBeat = "A park banner with her number is up in the Clubhouse.";
+    run.fanBeat = "Somebody hung a banner with her number on it out by the outfield wall.";
   } else if (run.fans >= 30 && run.fanStory < 30) {
     run.fanStory = 30;
-    run.fanBeat = "Letters at the complex. People come to see her now.";
+    run.fanBeat = "Letters are showing up at the complex for her. People come out just to watch her now.";
   }
 }
 
@@ -525,13 +556,13 @@ export function applyGameResult(
       turn: run.turn,
       note: pgMet
         ? pitcher
-          ? "The Gate: three outs."
-          : "The Gate: she reached."
+          ? GATE_NOTE.pitcherMet
+          : GATE_NOTE.hitterMet
         : pitcher
-          ? "The Gate: the outs weren't there."
+          ? GATE_NOTE.pitcherMissed
           : reached
-            ? "The Gate: she reached, but not the way she needed to."
-            : "The Gate: she did not reach, and you kept her.",
+            ? GATE_NOTE.hitterShort
+            : GATE_NOTE.hitterMissed,
       warm: true,
     });
   }
@@ -552,11 +583,7 @@ export function applyGameResult(
         kind: "keepsake",
         turn: run.turn,
         note:
-          run.keepsake === "dirt"
-            ? "She kept a pinch of baseline dirt."
-            : pitcher
-              ? "She kept the ball from the last out."
-              : "She kept the first-hit ball.",
+          keepsakeLine(run.characterId, run.keepsake) ?? (run.keepsake === "dirt" ? KEEPSAKE_NOTE.dirt : pitcher ? KEEPSAKE_NOTE.lastOut : KEEPSAKE_NOTE.firstHit),
         warm: true,
       });
     }
@@ -575,12 +602,12 @@ export function applyGameResult(
       applyMood(run, pgMissMoodDrop(run.stats.guts));
       run.fans = Math.max(0, run.fans - 3);
       run.coachWarning = isMikiPath(run)
-        ? "That one got away. North doesn't care, and her path stays open."
+        ? "That one got away. Section 4 doesn't care, and neither does North. She plays on."
         : run.pgMisses >= 2
-          ? `${turnMeta(run.turn).label} closed the Academy path.`
+          ? `That's two big games lost. ${turnMeta(run.turn).label} was her last one at the Academy.`
           : turnMeta(run.turn).type === "series"
-            ? "One big game got away. Nothing left this year can close her path."
-            : "Miss one more big game and her Academy days are over.";
+            ? "That one got away, but nothing left this year can end her run. Let her breathe."
+            : "That's one big game lost. Lose one more and her Academy days are over.";
       if (run.pgMisses >= 2 && !isMikiPath(run)) {
         const page = [...run.highlights].reverse().find((h) => h.kind === "game" && h.turn === run.turn);
         const date = turnMeta(run.turn).label;
@@ -608,7 +635,7 @@ export function applyGameResult(
   if (lastSpurt) run.fans = Math.min(100, run.fans + 3);
   tickFanBeat(run);
   if (run.fanBeat === null) {
-    const line = fanAnnouncement(fansBefore, run.fans, run.characterId);
+    const line = fanAnnouncement(fansBefore, run.fans, run.characterId, run.turn);
     if (line) run.fanBeat = line;
   }
 
@@ -654,16 +681,58 @@ export function practiceRepResult(before: TraineeRun, after: TraineeRun): RepRes
   if (w.to > w.from) gains.push({ stat: w.stat, from: w.from, to: w.to });
   if (w.sec && w.sec.to > w.sec.from) gains.push({ stat: w.sec.stat, from: w.sec.from, to: w.sec.to });
   const chips: RepChip[] = [...gains.map((g) => ({ text: `${STAT_NAME[g.stat]} +${g.to - g.from}`, cost: false })), ...energyChip];
-  const hurt = after.lastInjury ? " She tweaked something." : "";
+  const hurt = after.lastInjury ? " She tweaked something, and she's pretending she didn't." : "";
   const outcome = w.outcome === "bonus" || w.outcome === "success" || w.outcome === "fail" || w.outcome === "bad-fail" ? w.outcome : "success";
+  const said = REP_SAID[before.characterId];
   let line: string;
-  if (outcome === "fail") line = `The ${where} work didn't take today.`;
-  else if (outcome === "bad-fail") line = `The ${where} work went wrong today.`;
-  else if (w.to <= w.from) line = `The ${where} work took, but her ${STAT_NAME[w.stat]} is as high as it goes.`;
-  else if (outcome === "bonus") line = `The ${where} work took, and then some.`;
-  else line = `The ${where} work took.`;
+  if (outcome === "fail") line = said.fail;
+  else if (outcome === "bad-fail") line = said.badFail;
+  else if (w.to <= w.from) line = `She did everything right in the ${where}, but her ${STAT_NAME[w.stat].toLowerCase()} is as high as it goes.`;
+  else if (outcome === "bonus") line = said.bonus;
+  else line = said.success[before.turn % 2]!;
   return { outcome, gains, chips, line: `${line}${hurt}` };
 }
+
+/** What she says when the morning's one rep is done, in her own voice (the chips carry the numbers). */
+const REP_SAID: Record<CharacterId, { success: [string, string]; bonus: string; fail: string; badFail: string }> = {
+  // About the whole morning's work, never the one pitch on screen: the rep can look great and the work still not take.
+  aoi: {
+    success: ["\"My hands feel quicker than yesterday. I'm writing that down.\"", "\"Um, sorry, that felt good. The whole morning did. Can I say that?\""],
+    bonus: "\"Coach, everything felt right this morning. Write it down in pen.\"",
+    fail: "\"Something's off in my hands today. Tomorrow, though.\"",
+    badFail: "\"Sorry. My hands were somewhere else this morning. I'll go find them.\"",
+  },
+  reina: {
+    success: ["\"Again.\" She doesn't say it like it was bad, which is how you know it wasn't.", "\"The slot held all morning. Write that down.\""],
+    bonus: "\"Every pitch this morning went where I said.\" She checks the notebook anyway. \"Every one.\"",
+    fail: "\"The slot dropped this morning. You saw it. Don't say it. I know.\"",
+    badFail: "\"Don't talk yet.\" She stands on the mound a long time before she walks off.",
+  },
+  miki: {
+    success: ["\"Cool.\" And for once, she means it.", "\"Gary clanked twice this morning. That means he approves.\""],
+    bonus: "\"Okay, this morning was actually good. Don't make it a thing, Coach.\"",
+    fail: "\"Cool. Cool cool. Same time tomorrow, I guess.\"",
+    badFail: "\"Don't do the talk. Just walk slow with me.\"",
+  },
+  sol: {
+    success: ["\"Ninety-six.\" That's good. That's her saying good.", "\"Arm's fine, Jefe. Better than fine.\""],
+    bonus: "\"Ninety-eight.\" She almost smiles. \"Don't tell Luz.\"",
+    fail: "\"Arm's tight this morning. Ninety-one. Ask me again after lunch.\"",
+    badFail: "\"Ninety-nine.\" That means leave her alone for a while.",
+  },
+  kira: {
+    success: ["\"Here's the deal, Partner. That was a good morning, so you buy the juice.\"", "\"In and out, Partner. That's how I like it.\""],
+    bonus: "\"Partner, I'd sign this morning's deal again. Every single day.\"",
+    fail: "\"This morning wasn't the deal. New deal tomorrow.\"",
+    badFail: "\"That was me being dumb in an exciting new way. I'll be at the door.\"",
+  },
+  yuki: {
+    success: ["\"My hands were quick today. Did you see? You didn't see.\"", "\"Faster than yesterday, Stopwatch. Don't argue.\""],
+    bonus: "\"Everything was quick this morning, Stopwatch. You should've timed it.\"",
+    fail: "\"I kept swinging early this morning. It's fine. It's fine.\"",
+    badFail: "\"Hands are cold, that's all.\" She's rubbing her leg, not her hands.",
+  },
+};
 
 /**
  * The rep's work before it is applied: the same seed rolls the same morning, so the done panel

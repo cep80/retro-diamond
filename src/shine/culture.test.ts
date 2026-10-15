@@ -87,10 +87,10 @@ describe("culture presentation", () => {
     assert.equal(curtainFilmSrc("yuki"), "/art/action/yuki/trot.webp");
     assert.equal(curtainFilmSrc("kira"), "/art/action/kira/follow.webp");
     assert.doesNotMatch(curtainFilmSrc("miki"), /follow|celebrate/);
-    assert.equal(curtainCaption("aoi"), "Cap in hand.");
-    assert.equal(curtainCaption("yuki"), "She's going.");
-    assert.equal(curtainCaption("miki"), "The bat is down.");
-    assert.equal(curtainCaption("kira"), "The glove stays.");
+    assert.equal(curtainCaption("aoi"), "She takes her cap off for the crowd.");
+    assert.equal(curtainCaption("yuki"), "She's already running, of course.");
+    assert.equal(curtainCaption("miki"), "She sets the bat down and just listens.");
+    assert.equal(curtainCaption("kira"), "She holds the glove up to the stands.");
     assert.equal(endingRankLabel("S"), "S — Legend");
     assert.equal(endingRankLabel("never-quit"), "Never Quit ◆");
     assert.equal(ouenSwell("koi", 2), true);
@@ -113,6 +113,12 @@ describe("culture presentation", () => {
     const aoi = "お立ち台. She's already looking.";
     assert.equal(curtainCallLine(aoi, curtainSkin(datePark("lantern-classic", "koi"))), aoi);
     assert.equal(curtainCallLine(aoi, curtainSkin(datePark("night-classic", "koi"))), "Dugout. She's already looking.");
+    // Voice v2: the openers are whole phrases, and still swap by park.
+    const sol2 = "Back in the dugout, somebody asks how she feels.";
+    assert.equal(curtainCallLine(sol2, "otachidai"), "Up on the hero's platform, somebody asks how she feels.");
+    assert.equal(curtainCallLine(sol2, "dugout"), sol2);
+    const aoi2 = "Up on the hero's platform, she's already looking.";
+    assert.equal(curtainCallLine(aoi2, "dugout"), "Back in the dugout, she's already looking.");
   });
 
   it("never shows the picture that was just on screen (the done panel's, or the Call's)", () => {
@@ -190,10 +196,28 @@ describe("culture presentation", () => {
     assert.equal(crowdStem("dusters"), "desert");
   });
 
-  it("opens work as 朝練 at Koi and early work at Heat", () => {
-    assert.match(workMorningLine("koi"), /朝練/);
-    assert.match(workMorningLine("heat"), /Early work/);
+  it("opens work at Koi's pond, in the Heat's early sun, and to North's heater", () => {
+    // Voice v2: Japanese is a stamp, never a word inside an English sentence.
+    assert.match(workMorningLine("koi"), /Koi Park/);
+    assert.doesNotMatch(workMorningLine("koi"), /[぀-ヿ一-鿿]/);
+    assert.match(workMorningLine("heat"), /early/);
     assert.match(workMorningLine("north"), /Morning/);
+  });
+
+  it("speaks every crowd line in whole sentences, with no Japanese inside them", () => {
+    for (const park of ["koi", "north", "stars", "dusters", "diamond"]) {
+      for (let i = 0; i < 12; i++) {
+        for (const pitcher of [false, true]) {
+          const line = recapLine(park, i, pitcher);
+          assert.doesNotMatch(line, /[぀-ヿ一-鿿]/, line);
+          assert.doesNotMatch(line, FORBIDDEN_IN_STORY, line);
+          assert.match(line, /[.!?]['"]?$/, line);
+        }
+      }
+    }
+    for (const id of ["aoi", "reina", "miki", "sol", "kira", "yuki"] as const) {
+      for (const v of cheerLines(id, 100)) assert.doesNotMatch(v, /[぀-ヿ一-鿿]/, v);
+    }
   });
 
   it("rotates the year-start voice without a gacha tile", () => {

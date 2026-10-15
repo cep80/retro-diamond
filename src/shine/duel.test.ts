@@ -188,11 +188,31 @@ describe("verdict lines", () => {
   it("names the call and the pitch", () => {
     assert.equal(verdictLine({ call: "sit-soft", outcome: "reach", pitchType: "slider" }), "Sat soft. Got the slider.");
     assert.equal(verdictLine({ call: "sit-hard", outcome: "miss", pitchType: "changeup" }), "Sat hard. It was the change. Early.");
-    assert.equal(verdictLine({ call: "sit-cell", outcome: "reach", pitchType: "fastball", satCell: 0 }), "Sat on it. Right where she put it.");
+    assert.equal(verdictLine({ call: "sit-cell", outcome: "reach", pitchType: "fastball", satCell: 0 }), "She was looking right there, and she didn't miss it.");
     assert.equal(verdictLine({ call: "protect", outcome: "foul", pitchType: "curve" }), "Protected. Still two.");
     assert.equal(verdictLine({ call: "take", outcome: "take-strike", pitchType: "fastball", strikes: 2 }), "Took it for a read. Strike two.");
     assert.equal(verdictLine({ call: "take", outcome: "take-ball", pitchType: "slider" }), "Took it. Ball. She showed the slider.");
-    assert.equal(verdictLine({ call: "sit-cell", outcome: "out", pitchType: "fastball", satCell: 1 }), "Sat away. It came in. Out.");
+    assert.equal(verdictLine({ call: "sit-cell", outcome: "out", pitchType: "fastball", satCell: 1 }), "It came in somewhere else, and she couldn't square it up.");
     assert.equal(verdictLine({ call: "sit-cell", outcome: "reach", pitchType: "fastball", card: "green-light" }), "Green light. She didn't miss.");
+  });
+
+  it("says the 1.0 plate's calls like a fan, with the count, and never the design word", () => {
+    // The 1.0 race is always the square (sit-cell): the player sees these every pitch (voice v2).
+    const seen = new Set<string>();
+    for (const outcome of outcomes) {
+      for (const satCell of [0, 1, 2] as const) {
+        for (let seed = 0; seed < 3; seed++) {
+          const line = verdictLine({ call: "sit-cell", outcome, pitchType: "slider", satCell, strikes: 1, balls: 2, seed });
+          assert.doesNotMatch(line, /\b(sat|sit|sitting)\b/i, line);
+          seen.add(`${outcome}|${satCell === 0}|${line}`);
+        }
+      }
+    }
+    // Every outcome a player sees often has three versions.
+    for (const outcome of ["reach", "out", "foul", "miss", "k"]) {
+      assert.equal([...seen].filter((s) => s.startsWith(`${outcome}|true|`)).length, 3, outcome);
+    }
+    assert.equal(verdictLine({ call: "sit-cell", outcome: "take-ball", pitchType: "curve", balls: 2 }), "She lays off the curve. Ball two.");
+    assert.equal(verdictLine({ call: "sit-cell", outcome: "take-strike", pitchType: "curve", strikes: 1 }), "She takes it for strike one.");
   });
 });

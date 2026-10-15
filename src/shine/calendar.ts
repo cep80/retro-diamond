@@ -170,7 +170,7 @@ export function daysAwayLabel(n: number): string {
 
 /** The Finale's postgame: the last big date is behind her, and the way on is what comes after it. */
 export const FINALE_POSTGAME = {
-  next: "Three years. That was the last one.",
+  next: "That was the last big game of her three years.",
   leave: "Afterward",
 } as const;
 

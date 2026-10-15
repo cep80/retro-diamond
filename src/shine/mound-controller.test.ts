@@ -132,7 +132,9 @@ describe("mound controller: Go and watch mode", () => {
     const s = m.c.getSnapshot();
     assert.equal(s.game.pitchCount, 1);
     assert.equal(of(m, "windup").length, 1);
-    assert.equal(s.game.banner, ONE_THROW_LINE);
+    // Voice v2: the morning closes on what she said about her one throw, in quotes; the read under it rests the arm.
+    assert.match(s.game.banner, /^"[^"]+"$/);
+    assert.notEqual(s.game.banner, ONE_THROW_LINE);
     const winds = of(m, "windup").length;
     m.sched.advance(20_000);
     assert.equal(of(m, "windup").length, winds);
@@ -463,7 +465,7 @@ describe("mound controller: saves, sounds, debug looks", () => {
     assert.equal(s.closed, true);
     assert.equal(s.game.done, true);
     assert.equal(s.game.pgMet, false);
-    assert.equal(s.game.banner, "The Gate still opens.");
+    assert.equal(s.game.banner, "She missed it, but she's still in.");
     m.sched.advance(60_000);
     assert.equal(of(m, "land").length, 0);
     assert.equal(m.c.getSnapshot().stage, "reaction");

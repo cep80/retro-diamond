@@ -21,7 +21,9 @@ import {
   dateCrowdLevel,
   dateHeadline,
   dateTier,
+  dateQuote,
   dateTitle,
+  doneLabelFor,
   FINALE_PLATE,
   genericRead,
   headToHead,
@@ -39,7 +41,7 @@ import { moundBug, settleMoundBug } from "@/components/race-bug";
 import { ActionStage, hrMomentUp } from "@/components/action/ActionStage";
 import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
 import { castSide, DateTitleCard, FinaleWinMoment, LowerThird, SkillBanner, VsSplash } from "@/components/DateChrome";
-import { moundCaption, moundPitchReadout, MOUND_MIDDLE_HEAD, pitchCountLine } from "@/components/mound-chrome";
+import { inningOrdinal, moundCaption, moundPitchReadout, MOUND_MIDDLE_HEAD, pitchCountLine } from "@/components/mound-chrome";
 import { ShineMute } from "@/components/ShineMute";
 import { DayStrip, DoneHeader, PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
 import {
@@ -552,7 +554,7 @@ function MoundFrame({
 
   function leave() {
     if (!game.done) return;
-    finishGame(game.kind, game.pgMet, game.sgMet, game.outsRecorded >= 3, false, morning ? morningDeparture(run).line : moundRead(game), game.spurtFired, undefined, {
+    finishGame(game.kind, game.pgMet, game.sgMet, game.outsRecorded >= 3, false, morning ? morningDeparture(run).line : moundRead({ ...game, who: run.characterId }), game.spurtFired, undefined, {
       tells: game.tells,
       record: { events: game.events, arm: "academy", pgId: game.pgId },
       outs: game.outs,
@@ -574,7 +576,7 @@ function MoundFrame({
   const held = film ? snap.atThrow : null;
   const bug = held ? settleMoundBug(held.bug, game.events) : moundBug(game);
   const inBox = held ? held.by : batterInBox(run, game);
-  const closeRead = game.done ? moundRead(game) : null;
+  const closeRead = game.done ? moundRead({ ...game, who: run.characterId }) : null;
   const closeLine = game.done
     ? dateHeadline({
         exhibition: false,
@@ -583,7 +585,7 @@ function MoundFrame({
         verb: who.pgVerb,
         banner: game.banner,
         // The bullpen closes on its own banner, not on the last look's "Ball."
-        cardLine: practice ? null : (game.pgId === "k-side" || game.pgId === "k-2") && !game.pgMet ? moundRead(game) : (spec?.label ?? null),
+        cardLine: practice ? null : (game.pgId === "k-side" || game.pgId === "k-2") && !game.pgMet ? closeRead : (spec?.label ?? null),
         pgId: game.pgId,
         // A met goal says her verb, then what she did, never the tag's gold verb alone (C3).
         read: closeRead,
@@ -824,9 +826,14 @@ function MoundFrame({
           </p>
           {savedChip && picking ? <p className="shine-saved-chip shine-mound-saved">Saved</p> : null}
           {doneUp ? (
-            <div className="flex flex-col gap-2" data-mound-done={game.kind}>
+            <div className="flex flex-col gap-2" data-mound-done={game.kind} data-long-head={(closeLine ?? "").length > 44 ? "" : undefined}>
               {/* The result screen (C3): the label, her 達成 / 未達 stamp, the headline big, the day's chips. */}
-              <DoneHeader met={practice ? null : game.pgMet} label={RACE_COPY.doneLabel} headline={closeLine ?? ""} reduced={reduced} paused={paused} />
+              <DoneHeader met={practice ? null : game.pgMet} label={doneLabelFor(game.kind, { morning, mound: true })} headline={closeLine ?? ""} reduced={reduced} paused={paused} />
+              {!practice ? (
+                <p className="text-center font-story text-sm italic text-cream" data-her-line>
+                  {dateQuote(run.characterId, game.pgMet, game.kind)}
+                </p>
+              ) : null}
               <DayStrip chips={dayChips} label="Batter by batter" reduced={reduced} paused={paused} />
               {readUnder ? <p className="text-center font-story text-sm text-cream/85">{readUnder}</p> : null}
               {rep ? <RepWork result={rep.result} /> : null}
@@ -847,7 +854,7 @@ function MoundFrame({
             <div className="shine-mound-lines flex flex-col gap-2">
               {restored && picking ? (
                 <p className="text-center font-story text-sm text-grass-2">
-                  Picked up where she left it. Inning {game.inning}, {game.outs} out, {game.count.balls}-{game.count.strikes}.
+                  Back where you left off: the {inningOrdinal(game.inning)} inning, {game.outs} out, and a {game.count.balls}-{game.count.strikes} count.
                 </p>
               ) : null}
               {game.callback && picking ? (

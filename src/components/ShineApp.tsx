@@ -231,15 +231,15 @@ function Title() {
             {nextHook ? <p className="shine-title-hook">{nextHook}</p> : null}
             {run ? (
               <PixelBtn className="min-h-14 justify-between px-5 py-2.5 text-sm" onClick={go(continueRun)}>
-                {run.clubhouseCard ? `${who.name} · The year is over` : `Continue ${who.name} · Day ${run.turn}`}
+                {run.clubhouseCard ? `See how ${who.name}'s story ended` : `Continue ${who.name} · Day ${run.turn}`}
                 <span aria-hidden>→</span>
               </PixelBtn>
             ) : (
               // Her line above says who she is; the door says what the year is.
               <PixelBtn className="min-h-14 justify-between px-5 py-2.5 text-sm" onClick={go(openSelect, true)}>
                 <span className="flex flex-col items-start gap-1 text-left">
-                  Begin her year
-                  <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Pick a girl. Coach her three years.</span>
+                  Start coaching
+                  <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Pick a girl and coach her for three years.</span>
                 </span>
                 <span aria-hidden>→</span>
               </PixelBtn>
@@ -260,7 +260,7 @@ function Title() {
             {run && !run.clubhouseCard ? (
               endYear ? (
                 <button type="button" className="shine-title-end is-armed" onClick={go(openSelect, true)}>
-                  This year ends here. Start a new one?
+                  {`This ends ${who.name}'s run for good. Start over?`}
                 </button>
               ) : (
                 <button
@@ -341,14 +341,14 @@ function Wall() {
         </div>
         <h1 className="mt-4 font-display text-2xl font-bold">Clubhouse</h1>
         <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">
-          Every girl you coach to the end gets a card on the wall. What she learned stays with her. Everything else starts over. None of it is for sale.
+          Every girl you coach all the way through gets a card up here. The next girl can learn a few things from her, but she still starts her own three years from scratch.
         </p>
         {nextHook ? (
           <p className="mt-4 rounded-xl border border-gold/40 bg-ink/70 px-4 py-3 font-ui text-sm text-gold">{nextHook}</p>
         ) : null}
         {clubhouse.length === 0 ? (
           <>
-            <p className="mt-6 font-ui text-sm text-muted">No cards yet. Finish a Rookie year.</p>
+            <p className="mt-6 font-ui text-sm text-muted">No cards yet. Coach a girl to the end of her Academy days, and her card goes up here.</p>
             {/* The wall already has a frame for each of them, dimmed until her year is done. */}
             {frames}
           </>
@@ -386,11 +386,9 @@ function Wall() {
                     <p className="mt-3 font-display text-sm font-bold uppercase tracking-wide">
                       #{who.number} {who.name}
                     </p>
-                    <p className="mt-1 font-ui text-xs text-muted">
-                      Her rival: {sheet(who.rival).name}
-                    </p>
+                    <p className="mt-1 font-ui text-xs text-muted">Her rival was {sheet(who.rival).name}.</p>
                     {cardBanner(c) ? (
-                      <p className="mt-1 font-ui text-xs text-gold">Park banner · #{who.number}</p>
+                      <p className="mt-1 font-ui text-xs text-gold">Her number, {who.number}, went up on a park banner.</p>
                     ) : null}
                     {cardAltLook(c) ? (
                       <p className="mt-1 font-ui text-xs text-gold">The kids at the gate are wearing her number now.</p>
@@ -402,7 +400,7 @@ function Wall() {
                   </div>
                   <div className="border-t border-white/10 bg-panel/80 px-4 py-3">
                     <p className="font-display text-[10px] uppercase tracking-widest text-muted">What she passes on</p>
-                    <p className="mt-1 font-ui text-xs text-gold">{passes || "Nothing yet"}</p>
+                    <p className="mt-1 font-ui text-xs text-gold">{passes || "Nothing this time"}</p>
                   </div>
                 </article>
               );
@@ -411,7 +409,7 @@ function Wall() {
           {waiting.length ? (
             <>
               {/* The girls not coached yet wait in their frames, dimmed. A tap opens her Rookie year. */}
-              <p className="mt-6 font-display text-[10px] uppercase tracking-widest text-muted">Waiting on the wall</p>
+              <p className="mt-6 font-display text-[10px] uppercase tracking-widest text-muted">Still to coach</p>
               {frames}
             </>
           ) : null}
@@ -450,7 +448,7 @@ function Shop() {
         </div>
         <h1 className="mt-4 font-display text-2xl font-bold">Shop</h1>
         <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">
-          Looks only. The prices are the list. This preview does not charge. No banners. No pull rates. Her years, her games, and the Clubhouse are never for sale.
+          Everything here changes how the game looks, and nothing else. This is a preview, so nothing actually charges you. There are no banners and no pull rates, and the prices you see are the prices.
         </p>
         <ul className="mt-6 space-y-3">
           {SKUS.filter((s) => previewClaimable(s)).map((s) => (
@@ -468,14 +466,16 @@ function Shop() {
                   setNote(useShine.getState().lastLine);
                 }}
               >
-                {owned.includes(s.id) ? "On" : "Preview"}
+                {owned.includes(s.id) ? "It's on" : "Try it on"}
               </PixelBtn>
             </li>
           ))}
         </ul>
         {note ? <p className="mt-4 font-ui text-sm text-grass-2">{note}</p> : null}
-        <p className="mt-6 font-display text-[10px] uppercase tracking-widest text-gold">Never sold</p>
-        <p className="mt-2 font-ui text-sm text-cream/80">{NEVER_SOLD.join(" · ")}</p>
+        <p className="mt-6 font-display text-[10px] uppercase tracking-widest text-gold">Never for sale</p>
+        <p className="mt-2 font-ui text-sm text-cream/80">
+          {`We'll never sell you ${NEVER_SOLD.slice(0, -1).join(", ")}, or ${NEVER_SOLD.at(-1)}. Those you earn by coaching her.`}
+        </p>
       </div>
     </main>
   );
@@ -488,27 +488,27 @@ function Shop() {
 const MEET: Record<CharacterId, { line: string; lore: string }> = {
   aoi: {
     line: "I run out every ground ball. Even the easy outs. Mom says I don't have to. …I do.",
-    lore: "Koi Park's lead-off. Her mom runs the okonomiyaki shop by the gate.",
+    lore: "She leads off for Koi Park. Her mom runs the okonomiyaki shop by the gate.",
   },
   reina: {
     line: "I put every pitch where I say it'll go. When I miss, I want to know by how much.",
-    lore: "Koi Park's ace. She has never once walked a batter.",
+    lore: "She's Koi Park's ace, and she has never once walked a batter.",
   },
   miki: {
     line: "I hit it foul until the pitcher gives up. I'm annoying like that. Coaches think so too. So. Hi.",
-    lore: "North Field's toughest out. Two melon pan in her bag, always. In case.",
+    lore: "She's the toughest out at North Field. She keeps two melon pan in her bag, always, just in case.",
   },
   sol: {
     line: "I throw hard, Jefe. People clap. That's the whole story. Don't ask about the rest.",
-    lore: "The Dusters' ace. Her big sister taught her three more pitches. She won't throw them where anyone can see.",
+    lore: "She's the Dusters' ace. Her big sister taught her three more pitches, and she won't throw them where anyone can see.",
   },
   kira: {
     line: "Here's the deal, Partner. You get me a lead, I get you three outs. Then I'm out the door. Deal?",
-    lore: "Stars Park's closer. Two taps on the bullpen door, then the ninth. Gone by the last bus.",
+    lore: "She closes for Stars Park. Two taps on the bullpen door, then the ninth, and she's gone by the last bus.",
   },
   yuki: {
     line: "Everybody says wait. Wait for the pitch, wait for the sign, wait for— no. I don't wait.",
-    lore: "The Palms' base stealer. First one at the park, every single morning.",
+    lore: "She steals bases for the Palms, and she's the first one at the park every single morning.",
   },
 };
 
@@ -549,10 +549,10 @@ function Select() {
   const pending = manifest === null;
   const ready = filmReady(pick, manifest);
   const legacyLabel = parent
-    ? `She learns from ${sheet(parent.characterId).name}${sparks.length ? ` · ${sparks.length} to pass on` : ""}`
+    ? `${sheet(parent.characterId).name} is teaching her${sparks.length ? ` ${sparks.length === 1 ? "one thing" : `${sparks.length === 2 ? "two" : "three"} things`}` : ""}`
     : eligible.length
       ? "Who does she learn from?"
-      : "Bring in a friend's card";
+      : "Add a friend's card";
 
   useEffect(() => {
     let live = true;
@@ -584,7 +584,7 @@ function Select() {
               key={c.id}
               type="button"
               aria-pressed={on}
-              aria-label={inFilm ? `${c.name}, number ${c.number}` : `${c.name}. Her film is not in.`}
+              aria-label={inFilm ? `${c.name}, number ${c.number}` : `${c.name}. Her art isn't ready yet.`}
               data-locked={inFilm ? undefined : "true"}
               onClick={() => {
                 if (on) return;
@@ -637,7 +637,7 @@ function Select() {
               startRun(pick, parentId, pickInheritSparks(parent?.sparks ?? [], sparks));
             }}
           >
-            {pending || ready ? `Coach ${who.name}` : "Her film is not in."}
+            {pending || ready ? `Coach ${who.name}` : "Not ready yet"}
             {pending || ready ? <span aria-hidden>→</span> : null}
           </PixelBtn>
         </section>
@@ -648,8 +648,8 @@ function Select() {
             <p className="shine-pick-sheet-title">{eligible.length ? `Who ${who.name} learns from` : "A friend's card"}</p>
             {eligible.length ? (
               <div className="mt-4">
-                <p className="font-display text-[10px] uppercase tracking-widest text-gold">Parent card</p>
-                <p className="mt-1 font-ui text-xs text-muted">What she learned stays with her. Everything else starts over.</p>
+                <p className="font-display text-[10px] uppercase tracking-widest text-gold">Learn from an older card</p>
+                <p className="mt-1 font-ui text-xs text-muted">The new girl picks up a few of her habits. Everything else, she earns herself.</p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <button
                     type="button"
@@ -660,8 +660,8 @@ function Select() {
                     }}
                     className={`club-nav-tile px-4 py-3 text-left ${parentId === null ? "border-gold" : ""}`}
                   >
-                    <p className="font-display text-xs font-bold uppercase">No parent</p>
-                    <p className="mt-1 font-ui text-sm text-muted">First year. Fresh.</p>
+                    <p className="font-display text-xs font-bold uppercase">Nobody</p>
+                    <p className="mt-1 font-ui text-sm text-muted">She starts with what she's got.</p>
                   </button>
                   {eligible.map((c) => (
                     <button
@@ -678,7 +678,7 @@ function Select() {
                         {sheet(c.characterId).name} · {c.ending}
                       </p>
                       <p className="mt-1 font-ui text-sm text-muted">
-                        {c.sparks.slice(0, 3).map((s) => s.kind).join(" · ") || "Nothing to pass on"}
+                        {sparkSummary(c.sparks.slice(0, 3)) || "Nothing to pass on"}
                       </p>
                     </button>
                   ))}
@@ -708,7 +708,7 @@ function Select() {
                             }}
                             className={`club-nav-tile px-3 py-2 ${on ? "border-gold" : ""}`}
                           >
-                            <p className="font-display text-[10px] font-bold uppercase">{s.kind}</p>
+                            <p className="font-display text-[10px] font-bold uppercase">{sparkSummary([s])}</p>
                             <p className="font-ui text-[10px] text-muted">{sparkEffectLine(s.kind)}</p>
                           </button>
                         );
@@ -720,15 +720,15 @@ function Select() {
             ) : null}
             {clubhouse.length > 0 ? (
               <div className="mt-6">
-                <p className="font-display text-[10px] uppercase tracking-widest text-gold">Carry a card</p>
-                <p className="mt-1 font-ui text-xs text-muted">A finished year can walk into the next. Stats start fresh.</p>
+                <p className="font-display text-[10px] uppercase tracking-widest text-gold">Add a friend&apos;s card</p>
+                <p className="mt-1 font-ui text-xs text-muted">Paste the code a friend sent you, and her card goes up on your Clubhouse wall.</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <input
                     value={carry}
                     onChange={(e) => setCarry(e.target.value)}
-                    placeholder="A friend's card"
+                    placeholder="SHINE-…"
                     className="min-h-11 min-w-[12rem] flex-1 rounded-xl border border-white/20 bg-ink/70 px-3 font-ui text-sm text-cream"
-                    aria-label="Friend carry code"
+                    aria-label="Your friend's card code"
                   />
                   <PixelBtn
                     variant="ghost"
@@ -739,7 +739,7 @@ function Select() {
                       if (ok) setCarry("");
                     }}
                   >
-                    Carry
+                    Add card
                   </PixelBtn>
                 </div>
                 {carryNote ? <p className="mt-2 font-ui text-xs text-grass-2">{carryNote}</p> : null}
@@ -779,9 +779,9 @@ function Complex() {
 
   if (storyCard) {
     return (
-      <Shell runTurn={run.turn} label="Letters" mood="elated" pill={{ kana: "ファンレター", name: "Letters", tone: "gold" }} action={{ label: "Morning", onClick: dismissStoryCard }}>
+      <Shell runTurn={run.turn} label="Letters" mood="elated" pill={{ kana: "ファンレター", name: "Fan mail", tone: "gold" }} action={{ label: "Start the morning", onClick: dismissStoryCard }}>
         <p className="shine-shell-line">{fanLetter(run)}</p>
-        <p className="shine-shell-aside text-gold">Letters at the complex. People come to see her now.</p>
+        <p className="shine-shell-aside text-gold">There's a whole stack of them at the front desk now. She read every one twice.</p>
       </Shell>
     );
   }
@@ -804,7 +804,7 @@ function Complex() {
         }}
       >
         <SceneLines scene={catchScene} />
-        <p className="shine-shell-aside text-muted">She looks lighter.</p>
+        <p className="shine-shell-aside text-muted">She walks back in lighter than she walked out.</p>
       </Shell>
     );
   }
@@ -826,7 +826,7 @@ function Complex() {
           </div>
         }
         action={{
-          label: "Morning",
+          label: "Start the morning",
           onClick: () => {
             finishYearStart();
             markSpring();
@@ -836,10 +836,10 @@ function Complex() {
         {/* The card already names the year, and the Coach's note next morning carries the new coach: this is her. */}
         <p className="shine-shell-line">
           {run.year === 2
-            ? "She was at the complex before the gate opened. A year older. Same number."
+            ? "She was at the complex before anyone unlocked the gate. She's a year older and still wearing the same number."
             : run.year === 3
               ? "Her last spring at the Academy. She knows where everything is now, even the good hose."
-              : "The year is open."}
+              : "Day one at the Academy. Everything starts here."}
         </p>
       </Shell>
     );
@@ -943,7 +943,8 @@ function Postgame() {
   if (curtain) {
     const call = curtainFilmSrc(run.characterId);
     // The Call's line, its caption, then each verse the crowd has earned, one after another.
-    const verseLines = [curtainCallLine(who.curtainCall, skin), `${curtainCaption(run.characterId)} ${skin === "otachidai" ? "The 応援団 sings her name." : "The organ finds her."}`, ...verses];
+    const crowd = skin === "otachidai" ? "The cheering section sings her name." : "The organ plays her song.";
+    const verseLines = [curtainCallLine(who.curtainCall, skin), `${curtainCaption(run.characterId)} ${crowd}`, ...verses];
     return (
       <main className={`shine-after shine-curtain ${reduced ? "is-reduced" : ""}`} data-curtain={last?.type ?? "date"}>
         <div className="shine-backdrop" aria-hidden>
@@ -993,7 +994,7 @@ function Postgame() {
               {CURTAIN_CTA}
             </GoButton>
           ) : (
-            <p className="shine-dock-wait">The first Lantern Classic Call is hers.</p>
+            <p className="shine-dock-wait">Stay a minute. Her first curtain call at the Lantern Classic is all hers.</p>
           )}
         </GoDock>
       </main>
@@ -1040,10 +1041,10 @@ function Postgame() {
           {last?.type === "first-light" && keptToday && run.keepsake === "dirt" ? (
             <p className="mt-3 font-ui text-sm text-gold">She kept a pinch of dirt from the baseline and wrapped it in a sock. &ldquo;Don&apos;t tell anyone. It&apos;s dirt.&rdquo;</p>
           ) : last?.type === "first-light" && keptToday && run.keepsake === "ball" && isPitcherStyle(who.style) ? (
-            <p className="mt-3 font-ui text-sm text-cream/70">She kept the last-out ball.</p>
+            <p className="mt-3 font-ui text-sm text-cream/70">She kept the ball from the last out and wouldn't let anybody else hold it.</p>
           ) : last?.type === "first-light" && !run.keepsake ? (
             <p className="mt-3 font-ui text-sm text-cream/70">
-              {isPitcherStyle(who.style) ? "No ball in her pocket this time." : "The baseline stayed. No keepsake this time."}
+              {isPitcherStyle(who.style) ? "She didn't keep a ball this time. Maybe next time." : "She didn't take anything home from the baseline this time."}
             </p>
           ) : null}
           {/* The Finale says her own line; every other big date steps through the park's booth, never twice running. */}
@@ -1207,7 +1208,7 @@ function YearEnd() {
             <>
               <p className="max-w-md font-ui text-sm text-gold">{still.trained}</p>
               <p className="mt-2 max-w-md font-ui text-sm text-gold">{still.mentor}</p>
-              <p className="mt-3 max-w-md font-ui text-sm text-gold">{sparkGapLine([card]) ?? `Next: Coach ${nextGirlName(run.characterId)}.`}</p>
+              <p className="mt-3 max-w-md font-ui text-sm text-gold">{sparkGapLine([card]) ?? `${nextGirlName(run.characterId)} is next.`}</p>
               <Scrapbook
                 highlights={book}
                 entries={ending?.book ?? undefined}
@@ -1220,7 +1221,7 @@ function YearEnd() {
               {/* The fans and the rank's numbers wait at the very bottom, folded (check-in 27, N5). */}
               <details className="shine-ending-why mt-4 max-w-md">
                 <summary className="flex min-h-11 cursor-pointer items-center font-display text-[11px] uppercase tracking-widest text-gold">
-                  How she earned her rank
+                  How she got this rank
                 </summary>
                 <p className="pb-2 font-ui text-xs text-cream/70" data-ending-why>
                   {still.why}
@@ -1231,7 +1232,7 @@ function YearEnd() {
         </section>
         <GoDock>
           {pages ? (
-            <GoButton onClick={finishCareer}>Clubhouse</GoButton>
+            <GoButton onClick={finishCareer}>To the Clubhouse wall</GoButton>
           ) : (
             <GoButton
               onClick={() => {
@@ -1241,14 +1242,14 @@ function YearEnd() {
                 setPages(true);
               }}
             >
-              The scrapbook
+              Open her scrapbook
             </GoButton>
           )}
         </GoDock>
       </main>
     );
   }
-  const nextYear = run.turn <= 20 ? "Classic year" : "Senior year";
+  const nextYear = run.turn <= 20 ? "On to her Classic year" : "On to her senior year";
   return (
     <main className="shine-after" data-year-end={run.year}>
       <div className="shine-backdrop" aria-hidden>
@@ -1267,8 +1268,8 @@ function YearEnd() {
           <p className="shine-after-line">{yearStillLine(run.characterId, run.turn, run.pgResults, run.definingPa, run.lightCard, run.finaleTeamWon)}</p>
           <p className="mt-3 font-ui text-sm text-cream/80">
             {run.turn <= 20
-              ? "Next spring: the Classic year. The Lantern Classic is always at Lantern Field."
-              : "Next spring: her senior year. The Stretch is coming."}
+              ? "Next spring is her Classic year, and that means the Lantern Classic."
+              : "Next spring is her senior year. The Stretch comes up fast."}
           </p>
           <SceneBlock scene={relationshipScene(run, "year-end")} />
         </div>
@@ -1353,7 +1354,7 @@ function Scrapbook({
   if (!entries.length && !pa && !letter) return null;
   return (
     <div className="shine-book" data-testid="scrapbook">
-      <p className="font-display text-[10px] uppercase tracking-widest text-gold">Scrapbook</p>
+      <p className="font-display text-[10px] uppercase tracking-widest text-gold">Her scrapbook</p>
       <ol className="shine-book-pages">
         {entries.map((e, i) => {
           if (e.kind === "note") {
@@ -1567,7 +1568,7 @@ function Establishing() {
                 dismissEstablishing();
               }}
             >
-              Morning
+              Start her first morning
             </SceneGo>
           ) : null
         }
@@ -1682,7 +1683,7 @@ function EventScreen({ event }: { event: TrainingEvent }) {
             </span>
           ))}
         </div>
-        <SceneGo onClick={() => resolveEvent(key, choice.effect)}>To work</SceneGo>
+        <SceneGo onClick={() => resolveEvent(key, choice.effect)}>Off to work</SceneGo>
       </>
     ) : null;
   return (

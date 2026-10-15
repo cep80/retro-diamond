@@ -103,10 +103,10 @@ describe("the plate appearance a pitch ended", () => {
 describe("the per-batter card", () => {
   it("says the batter's line, the pitches in words and her side's tone", () => {
     const k = moundCard("Nishi", { result: "k", swung: false, runs: 0, pitches: 3, outs: 1 });
-    assert.deepEqual(k, { line: "Nishi, looking. One down.", meta: "Three pitches.", tone: "gold" });
+    assert.deepEqual(k, { line: "Nishi strikes out looking. One down.", meta: "Three pitches.", tone: "gold" });
     const walk = moundCard("Aoi", { result: "walk", swung: false, runs: 0, pitches: 6, outs: 0 });
     assert.equal(walk.tone, "slate");
-    assert.equal(walk.line, "Aoi takes first.");
+    assert.equal(walk.line, "Aoi draws a walk.");
     const hr = moundCard("Aoi", { result: "hr", swung: true, runs: 1, pitches: 1, outs: 0 });
     assert.equal(hr.tone, "coral");
     assert.equal(hr.meta, "One pitch.");
@@ -141,7 +141,7 @@ describe("the mound's caption", () => {
   };
 
   it("sets her at the wind-up, and lets the cast hitter step in under the VS card", () => {
-    assert.equal(moundCaption({ ...base, stage: "prepare", picking: false }), "Set.");
+    assert.equal(moundCaption({ ...base, stage: "prepare", picking: false }), "She comes set.");
     assert.equal(moundCaption({ ...base, stage: "prepare", picking: false, vsName: "Aoi" }), "Aoi steps in.");
     assert.equal(moundCaption({ ...base, stage: "flight", picking: false }), "");
   });

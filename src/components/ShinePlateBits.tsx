@@ -106,7 +106,7 @@ export function PauseButton({ onPause }: { onPause: () => void }) {
 }
 
 /** The pause dialog's way out on a screen whose attempt is saved (the career plate and mound). */
-export const PAUSE_TITLE_SAVED = "Title · the attempt is saved";
+export const PAUSE_TITLE_SAVED = "Title screen (your game is saved)";
 
 export function PauseOverlay({
   reason,
@@ -129,11 +129,11 @@ export function PauseOverlay({
     <div className="fixed inset-0 z-[65] flex items-center justify-center bg-ink/80 p-6" role="dialog" aria-modal="true" aria-label="Paused">
       <div className="w-full max-w-sm rounded-2xl border border-white/20 bg-panel p-5 text-cream shadow-2xl">
         <p className="font-display text-xs uppercase tracking-widest text-grass-2">Time</p>
-        <p className="mt-2 font-display text-xl font-bold">{reason === "hidden" ? "She stepped out." : "Paused."}</p>
+        <p className="mt-2 font-display text-xl font-bold">{reason === "hidden" ? "She stepped out of the box." : "Paused."}</p>
         <p className="mt-1 font-ui text-sm text-cream/75">
           {reason === "hidden"
-            ? "She called time. The pitch waits for you."
-            : "The count and the runners hold. The pitch, if one was in the air, waits."}
+            ? "You looked away, so she called time. Nothing happens until you're back."
+            : "Everything stays right where it is, even a pitch that's already in the air."}
         </p>
         <div className="mt-4 flex flex-col gap-2">
           {/* The way back in is the date's one action colour: Go's gold. */}
@@ -365,7 +365,7 @@ export function ScoutingCard({ report, park }: { report: ScoutingReport; park: s
         </div>
         {report.seen > 0 ? <p className="font-ui text-[10px] uppercase tracking-widest text-muted">Faced ×{report.seen}</p> : null}
       </div>
-      <p className="mt-3 font-display text-[10px] uppercase tracking-widest text-gold">Her tells · before pitch 1</p>
+      <p className="mt-3 font-display text-[10px] uppercase tracking-widest text-gold">What to watch for</p>
       <ul className="mt-1 space-y-1 font-ui text-sm text-cream/90">
         <li>· {report.tells[0]}</li>
         <li>· {report.tells[1]}</li>
@@ -373,13 +373,13 @@ export function ScoutingCard({ report, park }: { report: ScoutingReport; park: s
       </ul>
       {report.adaptation ? (
         <p className="mt-3 rounded-lg border border-coral/40 bg-coral/10 px-3 py-2 font-ui text-sm text-cream">
-          <span className="font-display text-[10px] uppercase tracking-widest text-coral">What she changed · </span>
+          <span className="font-display text-[10px] uppercase tracking-widest text-coral">She's adjusted: </span>
           {report.adaptation.line}
         </p>
       ) : null}
       {report.history ? <p className="mt-2 font-ui text-xs text-muted">{report.history}</p> : null}
       {late ? (
-        <p className="mt-2 font-ui text-xs text-gold/80">Late innings: the pen has someone who does not wait.</p>
+        <p className="mt-2 font-ui text-xs text-gold/80">Late in the game, they've got a reliever who comes right after hitters.</p>
       ) : null}
     </section>
   );

@@ -125,7 +125,7 @@ describe("N2: the rest of a tied Finale", () => {
         assert.equal(finaleTeamWon(g), g.extras!.won);
         assert.match(finaleResultLine(g, "pitcher")!, g.extras!.won ? /^Tied in the 9th\. They (won|walked) it/ : /^Tied in the 9th\. They lost it/);
         const read = moundRead(g);
-        if (g.extras!.won) assert.equal(read, "They won. The tying run scored on her.");
+        if (g.extras!.won) assert.equal(read, "They won. The tying run scored on her, though.");
         else assert.doesNotMatch(read, /They won/);
       }
     }
@@ -194,13 +194,14 @@ describe("N1: the scoreboard, not her ask", () => {
           if (!k.met) assert.ok(still.rank !== "S" && still.rank !== "A", `${tag}: S and A still need her ask`);
           const lines = `${still.quote} ${still.frame} ${still.why}`;
           if (!k.won) {
-            assert.doesNotMatch(lines, /[Ss]he won the (Diamond )?Finale|They won|胴上げ/, tag);
+            assert.doesNotMatch(lines, /[Ss]he won the (Diamond )?Finale|They won|胴上げ|throws? her (up )?in the air/, tag);
           }
           if (k.met && !k.won) {
             assert.match(`${still.quote} ${still.why}`, /They lost|they lost/, tag);
             if (still.rank !== "never-quit") assert.equal(still.quote, FINALE_LOST_MET_QUOTES[c.id], tag);
           }
-          if (k.won && (still.rank === "S" || still.rank === "A")) assert.match(still.frame, /胴上げ/, tag);
+          // The 胴上げ, said in English: the team tosses her.
+          if (k.won && (still.rank === "S" || still.rank === "A")) assert.match(still.frame, /throws her (up )?in the air/, tag);
           assert.doesNotMatch(lines, FORBIDDEN_IN_STORY, tag);
         }
       }

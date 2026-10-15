@@ -11,6 +11,7 @@ Read these first:
 - The progress log at the bottom of `design/diamond-shine-build-plan-2026-09-22.md`.
 
 Rules:
+- **Words: read `design/handoff/voice-v2.md` first. It overrides everything below.** Every line the player reads is said by somebody you could point at: the girl, someone around her, a storyteller talking to the Coach in whole human sentences, the PA announcer, or a plain label. No telegraph fragments, no riddles, no narrator-from-nowhere, no design words ("ask", "sit", "sheet", "look", "window", "held").
 - **Words:** everything the player sees is in the game's voice.
   - No system speak. `src/shine/story.ts` FORBIDDEN_IN_STORY must not match any story text.
   - `src/shine/identity.test.ts` bans some literal strings in source; keep it green.

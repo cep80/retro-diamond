@@ -8,7 +8,7 @@ import { useShine } from "@/shine/store.ts";
 import { DEFAULT_KEYS, type KeyMap, type ShineSettings as Settings } from "@/shine/types.ts";
 
 const KEY_LABELS: { id: keyof KeyMap; label: string; note: string }[] = [
-  { id: "pause", label: "Pause", note: "Freezes the film. The attempt is saved." },
+  { id: "pause", label: "Pause", note: "Stops the game where it is. Nothing is lost." },
 ];
 
 const TEXT_SIZES: { value: Settings["textScale"]; label: string }[] = [
@@ -105,7 +105,7 @@ export function ShineSettings() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="shine-settings-help-title">How it works</span>
-            <span className="shine-settings-help-note">Where she looks, the mound, and the big games.</span>
+            <span className="shine-settings-help-note">Batting, pitching, and how the big games work.</span>
           </span>
           <span className="shine-settings-help-go" aria-hidden>
             ›
@@ -118,8 +118,8 @@ export function ShineSettings() {
           </h3>
           <div className="mt-3 space-y-4">
             <Slider label="Music" value={settings.music} onChange={(v) => setSettings({ music: v })} />
-            <Slider label="Sound" value={settings.sfx} onChange={(v) => setSettings({ sfx: v })} note="Bat, glove, umpire, the release cues." />
-            <Slider label="Crowd" value={settings.crowd} onChange={(v) => setSettings({ crowd: v })} note="Park ambience and the swell after a hit." />
+            <Slider label="Sound" value={settings.sfx} onChange={(v) => setSettings({ sfx: v })} note="The bat, the glove, the umpire, and the pitcher's windup." />
+            <Slider label="Crowd" value={settings.crowd} onChange={(v) => setSettings({ crowd: v })} note="The stands, and the roar after a big hit." />
           </div>
         </section>
 
@@ -128,7 +128,7 @@ export function ShineSettings() {
             Play
           </h3>
           <p className="shine-set-body mt-2">
-            Tap the box she&apos;s sitting on. Then Go. Swing when it arrives. If you leave Swing alone, she swings the way she would anyway. On the mound, set the glove, then Go.
+            At the plate, tap the square where you think the pitch is coming, then press Go. Tap Swing when the ball gets to her. If you don&apos;t, she&apos;ll decide for herself. On the mound, put the catcher&apos;s glove where you want the pitch, then press Go.
           </p>
           {/* A real checkbox under the switch: role="switch" reads it as on or off, the label row is the target. */}
           <label className="shine-set-toggle mt-4">
@@ -137,7 +137,7 @@ export function ShineSettings() {
                 Reduced motion
               </span>
               <span id={`${ids}-rm-note`} className="shine-set-note">
-                Shorter beats, no ball-flight trails, no portrait shake. The result still reads.
+                Less movement on screen: shorter animations, no trails behind the ball, and no shaking. You&apos;ll still see what happened.
               </span>
             </span>
             <input
@@ -193,7 +193,7 @@ export function ShineSettings() {
               Reset
             </button>
           </div>
-          <p className="shine-set-note">Enter or Space is Go. The 3×3 grid is where she looks.</p>
+          <p className="shine-set-note">Enter or Space presses Go.</p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {KEY_LABELS.map((k) => (
               <li key={k.id} className="shine-set-item">
@@ -224,7 +224,7 @@ export function ShineSettings() {
               Save recovery
             </h3>
             <p className="shine-set-note">
-              The game keeps the last {backups.length} checkpoint{backups.length === 1 ? "" : "s"} of this career. Restoring replaces the current run.
+              The game keeps {backups.length === 1 ? "one save" : `${backups.length} saves`} from this career. If you go back to one, everything since then is gone.
             </p>
             <ul className="mt-3 space-y-2">
               {backups
@@ -247,15 +247,15 @@ export function ShineSettings() {
                             setConfirmRestore(null);
                           }}
                         >
-                          Restore
+                          Go back
                         </PixelBtn>
                         <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={() => setConfirmRestore(null)}>
-                          Keep
+                          Cancel
                         </PixelBtn>
                       </span>
                     ) : (
                       <PixelBtn variant="ghost" className="h-9 px-3 text-[10px]" onClick={() => setConfirmRestore(i)}>
-                        Restore…
+                        Go back…
                       </PixelBtn>
                     )}
                   </li>
@@ -270,32 +270,36 @@ export function ShineSettings() {
 
 const TEACH_CARDS: { title: string; body: string }[] = [
   {
-    title: "The at-bat",
-    body: "You are her Coach. Tap the box she's sitting on. Then Go. Swing when it arrives. If you leave Swing alone, she swings the way she would anyway, from where you told her to look.",
+    title: "At the plate",
+    body: "You're her coach. Before each pitch, tap the square where you think it's coming, then press Go. Tap Swing when the ball gets to her. If you don't, she'll swing or take it on her own, looking where you told her to.",
   },
   {
-    title: "Where she looks",
-    body: "The 3×3 grid is where she looks. The right square tightens her hands. A square two away leaves her guessing. That is the whole choice.",
+    title: "Guessing the pitch",
+    body: "The nine squares are the strike zone and just around it. Guess right and she's ready for it. Guess a square or two off and she's late, or fooled. That call is yours to make.",
   },
   {
-    title: "The mound",
-    body: "Reina, Sol, and Kira throw. Tap where the catcher sets up, then press Go. She picks the pitch.",
+    title: "On the mound",
+    body: "Reina, Sol, and Kira pitch. Tap where you want the catcher to set up, then press Go. She picks the pitch herself.",
   },
   {
     title: "The big games",
-    body: "Every girl has a promise to keep. Each big game asks one thing of her, like getting on base or getting three outs, and you watch whether she does it. If she gets the smaller thing instead, it doesn't count against her. Miss two big games and her Academy days are over.",
+    body: "Each big game asks one thing of her, like getting on base or getting three outs, and you watch whether she does it. If she gets a smaller thing instead, it doesn't count against her. Lose two big games and her Academy days are over.",
   },
   {
     title: "Rivals",
-    body: "The girl across from her remembers what you have actually shown. She does not read a scouting report you never played.",
+    body: "The girl across from her only knows what she's actually seen. If you haven't shown her something, she doesn't know it's coming.",
   },
   {
-    title: "Mood and the shop",
-    body: "The morning shows her mood. One tap, one line. The shop sells looks only. What she learns, her games, Clubhouse cards, the Finale, and Never Quit are never for sale.",
+    title: "Her mood",
+    body: "You'll see how she's feeling every morning, and she'll tell you herself. Tired or down, the work goes wrong more often. A day off or a game of catch fixes a lot.",
   },
   {
-    title: "Training",
-    body: "One station a day. One line about how it went. The countdown to the next big game stays on screen.",
+    title: "Mornings",
+    body: "Pick one thing for her to work on each morning. The next morning, she'll tell you how it went. The next big game is always counting down at the top.",
+  },
+  {
+    title: "The shop",
+    body: "The shop only sells looks. You can't buy her talent, her games, her Clubhouse card, a spot in the Finale, or Never Quit.",
   },
 ];
 

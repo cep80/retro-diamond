@@ -345,7 +345,7 @@ describe("race controller", () => {
     assert.equal(gap.atBat, "Her turn");
     assert.notEqual(gap.banner, "Their turn.");
     assert.equal(gap.film, "aoi");
-    assert.equal(gap.cardLine, "Out.");
+    assert.match(gap.cardLine, /^[A-Z].*[.!]$/);
     assert.equal(gap.caption, "");
     assert.notEqual(gap.storedVerdict, "");
     assert.equal(gap.cardVerdict, gap.storedVerdict);
@@ -523,9 +523,9 @@ describe("race controller", () => {
 
   it("a practice morning is one pitch, and the release names early, on time, or late", () => {
     const bands = [
-      { u: 0.5, band: "early" as const, line: "Early. She was out in front of it." },
-      { u: 0.92, band: "now" as const, line: "On time. She was right on it." },
-      { u: 1.2, band: "late" as const, line: "Late. It got in on her." },
+      { u: 0.5, band: "early" as const, line: "She was way out in front of that one." },
+      { u: 0.92, band: "now" as const, line: "Right on time. She was all over it." },
+      { u: 1.2, band: "late" as const, line: "It got in on her hands. She was late." },
     ];
     for (const want of bands) {
       const { c, sched, run } = race(`one-rep-${want.band}`, { kind: "practice", oneRep: true, duel: false, encounter: undefined });

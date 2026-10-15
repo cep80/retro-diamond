@@ -12,7 +12,7 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: APP_NAME },
       { name: "theme-color", content: "#0c1210" },
-      { name: "description", content: "Coach one girl. Work the complex. Sit her, press Go, and swing when it arrives. Diamond Shine." },
+      { name: "description", content: "Pick a girl and coach her through three years at the Academy. Call the pitch, press Go, and swing when it gets there." },
       // The page mixes Japanese and English, so browsers offer to translate it. Translation rewraps
       // text nodes under React and crashes it ("removeChild ... not a child"); the game's kana are on purpose.
       { name: "google", content: "notranslate" },

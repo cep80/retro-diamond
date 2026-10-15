@@ -25,9 +25,11 @@ import type { Cell, PitchType } from "./core/zone.ts";
 import { resultStamp, STAMP_DELAY_MS, stampHoldMs, type HrNameplate, type ResultStamp } from "./action-art.ts";
 import { moundBeatSpec, PREPARE_MS_REDUCED, type BeatSpec, type Stage } from "./beats.ts";
 import { portraitSrc, sheet } from "./bible.ts";
-import type { GameKind } from "./featured-game.ts";
+import { GATE_MISSED_BANNER, type GameKind } from "./featured-game.ts";
 import { gutsActive, leverageIndex } from "./oracle.ts";
 import {
+  HOLD_SLIPPED_BANNER,
+  MISSED_BANNER,
   decideDelivery,
   decidePitch,
   DELIVERY_DUR,
@@ -93,7 +95,7 @@ export function batterInBox(run: TraineeRun, game: PitchingGame): InTheBox {
 }
 
 /** The card under Reina's scripted Finale walk, after "<name> takes first.": the Coach doesn't come out. */
-export const LEADOFF_WALK_CARD = "You stay in the dugout.";
+export const LEADOFF_WALK_CARD = "You stay in the dugout, like she asked.";
 
 /** The batter the last pitch was thrown to, on the record (null before the first pitch). */
 function lastPitchPa(events: PitchingGame["events"]): number | null {
@@ -823,7 +825,15 @@ export class MoundController {
     this.pending = null;
     this.middle = null;
     this.stage = "reaction";
-    const banner = met ? (g.role === "closer" ? "HOLD." : "COMMAND.") : g.kind === "gate" ? "The Gate still opens." : g.role === "closer" ? "HOLD slipped." : "It got away from her.";
+    const banner = met
+      ? g.role === "closer"
+        ? "She closed it out."
+        : "She got what she came for."
+      : g.kind === "gate"
+        ? GATE_MISSED_BANNER
+        : g.role === "closer"
+          ? HOLD_SLIPPED_BANNER
+          : MISSED_BANNER;
     this.game = { ...g, done: true, pgMet: met, banner };
     this.closed = true;
     this.changed();

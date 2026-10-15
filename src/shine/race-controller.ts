@@ -34,7 +34,7 @@ import {
 import { gutsActive, leverageIndex } from "./oracle.ts";
 import { PlateController, realScheduler, type PlateCue, type PlateScheduler, type PlateSnapshot } from "./plate-controller.ts";
 import { morningDeparture } from "./ending.ts";
-import { decideSwing, heldMeetU, paCardLine, RACE_MODS, RACE_PACE, releaseBand, releaseTimingErr, type RacePick, type ReleaseBand, type SwingDecision } from "./race.ts";
+import { atBatQuote, decideSwing, heldMeetU, paCardLine, RACE_MODS, RACE_PACE, releaseBand, releaseTimingErr, type RacePick, type ReleaseBand, type SwingDecision } from "./race.ts";
 import type { TraineeRun } from "./types.ts";
 
 /** Their half is still open. A function so the side can flip to hers inside the at-bat. */
@@ -657,16 +657,16 @@ export class RaceController {
     const beat = cut?.beat ?? fieldBeatFor(game);
     const reached = beat === "single" || beat === "double" || beat === "hr" || beat === "walk" || beat === "bunt-down";
     const rbiThisPa = cut ? (cut.scored ? 1 : 0) : game.events.reduce((n, e) => (e.t === "rbi" && e.pa === this.paAtGo ? n + e.runs : n), 0);
-    const line = paCardLine({ beat, banner: game.banner, reached, struckOut: beat === "k", rbi: rbiThisPa });
-    // The stamp said its words first; the verdict doesn't say them again.
-    const stamped = [resultStamp(beat, true), resultStamp(beat, false)].map((st) => (st ? ` ${st.en}.` : "")).join("");
+    // The booth says what happened; she says how it felt (voice v2). Their cutaway has only the booth.
+    const seed = this.paAtGo + game.pitchesSeen;
+    const line = paCardLine({ beat, banner: game.banner, reached, struckOut: beat === "k", rbi: rbiThisPa, seed });
     const scored = cut ? cut.scored : game.kind !== "practice" && scoredOnPa(game.events, this.paAtGo);
     const card: PaCard = {
       pa: this.paAtGo,
       beat,
       line,
       reached,
-      verdict: cut ? "" : cardVerdict(line + stamped, game.lastVerdict),
+      verdict: cut ? "" : (atBatQuote(this.run.characterId, beat, seed, game.runnerLine) ?? ""),
       scored,
     };
     this.card = card;

@@ -141,7 +141,7 @@ test("workComparison says the window did not move on a fail", () => {
   const c = workComparison(run)!;
   assert.equal(c.windowBeforeMs, null);
   assert.equal(c.from, c.to);
-  assert.match(c.line, /Nothing took today/);
+  assert.match(c.line, /didn't stick/);
   assert.doesNotMatch(c.line, /\d/);
 });
 

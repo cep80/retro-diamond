@@ -75,18 +75,24 @@ describe("Aoi Rookie calendar", () => {
     resolveOffDay(run);
     assert.equal(run.energy, 75);
     assert.ok(run.mood > 2);
-    assert.equal(lastTrainLine(run), "She took the day.");
+    assert.equal(lastTrainLine(run), "Day off yesterday. She came back looking lighter.");
   });
 
-  it("names the cage when the swing lands", () => {
+  it("names the cage when the swing lands, and takes turns between three ways of saying it", () => {
     const run = newAoiRun();
     run.calendar.push({ turn: 3, type: "work", statTrained: "contact", station: "cage", outcome: "success", energyAfter: 50, moodAfter: 2 });
-    assert.equal(lastTrainLine(run), "Cage. She found one.");
+    assert.match(lastTrainLine(run) ?? "", /cage yesterday/);
+    const takes = new Set<string>();
+    for (const turn of [4, 5, 6]) {
+      run.turn = turn;
+      takes.add(lastTrainLine(run) ?? "");
+    }
+    assert.equal(takes.size, 3, "three takes on the same morning");
     run.calendar.push({ turn: 4, type: "work", statTrained: "speed", station: "poles", outcome: "success", energyAfter: 40, moodAfter: 2 });
-    assert.equal(lastTrainLine(run), "Poles. First step was hers.");
+    assert.match(lastTrainLine(run) ?? "", /poles|legs/);
     const sol = newRun("sol");
     sol.calendar.push({ turn: 3, type: "work", statTrained: "stuff", station: "side", outcome: "success", energyAfter: 50, moodAfter: 2 });
-    assert.equal(lastTrainLine(sol), "Bullpen. She found one.");
+    assert.match(lastTrainLine(sol) ?? "", /bullpen/i);
   });
 
   it("names a trainer morning as the trainer, not a rest day", () => {
@@ -95,7 +101,7 @@ describe("Aoi Rookie calendar", () => {
     run.energy = 10;
     resolveTreatment(run);
     assert.equal(run.calendar.at(-1)?.station, "treatment");
-    assert.equal(lastTrainLine(run), "Trainer's room. The work waits.");
+    assert.equal(lastTrainLine(run), "She spent yesterday in the trainer's room. There's more in her legs today.");
   });
 
   it("does not count an Academy Gate miss against the fail clock", () => {
@@ -125,15 +131,15 @@ describe("Aoi Rookie calendar", () => {
     run.turn = 50;
     applyGameResult(run, "stretch", false, false, false, false);
     assert.equal(run.pgMisses, 1);
-    assert.match(run.coachWarning ?? "", /path stays open/);
-    assert.doesNotMatch(run.coachWarning ?? "", /Academy days are over|Miss one more/);
+    assert.match(run.coachWarning ?? "", /She plays on/);
+    assert.doesNotMatch(run.coachWarning ?? "", /Academy days are over|Lose one more|Miss one more/);
   });
 
   it("does not carry a miss warning onto a date she held", () => {
     const run = newAoiRun();
     run.turn = 18;
     applyGameResult(run, "first-light", false, false, false, false);
-    assert.match(run.coachWarning ?? "", /Miss one more/);
+    assert.match(run.coachWarning ?? "", /Lose one more/);
     run.turn = 28;
     applyGameResult(run, "lantern-classic", true, false, true, false);
     assert.equal(run.coachWarning, null);

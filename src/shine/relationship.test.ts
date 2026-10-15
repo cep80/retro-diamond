@@ -36,15 +36,23 @@ test("the opening quotes nothing; she has no memory of you yet", () => {
 
 test("a first miss names the next date, not the turn or the stat", () => {
   const line = memoryLine({ kind: "first-fail", turn: 4, note: "The first day the work did not land: stuff, turn 4.", warm: true });
-  assert.equal(line, "The work didn't land, the morning before Academy Gate. She kept the plan.");
+  assert.equal(line, "The work didn't take the day before Academy Gate. You stuck with the plan, and she noticed.");
   assert.doesNotMatch(line, /turn|stuff|energy/);
   const worn = memoryLine({ kind: "pushed-tired", turn: 4, note: "You worked her at 40 energy the day before Academy Gate.", warm: false });
-  assert.equal(worn, "She was worn, the morning before Academy Gate.");
+  assert.equal(worn, "You worked her tired the day before Academy Gate. She didn't say a word about it, but she remembers.");
   assert.doesNotMatch(worn, /energy|turn/);
   assert.equal(
     memoryLine({ kind: "first-light", turn: 18, note: "First Light: the goal held.", warm: true }),
-    "First Light. She kept it.",
+    "First Light went her way, and she still talks about it.",
   );
+});
+
+test("an old save's memory note shows in today's words", async () => {
+  const { RETIRED_MEMORY_LINES } = await import("./scrapbook.ts");
+  const line = memoryLine({ kind: "gate", turn: 5, note: "The Gate: she reached.", warm: true });
+  assert.equal(line, RETIRED_MEMORY_LINES["The Gate: she reached."]);
+  assert.notEqual(line, "The Gate: she reached.");
+  assert.equal(memoryLine({ kind: "gate", turn: 5, note: "A note nobody retired.", warm: true }), "A note nobody retired.");
 });
 
 test("post-gate quotes a real memory when one exists", () => {
@@ -93,45 +101,45 @@ test("year-end counts misses honestly", () => {
   run.pgMisses = 2;
   run.walks = 1;
   const s = relationshipScene(run, "year-end");
-  assert.ok(s.lines[0]!.includes("2 misses"));
+  assert.ok(s.lines[0]!.includes("Two big games got away"));
   assert.equal(s.mood, "neutral");
   const one = newRun("reina");
   one.pgMisses = 1;
   assert.equal(
     relationshipScene(one, "year-end").lines[0],
-    "She wants the arm-slot notes from each one before she leaves.",
+    "One big game got away from her. She wants your arm-slot notes from it before she goes home.",
   );
 });
 
 test("Reina's clean year-end names the walk she issued", () => {
   const none = newRun("reina");
-  assert.equal(relationshipScene(none, "year-end").lines[0], "No walks in the official games. She checked twice.");
+  assert.equal(relationshipScene(none, "year-end").lines[0], "She didn't walk a single batter in a big game all year. She checked twice.");
   const one = newRun("reina");
   one.walks = 1;
-  assert.equal(relationshipScene(one, "year-end").lines[0], "One walk in the official games. She checked twice.");
+  assert.equal(relationshipScene(one, "year-end").lines[0], "She walked one batter in the big games all year. She checked twice.");
   const two = newRun("reina");
   two.walks = 2;
-  assert.equal(relationshipScene(two, "year-end").lines[0], "2 walks in the official games. She checked twice.");
+  assert.equal(relationshipScene(two, "year-end").lines[0], "She walked two batters in the big games all year. She checked twice.");
 });
 
-test("Yuki's rookie year-end names the Gate miss when First Light held", () => {
+test("Yuki's rookie year-end names the Gate miss when First Light went her way", () => {
   const run = newRun("yuki");
   run.turn = 20;
   run.pgResults[0] = "missed";
   run.pgResults[1] = "met";
   const s = relationshipScene(run, "year-end");
-  assert.match(s.lines[0]!, /Gate didn't hold/);
-  assert.match(s.lines[0]!, /First Light did/);
+  assert.match(s.lines[0]!, /Gate got away from her/);
+  assert.match(s.lines[0]!, /First Light went her way/);
 });
 
-test("Aoi's rookie year-end names the Gate miss when First Light held", () => {
+test("Aoi's rookie year-end names the Gate miss when First Light went her way", () => {
   const run = newRun("aoi");
   run.turn = 20;
   run.pgResults[0] = "missed";
   run.pgResults[1] = "met";
   const s = relationshipScene(run, "year-end");
-  assert.match(s.lines[0]!, /Gate didn't hold/);
-  assert.doesNotMatch(s.lines[0]!, /Every big game held/);
+  assert.match(s.lines[0]!, /Gate got away from her/);
+  assert.doesNotMatch(s.lines[0]!, /Every big game/);
 });
 
 test("Aoi's clean Rookie year-end names both dates in her book, not the Classics", () => {
@@ -144,7 +152,7 @@ test("Aoi's clean Rookie year-end names both dates in her book, not the Classics
   assert.equal(s.mood, "elated");
 });
 
-test("no Rookie year-end names a Classic, and every 'held' in it is true", () => {
+test("no Rookie year-end names a Classic, and every 'went her way' / 'got away' in it is true", () => {
   const marks = ["met", "missed"] as const;
   for (const c of BIBLE) {
     for (const gate of marks) {
@@ -163,11 +171,11 @@ test("no Rookie year-end names a Classic, and every 'held' in it is true", () =>
           assert.equal(scene.mood, light === "met" ? "elated" : "neutral", at);
           assert.doesNotMatch(line, /Classic|Lantern|Night/, at);
           assert.doesNotMatch(line, FORBIDDEN_IN_STORY, at);
-          if (gate === "missed" || light === "missed") assert.doesNotMatch(line, /Every|Everything|Both held/, at);
-          if (/Both held|First Light did\b(?!n't)/.test(line)) assert.equal(light, "met", at);
-          if (/Both held|The Gate held/.test(line)) assert.equal(gate, "met", at);
-          if (/Gate didn't hold|Neither one held/.test(line)) assert.equal(gate, "missed", at);
-          if (/First Light (didn't|slipped)|Neither one held/.test(line)) assert.equal(light, "missed", at);
+          if (gate === "missed" || light === "missed") assert.doesNotMatch(line, /Every|both went her way/, at);
+          if (/First Light went her way/.test(line)) assert.equal(light, "met", at);
+          if (/The Gate went her way/.test(line)) assert.equal(gate, "met", at);
+          if (/Gate got away|Both of them got away/.test(line)) assert.equal(gate, "missed", at);
+          if (/First Light got away|Both of them got away/.test(line)) assert.equal(light, "missed", at);
         }
       }
     }
@@ -183,11 +191,11 @@ test("a clean Rookie year where both dates held starts on her, not a second scor
     const line = relationshipScene(run, "year-end").lines[0]!;
     // The year still above it already names both dates.
     assert.doesNotMatch(line, /^The Gate and First Light\./, id);
-    assert.doesNotMatch(line, /Every big game|Everything held|didn't|slipped/, id);
+    assert.doesNotMatch(line, /Every big game|got away|didn't/, id);
   }
 });
 
-test("Aoi's classic year-end keeps the Gate miss beside the dates that held", () => {
+test("Aoi's classic year-end keeps the Gate miss beside the games that went her way", () => {
   const run = newRun("aoi");
   run.turn = 40;
   run.pgResults[0] = "missed";
@@ -195,9 +203,9 @@ test("Aoi's classic year-end keeps the Gate miss beside the dates that held", ()
   run.pgResults[2] = "met";
   run.pgResults[3] = "met";
   const s = relationshipScene(run, "year-end");
-  assert.match(s.lines[0]!, /Gate didn't hold/);
-  assert.match(s.lines[0]!, /Lantern Classic and Night Classic did/);
-  assert.doesNotMatch(s.lines[0]!, /Every big game held/);
+  assert.match(s.lines[0]!, /Gate got away from her/);
+  assert.match(s.lines[0]!, /the Lantern Classic and the Night Classic both went her way/);
+  assert.doesNotMatch(s.lines[0]!, /Every big game/);
 });
 
 test("Miki's rookie year-end, when only First Light held, hears the bell at First Light", () => {
@@ -206,12 +214,12 @@ test("Miki's rookie year-end, when only First Light held, hears the bell at Firs
   run.pgResults[0] = "missed";
   run.pgResults[1] = "met";
   const s = relationshipScene(run, "year-end");
-  // The headline already says the Gate didn't hold; her box says what she did with it.
+  // The headline already says the Gate got away; her box says what she did with it.
   assert.match(s.lines[0]!, /hearing it at First Light/);
-  assert.doesNotMatch(s.lines[0]!, /Everything held/);
+  assert.doesNotMatch(s.lines[0]!, /Every big game/);
 });
 
-test("Miki's classic year-end names both dates when the smaller ask held the path", () => {
+test("Miki's classic year-end names both dates when the smaller ask kept her on the path", () => {
   const run = newRun("miki");
   run.turn = 40;
   run.pgMisses = 0;
@@ -220,21 +228,20 @@ test("Miki's classic year-end names both dates when the smaller ask held the pat
   run.pgResults[2] = "missed";
   run.pgResults[3] = "missed";
   const s = relationshipScene(run, "year-end");
-  assert.match(s.lines[0]!, /Lantern Classic and Night Classic/);
-  assert.match(s.lines[0]!, /Neither one held/);
-  assert.doesNotMatch(s.lines[0]!, /Everything held/);
+  assert.match(s.lines[0]!, /The Lantern Classic and the Night Classic both got away from her/);
+  assert.doesNotMatch(s.lines[0]!, /Every big game/);
 });
 
-test("Sol's rookie year-end names the First Light miss beside the Gate that held", () => {
+test("Sol's rookie year-end names the First Light miss beside the Gate that went her way", () => {
   const run = newRun("sol");
   run.turn = 20;
   run.pgMisses = 1;
   run.pgResults[0] = "met";
   run.pgResults[1] = "missed";
   const s = relationshipScene(run, "year-end");
-  assert.match(s.lines[0]!, /Gate held/);
-  assert.match(s.lines[0]!, /First Light didn't/);
-  assert.doesNotMatch(s.lines[0]!, /fastball|which pitch/);
+  // The year still above already names both games; her box is about her.
+  assert.match(s.lines[0]!, /won't talk about First Light/);
+  assert.doesNotMatch(s.lines[0]!, /fastball|which pitch|went her way/);
 });
 
 test("no Rookie year-end line repeats a sentence the headline already said", () => {
@@ -262,7 +269,7 @@ test("no Rookie year-end line repeats a sentence the headline already said", () 
   }
 });
 
-test("Sol's classic year-end names the Night miss beside the Lantern that held", () => {
+test("Sol's classic year-end names the Night miss beside the Lantern that went her way", () => {
   const run = newRun("sol");
   run.turn = 40;
   run.pgMisses = 2;
@@ -271,9 +278,9 @@ test("Sol's classic year-end names the Night miss beside the Lantern that held",
   run.pgResults[2] = "met";
   run.pgResults[3] = "missed";
   const s = relationshipScene(run, "year-end");
-  assert.match(s.lines[0]!, /Lantern Classic held/);
-  assert.match(s.lines[0]!, /punchouts didn't come back to back/);
-  assert.doesNotMatch(s.lines[0]!, /crowd was quiet|that clean|Every big game held/);
+  assert.match(s.lines[0]!, /Lantern Classic went her way/);
+  assert.match(s.lines[0]!, /punchouts never came back to back/);
+  assert.doesNotMatch(s.lines[0]!, /crowd was quiet|that clean|Every big game/);
 });
 
 test("year-end drops the miss counter and keeps the date", () => {
@@ -291,7 +298,7 @@ test("year-end drops the miss counter and keeps the date", () => {
   miki.pgMisses = 2;
   assert.equal(
     relationshipScene(miki, "year-end").lines[0],
-    "Not everything held. Section 4 rang the bell anyway, and she pretended not to hear it.",
+    "Not every big game went her way. Section 4 rang the bell anyway, and she pretended not to hear it.",
   );
   const sol = newRun("sol");
   sol.turn = 20;
@@ -299,12 +306,12 @@ test("year-end drops the miss counter and keeps the date", () => {
   sol.pgResults[1] = "missed";
   assert.equal(
     relationshipScene(sol, "year-end").lines[0],
-    "Neither one held. She'll give you the inning, not the excuse.",
+    "Both of them got away from her. She'll walk you through every inning, and she won't make a single excuse.",
   );
   const solLater = newRun("sol");
   solLater.turn = 60;
   solLater.pgMisses = 2;
-  assert.equal(relationshipScene(solLater, "year-end").lines[0], "She'll tell you the inning, not the excuse.");
+  assert.equal(relationshipScene(solLater, "year-end").lines[0], "She'll walk you through every inning, and she won't make a single excuse.");
 });
 
 test("Kira's year-end names a missed ninth, not a miss count", () => {
@@ -313,18 +320,18 @@ test("Kira's year-end names a missed ninth, not a miss count", () => {
   one.pgMisses = 1;
   assert.equal(
     relationshipScene(one, "year-end").lines[0],
-    "One ninth didn't hold. She's already warming for next year.",
+    "One ninth got away from her. She's already warming up for next year.",
   );
   const two = newRun("kira");
   two.turn = 20;
   two.pgMisses = 2;
   assert.equal(
     relationshipScene(two, "year-end").lines[0],
-    "Two ninths didn't hold. She's already warming for next year.",
+    "Two ninths got away from her. She's already warming up for next year.",
   );
 });
 
-test("Kira's classic year-end names the Lantern miss beside the Night that held", () => {
+test("Kira's classic year-end names the Lantern miss beside the Night that went her way", () => {
   const run = newRun("kira");
   run.turn = 40;
   run.pgMisses = 1;
@@ -333,12 +340,12 @@ test("Kira's classic year-end names the Lantern miss beside the Night that held"
   run.pgResults[2] = "missed";
   run.pgResults[3] = "met";
   const s = relationshipScene(run, "year-end");
-  assert.match(s.lines[0]!, /Night Classic held/);
-  assert.match(s.lines[0]!, /two punchouts didn't come/);
-  assert.doesNotMatch(s.lines[0]!, /Every ninth held/);
+  assert.match(s.lines[0]!, /Night Classic went her way/);
+  assert.match(s.lines[0]!, /two punchouts never came/);
+  assert.doesNotMatch(s.lines[0]!, /every ninth/i);
 });
 
-test("Yuki's classic year-end names both dates when neither held", () => {
+test("Yuki's classic year-end names both dates when neither went her way", () => {
   const run = newRun("yuki");
   run.turn = 40;
   run.pgMisses = 0;
@@ -347,19 +354,18 @@ test("Yuki's classic year-end names both dates when neither held", () => {
   run.pgResults[2] = "missed";
   run.pgResults[3] = "missed";
   const s = relationshipScene(run, "year-end");
-  assert.match(s.lines[0]!, /Lantern Classic and Night Classic/);
-  assert.match(s.lines[0]!, /Neither one held/);
+  assert.match(s.lines[0]!, /The Lantern Classic and the Night Classic both got away from her/);
   assert.doesNotMatch(s.lines[0]!, /kept going/);
 });
 
-test("Yuki's senior year-end names the dates that were sat", () => {
+test("Yuki's senior year-end names the games she played", () => {
   const run = newRun("yuki");
   run.turn = 60;
   run.pgResults[4] = "missed";
   run.pgResults[5] = "missed";
   run.pgResults[6] = "missed";
   const s = relationshipScene(run, "year-end");
-  assert.match(s.lines[0]!, /She came up short in all three/);
+  assert.match(s.lines[0]!, /She came up short at the Stretch, in the Skyline Series and in the Diamond Finale/);
   assert.doesNotMatch(s.lines[0]!, /kept going|Stolen third/);
 });
 
@@ -374,5 +380,5 @@ test("Catch with Coach quotes a real memory when one exists", () => {
 test("Catch with Coach without a memory still has the parking-lot beat", () => {
   const s = catchWithCoachScene(newRun("kira"));
   assert.equal(s.quoted, null);
-  assert.ok(s.lines[0]!.includes("Parking lot"));
+  assert.match(s.lines[0]!, /parking lot/i);
 });

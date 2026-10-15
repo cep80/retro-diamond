@@ -73,7 +73,7 @@ export function YearGrades({ run }: { run: TraineeRun }) {
           </span>
         ))}
       </div>
-      {moves ? <p className="shine-year-grade-quiet">The same letters as last spring.</p> : null}
+      {moves ? <p className="shine-year-grade-quiet">Her letters are the same as last spring. Some winters are like that.</p> : null}
     </>
   );
 }
@@ -85,14 +85,14 @@ export const STATIONS: { id: StationId; label: string; kana: string; color: stri
   { id: "side", label: "Bullpen", kana: "ブルペン", color: "#7ad7ff" },
   { id: "spots", label: "Spot work", kana: "制球", color: "#5fd9a0", short: "Spots" },
   { id: "poles", label: "Poles", kana: "ポール", color: "#78eadc" },
-  { id: "looks", label: "Live looks", kana: "見極め", color: "#7ad7ff", short: "Looks" },
+  { id: "looks", label: "Tracking pitches", kana: "見極め", color: "#7ad7ff", short: "Tracking" },
   { id: "bp", label: "On-field BP", kana: "打撃", color: "#ffd166", short: "BP" },
-  { id: "situational", label: "Situational", kana: "状況", color: "#e07a3d", short: "Clutch" },
-  { id: "charting", label: "Charting", kana: "映像", color: "#b794f6", short: "Film" },
-  { id: "off-day", label: "Off day", kana: "休養", color: "#ffd166" },
+  { id: "situational", label: "Clutch work", kana: "状況", color: "#e07a3d", short: "Clutch" },
+  { id: "charting", label: "Film room", kana: "映像", color: "#b794f6", short: "Film" },
+  { id: "off-day", label: "Day off", kana: "休養", color: "#ffd166" },
   { id: "treatment", label: "Trainer's room", kana: "治療", color: "#c4d4e0" },
-  { id: "clubhouse", label: "Clubhouse", kana: "キャッチ", color: "#ffd166" },
-  { id: "hitch", label: "Hitch", kana: "ヒッチ", color: "#ffd166" },
+  { id: "clubhouse", label: "Play catch", kana: "キャッチ", color: "#ffd166" },
+  { id: "hitch", label: "Passed-down drill", kana: "継承", color: "#ffd166" },
 ];
 
 /**
@@ -353,8 +353,8 @@ export function ShineComplexWork({
                   const face = facilityFace(f.id, run, f.open && !empty);
                   const name = s.short ?? s.label;
                   const says = !f.open
-                    ? `${name}. ${face?.en ?? ""} work. ${f.reason ?? "Not open yet"}.`
-                    : `${name}. ${face?.en ?? ""} work${face?.plusEn ? `, and a little ${face.plusEn}` : ""}.${face?.odds ? ` A gain is ${face.odds} today.` : ""}${face?.fail ? ` Tired or low, ${face.fail}% more risk it goes wrong.` : ""}`;
+                    ? `${name}. Works her ${face?.en ?? ""}. Opens ${(f.reason ?? "later").replace(/^After/, "after").replace(/^From/, "from")}.`
+                    : `${name}. Works her ${face?.en ?? ""}${face?.plusEn ? `, and a little of her ${face.plusEn}` : ""}.${face?.odds ? (face.odds === "likely" ? " It'll probably pay off today." : " It might pay off today.") : ""}${face?.fail ? ` She's tired or down, so there's a ${face.fail}% extra chance it goes wrong.` : ""}`;
                   return (
                     <button
                       key={f.id}
@@ -460,7 +460,7 @@ export function ShineComplexWork({
                 );
               })}
             </div>
-            {empty ? <p className="shine-work-empty">She&apos;s empty. Trainer&apos;s room.</p> : null}
+            {empty ? <p className="shine-work-empty">She&apos;s got nothing left today. Send her to the trainer&apos;s room.</p> : null}
           </div>
         </div>
       </div>

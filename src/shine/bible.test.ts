@@ -95,11 +95,11 @@ describe("1.0 bible", () => {
   it("writes the senior stills so they hold under the old ask and the new one", () => {
     const series = ["met", "met", "met", "met", "pending", "met", "pending"] as const;
     const seriesMissed = ["met", "met", "met", "met", "pending", "missed", "pending"] as const;
-    assert.equal(yearStillLine("aoi", 60, [...series]), "Skyline Series. The at-bats added up. The last one was for her.");
-    assert.equal(yearStillLine("aoi", 60, [...seriesMissed]), "Skyline Series. The at-bats didn't add up.");
-    assert.equal(yearStillLine("kira", 60, [...seriesMissed]), "Skyline Series. Somebody reached in the ninth.");
-    assert.equal(yearStillLine("miki", 60, [...series]), "Skyline Series. The North bench leaned on the rail for her.");
-    assert.equal(yearStillLine("kira", 60, ["met", "met", "met", "met", "missed", "pending", "pending"]), "The Stretch. She asked for the eighth. The four outs didn't go her way.");
+    assert.equal(yearStillLine("aoi", 60, [...series]), "In the Skyline Series, her at-bats added up, and the last one was for her.");
+    assert.equal(yearStillLine("aoi", 60, [...seriesMissed]), "In the Skyline Series, her at-bats never added up.");
+    assert.equal(yearStillLine("kira", 60, [...seriesMissed]), "In the Skyline Series, somebody got on against her in the ninth.");
+    assert.equal(yearStillLine("miki", 60, [...series]), "In the Skyline Series, the North bench leaned on the rail for her.");
+    assert.equal(yearStillLine("kira", 60, ["met", "met", "met", "met", "missed", "pending", "pending"]), "At the Stretch, she asked for the eighth too, and the four outs didn't go her way.");
     assert.doesNotMatch(sheet("sol").yearStills.senior, /two runs|quality start/);
     assert.doesNotMatch(sheet("aoi").past, /\bDP\b/);
     assert.doesNotMatch(sheet("miki").past, /Cup|0-for/);
@@ -127,10 +127,10 @@ describe("1.0 bible", () => {
   it("says Aoi's Lantern and Finale in different words", () => {
     const lantern = yearStillLine("aoi", 40, ["met", "met", "met", "met", "pending", "pending", "pending"]);
     const senior = yearStillLine("aoi", 60, ["met", "met", "met", "met", "met", "met", "met"]);
-    assert.match(lantern, /She drove in a run/);
-    assert.match(senior, /Diamond Finale\. A run came home on her\./);
+    assert.match(lantern, /she drove in a run/);
+    assert.match(senior, /In the Diamond Finale, a run came home on her\./);
     assert.doesNotMatch(senior, /drove in a run|runners on|scoring position/i);
-    assert.match(yearStillLine("aoi", 60, ["met", "met", "met", "met", "met", "met", "missed"], null, null, true), /Diamond Finale\. They won\. No run came home on her\.$/);
+    assert.match(yearStillLine("aoi", 60, ["met", "met", "met", "met", "met", "met", "missed"], null, null, true), /In the Diamond Finale, they won, but no run came home on her\.$/);
   });
 
   it("puts letters and a process SG on every official date", () => {
@@ -203,37 +203,37 @@ describe("1.0 bible", () => {
   it("names Yuki's rookie still from the steal she sat, not a walk", () => {
     assert.match(sheet("yuki").yearStills.rookie, /stole/);
     assert.doesNotMatch(sheet("yuki").yearStills.rookie, /walk/);
-    assert.equal(yearStillLine("yuki", 20, ["missed", "met", "pending", "pending", "pending", "pending", "pending"]), "First Light. She stole second.");
+    assert.equal(yearStillLine("yuki", 20, ["missed", "met", "pending", "pending", "pending", "pending", "pending"]), "At First Light she stole second.");
     assert.doesNotMatch(yearStillLine("yuki", 20, ["missed", "met", "pending", "pending", "pending", "pending", "pending"]), /kept going/);
-    assert.match(yearStillLine("yuki", 20, ["missed", "missed", "pending", "pending", "pending", "pending", "pending"]), /didn't come/);
+    assert.match(yearStillLine("yuki", 20, ["missed", "missed", "pending", "pending", "pending", "pending", "pending"]), /never came/);
     assert.doesNotMatch(sheet("yuki").yearStills.classic, /Stolen base/);
     assert.equal(
       yearStillLine("yuki", 40, ["missed", "met", "missed", "missed", "pending", "pending", "pending"]),
-      "Lantern Classic and Night Classic. She came up short in both.",
+      "She came up short at the Lantern Classic and at the Night Classic.",
     );
     assert.match(yearStillLine("yuki", 40, ["missed", "met", "met", "missed", "pending", "pending", "pending"]), /scored from first/);
     assert.doesNotMatch(yearStillLine("yuki", 40, ["missed", "met", "met", "missed", "pending", "pending", "pending"]), /on a single/);
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "missed", "missed", "pending"]),
-      "The Stretch and Skyline Series. She came up short in both.",
+      "She came up short at the Stretch and in the Skyline Series.",
     );
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "missed", "missed", "missed"]),
-      "The Stretch, Skyline Series, and Diamond Finale. She came up short in all three.",
+      "She came up short at the Stretch, in the Skyline Series and in the Diamond Finale.",
     );
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "met", "met", "met"]),
-      "The Stretch. She stole with a runner in scoring position. Skyline Series. She stole third. Diamond Finale. She stole late.",
+      "At the Stretch, she stole with a runner in scoring position. In the Skyline Series, she stole third. In the Diamond Finale, she stole a base late in the game.",
     );
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "missed", "met", "missed"]),
-      "The Stretch. It got away from her on the bases. Skyline Series. She stole third. Diamond Finale. The late steal didn't come.",
+      "At the Stretch, it got away from her on the bases. In the Skyline Series, she stole third. In the Diamond Finale, the late steal never came.",
     );
     assert.equal(
       yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "met", "missed", "pending"]),
-      "The Stretch. She stole with a runner in scoring position. Skyline Series. The steal of third didn't come.",
+      "At the Stretch, she stole with a runner in scoring position. In the Skyline Series, the steal of third never came.",
     );
-    assert.doesNotMatch(yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "met", "missed", "pending"]), /Stolen third|ninth|She stole third/);
+    assert.doesNotMatch(yearStillLine("yuki", 60, ["met", "met", "missed", "missed", "met", "missed", "pending"]), /Stolen third|ninth|she stole third/i);
   });
 
   it("pins Yuki's check-in 29 asks: Lantern is any trip home from first, Series is third base", () => {
@@ -260,18 +260,18 @@ describe("1.0 bible", () => {
 
   it("names Aoi's rookie still from the plate she sat", () => {
     assert.doesNotMatch(sheet("aoi").yearStills.rookie, /came low/);
-    assert.equal(yearStillLine("aoi", 20, ["missed", "missed", "pending", "pending", "pending", "pending", "pending"]), "First Light. She didn't reach.");
+    assert.equal(yearStillLine("aoi", 20, ["missed", "missed", "pending", "pending", "pending", "pending", "pending"]), "At First Light she never got on base.");
     assert.equal(
       yearStillLine("aoi", 20, ["missed", "met", "pending", "pending", "pending", "pending", "pending"], {
         kind: "first-light",
         outcome: "She scored.",
         pitches: [{ result: "single" }],
       }),
-      "First Light. She singled and scored.",
+      "At First Light she singled, and then she came all the way around to score.",
     );
     assert.equal(
       yearStillLine("aoi", 40, ["missed", "met", "met", "met", "pending", "pending", "pending"]),
-      "Lantern Classic. She drove in a run. Night Classic. She reached twice.",
+      "At the Lantern Classic she drove in a run, and at the Night Classic she got on base twice.",
     );
     assert.doesNotMatch(yearStillLine("aoi", 40, ["missed", "met", "met", "met", "pending", "pending", "pending"]), /walk|passed ball/);
   });
@@ -279,7 +279,7 @@ describe("1.0 bible", () => {
   it("names Reina's rookie still from the outs and the punchouts", () => {
     assert.equal(
       yearStillLine("reina", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"]),
-      "The Gate. Three outs. First Light. The punchouts weren't there.",
+      "She got her three outs at the Gate. At First Light the punchouts never came.",
     );
     assert.doesNotMatch(
       yearStillLine("reina", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"]),
@@ -290,12 +290,12 @@ describe("1.0 bible", () => {
   it("names Reina's classic still from the innings and the punchouts", () => {
     assert.equal(
       yearStillLine("reina", 40, ["met", "met", "met", "missed", "pending", "pending", "pending"]),
-      "Lantern Classic. She went the five innings. Night Classic. The punchouts didn't come back to back.",
+      "She went five innings at the Lantern Classic, but at the Night Classic she never struck out two in a row.",
     );
     // Check-in 35: true under the old three-runs ask and the new seven-punchout ask alike.
     assert.equal(
       yearStillLine("reina", 40, ["met", "met", "missed", "met", "pending", "pending", "pending"]),
-      "Night Classic. Two punchouts, back to back. Lantern Classic. The lanterns won that one.",
+      "At the Night Classic she struck out two in a row. The Lantern Classic got away from her.",
     );
     assert.doesNotMatch(
       yearStillLine("reina", 40, ["met", "met", "met", "missed", "pending", "pending", "pending"]),
@@ -306,11 +306,11 @@ describe("1.0 bible", () => {
   it("names Sol's rookie still from the outs and the punchouts", () => {
     assert.equal(
       yearStillLine("sol", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"]),
-      "The Gate. Three outs. First Light. The punchouts weren't there.",
+      "She got her three outs at the Gate. At First Light the punchouts never came.",
     );
     assert.equal(
       yearStillLine("sol", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"], null, "One punchout. She needed three."),
-      "The Gate. Three outs. First Light. One punchout. She needed three.",
+      "She got her three outs at the Gate. At First Light she got one punchout, and she needed three.",
     );
     assert.doesNotMatch(
       yearStillLine("sol", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"]),
@@ -321,7 +321,7 @@ describe("1.0 bible", () => {
   it("names Sol's classic still from the innings and the punchouts", () => {
     assert.equal(
       yearStillLine("sol", 40, ["met", "missed", "met", "missed", "pending", "pending", "pending"]),
-      "Lantern Classic. She went the five innings. Night Classic. The punchouts didn't come back to back.",
+      "She went five innings at the Lantern Classic, but at the Night Classic she never struck out two in a row.",
     );
     assert.doesNotMatch(
       yearStillLine("sol", 40, ["met", "missed", "met", "missed", "pending", "pending", "pending"]),
@@ -332,7 +332,7 @@ describe("1.0 bible", () => {
   it("names Kira's rookie still from the outs and the lead", () => {
     assert.equal(
       yearStillLine("kira", 20, ["met", "met", "pending", "pending", "pending", "pending", "pending"]),
-      "The Gate. Three outs. First Light. The lead held.",
+      "She got her three outs at the Gate, and at First Light she kept the lead.",
     );
     assert.doesNotMatch(
       yearStillLine("kira", 20, ["met", "met", "pending", "pending", "pending", "pending", "pending"]),
@@ -342,7 +342,7 @@ describe("1.0 bible", () => {
   it("names Kira's classic still from the two punchouts and the inherited runners", () => {
     assert.equal(
       yearStillLine("kira", 40, ["met", "met", "missed", "met", "pending", "pending", "pending"]),
-      "Lantern Classic. The two punchouts didn't come. Night Classic. She came in with runners and stranded them.",
+      "At the Lantern Classic the two punchouts never came. At the Night Classic she stranded the runners she inherited.",
     );
     assert.doesNotMatch(
       yearStillLine("kira", 40, ["met", "met", "missed", "met", "pending", "pending", "pending"]),
@@ -352,7 +352,7 @@ describe("1.0 bible", () => {
   it("names Miki's rookie still from the look and the strikeout", () => {
     assert.equal(
       yearStillLine("miki", 20, ["missed", "met", "pending", "pending", "pending", "pending", "pending"]),
-      "The Gate didn't hold. First Light. She didn't strike out.",
+      "The Gate got away from her, but at First Light she never struck out.",
     );
     assert.doesNotMatch(
       yearStillLine("miki", 20, ["missed", "met", "pending", "pending", "pending", "pending", "pending"]),
@@ -363,15 +363,15 @@ describe("1.0 bible", () => {
   it("names Miki's classic still from the four-pitch at-bat and the five-pitch at-bat", () => {
     assert.equal(
       yearStillLine("miki", 40, ["missed", "met", "missed", "missed", "pending", "pending", "pending"]),
-      "Lantern Classic and Night Classic. Neither at-bat went long enough.",
+      "She came up short at both Classics. None of her at-bats went long enough.",
     );
     assert.equal(
       yearStillLine("miki", 40, ["met", "met", "met", "met", "pending", "pending", "pending"]),
-      "Lantern Classic. Four pitches in one at-bat. Night Classic. Five pitches in one at-bat.",
+      "She stretched an at-bat to four pitches at the Lantern Classic, and to five at the Night Classic.",
     );
     assert.equal(
       yearStillLine("miki", 40, ["met", "met", "met", "missed", "pending", "pending", "pending"]),
-      "Lantern Classic. Four pitches in one at-bat. Night Classic. The at-bat never got to five pitches.",
+      "She got an at-bat to four pitches at the Lantern Classic. At the Night Classic, none reached five.",
     );
     assert.doesNotMatch(yearStillLine("miki", 20, ["met", "met", "pending", "pending", "pending", "pending", "pending"]), /\blook\b/);
     assert.doesNotMatch(

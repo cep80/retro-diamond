@@ -70,43 +70,47 @@ export function sitLabel(style: string, cell: { row: number; col: number }, home
 }
 
 export function plateRead(run: TraineeRun, game: FeaturedGame) {
-  if (game.kind === "practice") return "One look. The bat is real.";
+  if (game.kind === "practice") return "That's her first swing. The next one's in a real game.";
   if (game.pgMet) {
     if (game.pgId === "see-3-one-pa") {
-      if (game.kind === "gate") return "Three pitches in one at-bat. The Gate opened.";
-      return "Three pitches in one at-bat.";
+      if (game.kind === "gate") return "She made the pitcher throw her three in one at-bat at the Gate.";
+      return "She made the pitcher throw her three in one at-bat.";
     }
-    if (game.pgId === "see-4-one-pa") return "Four pitches in one at-bat.";
-    if (game.pgId === "see-5-one-pa") return "Five pitches in one at-bat.";
-    if (game.pgId === "no-k") return game.kind === "finale" ? "Diamond Finale. She never went down on strikes." : "She didn't strike out.";
+    if (game.pgId === "see-4-one-pa") return "She made the pitcher throw her four in one at-bat.";
+    if (game.pgId === "see-5-one-pa") return "She made the pitcher throw her five in one at-bat.";
+    if (game.pgId === "no-k") return game.kind === "finale" ? "She went the whole Diamond Finale without striking out." : "She didn't strike out once.";
     if (game.pgId === "foul-two-strike") return "She fouled one off with two strikes and stayed alive.";
-    if (game.pgId === "full-count") return "She took it to 3-2.";
-    if (game.pgId === "contact-breaking") return "She put the bat on a breaking ball.";
-    if (game.pgId === "runners-on-at-bat") return "She came up with runners on.";
+    if (game.pgId === "full-count") return "She worked the count all the way to 3-2.";
+    if (game.pgId === "contact-breaking") return "She got the bat on a breaking ball.";
+    if (game.pgId === "runners-on-at-bat") return "She came up with runners on base.";
     if (game.pgId === "steal") return "She stole a base.";
-    if (game.pgId === "steal-late") return "She stole late.";
+    if (game.pgId === "steal-late") return "She stole a base late in the game.";
     if (game.pgId === "steal-risp") return "She stole with a runner in scoring position.";
     // Check-in 35's asks.
     if (game.pgId === "steal-risp-score") return "She stole with a runner in scoring position, then came all the way home.";
-    if (game.pgId === "hits-2") return "Two hits. The second one was for her.";
-    if (game.pgId === "contact-breaking-2") return "She put the bat on two breaking balls.";
-    if (game.pgId === "score-from-first") return "She scored from first.";
+    if (game.pgId === "hits-2") return "Two hits today, and she wanted that second one bad.";
+    if (game.pgId === "contact-breaking-2") return "She got the bat on two breaking balls.";
+    if (game.pgId === "score-from-first") return "She scored all the way from first.";
     if (game.pgId === "steal-third") return "She stole third.";
     if (game.pgId === "score-from-first-single") return "She scored from first on a single.";
-    if (game.pgId === "score-no-hit") return "She scored without a hit.";
-    if (game.pgId === "reach-twice") return "She reached twice.";
-    if (game.pgId === "hit-risp") return "A hit with runners on.";
-    if (game.pgId === "hit-late") return "A hit, and a late one.";
+    if (game.pgId === "score-no-hit") return "She scored without getting a hit.";
+    if (game.pgId === "reach-twice") return "She got on base twice.";
+    if (game.pgId === "hit-risp") return "She got a hit with runners on base.";
+    if (game.pgId === "hit-late") return "She got her hit late, when it counted.";
     // Aoi's Lantern and her Finale ask the same (check-in 28); the Finale says it its own way.
-    if (game.pgId === "rbi") return game.kind === "finale" ? "Diamond Finale. A run came home on her." : "A run scored on her ball.";
-    if (game.pgId === "quality-abs-3") return "Three balls in play, all hard.";
-    if (game.kind === "gate") return "The Gate opened.";
-    if (game.hr) return "She watched it go.";
-    if (game.walks > 0 && game.hits === 0) return "Ball four was enough.";
+    if (game.pgId === "rbi") return game.kind === "finale" ? "She drove in a run in the Diamond Finale." : "She drove in a run.";
+    if (game.pgId === "quality-abs-3") return "She hit three balls hard today.";
+    if (game.kind === "gate") {
+      const firstTime = game.events.some((e) => e.t === "reach" && e.pa === 1);
+      if (firstTime) return "She got on base her very first time up at the Gate.";
+      return game.hits + game.walks > 0 ? "She got on base at the Academy Gate." : "She got it done at the Academy Gate.";
+    }
+    if (game.hr) return "She hit one out, and she watched it the whole way.";
+    if (game.walks > 0 && game.hits === 0) return "She drew a walk, and that was enough.";
     // Say what she did: the headline shows this line under the 達成 stamp, not her verb again.
-    if (game.hits >= 3) return "Three hits. She kept reaching.";
-    if (game.hits === 2) return "Two hits. She kept reaching.";
-    if (game.hits === 1) return "She reached on a hit.";
+    if (game.hits >= 3) return "Three hits. She just kept getting on.";
+    if (game.hits === 2) return "Two hits. She just kept getting on.";
+    if (game.hits === 1) return "She got on with a hit.";
     return "She got what she came for.";
   }
   const miss = plateMissRead(run, game);
@@ -120,7 +124,7 @@ const LOOK_NEED = ["", "one", "two", "three", "four", "five"] as const;
 function lookShort(n: number, need: 3 | 4 | 5): string {
   const saw = n > 0 && n < need ? LOOK_SAW[n] : undefined;
   const word = LOOK_NEED[need];
-  return saw ? `${saw} in the at-bat. She needed ${word}.` : `The at-bat never got to ${word} pitches.`;
+  return saw ? `Her longest at-bat was ${saw.toLowerCase()}. She wanted ${word}.` : `None of her at-bats got to ${word} pitches.`;
 }
 
 /** The pitch type just before event `index` (contact on a breaking ball reads the pitch it met). */
@@ -137,72 +141,72 @@ function plateMissRead(run: TraineeRun, game: FeaturedGame): string {
   if (game.pgId === "see-3-one-pa") return lookShort(game.maxPaPitches, 3);
   if (game.pgId === "see-4-one-pa") return lookShort(game.maxPaPitches, 4);
   if (game.pgId === "see-5-one-pa") return lookShort(game.maxPaPitches, 5);
-  if (game.pgId === "no-k" && game.struckOut) return "She struck out.";
-  if (game.pgId === "foul-two-strike") return "The two-strike foul didn't come. She kept swinging anyway.";
-  if (game.pgId === "full-count") return "The count never got to 3-2.";
-  if (game.pgId === "contact-breaking") return "The breaking ball never met the bat.";
+  if (game.pgId === "no-k" && game.struckOut) return "She struck out, and that was the one thing she didn't want.";
+  if (game.pgId === "foul-two-strike") return "She never got the two-strike foul. She kept swinging anyway.";
+  if (game.pgId === "full-count") return "She never got the count full.";
+  if (game.pgId === "contact-breaking") return "She never got the bat on a breaking ball.";
   if (game.pgId === "contact-breaking-2") {
     const met = game.events.filter((e, i) => e.t === "contact" && e.tier !== "miss" && lastPitchType(game.events, i) !== "fastball").length;
-    return met === 1 ? "One breaking ball met the bat. She needed two." : "The breaking ball never met the bat.";
+    return met === 1 ? "She hit one breaking ball. She needed two." : "She never got the bat on a breaking ball.";
   }
-  if (game.pgId === "hits-2") return game.hits === 1 ? "One hit. She needed two." : "The hits didn't come.";
+  if (game.pgId === "hits-2") return game.hits === 1 ? "She got one hit. She needed two." : "The hits just didn't come today.";
   if (game.pgId === "steal-risp-score") {
     const rispSteal = game.events.some((e) => e.t === "stealResult" && e.safe && e.risp);
     const plain = game.events.some((e) => e.t === "stealResult" && e.safe && !e.risp);
-    if (rispSteal) return "She stole. Home never came.";
-    return plain ? "She stole, but nobody was in scoring position yet." : "The steal with a runner in scoring position didn't come.";
+    if (rispSteal) return "She stole the base, but she never made it home.";
+    return plain ? "She stole, but nobody was in scoring position yet." : "She never got to steal with a runner in scoring position.";
   }
-  if (game.pgId === "runners-on-at-bat") return "She never came up with runners on.";
-  if (game.pgId === "steal") return "The steal didn't come.";
+  if (game.pgId === "runners-on-at-bat") return "She never came up with runners on base.";
+  if (game.pgId === "steal") return "She didn't get her steal today.";
   if (game.pgId === "steal-late") {
     const early = game.events.some((e) => e.t === "stealResult" && e.safe && e.inning < 7);
-    return early ? "She stole. It was early." : "The late steal didn't come.";
+    return early ? "She stole, but it was too early in the game." : "She didn't get a steal late in the game.";
   }
   if (game.pgId === "steal-risp") {
     const plain = game.events.some((e) => e.t === "stealResult" && e.safe && !e.risp);
-    return plain ? "She stole, but nobody was in scoring position yet." :"The steal with a runner in scoring position didn't come.";
+    return plain ? "She stole, but nobody was in scoring position yet." : "She never got to steal with a runner in scoring position.";
   }
   if (game.pgId === "score-from-first") {
     const scored = game.events.some((e) => e.t === "score" && e.runner === "self");
     const onFirst = game.events.some((e) => e.t === "reach" && e.base === 1);
-    if (scored) return "She scored. She didn't start from first.";
-    return onFirst ? "She got on at first. Home never came." : "She never got on at first.";
+    if (scored) return "She scored, just not all the way from first.";
+    return onFirst ? "She got to first, but she never made it home." : "She never got on at first.";
   }
   if (game.pgId === "steal-third") {
     const second = game.events.some((e) => e.t === "stealResult" && e.safe && e.from === 1);
     const caught = game.events.some((e) => e.t === "stealResult" && !e.safe && e.from === 2);
-    if (caught) return second ? "She stole second, then got caught stealing third." : "Caught stealing third.";
-    return second ? "She stole second. Third didn't come." : "The steal of third didn't come.";
+    if (caught) return second ? "She stole second, then got caught stealing third." : "She got caught stealing third.";
+    return second ? "She stole second, but third never happened." : "She never stole third.";
   }
-  if (game.pgId === "score-from-first-single") return "She didn't score from first.";
+  if (game.pgId === "score-from-first-single") return "She didn't score from first on a single.";
   if (game.pgId === "score-no-hit") {
     const onHit = game.events.some((e) => e.t === "score" && e.runner === "self" && e.selfReachedBy === "hit");
-    return onHit ? "She scored. It was on a hit." : "The run without a hit didn't come.";
+    return onHit ? "She scored, but she got on with a hit." : "She never scored without a hit.";
   }
   const last = game.lastPitches.at(-1);
   if (game.hits > 0 || game.walks > 0) {
     const on = game.hits + game.walks;
     if (game.pgId === "reach-twice" && on < 2) return "She reached once. She needed two.";
-    if (game.pgId === "hit-late") return game.hits > 0 ? "She hit. It was early." : "She walked. She needed a hit, and a late one.";
+    if (game.pgId === "hit-late") return game.hits > 0 ? "She got a hit, but it came early." : "She walked, but she needed a late hit.";
     if (game.pgId === "hit-risp") {
-      const walk = game.sgMet ? " The walk held." : "";
-      return game.hits > 0 ? `She hit. The runners weren't on.${walk}` : `The hit with runners on didn't come.${walk}`;
+      const walk = game.sgMet ? " She did get her walk." : "";
+      return game.hits > 0 ? `She got a hit, but nobody was on base.${walk}` : `She never got a hit with runners on.${walk}`;
     }
     if (game.pgId === "rbi") {
       // She got on and nobody came home on her: say both (Aoi's Lantern and Finale, check-in 28).
-      const walk = game.kind === "finale" && game.sgMet && game.hits > 0 ? " The walk held." : "";
-      return `${game.hits > 0 ? "She hit." : "She walked."} No run came home on her.${walk}`;
+      const walk = game.kind === "finale" && game.sgMet && game.hits > 0 ? " She did get her walk." : "";
+      return `${game.hits > 0 ? "She got a hit" : "She drew a walk"}, but no run came home on her.${walk}`;
     }
-    return on === 1 ? "She reached once. Not the way she needed to." : "She got on. Not the way she needed to.";
+    return on === 1 ? "She got on once, just not the way she needed to." : "She got on base, just not the way she needed to.";
   }
   if (game.struckOut) {
-    if (game.qualityAbs > 0) return "She put the ball in play. She never got on.";
-    return "Strike three. She was waiting on the wrong pitch.";
+    if (game.qualityAbs > 0) return "She hit the ball, but she never got on base.";
+    return "She struck out looking for a different pitch.";
   }
-  if (game.lastContact === "miss") return "Swing and a miss. Right where she was looking, too.";
-  if (game.lastContact === "hit" || game.lastContact === "barrel") return "In play. She didn't reach.";
-  if (last && last.type !== "fastball" && run.stats.eye < 9) return "The breaking ball stayed a question.";
-  if (game.lastContact === "foul-tip") return "Foul tip. The timing was there. She was looking a little off it.";
-  if (game.lastContact === "foul") return "Pulled foul. Good timing, wrong spot. She knows.";
+  if (game.lastContact === "miss") return "She swung through one right where she was looking.";
+  if (game.lastContact === "hit" || game.lastContact === "barrel") return "She put it in play, but she never got on.";
+  if (last && last.type !== "fastball" && run.stats.eye < 9) return "She never figured out the breaking ball.";
+  if (game.lastContact === "foul-tip") return "She fouled it off. Her timing was right, she was just looking a little off.";
+  if (game.lastContact === "foul") return "She pulled it foul. Good timing, wrong spot, and she knows it.";
   return "She didn't get what she came for.";
 }

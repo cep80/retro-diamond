@@ -354,60 +354,107 @@ export function stripWords(cells: readonly StripCell[]): string {
   return `${parts.join(", ")}${tail}`;
 }
 
-type Voice = { first: string; ready: [string, string]; high: string; tired: [string, string]; worn: string; empty: string; low: string };
+type Voice = {
+  first: string;
+  ready: [string, string, string];
+  high: string;
+  tired: [string, string, string];
+  worn: string;
+  empty: string;
+  low: string;
+};
 
-/** Her own words on a work morning, by how she is. The Coach's narration goes in the note, never here. */
+/**
+ * Her own words on a work morning, by how she is. The Coach's narration goes in the note, never here.
+ * The everyday and tired lines come up all career long, so each has three takes.
+ */
 const VOICE: Record<CharacterId, Voice> = {
   aoi: {
     first: "The cage is open. I'll take the first bucket, Coach.",
-    ready: ["Pencil's out. What do you see today, Coach?", "I wrote yesterday down. Tell me what goes on today's page."],
+    ready: [
+      "Pencil's out. What do you see today, Coach?",
+      "I wrote yesterday down. Tell me what goes on today's page.",
+      "Um, sorry, can we do bunts after? The ball goes tok. I like it.",
+    ],
     high: "I slept eight hours. I wrote that down, too.",
-    tired: ["Slow legs today. Score me a groundout, not a strikeout.", "A little tired. Not the kind that matters yet."],
+    tired: [
+      "Slow legs today. Score me a groundout, not a strikeout.",
+      "A little tired. Not the kind that matters yet.",
+      "Mom fed me twice last night. I'm moving a little slow.",
+    ],
     worn: "Um, sorry. I'm dragging. Write it down, so we both know I said it.",
     empty: "I've got nothing today. I'm sorry, Coach.",
     low: "Don't tell me it's fine. Tell me what you saw.",
   },
   reina: {
     first: "Mitt up. Tell me when the slot drops.",
-    ready: ["Again. Tell me what we're fixing.", "Slider today. Tell me when the slot drops. When, not after."],
+    ready: [
+      "Again. Tell me what we're fixing.",
+      "Slider today. Tell me when the slot drops. When, not after.",
+      "Your collar's folded under again. Fix it. Then we work.",
+    ],
     high: "The arm feels right. Don't say it out loud.",
-    tired: ["Forty good pitches in the arm. Not forty-one.", "Tired. That's not a reason."],
+    tired: ["Forty good pitches in the arm. Not forty-one.", "Tired. That's not a reason.", "I slept four hours. Four. Don't count it for me."],
     worn: "I can pitch tired. I'd rather not prove it today.",
     empty: "There's nothing in the arm. Don't hand me the ball.",
     low: "My head's not right. Give me something I can fix.",
   },
   miki: {
     first: "Gary's broken again. Cool. Where do you want me?",
-    ready: ["So. What's the plan, Coach?", "Two shirts. Gary's clanking. So. Where do you want me?"],
+    ready: [
+      "So. What's the plan, Coach?",
+      "Two shirts. Gary's clanking. So. Where do you want me?",
+      "Throw me the ugly ones today. Games are all ugly ones.",
+    ],
     high: "I'm in a good mood. Don't jinx it.",
-    tired: ["My legs quit around the fourth bucket. The hands didn't get the memo.", "Vending machine coffee. It's fine. I'm fine."],
+    tired: [
+      "My legs quit around the fourth bucket. My hands didn't notice.",
+      "Vending machine coffee. It's fine. I'm fine.",
+      "I ate both melon pans already. That's how tired I am.",
+    ],
     worn: "I'm running on fumes, Coach. Be nice about it.",
     empty: "Genuinely nothing left. Not even a foul ball.",
     low: "Rough week. You're still here, though. Okay.",
   },
   sol: {
     first: "Ninety-six in the bullpen. Tell me what else you want.",
-    ready: ["What are we throwing, Jefe?", "Arm's loose. Point at a corner."],
+    ready: ["What are we throwing, Jefe?", "Arm's loose. Point at a corner.", "Ninety-six. Give me a reason for the curve."],
     high: "Ninety-eight today. I can feel it.",
-    tired: ["The heat's winning a little. I'm still throwing.", "Ninety-four. Still enough."],
+    tired: ["The heat's winning a little. I'm still throwing.", "Ninety-four. Still enough.", "Luz made me eat first. Ninety-four, Jefe."],
     worn: "Ninety-one, maybe. Don't tell anybody, Jefe.",
     empty: "Nothing in the tank, Jefe. Ice and shade.",
     low: "Ninety-nine. Don't ask again, Jefe.",
   },
   kira: {
     first: "Here's the deal. I warm up fast. Point me somewhere.",
-    ready: ["I'm ready. You pick, Partner.", "Deal of the day, Partner: you pick, I don't argue. Much."],
+    ready: [
+      "I'm ready. You pick, Partner.",
+      "Deal of the day, Partner: you pick, I don't argue. Much.",
+      "Ten pitches, a break, ten more, then juice. Deal?",
+    ],
     high: "I feel like the ninth. You know what that means.",
-    tired: ["Legs are slow. Short work today, and you buy the juice.", "Tired's fine. The ninth is always tired."],
+    tired: [
+      "Legs are slow. Short work today, and you buy the juice.",
+      "Tired's fine. The ninth is always tired.",
+      "Missed the early bus. Ran. Don't laugh, Partner.",
+    ],
     worn: "Here's the deal. I'm tired. Don't waste me.",
     empty: "Partner, I've got nothing. The door stays shut today.",
     low: "My head's loud today. Give me one thing to finish.",
   },
   yuki: {
     first: "How far is first? Don't tell me. I'll find out.",
-    ready: ["Already stretched. What's first, Stopwatch?", "The line's chalked. Where am I running?"],
+    ready: [
+      "Already stretched. What's first, Stopwatch?",
+      "The line's chalked. Where am I running?",
+      "Already ran the bags. You're late, Stopwatch.",
+    ],
     high: "I'm fast today. Time me.",
-    tired: ["Still quicker than the throw. Probably. Don't check.", "A little slow off the line. Don't write it down."],
+    tired: [
+      "Still quicker than the throw. Probably. Don't check.",
+      "A little slow off the line. Don't write it down.",
+      "Brain freeze. From breakfast. I'm fine. Go.",
+    ],
     worn: "Already stretched. Twice. …It's cold, that's all.",
     empty: "Don't time me today, Stopwatch. Don't ask why. The leg's fine.",
     low: "I'm in my head. Give me something to run at.",
@@ -425,9 +472,9 @@ export function herMorning(id: CharacterId, turn: number, energy: number, mood: 
   if (tone === "empty") return v.empty;
   if (tone === "worn") return v.worn;
   if (mood <= 1) return v.low;
-  if (tone === "tired") return v.tired[turn % 2]!;
+  if (tone === "tired") return v.tired[turn % 3]!;
   if (mood >= 3) return v.high;
-  return v.ready[turn % 2]!;
+  return v.ready[turn % 3]!;
 }
 
 /** Every line she can say here, for the voice checks. */

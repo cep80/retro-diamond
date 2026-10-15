@@ -11,14 +11,15 @@ export interface Sku {
   blurb: string;
 }
 
+/** What the shop will never sell, said plainly. The list reads as one sentence on the Shop screen. */
 export const NEVER_SOLD = [
-  "Sparks",
+  "anything that makes her better at baseball",
+  "what she passes on to the next girl",
   "Clubhouse cards",
-  "Ending ranks",
-  "Fan-threshold verses",
-  "Diamond Finale access",
-  "Never Quit ◆",
-  "Plate constants",
+  "ending ranks",
+  "the songs the crowd sings for her",
+  "a way into the Diamond Finale",
+  "Never Quit",
 ] as const;
 
 export const SKUS: Sku[] = [
@@ -27,49 +28,49 @@ export const SKUS: Sku[] = [
     kind: "base",
     name: "Diamond Shine",
     usd: 19.99,
-    blurb: "Six girls, 16 parks, the 60-turn career, Clubhouse.",
+    blurb: "Six girls, sixteen parks, and three years with each of them.",
   },
   {
     id: "deluxe",
     kind: "deluxe",
     name: "Digital Deluxe",
     usd: 27.99,
-    blurb: "Base plus first expansion girl and Opening Season cosmetics.",
+    blurb: "The whole game, the first new girl, and the Opening Season looks.",
   },
   {
     id: "girl-7",
     kind: "expansion",
     name: "Expansion girl",
     usd: 7.99,
-    blurb: "One full career, one walk-up, three 応援歌 verses. No banner. No pull rate.",
+    blurb: "One new girl with her own three years, her own walk-up song, and her own crowd. No banners, no pull rates.",
   },
   {
     id: "season-1",
     kind: "pass",
     name: "Season 1 pass (girls 7–9)",
     usd: 19.99,
-    blurb: "Bundle discount only. No exclusive content.",
+    blurb: "The next three girls for a little less. Nothing in it you can't buy on its own.",
   },
   {
     id: "lantern-pack",
     kind: "cosmetic",
     name: "Season of the Lantern",
     usd: 4.99,
-    blurb: "Card frames and a warm park. Zero plate. Zero sparks.",
+    blurb: "Warm lantern light over the parks, and new frames for her cards. It only changes how things look.",
   },
   {
     id: "opening-pack",
     kind: "cosmetic",
     name: "Opening Season pack",
     usd: 3.99,
-    blurb: "Broadcast filter and throwback kits. Presentation only.",
+    blurb: "An old TV broadcast look and throwback uniforms. It only changes how things look.",
   },
   {
     id: "walk-up-alt",
     kind: "cosmetic",
     name: "Walk-up alt",
     usd: 1.99,
-    blurb: "One alternate walk-up for a girl you already Coach.",
+    blurb: "A second walk-up song for a girl you've already coached.",
   },
 ];
 

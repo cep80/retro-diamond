@@ -159,7 +159,7 @@ const SPOKEN_GOAL: Record<string, string> = {
   "Work a 3-2 count": "Take it to 3-2",
   "Work a full count": "Take it to 3-2",
   "Consecutive strikeouts": "Strikeouts back to back",
-  "Escape a bases-loaded jam": "Get out of the bases loaded",
+  "Escape a bases-loaded jam": "Get out of a bases-loaded jam",
   "Escape a jam": "Get out of the jam",
   "Strike out 2": "Two strikeouts",
   "Strike out 3": "Three strikeouts",
@@ -168,6 +168,12 @@ const SPOKEN_GOAL: Record<string, string> = {
   "Get two hits": "Two hits",
   "Make contact on 2 breaking balls": "Bat on two breaking balls",
   "Steal with RISP and score": "Steal with runners on, then score",
+  "Record 3 outs": "Get three outs",
+  "Record 1 out": "Get one out",
+  "Reach base once": "Get on base once",
+  "Reach base twice": "Get on base twice",
+  "Reach base": "Get on base",
+  "Hold a one-run lead": "Protect a one-run lead",
 };
 
 export function speakGoal(verb: string): string {
@@ -642,7 +648,7 @@ export function proofLine(id: GoalId, ev: PlateEvent[]): string | null {
   switch (id) {
     case "rbi": {
       const e = find("rbi", (x) => x.runs > 0);
-      return e ? `Her ${timeUp(e.pa)} time up: ${e.runs > 1 ? `${e.runs} runs` : "a run"} came in on her ball.` : null;
+      return e ? `Her ${timeUp(e.pa)} time up, ${e.runs > 1 ? `${e.runs} runs` : "a run"} came in on her ball.` : null;
     }
     case "hit-risp":
     case "hit-late":
@@ -651,33 +657,33 @@ export function proofLine(id: GoalId, ev: PlateEvent[]): string | null {
     case "hits-2":
     case "reach": {
       const e = find("reach", (x) => x.via === "hit" || id === "reach-once" || id === "reach-twice" || id === "reach");
-      return e ? `Her ${timeUp(e.pa)} time up: reached on a ${e.via === "hit" ? "base hit" : e.via}.` : null;
+      return e ? `Her ${timeUp(e.pa)} time up, she got on with a ${e.via === "hit" ? "base hit" : e.via}.` : null;
     }
     case "steal-risp-score": {
       const e = find("stealResult", (x) => x.safe && x.risp && ev.some((s) => s.t === "score" && s.runner === "self" && s.pa === x.pa));
-      return e ? `Stole ${e.from === 1 ? "2nd" : "3rd"} in the ${ordinal(e.inning)}, and came all the way home.` : null;
+      return e ? `She stole ${e.from === 1 ? "2nd" : "3rd"} in the ${ordinal(e.inning)} and came all the way home.` : null;
     }
     case "steal":
     case "steal-late":
     case "steal-risp": {
       const e = find("stealResult", (x) => x.safe);
-      return e ? `Stole ${e.from === 1 ? "2nd" : "3rd"} in the ${ordinal(e.inning)}.` : null;
+      return e ? `She stole ${e.from === 1 ? "2nd" : "3rd"} in the ${ordinal(e.inning)}.` : null;
     }
     case "steal-third": {
       const e = find("stealResult", (x) => x.safe && x.from === 2);
-      return e ? `Stole 3rd in the ${ordinal(e.inning)}.` : null;
+      return e ? `She stole 3rd in the ${ordinal(e.inning)}.` : null;
     }
     case "score-from-first": {
       const e = find("score", (x) => x.runner === "self" && ev.some((r) => r.t === "reach" && r.pa === x.pa && r.base === 1));
-      return e ? `Her ${timeUp(e.pa)} time up: on at first, and all the way around to score.` : null;
+      return e ? `Her ${timeUp(e.pa)} time up, she got on at first and came all the way around to score.` : null;
     }
     case "score-from-first-single": {
       const e = find("score", (x) => x.runner === "self" && x.from === 1 && x.on === "single");
-      return e ? "Scored from first on a single." : null;
+      return e ? "She scored from first on a single." : null;
     }
     case "score-no-hit": {
       const e = find("score", (x) => x.runner === "self" && x.selfReachedBy !== "hit");
-      return e ? `Scored after reaching on a ${e.selfReachedBy}.` : null;
+      return e ? `She got on with a ${e.selfReachedBy} and came around to score.` : null;
     }
     case "runners-on-at-bat": {
       const e = find("paStart", (x) => runnersOn(x.bases));
@@ -685,7 +691,7 @@ export function proofLine(id: GoalId, ev: PlateEvent[]): string | null {
     }
     case "foul-two-strike": {
       const e = find("foul", (x) => x.twoStrike);
-      return e ? `Her ${timeUp(e.pa)} time up: fouled one off with two strikes.` : null;
+      return e ? `Her ${timeUp(e.pa)} time up, she fouled one off with two strikes.` : null;
     }
     default:
       return null;

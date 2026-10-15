@@ -10,10 +10,12 @@ describe("commerce lock", () => {
   });
 
   it("never sells sparks, plate, Finale, or Never Quit", () => {
-    assert.ok(NEVER_SOLD.includes("Sparks"));
-    assert.ok(NEVER_SOLD.includes("Plate constants"));
-    assert.ok(NEVER_SOLD.includes("Diamond Finale access"));
-    assert.ok(NEVER_SOLD.includes("Never Quit ◆"));
+    // Said in words a player uses: what she learns and passes on, her games, the Finale, Never Quit.
+    assert.ok(NEVER_SOLD.includes("anything that makes her better at baseball"));
+    assert.ok(NEVER_SOLD.includes("what she passes on to the next girl"));
+    assert.ok(NEVER_SOLD.includes("a way into the Diamond Finale"));
+    assert.ok(NEVER_SOLD.includes("Never Quit"));
+    for (const item of NEVER_SOLD) assert.doesNotMatch(item, /spark|plate constant|threshold/i);
     for (const sku of SKUS) {
       assert.doesNotMatch(sku.id, /spark/i);
       assert.doesNotMatch(sku.name, /^sparks?$/i);

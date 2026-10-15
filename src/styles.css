@@ -7065,3 +7065,10 @@ img.shine-after-film[src^="/art/busts/"] {
 .shine-letter-fill[data-letter-ceiling] .shine-letter-track-fill {
   background: color-mix(in srgb, var(--color-gold) 55%, rgb(245 248 255 / 0.5));
 }
+
+/* ===== Voice v2, writer 1 (the race and the mound): whole-sentence headlines ===== */
+/* The mound's done headline is a sentence now, often a quote: a long one steps down a size, like the race's. */
+[data-mound-done][data-long-head] .shine-done-headline {
+  font-size: 1.5rem;
+  line-height: 1.15;
+}

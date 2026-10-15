@@ -26,24 +26,24 @@ export function ballLeavesBat(beat: FieldBeat): boolean {
 
 /** The outcome card, one line per beat (PA film bible §1.4). */
 export const RESULT_LINE: Record<FieldBeat, string> = {
-  miss: "Swing and miss.",
-  "foul-tip": "Foul tip. Almost.",
-  foul: "Foul. Pulled.",
-  "take-strike": "Strike. Looking.",
+  miss: "Swing and a miss.",
+  "foul-tip": "Foul tip. She just got a piece of it.",
+  foul: "Fouled off.",
+  "take-strike": "Called strike.",
   ball: "Ball.",
   k: "Strike three.",
   walk: "Ball four.",
-  "grounder-out": "Ground ball. Thrown out.",
-  "fly-out": "In the air. Caught.",
-  "sac-fly": "Deep enough. Run scores.",
-  "bunt-out": "Bunt. Thrown out.",
-  "bunt-down": "Bunt. Beats it out.",
-  single: "Through the hole.",
-  double: "Into the gap.",
-  hr: "Gone.",
+  "grounder-out": "Grounder, and she's thrown out.",
+  "fly-out": "Fly ball, and it's caught.",
+  "sac-fly": "Deep enough, and the run scores.",
+  "bunt-out": "Bunt, and she's thrown out.",
+  "bunt-down": "Bunt, and she beats it out!",
+  single: "Base hit!",
+  double: "Into the gap for a double!",
+  hr: "That ball is gone!",
 };
 
-export const TWO_STRIKE_FOUL_SUFFIX = " Still two.";
+export const TWO_STRIKE_FOUL_SUFFIX = " Still two strikes.";
 
 /** One readable callout per resolved pitch; two-strike fouls add the count sentence. */
 export function resultReadout(opts: { beat: FieldBeat; twoStrikeHold: boolean }): string {

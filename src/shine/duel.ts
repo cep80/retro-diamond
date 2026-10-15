@@ -209,17 +209,27 @@ export function verdictLine(opts: {
   card?: CoachCardId | null;
   strikes?: number;
   balls?: number;
+  /** Picks between versions of the same call (the pitch number), so a career doesn't hear one line. */
+  seed?: number;
 }): string {
   const pitch = SOFT_NAME[opts.pitchType];
   const family = pitchFamily(opts.pitchType);
   const two = opts.strikes != null && opts.strikes >= 2;
+  const s = Math.abs(Math.floor(opts.seed ?? 0));
+  const pick = (lines: readonly string[]) => lines[s % lines.length]!;
   // An untouched pitch under a swing call: she watched it, the call is moot.
   if (opts.call !== "take") {
-    if (opts.outcome === "walk") return "Ball four. She walked her.";
-    if (opts.outcome === "take-ball") return `Watched it. Ball. It was the ${pitch}.`;
-    if (opts.outcome === "take-strike") return two ? "Watched it. Strike two." : "Watched it. Strike.";
+    if (opts.outcome === "walk") return pick(["Ball four. She tosses the bat and takes her base.", "Ball four, and she's on her way to first.", "She doesn't chase it. Ball four."]);
+    if (opts.outcome === "take-ball") {
+      const n = COUNT_WORD[opts.balls ?? 0];
+      return n ? pick([`She lays off the ${pitch}. Ball ${n}.`, `Ball ${n}. She watches the ${pitch} go by.`, `She lets the ${pitch} go. Ball ${n}.`]) : `She lays off the ${pitch}.`;
+    }
+    if (opts.outcome === "take-strike") {
+      const n = COUNT_WORD[opts.strikes ?? 0];
+      return n ? pick([`She takes it for strike ${n}.`, `Strike ${n}, looking.`, `She watches that one go by. Strike ${n}.`]) : "She takes it for a strike.";
+    }
     if (opts.outcome === "k" && opts.call !== "protect" && opts.call !== "sit-hard" && opts.call !== "sit-soft" && opts.satCell == null) {
-      return "Watched strike three.";
+      return pick(["She never moved the bat. Strike three.", "Called strike three. She doesn't agree.", "She watches strike three go by."]);
     }
   }
   if (opts.card === "green-light") {
@@ -255,14 +265,32 @@ export function verdictLine(opts: {
     if (opts.outcome === "foul") return `${sat} It was the ${pitch}. Fought it off.`;
     return `${sat} It was the ${pitch}. ${family === "soft" ? "Early." : "Late."}`;
   }
-  // sit-cell
+  // The square the Coach picked: right where it came (0), or somewhere else. Said like a fan says it.
   const d = opts.satCell ?? 1;
-  if (opts.outcome === "reach") return d === 0 ? "Sat on it. Right where she put it." : "Sat away. It came in. Got it anyway.";
-  if (opts.outcome === "out") return d === 0 ? "Sat on it. In play. Out." : "Sat away. It came in. Out.";
-  if (opts.outcome === "foul") return d === 0 ? "Sat on it. Fought it off." : "Sat away. It came in. Fought it off.";
-  if (opts.outcome === "k") return d === 0 ? "Sat on it. Strike three." : "Sat away. It came in. Strike three.";
-  return d === 0 ? "Sat on it. Missed." : "Sat away. It came in.";
+  if (opts.outcome === "reach")
+    return d === 0
+      ? pick(["She was looking right there, and she didn't miss it.", "Right where you told her to look. She got it.", "You called that spot, and she was all over it."])
+      : pick(["It wasn't where she was looking, and she got to it anyway.", "She had to reach for that one, and she still got it.", "Wrong spot, right swing. She got it anyway."]);
+  if (opts.outcome === "out")
+    return d === 0
+      ? pick(["Right where she was looking. She hit it, just right at somebody.", "Good spot, good swing, and they caught it anyway.", "She got the pitch she wanted and hit it at somebody."])
+      : pick(["It came in somewhere else, and she couldn't square it up.", "She had to chase that one, and they got her.", "Not where she was looking. Weak contact, and they make the play."]);
+  if (opts.outcome === "foul") {
+    const alive = two ? " She's still alive." : "";
+    return d === 0
+      ? pick([`She found it and fouled it back.${alive}`, `Right spot, a hair late. Foul ball.${alive}`, `She fought it off.${alive}`])
+      : pick([`Not where she was looking, but she got a piece of it.${alive}`, `She reached and fouled it off.${alive}`, `She just tipped that one away.${alive}`]);
+  }
+  if (opts.outcome === "k")
+    return d === 0
+      ? pick(["She was looking right there and still swung through it.", "Right spot, and she missed it anyway.", "She saw it coming and couldn't catch up."])
+      : pick(["It came in somewhere she wasn't looking.", "She was looking somewhere else, and it beat her.", "Wrong spot, and she couldn't recover."]);
+  return d === 0
+    ? pick(["Right where she was looking, and she swung through it.", "She saw it coming and missed it anyway.", "Good spot, but she swung right under it."])
+    : pick(["It wasn't where she was looking. Swing and a miss.", "She guessed wrong on that one and missed.", "It came in somewhere else, and she swung through it."]);
 }
+
+const COUNT_WORD = ["", "one", "two", "three"] as const;
 
 /** Standard normal from a uniform source (Box–Muller); pure in `r`. */
 export function gaussianFrom(r: () => number): number {

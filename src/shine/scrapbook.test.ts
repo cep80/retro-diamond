@@ -25,7 +25,7 @@ function finalePa(over: Partial<DefiningPa> = {}): DefiningPa {
 describe("scrapbook replay", () => {
   it("names a held strikeout Finale as the ninth she sat, on the mound", () => {
     const [line] = replayLines(finalePa(), "sol");
-    assert.equal(line, "Diamond Finale. Inning 9, 0 out, bases empty. Sol on the mound.");
+    assert.equal(line, "Diamond Finale. 9th inning, nobody out, bases empty. Sol on the mound.");
   });
 
   it("mints the inning of the last out, not the inning the side rolled into", () => {
@@ -41,8 +41,8 @@ describe("scrapbook replay", () => {
     const minted = definingPaFrom(run, "finale", { events, arm: "academy", pgId: "k-side" }, true, 10, 0, 1);
     assert.equal(minted?.inning, 9);
     assert.equal(minted?.outcome, "Struck out.");
-    assert.equal(replayLines(minted!, "sol")[0], "Diamond Finale. Inning 9, 0 out, bases empty. Sol on the mound.");
-    assert.equal(replayLines(minted!, "sol").at(-1), "Struck out.");
+    assert.equal(replayLines(minted!, "sol")[0], "Diamond Finale. 9th inning, nobody out, bases empty. Sol on the mound.");
+    assert.equal(replayLines(minted!, "sol").at(-1), "She struck her out.");
   });
 
   it("reads a minted punchout that was saved as Out", () => {
@@ -56,12 +56,13 @@ describe("scrapbook replay", () => {
       }),
       "sol",
     );
-    assert.equal(lines.at(-1), "Struck out.");
+    assert.equal(lines.at(-1), "She struck her out.");
+    assert.equal(lines[1], "0-0, a fastball. Called strike.");
   });
 
   it("leaves an in-play out as an out", () => {
     const lines = replayLines(finalePa({ pitches: [{ type: "fastball", inZone: true, result: "in play, out" }] }), "sol");
-    assert.equal(lines.at(-1), "Out.");
+    assert.equal(lines.at(-1), "She got the out.");
   });
 
   it("does not send a pitcher date out to bat against the Academy arm", () => {
@@ -87,7 +88,7 @@ describe("scrapbook replay", () => {
 
   it("keeps a hitter replay as the at-bat she sat", () => {
     const [line] = replayLines(finalePa({ rival: "reina", inning: 9 }), "aoi");
-    assert.equal(line, "Diamond Finale. Inning 9, 0 out, bases empty. Aoi vs Reina.");
+    assert.equal(line, "Diamond Finale. 9th inning, nobody out, bases empty. Aoi against Reina.");
   });
 });
 
@@ -107,8 +108,13 @@ describe("scrapbook book (check-in 22)", () => {
     const pages = entries.filter((e) => e.kind === "page").map((e) => (e.kind === "page" ? e.page : null)!);
     assert.deepEqual(pages.map((p) => p.turn), [5, 18, 28]);
     assert.deepEqual(pages.map((p) => p.met), [true, false, true]);
-    assert.deepEqual(pages.map((p) => p.meeting), ["First time across from Reina.", "Reina again.", "Reina, a third time. They know each other's habits by now."]);
-    assert.deepEqual(pages[1]!.notes, ["A pinch of dirt from the baseline, kept."]);
+    assert.deepEqual(pages.map((p) => p.meeting), [
+      "It was her first time facing Reina.",
+      "Reina again. They'd seen each other once before.",
+      "Third time against Reina. By now they knew each other's habits.",
+    ]);
+    // An old save's keepsake page ("..., kept.") is said as a whole memory now.
+    assert.deepEqual(pages[1]!.notes, ["She kept a pinch of dirt from the baseline. It's on her shelf now, right next to the pencil stub."]);
     for (const p of pages) {
       assert.doesNotMatch(p.caption, /got what she came for|First look at/);
       assert.equal(p.caption, pageCaption("aoi", p.game, p.met));
@@ -123,10 +129,10 @@ describe("scrapbook book (check-in 22)", () => {
     const pages = scrapbookBook("yuki", [saved, oldSave, missed]).flatMap((e) => (e.kind === "page" ? [e.page] : []));
     assert.equal(pages[0]?.met, false);
     assert.equal(pages[0]?.saved, true);
-    assert.match(pages[0]?.caption ?? "", /She still got the little one\.$/);
+    assert.match(pages[0]?.caption ?? "", /She did get the smaller thing she was after, though\.$/);
     assert.equal(pages[1]?.saved, true);
     assert.equal(pages[2]?.saved, false);
-    assert.doesNotMatch(pages[2]?.caption ?? "", /little one/);
+    assert.doesNotMatch(pages[2]?.caption ?? "", /smaller thing/);
     assert.equal(pages[2]?.caption, GIRL_CAPTIONS.yuki.stretch.missed);
   });
 
@@ -195,7 +201,7 @@ describe("scrapbook book (check-in 22)", () => {
   it("ends on her letter only after the Finale", () => {
     assert.equal(letterPage("aoi", false), null);
     const letter = letterPage("aoi", true);
-    assert.equal(letter?.kicker, "A letter from the stands.");
+    assert.equal(letter?.kicker, "A letter from the stands");
     assert.match(letter!.text, /Row J/);
   });
 });

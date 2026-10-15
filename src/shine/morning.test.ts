@@ -10,8 +10,10 @@ import { releaseLine } from "./race.ts";
 import {
   applyGameResult,
   FAN_FEWER,
+  FAN_FEWER_TAKES,
   FAN_LINES,
   FAN_MORE,
+  FAN_MORE_TAKES,
   fanAnnouncement,
   newAoiRun,
   newRun,
@@ -56,21 +58,21 @@ describe("practice mornings", () => {
     assert.equal(seven, 7);
     assert.equal(STAT_SCALE, scale);
     assert.deepEqual(GRADE_FLOORS.slice(), floors);
-    assert.equal(letterFillLine("Contact", 7), "Contact is E. Halfway to D.");
-    assert.equal(letterFillLine("Contact", 6), "Contact is E. D is a ways off.");
-    assert.equal(letterFillLine("Contact", 3), "Contact is G. Nearly F.");
-    assert.equal(letterFillLine("Contact", 2), "Contact is G. F is a ways off.");
-    assert.equal(letterFillLine("Contact", 16), "Contact is S.");
+    assert.equal(letterFillLine("Contact", 7), "Her contact's an E, about halfway to a D.");
+    assert.equal(letterFillLine("Contact", 6), "Her contact's an E now. A D's still a ways off.");
+    assert.equal(letterFillLine("Contact", 3), "Her contact's a G, and she's almost at an F.");
+    assert.equal(letterFillLine("Contact", 2), "Her contact's a G now. An F's still a ways off.");
+    assert.equal(letterFillLine("Contact", 16), "Her contact's an S. There's nothing above that.");
   });
 
   it("never promises a letter past her potential, and her ceiling reads as one", () => {
     // Miki's 14: A is as high as she goes, and the bar is full, not empty forever.
     assert.deepEqual(letterFill(14, 14), { grade: "A", fill: 1, next: null, ceiling: true });
-    assert.doesNotMatch(letterFillLine("Contact", 14, 14), /on the way|Halfway|Nearly|ways off/);
-    assert.equal(letterFillLine("Contact", 14, 14), "Contact is A. That's as high as hers goes.");
-    assert.equal(letterFillLine("Contact", 13, 14), "Contact is B. Halfway to A.");
-    assert.equal(letterFillLine("Stuff", 15, 15), "Stuff is A. That's as high as hers goes.");
-    assert.equal(letterFillLine("Stuff", 16, 17), "Stuff is S.");
+    assert.doesNotMatch(letterFillLine("Contact", 14, 14), /on the way|halfway|almost|ways off/i);
+    assert.equal(letterFillLine("Contact", 14, 14), "Her contact's an A, and that's as high as she's going to take it.");
+    assert.equal(letterFillLine("Contact", 13, 14), "Her contact's a B, about halfway to an A.");
+    assert.equal(letterFillLine("Stuff", 15, 15), "Her stuff's an A, and that's as high as she's going to take it.");
+    assert.equal(letterFillLine("Stuff", 16, 17), "Her stuff's an S. There's nothing above that.");
     for (const girl of BIBLE) {
       const run = newRun(girl.id);
       for (let v = 1; v <= run.potential; v++) {
@@ -108,7 +110,12 @@ describe("practice mornings", () => {
     assert.equal(fanAnnouncement(10, 12, "sol"), "Luz sold out of elote before the third.");
     const all = Object.values(FAN_LINES).flatMap((l) => [l.more, l.fewer]);
     assert.equal(new Set(all).size, 12);
-    for (const line of [...all, FAN_MORE, FAN_FEWER]) {
+    // Two more takes for each crowd, by the day, so the same line doesn't follow every game.
+    const takes = [...Object.values(FAN_MORE_TAKES), ...Object.values(FAN_FEWER_TAKES)].flat();
+    assert.equal(new Set([...all, ...takes]).size, 36);
+    assert.equal(fanAnnouncement(10, 12, "aoi", 19), FAN_MORE_TAKES.aoi[0]);
+    assert.equal(fanAnnouncement(10, 6, "aoi", 20), FAN_FEWER_TAKES.aoi[1]);
+    for (const line of [...all, ...takes, FAN_MORE, FAN_FEWER]) {
       assert.match(line, /^[^!?]+[.]$/, line);
       assert.ok(line.split(".").filter((p) => p.trim()).length <= 2, line);
       assert.doesNotMatch(line, FORBIDDEN_IN_STORY, line);
@@ -221,7 +228,7 @@ describe("practice mornings", () => {
         assert.equal(state.screen, beat.screen);
         assert.equal(state.lastLine, beat.line);
         assert.doesNotMatch(state.lastLine ?? "", /complex/i);
-        assert.notEqual(state.lastLine, "One look. The bat is real.");
+        assert.notEqual(state.lastLine, "That's her first swing. The next one's in a real game.");
       }
 
       const reina = newRun("reina");
@@ -278,10 +285,10 @@ describe("practice mornings", () => {
       tutorial.turn = 2;
       const cageRead = plateRead(tutorial, startFeaturedGame(tutorial, "practice"));
       assert.equal(morningKind(tutorial.turn), "coaching");
-      assert.equal(cageRead, "One look. The bat is real.");
+      assert.equal(cageRead, "That's her first swing. The next one's in a real game.");
       assert.equal(leaveLabel({ practice: true, run: tutorial }), "Back to the complex");
       assert.equal(leaveLabel({ practice: true, morning: true, run: tutorial }), "Back to the complex");
-      assert.match(cageTutorialRead(false, { row: 1, col: 1 }, true) ?? "", /The bat is real|middle/);
+      assert.match(cageTutorialRead(false, { row: 1, col: 1 }, true) ?? "", /next one's in a real game|middle/);
       useShine.setState({ run: tutorial, screen: "plate", lastLine: null });
       useShine.getState().finishGame("practice", false, false, false, false, cageRead);
       const cage = useShine.getState();
@@ -291,7 +298,7 @@ describe("practice mornings", () => {
       assert.equal(cage.run.energy, 65);
       assert.equal(screenFor(cage.run), "complex");
       assert.equal(cage.screen, "complex");
-      assert.equal(cage.lastLine, "One look. The bat is real.");
+      assert.equal(cage.lastLine, "That's her first swing. The next one's in a real game.");
     } finally {
       useShine.setState({ run: null, screen: "title", lastLine: null });
     }
@@ -486,9 +493,10 @@ describe("practice mornings", () => {
   });
 
   it("keeps this cycle's lines in one voice", () => {
-    // The letter line: her letter, then at most one short scorebook sentence.
+    // The letter line: a coach saying her letter out loud, in one or two short sentences.
     for (const line of [letterFillLine("Contact", 7), letterFillLine("Stuff", 8), letterFillLine("Contact", 14, 14), letterFillLine("Contact", 16)]) {
-      assert.match(line, /^[A-Z][a-z]+ is [GFEDCBAS]\.( [^.!?]+\.)?$/, line);
+      assert.match(line, /^Her [a-z]+'s an? [GFEDCBAS][ ,.]/, line);
+      assert.ok(line.split(/[.!?](\s|$)/).filter((p) => p && p.trim()).length <= 2, line);
       assert.doesNotMatch(line, FORBIDDEN_IN_STORY, line);
       assert.doesNotMatch(line, HE, line);
       assert.equal(line.includes("—"), false, line);
@@ -500,14 +508,14 @@ describe("practice mornings", () => {
       assert.doesNotMatch(line, HE, line);
       assert.equal(line.includes("—"), false, line);
     }
-    // The release reaction: the band word, then one baseball sentence.
-    for (const line of [releaseLine("early"), releaseLine("now"), releaseLine("late")]) {
-      assert.match(line, /^(Early|On time|Late)\. [^.!?]+\.$/, line);
+    // The release reaction: she says how it felt, in quotes; with nobody to say it, one plain sentence or two.
+    for (const line of [releaseLine("early"), releaseLine("now"), releaseLine("late"), releaseLine("early", "aoi"), releaseLine("late", "yuki", 2)]) {
+      assert.match(line, /^"[^"]+"$|^[A-Z][^"]+\.$/, line);
       assert.doesNotMatch(line, FORBIDDEN_IN_STORY, line);
       assert.doesNotMatch(line, HE, line);
       assert.equal(line.includes("—"), false, line);
     }
-    assert.equal(ONE_THROW_LINE, "One throw. Then the arm rests for tomorrow.");
+    assert.equal(ONE_THROW_LINE, "That's her one throw. Her arm rests until tomorrow.");
     assert.equal(ONE_SENTENCE.test(ONE_THROW_LINE), false);
     assert.doesNotMatch(ONE_THROW_LINE, FORBIDDEN_IN_STORY);
     assert.doesNotMatch(ONE_THROW_LINE, HE);

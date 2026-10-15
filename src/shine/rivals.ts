@@ -52,8 +52,8 @@ const PROFILES: Record<RivalArmId, RivalProfile> = {
     secondaryBias: 0,
     speedMult: 1,
     upBias: 0,
-    tells: ["Tryout arm. Throws strikes; not much bite.", "Fastball first. The secondary comes later in the count."],
-    reads: "Does not scout. Every hitter gets the same look.",
+    tells: ["She's a tryout arm. She'll throw you strikes, but there's not much bite on them.", "She starts you with a fastball. The breaking stuff comes later in the count."],
+    reads: "She doesn't scout anybody. Every hitter gets the same pitches.",
     entersInning: null,
   },
   reina: {
@@ -67,8 +67,8 @@ const PROFILES: Record<RivalArmId, RivalProfile> = {
     secondaryBias: 0.05,
     speedMult: 1.02,
     upBias: 0,
-    tells: ["Lives on the corners. Almost never misses over the heart.", "Never walks anyone. Sitting on a cell is how you beat her."],
-    reads: "She reads where you sit. If you never chase, she stays on the chalk.",
+    tells: ["She lives on the corners. She almost never leaves one over the middle.", "She's never walked anybody. Pick your spot, wait for it, and don't let her talk you off it."],
+    reads: "She watches what you're looking for. If you never chase, she'll stay on the black all night.",
     entersInning: null,
   },
   sol: {
@@ -82,8 +82,8 @@ const PROFILES: Record<RivalArmId, RivalProfile> = {
     secondaryBias: -0.22,
     speedMult: 0.88,
     upBias: 0.6,
-    tells: ["Fastball up. The window is shorter than anything you've seen.", "Climbs the ladder with two strikes. Sit high or take it."],
-    reads: "She reads your timing. Late swings bring more heat; early swings bring the changeup.",
+    tells: ["She lives on the fastball up, and it gets on you faster than anything you've seen.", "With two strikes she climbs the ladder. Look for it up there, or let it go."],
+    reads: "She watches your timing. Swing late and she'll give you more heat. Swing early and here comes the changeup.",
     entersInning: null,
   },
   kira: {
@@ -97,8 +97,8 @@ const PROFILES: Record<RivalArmId, RivalProfile> = {
     secondaryBias: 0.12,
     speedMult: 0.93,
     upBias: 0,
-    tells: ["Comes in from the pen for the late innings. Attacks the first pitch.", "Two-strike slider, down and away. Every time."],
-    reads: "She reads the first pitch. Jump it too often and it starts off the plate.",
+    tells: ["She comes out of the bullpen late, and she goes right after the first pitch.", "With two strikes it's the slider, down and away. Every time."],
+    reads: "She watches what you do with the first pitch. Jump on it too often and she'll start you off the plate.",
     entersInning: 8,
   },
   aoi: {
@@ -112,7 +112,7 @@ const PROFILES: Record<RivalArmId, RivalProfile> = {
     secondaryBias: 0,
     speedMult: 1,
     upBias: 0,
-    tells: ["Not a pitcher.", "Not a pitcher."],
+    tells: ["She doesn't pitch.", "She doesn't pitch."],
     reads: "",
     entersInning: null,
   },
@@ -127,7 +127,7 @@ const PROFILES: Record<RivalArmId, RivalProfile> = {
     secondaryBias: 0,
     speedMult: 1,
     upBias: 0,
-    tells: ["Not a pitcher.", "Not a pitcher."],
+    tells: ["She doesn't pitch.", "She doesn't pitch."],
     reads: "",
     entersInning: null,
   },
@@ -142,7 +142,7 @@ const PROFILES: Record<RivalArmId, RivalProfile> = {
     secondaryBias: 0,
     speedMult: 1,
     upBias: 0,
-    tells: ["Not a pitcher.", "Not a pitcher."],
+    tells: ["She doesn't pitch.", "She doesn't pitch."],
     reads: "",
     entersInning: null,
   },
@@ -278,31 +278,31 @@ export function rivalAdaptation(profile: RivalProfile, tells: Tells): Adaptation
   const timeN = tells.lateSwings + tells.earlySwings;
 
   if (profile.identity === "urgency" && fpN >= ADAPT_MIN_SAMPLES && fp !== null && fp >= 0.6) {
-    return { kind: "first-pitch-off", line: `${profile.name} has watched you jump the first pitch. Expect it off the plate.` };
+    return { kind: "first-pitch-off", line: `${profile.name} has seen you jump on the first pitch. She'll start you off the plate now.` };
   }
   if (profile.identity === "heat" && timeN >= ADAPT_MIN_SAMPLES && late !== null) {
-    if (late >= 0.65) return { kind: "speed-up", line: `${profile.name} has seen you late. More heat, higher.` };
-    if (late <= 0.35) return { kind: "slow-down", line: `${profile.name} has seen you early. The changeup is coming.` };
+    if (late >= 0.65) return { kind: "speed-up", line: `${profile.name} has seen you swing late. She's going to throw harder, and higher.` };
+    if (late <= 0.35) return { kind: "slow-down", line: `${profile.name} has seen you out in front. Look for the changeup.` };
   }
   if (profile.identity === "locate" && chaseN >= ADAPT_MIN_SAMPLES && chase !== null) {
-    if (chase <= 0.25) return { kind: "fill-zone", line: `${profile.name} knows you don't chase. She'll work the zone, on the chalk.` };
-    if (chase >= 0.6) return { kind: "bury", line: `${profile.name} knows you chase. Two strikes, she buries it.` };
+    if (chase <= 0.25) return { kind: "fill-zone", line: `${profile.name} knows you won't chase, so she'll come into the zone and paint the edges.` };
+    if (chase >= 0.6) return { kind: "bury", line: `${profile.name} knows you chase. With two strikes she'll bury one in the dirt.` };
   }
   if (fpN >= ADAPT_MIN_SAMPLES && fp !== null && fp >= 0.7) {
-    return { kind: "first-pitch-off", line: `${profile.name} has seen you swing first pitch. It starts off the plate.` };
+    return { kind: "first-pitch-off", line: `${profile.name} knows you like the first pitch, so she won't give you a good one.` };
   }
   return null;
 }
 
 /** The third book line when the arm has not adapted to you: what fatigue does to her. */
 const FATIGUE_LINES: Record<RivalArmId, string> = {
-  academy: "Tryout arm. Same look all night.",
-  reina: "Past pitch 100 the fastball sits up. That is the only mistake she makes.",
-  sol: "Past pitch 100 the heat is still there; the ladder gets lower.",
-  kira: "One inning of everything. She does not get tired; she gets out.",
-  aoi: "Not a pitcher.",
-  miki: "Not a pitcher.",
-  yuki: "Not a pitcher.",
+  academy: "She's a tryout arm. You'll see the same stuff from her all night.",
+  reina: "Once she's past a hundred pitches, her fastball starts to drift up. It's the only mistake she ever makes.",
+  sol: "Past a hundred pitches the heat's still there, but she can't climb the ladder as high.",
+  kira: "She throws everything she has for one inning. She never gets tired, because she's never out there long enough.",
+  aoi: "She doesn't pitch.",
+  miki: "She doesn't pitch.",
+  yuki: "She doesn't pitch.",
 };
 
 export function fatigueLine(id: RivalArmId): string {
@@ -355,10 +355,31 @@ function historyLine(t: Tells): string | null {
   const fpN = t.firstPitchSwings + t.firstPitchTakes;
   const chaseN = t.chaseSwings + t.chaseTakes;
   if (fpN + chaseN < 2) return null;
+  const times = (n: number) => (n === 1 ? "once" : n === 2 ? "twice" : `${n} times`);
   const parts: string[] = [];
-  if (fpN >= 2) parts.push(`first pitch: swung ${t.firstPitchSwings}, took ${t.firstPitchTakes}`);
-  if (chaseN >= 2) parts.push(`off the plate: chased ${t.chaseSwings}, took ${t.chaseTakes}`);
-  return parts.length ? `Your book — ${parts.join(" · ")}.` : null;
+  if (fpN >= 2) {
+    const s = t.firstPitchSwings;
+    const k = t.firstPitchTakes;
+    parts.push(
+      s === 0
+        ? `You've taken the first pitch ${times(k)} and never swung at it.`
+        : k === 0
+          ? `You've swung at the first pitch ${times(s)} and never let it go by.`
+          : `You've swung at the first pitch ${times(s)} and taken it ${times(k)}.`,
+    );
+  }
+  if (chaseN >= 2) {
+    const s = t.chaseSwings;
+    const k = t.chaseTakes;
+    parts.push(
+      s === 0
+        ? `Off the plate, you've laid off ${times(k)} and never chased.`
+        : k === 0
+          ? `Off the plate, you've chased ${times(s)} and never laid off.`
+          : `Off the plate, you've chased ${times(s)} and laid off ${times(k)}.`,
+    );
+  }
+  return parts.length ? parts.join(" ") : null;
 }
 
 /** Bend a CPU call toward a rival's identity and her one adaptation. */
@@ -478,8 +499,8 @@ export function hitterAdaptation(
   const tsN = tells.twoStrikeOff + tells.twoStrikeZone;
   const sitFirstStrike = fpN >= ADAPT_MIN_SAMPLES && (tells.fpZone ?? 0) / fpN >= 0.7;
   const takeTwoStrike = tsN >= ADAPT_MIN_SAMPLES && tells.twoStrikeOff / tsN >= 0.7;
-  const firstLine = sitFirstStrike ? `${batterName} has seen you start in the zone. She's sitting on the first strike.` : null;
-  const twoStrikeLine = takeTwoStrike ? `${batterName} knows you go off the plate with two strikes. She won't chase.` : null;
+  const firstLine = sitFirstStrike ? `${batterName} has noticed you start her in the zone. She's going to jump on that first strike.` : null;
+  const twoStrikeLine = takeTwoStrike ? `${batterName} knows you go off the plate with two strikes, so she won't chase it.` : null;
   return { sitFirstStrike, takeTwoStrike, line: firstLine ?? twoStrikeLine, firstLine, twoStrikeLine };
 }
 

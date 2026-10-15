@@ -112,7 +112,7 @@ describe("rivals", () => {
     assert.equal(rep.arm, "reina");
     assert.equal(rep.seen, 2);
     assert.equal(rep.tells.length, 2);
-    assert.ok(rep.history?.includes("swung 3"));
+    assert.equal(rep.history, "You've swung at the first pitch 3 times and taken it once.");
     const late = scoutingReport({ characterId: "aoi", tells: EMPTY_TELLS, faced: {}, year: 1 }, "series");
     assert.equal(late.lateArm, "kira");
   });

@@ -381,7 +381,8 @@ describe("the stat strip", () => {
 describe("her own words", () => {
   it("never narrates, never quotes itself, and keeps the story's word list", () => {
     const lines = allMorningLines();
-    assert.equal(lines.length, 6 * 9);
+    assert.equal(lines.length, 6 * 11);
+    assert.equal(new Set(lines).size, lines.length, "no two takes are the same line");
     for (const l of lines) {
       assert.doesNotMatch(l, FORBIDDEN_IN_STORY, l);
       assert.doesNotMatch(l, /^(She|Her) /, l);

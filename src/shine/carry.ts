@@ -83,7 +83,7 @@ export function decodeCard(code: string): ClubhouseCard | null {
       id: uid("carry"),
       characterId: parsed.c,
       ending: parsed.e,
-      quote: "A Coach carried this card across the complex.",
+      quote: "A friend coached her and sent the card over. Her three years happened somewhere else, but her card hangs here now.",
       sparks: parsed.s,
       fans: parsed.f,
       style: who.style,

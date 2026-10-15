@@ -46,6 +46,41 @@ const STAT_STATION: Record<TraineeStatKey, StationId> = {
   stamina: "poles",
 };
 
+/** Where the Coach card sends her, as one coach says it to another: "I'd put her in the cage today." */
+const WHERE: Record<StationId, string> = {
+  cage: "in the cage",
+  poles: "on the poles",
+  looks: "on tracking pitches",
+  bp: "out for on-field BP",
+  situational: "on clutch work",
+  charting: "in the film room",
+  side: "in the bullpen",
+  spots: "on spot work",
+  hitch: "on the passed-down drill",
+  "off-day": "on the couch",
+  treatment: "in the trainer's room",
+  clubhouse: "out for a game of catch",
+};
+
+/** What each skill is, in the words a coach uses for it, and what the next big game asks of it. */
+const ASKS: Record<TraineeStatKey, string> = {
+  contact: "Putting the bat on the ball",
+  speed: "Getting down the line",
+  eye: "Seeing the ball out of the pitcher's hand",
+  power: "Driving the ball",
+  guts: "Keeping her head when it gets loud",
+  wit: "Reading the hitter",
+  stuff: "Making them swing and miss",
+  control: "Hitting the glove",
+  stamina: "Lasting deep into the game",
+};
+
+/** A big game's name in a sentence: "the Academy Gate", "First Light", "The Stretch". */
+export function theGame(label: string): string {
+  if (/^the /i.test(label) || label === "First Light") return label;
+  return `the ${label}`;
+}
+
 /** Her main work: the Cage, the Poles for a runner, the Bullpen for an ace, Spot work for a closer. */
 export function mainStat(style: StyleId): TraineeStatKey {
   if (style === "move") return "speed";
@@ -154,7 +189,10 @@ export function coachBrief(run: TraineeRun): CoachBrief {
   const energyLabel = energyBand(run.energy);
   const moodLabel = MOOD_LABELS[moodLevel(run.mood)];
 
-  let why = `${cap(stat)} work is the quickest way to get her ready for ${next.label}.`;
+  // The card is the other coach on staff talking to you: what they'd do with her today, and why.
+  const forDate = theGame(next.label);
+  const ready = (s: TraineeStatKey) => `I'd put her ${WHERE[STAT_STATION[s]]} today. ${ASKS[s]} is what ${forDate} is going to ask of her.`;
+  let why = ready(stat);
   let choiceStation = station;
   let choiceStat = stat;
   // Check-in 34 made the morning before a date one rep at her own station: nobody picks it,
@@ -165,21 +203,21 @@ export function coachBrief(run: TraineeRun): CoachBrief {
   if (repToday) {
     choiceStat = pitcher ? "stuff" : "contact";
     choiceStation = STAT_STATION[choiceStat];
-    why = `This morning is one rep at her own station before ${next.label}. Nobody rests today.`;
+    why = `It's the morning before ${forDate}, so she gets one rep at her own spot and that's it. Nobody rests today. She needs the feel of it.`;
   } else if (run.energy < 40 && turnsAway <= 2) {
     choiceStation = "off-day";
     why = repTomorrow
-      ? `She's worn out, and tomorrow is one rep she can't skip before ${next.label}. Rest her today. This is the last day off before the game.`
-      : `She's worn out, and ${next.label} is almost here. Rest her. Tired work goes wrong, and she'd carry it into the game.`;
+      ? `She's worn out, and tomorrow is one rep she can't skip before ${forDate}. Rest her today. It's the last day off she gets before the game.`
+      : `She's dragging, and ${forDate} is almost here. Rest her. Tired work goes sideways, and she'd carry it into the game.`;
   } else if (run.energy < 25) {
     choiceStation = "treatment";
-    why = "She's running on empty. Nothing trains through that. Send her to the trainer's room.";
+    why = "She's running on empty, and nothing sticks when she's like this. Send her to the trainer's room.";
   } else if (run.lastWork && run.lastWork.stat === stat && run.lastWork.outcome === "fail" && run.lastWork.turn === run.turn - 1) {
     const alt = secondNeed(goalId, pitcher);
     if (alt && alt !== stat) {
       choiceStation = STAT_STATION[alt];
       choiceStat = alt;
-      why = `${cap(stat)} work did not take yesterday. ${cap(alt)} helps for ${next.label} too, and a different station breaks the bad run.`;
+      why = `Yesterday's work did not take. I'd put her ${WHERE[choiceStation]} instead. It still helps for ${forDate}, and a change of drill breaks a bad streak.`;
     }
   }
   if (!repToday && choiceStation !== "off-day" && choiceStation !== "treatment") {
@@ -188,9 +226,11 @@ export function coachBrief(run: TraineeRun): CoachBrief {
       const failed = choiceStat !== stat ? stat : null;
       choiceStat = picked.stat;
       choiceStation = STAT_STATION[choiceStat];
-      if (picked.why === "ceiling") why = `She's close to her ceiling in ${cap(picked.from)}. ${cap(choiceStat)} work pays more today.`;
-      else if (failed && failed !== choiceStat) why = `${cap(failed)} work did not take yesterday. ${cap(choiceStat)} work breaks the bad run.`;
-      else why = `${cap(choiceStat)} work is the quickest way to get her ready for ${next.label}.`;
+      if (picked.why === "ceiling")
+        why = `She's close to her ceiling in ${cap(picked.from)}, so it barely moves now. ${cap(choiceStat)} work pays more today. I'd put her ${WHERE[choiceStation]}.`;
+      else if (failed && failed !== choiceStat)
+        why = `Yesterday's work did not take. I'd put her ${WHERE[choiceStation]} instead, and a change of drill breaks a bad streak.`;
+      else why = ready(choiceStat);
     }
   }
 
@@ -313,10 +353,10 @@ export function workComparison(run: TraineeRun): WorkComparison | null {
   const before = windowed ? Math.round(workPreviewWindow(w.stat, w.from, run.carry) * 2000) : null;
   const after = windowed ? Math.round(workPreviewWindow(w.stat, w.to, run.carry) * 2000) : null;
   const next = nextOfficial(run.turn);
-  const where = `You'll see it at ${next.label}.`;
+  const where = `You'll see it at ${theGame(next.label)}.`;
   let line: string;
   if (w.to === w.from) {
-    line = w.outcome === "bad-fail" ? "Nothing took today. She's worn out, and it showed." : "Nothing took today. It happens.";
+    line = w.outcome === "bad-fail" ? "Yesterday's work didn't stick. She was worn out, and it showed." : "Yesterday's work didn't stick. It happens to everybody.";
   } else {
     line = gainLine(w.stat);
   }
@@ -327,23 +367,23 @@ export function workComparison(run: TraineeRun): WorkComparison | null {
 function gainLine(stat: TraineeStatKey) {
   switch (stat) {
     case "contact":
-      return "Something clicked in the cage. She won't say what.";
+      return "Something clicked in the cage yesterday. She won't say what, but she's grinning.";
     case "power":
-      return "The ball is jumping off her bat in batting practice.";
+      return "The ball was jumping off her bat in batting practice yesterday.";
     case "guts":
-      return "She's steadier with the game on the line.";
+      return "She's steadier with the game on the line than she was a week ago.";
     case "speed":
-      return "Her first step is quicker. The catcher will notice.";
+      return "Her first step got quicker yesterday. The catchers are going to notice.";
     case "eye":
-      return "She's picking up the spin sooner.";
+      return "She's picking up the spin sooner. You could see it in her takes yesterday.";
     case "wit":
-      return "She's starting to read the pitcher's habits.";
+      return "She's starting to read the hitters' habits before they show them.";
     case "stuff":
-      return "Her pitches are moving more. Hitters will miss more.";
+      return "Her pitches had more on them yesterday. The bullpen catcher shook her hand out after.";
     case "control":
-      return "She's hitting the glove more often.";
+      return "She was hitting the glove yesterday, pitch after pitch.";
     case "stamina":
-      return "Her arm is holding up deeper into the game.";
+      return "Her arm held up longer yesterday than it ever has.";
   }
 }
 

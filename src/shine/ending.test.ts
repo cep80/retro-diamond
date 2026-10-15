@@ -43,7 +43,7 @@ describe("Diamond Finale and endings", () => {
     run.pgMisses = 1;
     assert.equal(finaleUnlocked(run), true);
     assert.equal(finaleFloorMet(run), false);
-    assert.equal(finaleGap(run), "The Diamond Finale is still ahead. She hasn't grown all the way into it.");
+    assert.equal(finaleGap(run), "That's the Series done. The Diamond Finale is next, and she's still growing into the player it needs.");
     assert.doesNotMatch(finaleGap(run), /needs \d|contact \d|speed \d/i);
   });
 
@@ -70,22 +70,22 @@ describe("Diamond Finale and endings", () => {
     const aoi = newAoiRun();
     aoi.pgMisses = 2;
     aoi.turn = 33;
-    assert.equal(yearFoldLine(aoi, "Night Classic", "The Stretch is in 17 days."), "Her Academy days end here, at Night Classic.");
+    assert.equal(yearFoldLine(aoi, "Night Classic", "The Stretch is in 17 days."), "That was her last big game. Her Academy days end tonight, after Night Classic.");
     assert.equal(postgameLeaveLabel(aoi, false), "End of the year");
   });
 
   it("names a pitcher ball as the last out on the Clubhouse wall", () => {
-    assert.equal(keepsakeWallLine("reina", "ball"), "The last-out ball.");
-    assert.equal(keepsakeWallLine("sol", "ball"), "The last-out ball.");
-    assert.equal(keepsakeWallLine("aoi", "ball"), "The first-hit ball.");
-    assert.equal(keepsakeWallLine("miki", "dirt"), "A pinch of dirt from the baseline.");
+    assert.equal(keepsakeWallLine("reina", "ball"), "She kept the ball from her last out.");
+    assert.equal(keepsakeWallLine("sol", "ball"), "She kept the ball from her last out.");
+    assert.equal(keepsakeWallLine("aoi", "ball"), "She kept the ball from her first hit.");
+    assert.equal(keepsakeWallLine("miki", "dirt"), "She kept a pinch of dirt from the baseline.");
   });
 
   it("names a grown-into Finale without a floor formula", () => {
     const run = newAoiRun();
     floorsForAoi(run);
     assert.equal(finaleFloorMet(run), true);
-    assert.equal(finaleGap(run), "The Diamond Finale is still ahead.");
+    assert.equal(finaleGap(run), "That's the Series done. The Diamond Finale is next, and she's ready for it.");
     assert.doesNotMatch(finaleGap(run), /hers/);
   });
 
@@ -260,7 +260,7 @@ describe("Diamond Finale and endings", () => {
     const run = newAoiRun();
     run.pgResults[6] = "missed";
     run.fans = 40;
-    assert.equal(careerStill(run).frame, "Three years, all the way to the Finale.");
+    assert.equal(careerStill(run).frame, "Three years, and she made it all the way to the Finale.");
   });
 
   it("names Sol's held Finale (two punchouts, the lead kept) on the Rough still", () => {
@@ -268,8 +268,8 @@ describe("Diamond Finale and endings", () => {
     run.pgResults[6] = "met";
     run.pgMisses = 1;
     run.fans = 33;
-    assert.equal(careerStill(run).quote, "Diamond Finale. Two punchouts in the ninth, and the lead held.");
-    assert.equal(careerStill(run).frame, "Three years, all the way to the Finale.");
+    assert.equal(careerStill(run).quote, "She struck out two in the Diamond Finale's ninth, and the lead held.");
+    assert.equal(careerStill(run).frame, "Three years, and she made it all the way to the Finale.");
   });
 
   it("does not put a sat Finale back in the pen", () => {
@@ -278,8 +278,8 @@ describe("Diamond Finale and endings", () => {
     run.fans = 40;
     const still = careerStill(run);
     assert.equal(still.rank, "B");
-    assert.equal(still.frame, "Three years, all the way to the Finale.");
-    assert.match(still.quote, /played the Diamond Finale/);
+    assert.equal(still.frame, "Three years, and she made it all the way to the Finale.");
+    assert.match(still.quote, /played in the Diamond Finale/);
     assert.doesNotMatch(still.quote, /from the pen/);
   });
 
@@ -292,7 +292,7 @@ describe("Diamond Finale and endings", () => {
     assert.doesNotMatch(still.trained, /the cage/i);
     assert.match(still.mentor, /Bullpen Coach/);
     assert.doesNotMatch(still.mentor, /Cage Coach/);
-    assert.match(still.frame, /took the ball/);
+    assert.match(still.frame, /still wants the ball/);
     assert.doesNotMatch(still.frame, /ran it/);
   });
 
@@ -301,7 +301,7 @@ describe("Diamond Finale and endings", () => {
     run.pgMisses = 2;
     const still = careerStill(run);
     assert.equal(still.rank, "D");
-    assert.match(still.frame, /bat stays up/);
+    assert.match(still.frame, /won't put the bat down/);
     assert.doesNotMatch(still.frame, /ran it/);
   });
 
@@ -311,7 +311,7 @@ describe("Diamond Finale and endings", () => {
     run.turn = 55;
     run.pgResults = ["met", "met", "missed", "missed", "missed", "missed", "pending"];
     const still = careerStill(run);
-    assert.match(still.quote, /The Stretch and Skyline Series\. She came up short in both./);
+    assert.match(still.quote, /She came up short at the Stretch and in the Skyline Series\./);
     assert.doesNotMatch(still.quote, /took second|Stolen third|ninth/);
   });
 
@@ -341,16 +341,16 @@ describe("Diamond Finale and endings", () => {
     const run = newAoiRun();
     const empty = mintClubhouseCard(run);
     const gap = sparkGapLine([{ ...empty, sparks: [] }]);
-    assert.match(gap ?? "", /Next: Coach Reina/i);
+    assert.match(gap ?? "", /Reina is next/i);
     assert.doesNotMatch(gap ?? "", /PA style|Spark is 1 turn/i);
     const carried = sparkGapLine([{ ...empty, sparks: [{ kind: "contact", power: 1 }] }]);
-    assert.match(carried ?? "", /Next: Coach Reina/i);
+    assert.match(carried ?? "", /Reina is next/i);
   });
 
   it("names sparks without formula tooltips", () => {
     assert.doesNotMatch(sparkEffectLine("contact"), /×|\d+\.\d+|window/);
     assert.doesNotMatch(sparkEffectLine("guts"), /leverage|fires 0/);
-    assert.match(sparkEffectLine("contact"), /barrel/i);
+    assert.match(sparkEffectLine("contact"), /squares the ball up/i);
   });
 
   it("lets the Coach pick at most three inherit sparks", () => {
@@ -438,7 +438,10 @@ describe("the ending says why", () => {
     run.fans = 70;
     const a = endingRank(run, true, true);
     assert.equal(a, "A");
-    assert.equal(endingWhy(run, a, true, true), "70 fans, one big game cost her, and she won the Finale. S needs no big game lost and 78 fans.");
+    assert.equal(
+      endingWhy(run, a, true, true),
+      "She finished with 70 fans, one big game got away from her, and she won the Finale. An S would have taken no big game lost and 78 fans.",
+    );
     assert.equal(RANK_FANS.S, 75);
     assert.equal(RANK_FANS.sHitter, 78);
     run.pgMisses = 0;
@@ -453,7 +456,7 @@ describe("the ending says why", () => {
     run.fans = 45;
     const b = endingRank(run, false, false);
     assert.equal(b, "B");
-    assert.match(endingWhy(run, b, false, false), /A needs a Finale win and 60 fans\.$/);
+    assert.match(endingWhy(run, b, false, false), /An A would have taken a Finale win and 60 fans\.$/);
   });
 
   it("ranks by the table: closed early is C or D, the Finale is B or better, and never-quit never blocks an earned S or A", async () => {
@@ -520,7 +523,7 @@ describe("the ending says why", () => {
     run.fans = 52;
     run.pgResults[6] = "met";
     assert.equal(endingRank(run, true, true), "B");
-    assert.equal(endingWhy(run, "B", true, true), "52 fans, one big game cost her. She won the Finale. A needs 60 fans.");
+    assert.equal(endingWhy(run, "B", true, true), "She finished with 52 fans, and one big game got away from her. She won the Finale. An A would have taken 60 fans.");
     assert.doesNotMatch(endingQuote(run, "B"), /one win away/, "a won Finale isn't a game short");
   });
 
@@ -532,7 +535,10 @@ describe("the ending says why", () => {
     run.fans = 45;
     run.pgResults[6] = "missed";
     assert.equal(endingRank(run, true, false), "B");
-    assert.equal(endingWhy(run, "B", true, false), "45 fans, one big game cost her. She played the Finale and came up short. A needs a Finale win and 60 fans.");
+    assert.equal(
+      endingWhy(run, "B", true, false),
+      "She finished with 45 fans, and one big game got away from her. She played the Finale and came up short. An A would have taken a Finale win and 60 fans.",
+    );
     assert.doesNotMatch(endingQuote(run, "B"), /one win away/);
     run.fans = 70;
     assert.match(endingQuote(run, "B"), /one win away/);
@@ -545,7 +551,7 @@ describe("the ending says why", () => {
     run.fans = 64;
     run.pgResults[6] = "missed";
     const why = endingWhy(run, "never-quit", true, false);
-    assert.match(why, /^64 fans\. She played the Finale/);
+    assert.match(why, /^She finished with 64 fans\. She played the Finale/);
     assert.doesNotMatch(why, /no Finale/);
     assert.doesNotMatch(endingQuote(run, "never-quit"), /brought a second cowbell/, "the second cowbell came in Year 1");
   });
@@ -562,7 +568,7 @@ describe("the last screen: Winning Live or Last Bow (check-in 22)", () => {
       const stage = endingStage(rank, false);
       assert.equal(stage, "bow", rank);
       assert.doesNotMatch(endingStageLabel(stage).en, /Winning Live/);
-      assert.equal(endingStageCta(stage), "Walk off");
+      assert.equal(endingStageCta(stage), "One last bow");
     }
     assert.deepEqual(endingStageLabel("live"), { jp: "ウイニングライブ", en: "Winning Live" });
     assert.deepEqual(endingStageLabel("bow"), { jp: "最後の礼", en: "Last Bow" });

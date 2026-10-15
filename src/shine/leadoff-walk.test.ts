@@ -60,7 +60,7 @@ describe("Reina's Finale: the leadoff walk plays first (check-in 24)", () => {
     const g = startPitchingGame(finaleRun("reina", "open"), "finale");
     assert.equal(g.pgId, "clean-ninth");
     assert.deepEqual([g.inning, g.outs, g.scoreDiff, g.runners, g.leadoffWalk], [9, 0, 1, 0, 0]);
-    assert.equal(g.banner, "Ninth. A one-run lead. Nobody on.");
+    assert.equal(g.banner, "Ninth inning, up by one, nobody on.");
     assert.equal(leadoffWalkPending(g), true);
     for (const id of ["sol", "kira"] as const) {
       const other = startPitchingGame(finaleRun(id, "open"), "finale");
