@@ -41,6 +41,7 @@ import {
   scorebugLabel,
   scorePhrase,
   situationLine,
+  spurtChrome,
 } from "./race-ui.ts";
 
 describe("race sitelines", () => {
@@ -541,8 +542,13 @@ describe("a swing release", () => {
     assert.equal(releaseBand(0.92), "now");
     assert.equal(releaseBand(1.06), "now");
     assert.equal(releaseBand(1.061), "late");
-    assert.equal(releaseTimingErr(0.2), -0.18);
-    assert.equal(releaseTimingErr(1.2), 0.18);
+    // Farther off the on-time band is a bigger miss. A flat early error used to foul forever.
+    const farEarly = Math.abs(releaseTimingErr(0.2));
+    const nearEarly = Math.abs(releaseTimingErr(0.7));
+    const farLate = Math.abs(releaseTimingErr(1.3));
+    const nearLate = Math.abs(releaseTimingErr(1.08));
+    assert.ok(farEarly > nearEarly && nearEarly > Math.abs(releaseTimingErr(0.92)), `${farEarly} ${nearEarly}`);
+    assert.ok(farLate > nearLate && nearLate > 0, `${farLate} ${nearLate}`);
     assert.ok(Math.abs(releaseTimingErr(0.92)) < 1e-9);
     assert.ok(Math.abs(releaseTimingErr(0.78) + 0.05) < 1e-9);
     assert.ok(Math.abs(releaseTimingErr(1.06) - 0.05) < 1e-9);
@@ -567,6 +573,40 @@ describe("a swing release", () => {
     assert.equal(releaseLine("early"), "She was way out in front of that one.");
     assert.equal(releaseLine("now"), "Right on time. She was all over it.");
     assert.equal(releaseLine("late"), "It got in on her hands. She was late.");
+  });
+});
+
+describe("the last-spurt band", () => {
+  /** What each at-bat of one date shows. The band, once it flashes, stays spent. */
+  function dateOf(atBats: { lastSpurt: boolean; skill?: boolean }[]) {
+    let bandShown = false;
+    return atBats.map((ab) => {
+      const chrome = spurtChrome({ lastSpurt: ab.lastSpurt, bandShown, skillOwnsFrame: Boolean(ab.skill) });
+      if (chrome.band) bandShown = true;
+      return chrome;
+    });
+  }
+
+  it("flashes once per date; later late at-bats keep only the scorebug tint", () => {
+    assert.deepEqual(
+      dateOf([{ lastSpurt: false }, { lastSpurt: true }, { lastSpurt: true }, { lastSpurt: true }]),
+      [
+        { band: false, tint: false },
+        { band: true, tint: true },
+        { band: false, tint: true },
+        { band: false, tint: true },
+      ],
+    );
+    // Her skill owns the first late wind-up. The band waits, and still flashes only once.
+    assert.deepEqual(
+      dateOf([
+        { lastSpurt: true, skill: true },
+        { lastSpurt: true },
+        { lastSpurt: true },
+      ]).map((c) => c.band),
+      [false, true, false],
+    );
+    assert.ok(dateOf([{ lastSpurt: true }, { lastSpurt: true }, { lastSpurt: true }]).filter((c) => c.band).length === 1);
   });
 });
 

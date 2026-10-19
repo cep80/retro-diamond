@@ -206,13 +206,19 @@ export function releaseBand(u: number): ReleaseBand {
 }
 
 /**
- * Timing error for a human release. Early and late sit outside a good
- * contact window. On time stays inside it, centered on the plate.
+ * How far off the plate a human release is. A flat early or late error sat
+ * inside the foul band for any trained Contact, so a mash at two strikes
+ * fouled the at-bat forever. Far off the on-time band is a miss. A near miss
+ * still clips it foul. On time stays a hair either side of the plate.
+ * Sheet swings do not come through here.
  */
+const RELEASE_OFF_BASE = 0.122;
+const RELEASE_OFF_SCALE = 0.322;
+
 export function releaseTimingErr(u: number): number {
   const band = releaseBand(u);
-  if (band === "early") return -0.18;
-  if (band === "late") return 0.18;
+  if (band === "early") return -(RELEASE_OFF_BASE + RELEASE_OFF_SCALE * ((RELEASE_EARLY_U - u) / RELEASE_EARLY_U));
+  if (band === "late") return RELEASE_OFF_BASE + RELEASE_OFF_SCALE * ((u - RELEASE_LATE_U) / RELEASE_EARLY_U);
   const t = Math.max(-1, Math.min(1, (u - RELEASE_CENTER_U) / 0.14));
   return t * 0.05;
 }

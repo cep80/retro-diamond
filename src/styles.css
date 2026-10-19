@@ -7072,3 +7072,17 @@ img.shine-after-film[src^="/art/busts/"] {
   font-size: 1.5rem;
   line-height: 1.15;
 }
+
+/* N7 · A late at-bat tints the scorebug coral. The band flashes once; the tint stays for the rest of the date. */
+.shine-scorebug[data-spurt] {
+  border-color: color-mix(in srgb, var(--color-coral) 72%, transparent);
+  box-shadow:
+    0 6px 18px rgb(0 0 0 / 0.35),
+    0 0 14px color-mix(in srgb, var(--color-coral) 45%, transparent);
+}
+.shine-scorebug[data-spurt] .shine-bug-tag {
+  border-top-color: var(--color-coral);
+}
+.shine-scorebug[data-spurt] .shine-bug-inning {
+  background: color-mix(in srgb, var(--color-coral) 16%, transparent);
+}

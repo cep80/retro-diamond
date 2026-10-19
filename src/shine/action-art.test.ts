@@ -30,6 +30,7 @@ import {
   PITCHER_POSES,
   RELEASE_HOLD_U,
   CUT_LEAD_U,
+  doneSettled,
   settledBatterPose,
   STAMP_DELAY_MS,
   STAMP_HOLD_MS,
@@ -229,6 +230,20 @@ describe("action art: the done panel settles her face", () => {
     assert.equal(settledBatterPose("walk", "met"), "trot");
     assert.equal(settledBatterPose("walk", "missed"), "crushed");
     assert.equal(settledBatterPose("single"), null, "mid-date a plain hit keeps its row's pose");
+  });
+
+  it("a Finale her side won while she missed settles on her trot, not her crushed still", () => {
+    const wonShort = doneSettled({ done: true, open: false, met: false, teamWon: true });
+    assert.equal(wonShort, "won-short");
+    for (const beat of [...ALL_BEATS, null]) {
+      assert.equal(settledBatterPose(beat, "won-short"), "trot", String(beat));
+      assert.notEqual(settledBatterPose(beat, "won-short"), "crushed", String(beat));
+    }
+    assert.equal(doneSettled({ done: true, open: false, met: false, teamWon: false }), "missed");
+    assert.equal(settledBatterPose("k", "missed"), "crushed");
+    assert.equal(doneSettled({ done: true, open: false, met: true, teamWon: true }), "met");
+    assert.equal(doneSettled({ done: false, open: false, met: false, teamWon: true }), null);
+    assert.equal(doneSettled({ done: true, open: true, met: false, teamWon: false }), true);
   });
 });
 

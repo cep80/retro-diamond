@@ -38,6 +38,13 @@ function race(seed: string, over: Partial<ConstructorParameters<typeof RaceContr
   return { c, sched, run, cues };
 }
 
+/** Advance until the ball is in the air, or the plate appearance has left the race. */
+function toFlight(c: RaceController, sched: VirtualScheduler) {
+  let guard = 0;
+  while (c.getSnapshot().plate.stage !== "flight" && c.getSnapshot().phase === "racing" && guard++ < 800) sched.advance(20);
+  return c.getSnapshot().plate.stage === "flight";
+}
+
 /** Advance until the phase changes or `maxMs` passes. */
 function untilPhase(c: RaceController, sched: VirtualScheduler, phase: string, maxMs = 120_000) {
   const start = sched.t;
@@ -409,7 +416,7 @@ describe("race controller", () => {
     assert.equal(after.release?.band, "early");
     const swings = after.plate.game.events.filter((e) => e.t === "swing");
     assert.equal(swings.length, 1);
-    assert.equal(swings[0]?.timingErr, -0.18);
+    assert.ok((swings[0]?.timingErr ?? 0) < 0, "the release is early");
     assert.equal(a.c.release(0.92), false);
     assert.equal(a.c.getSnapshot().plate.game.events.filter((e) => e.t === "swing").length, 1);
 
@@ -423,6 +430,49 @@ describe("race controller", () => {
     assert.notEqual(quiet.c.getSnapshot().plate.stage, "flight");
     assert.equal(quiet.c.getSnapshot().release, null);
     assert.equal(quiet.c.getSnapshot().plate.game.events.filter((e) => e.t === "swing").length, 0);
+  });
+
+  it("an early mash at 0-2 ends the at-bat, and a near miss can still foul", () => {
+    for (let i = 0; i < 20; i++) {
+      const { c, sched } = race(`mash-${i}`, { kind: "gate" });
+      c.setCall("take");
+      c.go();
+      let releases = 0;
+      let ended = false;
+      while (releases < 6) {
+        if (!toFlight(c, sched)) {
+          ended = c.getSnapshot().phase !== "racing";
+          break;
+        }
+        c.getSnapshot().plate.game.count = { balls: 0, strikes: 2 };
+        assert.equal(c.release(0.3), true, `seed ${i} release`);
+        releases += 1;
+        const g = c.getSnapshot().plate.game;
+        if (g.events.some((e) => e.t === "paComplete")) {
+          ended = true;
+          break;
+        }
+      }
+      assert.ok(ended && releases <= 4 && releases >= 1, `seed ${i}: ended=${ended} after ${releases} early releases`);
+    }
+
+    let fouled = 0;
+    for (let i = 0; i < 12; i++) {
+      const { c, sched } = race(`near-${i}`, { kind: "gate" });
+      c.setCall("take");
+      c.go();
+      assert.ok(toFlight(c, sched), `seed ${i} never pitched`);
+      c.getSnapshot().plate.game.count = { balls: 0, strikes: 2 };
+      assert.equal(c.release(0.7), true);
+      const g = c.getSnapshot().plate.game;
+      const foul = g.events.some((e) => e.t === "foul" && e.twoStrike);
+      if (foul) {
+        fouled += 1;
+        assert.equal(g.count.strikes, 2, "a two-strike foul leaves her at 0-2");
+        assert.equal(g.events.some((e) => e.t === "paComplete"), false, "the foul does not end the at-bat");
+      }
+    }
+    assert.ok(fouled > 0, "a release near 0.7 at 0-2 can foul");
   });
 
   it("a release during pause does nothing, and one after resume lands", () => {

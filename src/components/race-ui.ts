@@ -730,6 +730,15 @@ function capital(s: string): string {
   return s ? `${s[0]!.toUpperCase()}${s.slice(1)}` : s;
 }
 
+/**
+ * The last-spurt band flashes once a date, on the first late at-bat whose wind-up
+ * her skill isn't already using. Every late at-bat keeps the scorebug's coral tint.
+ */
+export function spurtChrome(opts: { lastSpurt: boolean; bandShown: boolean; skillOwnsFrame: boolean }): { band: boolean; tint: boolean } {
+  if (!opts.lastSpurt) return { band: false, tint: false };
+  return { band: !opts.bandShown && !opts.skillOwnsFrame, tint: true };
+}
+
 // ── The scorebug ────────────────────────────────────────────────────────────
 
 /** The bug's words for a screen reader. A done bug says where the score stood, not a count. */

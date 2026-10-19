@@ -6,7 +6,8 @@
  * anywhere in that run, not just on neighbouring screens.
  *
  * Some screens are fixed by what she did: a hitter's done panel (ShineRace settles on her
- * celebrate or crushed still), the curtain's still, the ending scene's first and last busts.
+ * celebrate still, her trot when they won and she missed, or crushed when the night was lost),
+ * the curtain's still, the ending scene's first and last busts.
  * The rest choose from her stills and busts, in order of preference, skipping everything the
  * run has already spent, in this order:
  * 1. 優勝: her elated bust, else her biggest joy on film (a hitter's arms-up, a pitcher's K).
@@ -111,13 +112,15 @@ function pitcherOf(id: CharacterId): boolean {
 }
 
 /**
- * A hitter's Finale done panel, as it settles (ShineRace): her painted celebrate still when she
- * got it, crushed when she didn't; ShineRace never settles a met Finale on the trot, which is
- * the curtain's. A pitcher's is `finaleDonePicture`.
+ * A hitter's Finale done panel, as it settles (ShineRace): her celebrate still when she got it,
+ * her trot when they won and she missed (no curtain on a miss, so the trot is free), crushed when
+ * they lost it too. A met Finale never settles on the trot: that still is the curtain's. A
+ * pitcher's is `finaleDonePicture`.
  */
 export function finaleDoneSrcs(id: CharacterId, met: boolean, teamWon = met): string[] {
   if (pitcherOf(id)) return [finaleDonePicture(id, met, teamWon).src];
-  return [`/art/action/${id}/${met ? "celebrate" : "crushed"}.webp`];
+  const pose = met ? "celebrate" : teamWon ? "trot" : "crushed";
+  return [`/art/action/${id}/${pose}.webp`];
 }
 
 /** The curtain call's still, when the Finale earns one (her ask met). */
@@ -145,9 +148,9 @@ function sceneBustsAnyRank(id: CharacterId): string[] {
 }
 
 /** What the run holds back before the 優勝 moment and the done panel choose. */
-function fixedBeforeRank(id: CharacterId, met: boolean): string[] {
+function fixedBeforeRank(id: CharacterId, met: boolean, teamWon = met): string[] {
   const curtain = finaleCurtainSrc(id, met);
-  return [...sceneBustsAnyRank(id), ...(curtain ? [curtain] : []), ...(pitcherOf(id) ? [] : finaleDoneSrcs(id, met))];
+  return [...sceneBustsAnyRank(id), ...(curtain ? [curtain] : []), ...(pitcherOf(id) ? [] : finaleDoneSrcs(id, met, teamWon))];
 }
 
 /**
@@ -158,7 +161,8 @@ export function finaleWinPicture(id: CharacterId, met: boolean): EndingPicture {
   const candidates = pitcherOf(id)
     ? [bust(id, "elated"), still(id, "k", "elated"), still(id, "follow", "elated"), still(id, "windup", "elated")]
     : [bust(id, "elated"), film(`/art/action/${id}/hr.webp`), film(`/art/action/${id}/celebrate.webp`), film(`/art/action/${id}/trot.webp`)];
-  return pick(candidates, fixedBeforeRank(id, met));
+  // The moment only plays when her side won, so the done panel under it is the won still.
+  return pick(candidates, fixedBeforeRank(id, met, true));
 }
 
 /**
@@ -167,7 +171,7 @@ export function finaleWinPicture(id: CharacterId, met: boolean): EndingPicture {
  * moment's picture, which played over it. A hitter's is fixed (`finaleDoneSrcs`).
  */
 export function finaleDonePicture(id: CharacterId, met: boolean, teamWon: boolean): EndingPicture {
-  if (!pitcherOf(id)) return film(finaleDoneSrcs(id, met)[0]!);
+  if (!pitcherOf(id)) return film(finaleDoneSrcs(id, met, teamWon)[0]!);
   const avoid = [...fixedBeforeRank(id, met), ...(teamWon ? [finaleWinPicture(id, met).src] : [])];
   const candidates = met
     ? [still(id, "k", "focused"), still(id, "follow", "focused"), still(id, "windup", "focused"), still(id, "release", "focused"), bust(id, "focused")]
@@ -316,7 +320,7 @@ export function finaleEnding(opts: {
   const { id, met, teamWon, rank } = opts;
   const stage = opts.stage ?? endingStage(rank, teamWon);
   const win = teamWon ? finaleWinPicture(id, met) : null;
-  const done = pitcherOf(id) ? finaleDonePicture(id, met, teamWon) : film(finaleDoneSrcs(id, met)[0]!);
+  const done = pitcherOf(id) ? finaleDonePicture(id, met, teamWon) : film(finaleDoneSrcs(id, met, teamWon)[0]!);
   const curtain = finaleCurtainSrc(id, met);
   const sceneOpen = endingSceneOpenSrc(id, rank);
   const sceneLast = endingSceneSrc(id, rank);

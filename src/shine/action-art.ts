@@ -300,15 +300,28 @@ export interface ActionView {
   reduced: boolean;
   /**
    * The done panel: the date is over and her still holds how it went, never a
-   * replay. "met" / "missed" puts the date's verdict on her face; true settles
-   * the closing beat as itself (a day with no verdict: the exhibition, the cage,
+   * replay. "met" / "missed" puts the date's verdict on her face; "won-short"
+   * is a Finale her side won while she missed her ask. true settles the
+   * closing beat as itself (a day with no verdict: the exhibition, the cage,
    * the weekly look). Unset mid-date, and on the mound.
    */
   settled?: DateVerdict | true | null;
 }
 
 /** How a date ended, for her face at the done panel. */
-export type DateVerdict = "met" | "missed";
+export type DateVerdict = "met" | "missed" | "won-short";
+
+/**
+ * The done panel's face. A day with no ask settles the closing beat as itself.
+ * A Finale her side won while she missed her ask is "won-short" (her trot),
+ * not the crushed still a plain miss uses.
+ */
+export function doneSettled(opts: { done: boolean; open: boolean; met: boolean; teamWon: boolean }): DateVerdict | true | null {
+  if (!opts.done) return null;
+  if (opts.open) return true;
+  if (opts.teamWon && !opts.met) return "won-short";
+  return opts.met ? "met" : "missed";
+}
 
 export interface ActionPicture {
   pitcher: PitcherPose;
@@ -356,11 +369,13 @@ const AFTER_STAGES: ReadonlySet<Stage> = new Set(["field", "reaction", "idle"]);
  *
  * At the done panel a verdict wins over the beat: a date she got is her
  * celebrating (a closing home run was reading as 達成 over the contact
- * grimace), one she didn't is her crushed. A met date that closed on a walk
- * or on the bases (the race hands a running close in as a walk) keeps the
- * trot: how she got there is the picture.
+ * grimace), one she didn't is her crushed. A Finale her side won while she
+ * missed her ask is her trot, the curtain's still, which does not play on a
+ * miss. A met date that closed on a walk or on the bases (the race hands a
+ * running close in as a walk) keeps the trot: how she got there is the picture.
  */
 export function settledBatterPose(beat: FieldBeat | null, verdict: DateVerdict | null = null): BatterPose | null {
+  if (verdict === "won-short") return "trot";
   if (verdict === "missed") return "crushed";
   if (verdict === "met") return beat === "walk" ? "trot" : "celebrate";
   if (beat === "hr") return "celebrate";

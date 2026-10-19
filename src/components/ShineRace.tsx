@@ -49,6 +49,7 @@ import {
   scorePhrase,
   showSitGrid,
   situationParts,
+  spurtChrome,
 } from "@/components/race-ui";
 import {
   duckCrowd,
@@ -72,7 +73,7 @@ import type { Cell } from "@/shine/core/zone.ts";
 import { locCell } from "@/shine/core/zone.ts";
 import { track as trackEvent } from "@/lib/telemetry.ts";
 import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
-import { HR_STAMP_HOLD_MS, resultStamp, SCORE_STAMP, SCORE_STAMP_HOLD_MS, STAMP_DELAY_MS, stampHoldMs, stillFor } from "@/shine/action-art.ts";
+import { doneSettled, HR_STAMP_HOLD_MS, resultStamp, SCORE_STAMP, SCORE_STAMP_HOLD_MS, STAMP_DELAY_MS, stampHoldMs, stillFor } from "@/shine/action-art.ts";
 import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sceneBustSrc, sheet } from "@/shine/bible.ts";
 import { finaleWinPicture } from "@/shine/ending-pictures.ts";
 import { decodePicture } from "@/components/preload";
@@ -672,9 +673,11 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       later(() => set((cur) => (cur?.key === key ? null : cur)), ms);
     }
     const heroJp = sheet(run.characterId).jp;
-    // The at-bat whose pitcher was last named, and whether her skill fired on the pitch being dealt.
+    // The at-bat whose pitcher was last named, whether her skill fired on the pitch being dealt,
+    // and whether this date has already flashed the last-spurt band (once per date).
     let namedPa: number | null = null;
     let stung = false;
+    let spurtBandShown = false;
     // The 得点 showing that is still due; a skipped card (Next) or the next Go drops it.
     let scoreKey: number | null = null;
     const dropScore = () => {
@@ -701,10 +704,13 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         const g = race.plate.getSnapshot().game;
         // The cage's soft toss has nobody on the mound to name.
         if (g.paPitches === 0 && namedPa !== g.paIndex && g.kind !== "practice") {
-          // The first wind-up of each at-bat names the pitcher; a last spurt gets its coral band (her skill wins the frame).
+          // The first wind-up of each at-bat names the pitcher. The last-spurt band flashes once (her skill wins the frame).
           namedPa = g.paIndex;
           flash(setLower, { ...armPlate(g.arm), line: placeRef.current }, CHROME_MS.lowerThird);
-          if (g.lastSpurt && !stung) {
+          // The band once, the first late at-bat whose frame her skill isn't using. Later ones keep the scorebug's coral tint.
+          const spurt = spurtChrome({ lastSpurt: g.lastSpurt, bandShown: spurtBandShown, skillOwnsFrame: stung });
+          if (spurt.band) {
+            spurtBandShown = true;
             flash(setSkill, { text: SPURT_BANNER.text, jp: SPURT_BANNER.jp, tone: "spurt" }, CHROME_MS.skill);
             sfxWhoosh();
           }
@@ -1073,9 +1079,15 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const contactHeld = countDate && (game.pgId === "contact-breaking" || game.pgId === "contact-breaking-2") && game.pgMet;
   const swung = contactHeld || foulHeld ? true : beat === "walk" || takeMiss ? false : beat === "single" || beat === "hr" ? true : holdFilm && actionCue.swung;
   // The done panel holds her settled still, never a replay. A career date puts its verdict on her
-  // face (celebrate when she got it, crushed when she didn't; a walk or a run keeps its trot); a day
-  // with no verdict (the exhibition, the cage, the weekly look) settles the closing beat as itself.
-  const settled: ActionView["settled"] = snap.phase !== "done" ? null : exhibition || practice || weekly ? true : game.pgMet ? "met" : "missed";
+  // face (celebrate when she got it, her trot when they won and she missed, crushed when she didn't;
+  // a walk or a run keeps its trot); a day with no verdict (the exhibition, the cage, the weekly look)
+  // settles the closing beat as itself.
+  const settled: ActionView["settled"] = doneSettled({
+    done: snap.phase === "done",
+    open: exhibition || practice || weekly,
+    met: game.pgMet,
+    teamWon: wonFinale,
+  });
   const actionView: ActionView = {
     stage,
     beat,
@@ -1336,6 +1348,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
                 tagGold={bugGoal}
                 tier={tier}
                 done={snap.phase === "done"}
+                spurt={game.lastSpurt}
               />
             ) : (
               <p className="shine-race-tag">
