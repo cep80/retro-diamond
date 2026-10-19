@@ -250,9 +250,23 @@ describe("N4: the picture budget", () => {
               // A hitter's done panel is an action still; the Live never reuses it (a pitcher's is her bust, off stage).
               if (stage === "live" && !isPitcherStyle(c.style)) {
                 const live = shots.find((s) => s.screen === "stage")!;
-                for (const s of finaleDoneSrcs(c.id, met)) assert.ok(!live.srcs.includes(s), `${tag}: the Live isn't the done panel's still`);
+                for (const s of finaleDoneSrcs(c.id, met, won)) assert.ok(!live.srcs.includes(s), `${tag}: the Live isn't the done panel's still`);
               }
             }
+    }
+  });
+
+  it("a won Finale she missed settles the three hitters on the trot, not the crushed still", () => {
+    for (const id of HITTERS) {
+      const srcs = finaleDoneSrcs(id, false, true);
+      assert.deepEqual(srcs, [`/art/action/${id}/trot.webp`]);
+      assert.ok(srcs.every((s) => !s.includes("/crushed.")));
+      const lost = finaleDoneSrcs(id, false, false);
+      assert.ok(lost.every((s) => s.endsWith("/crushed.webp")));
+      const shots = endingPictureRun({ id, met: false, teamWon: true, rank: "B", stage: "live" });
+      const done = shots.find((s) => s.screen === "done")!;
+      assert.deepEqual(done.srcs, srcs);
+      assert.equal(repeatedPicture(shots), null, `${id}: ${JSON.stringify(shots)}`);
     }
   });
 

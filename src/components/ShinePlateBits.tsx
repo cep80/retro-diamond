@@ -192,6 +192,7 @@ export function Scorebug({
   tagGold,
   tier = null,
   done = false,
+  spurt = false,
 }: {
   inning: string | null;
   score: string | null;
@@ -205,6 +206,8 @@ export function Scorebug({
   /** The date's rung (race-ui dateTier): the bug's rule goes bronze, silver, gold; the Finale adds its 決勝 mark. */
   tier?: DateTier | null;
   done?: boolean;
+  /** A late at-bat: the bug's rule goes coral for the rest of the date, whether or not the band flashes. */
+  spurt?: boolean;
 }) {
   const lamps = (n: number, of: number, on: string) =>
     Array.from({ length: of }, (_, i) => <i key={i} className={`shine-bug-lamp ${i < n ? on : ""}`} />);
@@ -216,6 +219,7 @@ export function Scorebug({
       data-final={final ? "" : undefined}
       data-tagged={tagged ? "" : undefined}
       data-tier={tier ?? undefined}
+      data-spurt={spurt ? "" : undefined}
       aria-label={scorebugLabel({ tag, tagGold, inning, score, atBat, count, outs, done })}
     >
       <span className="shine-bug-cells">
