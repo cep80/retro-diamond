@@ -5,8 +5,6 @@ import { ShineBack, ShineRoundBtn } from "@/components/ShineRoundBtn";
 import { dateLabel, daysAwayLabel, type CalendarBeat } from "@/shine/calendar.ts";
 import { isPitcherStyle, officialFor, sheet } from "@/shine/bible.ts";
 import { speakGoal } from "@/shine/goals.ts";
-import { coachBrief, workComparison } from "@/shine/coach.ts";
-import { morningSpeech } from "@/shine/culture.ts";
 import { sfxGain } from "@/shine/audio.ts";
 import { GRADES, STAT_EN, gradeIndex, roleStats, rookieSpringDue, sinceLastSpring, statGrade, type WithSpring } from "@/shine/grades.ts";
 import { facilityRow, liveStationIds, restRowIds, useShine, workLocked } from "@/shine/store.ts";
@@ -15,10 +13,13 @@ import {
   energyTone,
   energyWords,
   facilityFace,
-  herMorning,
+  facilitySays,
+  failStamp,
   isTrainingTile,
   moodFace,
   morningAfter,
+  morningTalk,
+  type MorningTalkLine,
   orderTiles,
   gainArrows,
   riskyFail,
@@ -73,7 +74,7 @@ export function YearGrades({ run }: { run: TraineeRun }) {
           </span>
         ))}
       </div>
-      {moves ? <p className="shine-year-grade-quiet">Her letters are the same as last spring. Some winters are like that.</p> : null}
+      {moves ? <p className="shine-year-grade-quiet">Her letters are the same as last spring, and some winters are like that.</p> : null}
     </>
   );
 }
@@ -85,7 +86,7 @@ export const STATIONS: { id: StationId; label: string; kana: string; color: stri
   { id: "side", label: "Bullpen", kana: "ブルペン", color: "#7ad7ff" },
   { id: "spots", label: "Spot work", kana: "制球", color: "#5fd9a0", short: "Spots" },
   { id: "poles", label: "Poles", kana: "ポール", color: "#78eadc" },
-  { id: "looks", label: "Tracking pitches", kana: "見極め", color: "#7ad7ff", short: "Tracking" },
+  { id: "looks", label: "Tracking pitches", kana: "見極め", color: "#7ad7ff", short: "Track" },
   { id: "bp", label: "On-field BP", kana: "打撃", color: "#ffd166", short: "BP" },
   { id: "situational", label: "Clutch work", kana: "状況", color: "#e07a3d", short: "Clutch" },
   { id: "charting", label: "Film room", kana: "映像", color: "#b794f6", short: "Film" },
@@ -105,7 +106,7 @@ export const STATIONS: { id: StationId; label: string; kana: string; color: stri
 export function ShineComplexWork({
   run,
   art,
-  meta: _meta,
+  meta,
   mood: _mood,
   moodIdx,
   lastLine,
@@ -147,16 +148,7 @@ export function ShineComplexWork({
   const tired = strained(run.energy) && !empty;
   const after = morningAfter(run);
   const landFrom = after.energyFrom !== null && after.energyFrom !== run.energy ? after.energyFrom : null;
-  // The first free morning teaches why a facility matters. The next one says what the
-  // Coach's choice changed before the Gate, in the same small note space.
-  const openingBrief = run.turn === 3 ? coachBrief(run) : null;
-  const openingWork = run.turn === 4 && run.lastWork?.turn === 3 ? workComparison(run) : null;
-  const note = openingBrief
-    ? openingBrief.choice.why
-    : openingWork
-      ? `${openingWork.line} The Gate is tomorrow.`
-      : morningSpeech(lastLine, run.year, who.parkId, pitcher);
-  const words = herMorning(run.characterId, run.turn, run.energy, moodIdx);
+  const talk = morningTalk(run, lastLine, moodIdx);
   // Her still changes by year and takes the season's grade (N7); `art` is only the old caller's fallback.
   const still = workStill(run);
   const pic = art ? still.src : null;
@@ -197,7 +189,7 @@ export function ShineComplexWork({
         <header className="shine-work-top">
           <div className="shine-hud shine-work-hud">
             <p className="episode-chip shine-work-day">
-              {who.jp} · #{who.number} · Day {run.turn}
+              {who.jp} · #{who.number} · {dateLabel(meta, who.style)}
             </p>
             <div className="shine-work-btns">
               <ShineMute />
@@ -285,10 +277,10 @@ export function ShineComplexWork({
                 <span className="shine-kana text-[11px] text-gold">
                   {next.type === "forced-scene" || next.type === "year-start" ? "次へ" : "次の試合"}
                 </span>
-                <span className="shine-work-goal-name font-display text-xs font-bold uppercase">{dateLabel(next, who.style)}</span>
                 <span className="shine-work-goal-days">{daysAwayLabel(turnsAway)}</span>
               </p>
-              {ask ? <p className="mt-0.5 truncate font-ui text-[11px] text-cream/80">{speakGoal(ask.verb)}</p> : null}
+              <p className="shine-work-goal-name font-display text-xs font-bold uppercase">{dateLabel(next, who.style)}</p>
+              {ask ? <p className="mt-0.5 font-ui text-[11px] text-cream/80">{speakGoal(ask.verb)}</p> : null}
             </div>
           </div>
           {open ? (
@@ -329,7 +321,6 @@ export function ShineComplexWork({
           ) : null}
           <div className="shine-work-wash" aria-hidden />
           <div key={`day-${run.turn}`} className="shine-work-stack">
-            {note ? <p className="shine-work-note">{note}</p> : null}
             {after.chips.length ? (
               <div className="shine-work-chips" aria-label="What yesterday's work did">
                 {after.chips.map((c, i) => (
@@ -339,22 +330,15 @@ export function ShineComplexWork({
                 ))}
               </div>
             ) : null}
-            <div className="shine-speech shine-work-speech">
-              <p className="shine-kana text-[11px] text-ink/50">
-                #{who.number} {who.jp}
-              </p>
-              <p className="mt-0.5 font-ui text-sm leading-snug">{words}</p>
-            </div>
+            <MorningTalk lines={talk} jp={who.jp} number={who.number} />
             {facilities.length ? (
-              <div className="shine-work-facilities" role="group" aria-label="Facilities">
+              <div className="shine-work-facilities" role="group" aria-label="Where she trains">
                 {facilities.map((f, i) => {
                   const s = STATIONS.find((x) => x.id === f.id)!;
                   const shut = !f.open || empty;
                   const face = facilityFace(f.id, run, f.open && !empty);
                   const name = s.short ?? s.label;
-                  const says = !f.open
-                    ? `${name}. Works her ${face?.en ?? ""}. Opens ${(f.reason ?? "later").replace(/^After/, "after").replace(/^From/, "from")}.`
-                    : `${name}. Works her ${face?.en ?? ""}${face?.plusEn ? `, and a little of her ${face.plusEn}` : ""}.${face?.odds ? (face.odds === "likely" ? " It'll probably pay off today." : " It might pay off today.") : ""}${face?.fail ? ` She's tired or down, so there's a ${face.fail}% extra chance it goes wrong.` : ""}`;
+                  const says = facilitySays(name, face, f.open, f.reason);
                   return (
                     <button
                       key={f.id}
@@ -371,12 +355,16 @@ export function ShineComplexWork({
                       className="shine-station shine-facility"
                       style={{ ["--station-color"]: s.color, ["--station-kana"]: `"${s.kana}"` } as CSSProperties}
                     >
-                      <span className="shine-facility-name font-display">{name}</span>
+                      <span className="shine-facility-name" aria-hidden>
+                        {s.kana}
+                      </span>
                       {face ? (
                         <>
-                          <span className="shine-facility-kana" aria-hidden>
-                            {face.kana}
-                          </span>
+                          {face.kana !== s.kana ? (
+                            <span className="shine-facility-kana" aria-hidden>
+                              {face.kana}
+                            </span>
+                          ) : null}
                           <span className="shine-facility-stat" aria-hidden>
                             {face.en}
                           </span>
@@ -399,7 +387,8 @@ export function ShineComplexWork({
                           </span>
                           {face.fail ? (
                             <span className="shine-facility-fail" data-risky={riskyFail(face.fail) ? "true" : undefined}>
-                              <span className="shine-facility-fail-kana">失敗</span> {face.fail}%
+                              <span className="shine-facility-fail-kana">{failStamp(face.fail).jp}</span>
+                              <span className="shine-facility-fail-en">{failStamp(face.fail).en}</span>
                             </span>
                           ) : null}
                         </span>
@@ -460,10 +449,51 @@ export function ShineComplexWork({
                 );
               })}
             </div>
-            {empty ? <p className="shine-work-empty">She&apos;s got nothing left today. Send her to the trainer&apos;s room.</p> : null}
+            {empty ? <p className="shine-work-empty">She&apos;s got nothing left today, so send her to the trainer&apos;s room.</p> : null}
           </div>
         </div>
       </div>
     </main>
+  );
+}
+
+/** Coach first, then her: one tap, one line. The tiles stay. */
+function MorningTalk({ lines, jp, number }: { lines: readonly MorningTalkLine[]; jp: string; number: number }) {
+  const [i, setI] = useState(0);
+  if (!lines.length) return null;
+  const at = Math.min(i, lines.length - 1);
+  const line = lines[at]!;
+  const more = at < lines.length - 1;
+  const next = () => {
+    if (more) setI((n) => n + 1);
+  };
+  const keys = {
+    "data-morning-talk": "",
+    "data-more": more ? "true" : undefined,
+    role: more ? ("button" as const) : undefined,
+    tabIndex: more ? 0 : undefined,
+    onClick: next,
+    onKeyDown: (e: { key: string; preventDefault: () => void }) => {
+      if (!more) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        next();
+      }
+    },
+  };
+  if (line.who === "coach") {
+    return (
+      <p key={at} className="shine-work-note" {...keys}>
+        {line.text}
+      </p>
+    );
+  }
+  return (
+    <div key={at} className="shine-speech shine-work-speech" {...keys}>
+      <p className="shine-kana text-[11px] text-ink/50">
+        #{number} {jp}
+      </p>
+      <p className="mt-0.5 font-ui text-sm leading-snug">{line.text}</p>
+    </div>
   );
 }

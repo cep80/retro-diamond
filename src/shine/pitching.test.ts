@@ -42,7 +42,7 @@ describe("Ace / Closer mound", () => {
     assert.equal(game.outs, 0);
     assert.equal(game.runners, 0);
     assert.ok(game.scoreDiff >= 1);
-    assert.equal(game.banner, "Ninth inning at the Academy Gate. Three outs to go.");
+    assert.equal(game.banner, "Ninth inning at the Academy Gate, and three outs to go.");
   });
 
   it("arms Closer Last Spurt after a run makes it a one-run lead", () => {
@@ -76,7 +76,7 @@ describe("Ace / Closer mound", () => {
     if (game.pgMet) assert.equal(game.banner, "She closed it out.");
     // A blown lead that her side won back in the played-out tie says so (check-in 27, N2); newRun's seed varies.
     else if (finaleTeamWon(game)) assert.equal(game.banner, FINALE_WON_BANNER);
-    else if (game.blown) assert.match(game.banner, /lead is gone/);
+    else if (game.blown) assert.match(game.banner, /came back on her/);
     else assert.equal(game.banner, "She couldn't close it out.");
   });
 
@@ -146,7 +146,7 @@ describe("Ace / Closer mound", () => {
       run.turn = 18;
       const game = startPitchingGame(run, "first-light");
       assert.equal(game.pgId, "k-2");
-      assert.equal(game.banner, "She wants two strikeouts.");
+      assert.equal(game.banner, "Two strikeouts in six batters.");
       assert.doesNotMatch(game.banner, /one time through/i);
     }
     // Sol's smaller ask is walking nobody; Reina's is her curve.
@@ -182,13 +182,13 @@ describe("Ace / Closer mound", () => {
     assert.equal(jam.pgId, "escape-jam");
     assert.equal(jam.inning, 7);
     assert.equal(jam.runners, 2);
-    assert.equal(jam.banner, "Runners on. She has to get out of the inning.");
+    assert.equal(jam.banner, "Runners on, and she has to get out of the inning.");
     const reina = newRun("reina");
     reina.turn = 50;
     const loaded = startPitchingGame(reina, "stretch");
     assert.equal(loaded.pgId, "escape-loaded-jam");
     assert.equal(loaded.runners, 3);
-    assert.equal(loaded.banner, "Bases loaded. She has to get out of the inning.");
+    assert.equal(loaded.banner, "Bases loaded, and she has to get out of the inning.");
   });
 
   it("gives each pitcher her own Finale ask in the ninth (check-in 22)", () => {
@@ -204,7 +204,7 @@ describe("Ace / Closer mound", () => {
     // Sol: two punchouts, and the two-run lead has to hold.
     const sol = sit("sol");
     assert.deepEqual([sol.pgId, sol.inning, sol.scoreDiff, sol.runners], ["k-2", 9, 2, 0]);
-    assert.equal(sol.banner, "Ninth inning. She wants two strikeouts, and she wants the lead.");
+    assert.equal(sol.banner, "Ninth inning, two strikeouts, and she wants the lead.");
     // Kira: the save, with the tying run already on first.
     const kira = sit("kira");
     assert.deepEqual([kira.pgId, kira.inning, kira.scoreDiff, kira.runners, kira.inherited], ["hold-one-run", 9, 1, 1, 1]);
@@ -217,7 +217,7 @@ describe("Ace / Closer mound", () => {
     run.turn = 28;
     const game = startPitchingGame(run, "lantern-classic");
     assert.deepEqual([game.pgId, game.inning, game.scoreDiff, game.runners, game.inherited], ["k-2", 9, 3, 0, 0]);
-    assert.equal(game.banner, "Ninth inning. She wants two strikeouts, and she wants the lead.");
+    assert.equal(game.banner, "Ninth inning, two strikeouts, and she wants the lead.");
   });
 
   it("a third out with runners on doesn't un-score an inherited runner", () => {
@@ -253,7 +253,7 @@ describe("Ace / Closer mound", () => {
     assert.equal(game.outs, 2);
     assert.equal(game.inherited, 0);
     assert.equal(game.scoreDiff, 1);
-    assert.equal(game.banner, "Two outs in the eighth. She has to get four outs and keep the lead.");
+    assert.equal(game.banner, "Two outs in the eighth, and she has to get four outs and keep the lead.");
   });
 
   it("Skyline Series opens a clean ninth, now asked three up, three down (check-in 35)", () => {
@@ -261,7 +261,8 @@ describe("Ace / Closer mound", () => {
     run.turn = 55;
     const game = startPitchingGame(run, "series");
     assert.equal(game.pgId, "perfect-ninth");
-    assert.equal(game.banner, "Ninth inning. She wants three up and three down.");
+    assert.equal(game.banner, "Ninth inning, and she wants nobody on and nobody scoring.");
+    assert.doesNotMatch(game.banner, /three up/i);
     assert.equal(game.inning, 9);
     assert.equal(game.outs, 0);
     assert.equal(game.scoreDiff, 1);
@@ -279,6 +280,19 @@ describe("Ace / Closer mound", () => {
     assert.equal(game.inheritedStranded, true);
     assert.ok(game.inning === 9 || game.inning === 8);
     assert.equal(game.banner, "Runners on, and her job is to leave them there.");
+  });
+
+  it("Night Classic does not treat runners still on as already stranded", () => {
+    const run = newRun("kira");
+    run.turn = 33;
+    run.rngSeed = "strand-open";
+    const game = startPitchingGame(run, "night-classic");
+    assert.equal(game.sgId, "strand-inherited");
+    assert.equal(game.sgMet, false);
+    const w = pitchingWindows(run, game);
+    resolveDelivery(run, game, "fastball", { row: 1, col: 1 }, w.kick.at, w.release.at);
+    assert.equal(game.done, false);
+    assert.equal(game.sgMet, false, "runners still on is not stranding them");
   });
 
   it("two punchouts back to back end Night Classic on the mound", () => {
@@ -386,7 +400,7 @@ describe("Ace / Closer mound", () => {
     const game = startPitchingGame(run, "gate");
     const w = pitchingWindows(run, game);
     resolveDelivery(run, game, "curve", { row: 1, col: 1 }, w.kick.at, w.release.at);
-    assert.equal(game.callback, "All that bullpen work. That pitch had real bite on it.");
+    assert.equal(game.callback, "All that bullpen work, and that pitch had real bite on it.");
   });
 
   it("widens closer kick/release at leverage 1.5 in a blowout ninth", () => {

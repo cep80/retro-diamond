@@ -1,14 +1,15 @@
 /**
  * The race: her plate appearance, Pretty Derby style.
  *
- * The Coach sits her, presses Go, and can release one swing while the ball is
- * in the air. With no release, her swing and her timing come from her sheet
- * and the sit. The resolvers in `featured-game.ts` stay the single truth for
- * what the ball does.
+ * The Coach sits her, presses Go, and can commit one swing while the ball is
+ * in the air. A tap shortens. A hold is the cut. Her timing stays the sheet's
+ * either way. With no commit, the swing and the timing both come from her
+ * sheet and the sit. The resolvers in `featured-game.ts` stay the single
+ * truth for what the ball does.
  *
  * Pure and seeded: the same run, game, pitch and pick always produce the same
- * decision, so the harness and the browser agree. A release replaces only
- * that pitch's timing.
+ * decision, so the harness and the browser agree. A commit replaces only
+ * that pitch's swing.
  */
 import { locCell, locInZone, type Cell, type Loc } from "./core/zone.ts";
 import { cellDistance, gaussianFrom, satRight, sitFamily, statSigma, stuffSigmaBite, type CoachCardId, type DuelCall, type PitchFamily } from "./duel.ts";
@@ -60,6 +61,18 @@ export const RACE_MODS = { foulBand: RACE_FOUL_BAND } as const;
 /** Bat meets the plane no earlier / later than this on the flight clock. */
 export const SWING_U_MIN = 0.62;
 export const SWING_U_MAX = 1.1;
+/** The swing button comes up here, once the pitch can be read. */
+export const SWING_OPEN_U = 0.45;
+/** A hold this long is the cut. Anything shorter is a shorten, measured on the way up so the cut can still land while the ball is in the air. */
+export const SWING_HOLD_MS = 160;
+
+/** What the Coach asks for while the ball is in the air. A tap shortens. A hold cuts. */
+export type SwingCommitment = "shorten" | "cut";
+
+/** Hold length to a commitment. A non-finite hold is a tap. */
+export function swingCommitment(heldMs: number): SwingCommitment {
+  return Number.isFinite(heldMs) && heldMs >= SWING_HOLD_MS ? "cut" : "shorten";
+}
 
 export interface SwingContext {
   stats: TraineeStats;
@@ -156,6 +169,31 @@ export function swingKindFor(ctx: SwingContext): SwingKind {
 }
 
 /**
+ * The swing a commitment offers. Two strikes and the cage stay a shorten:
+ * the cut is for when she can afford to miss.
+ */
+export function committedKind(commitment: SwingCommitment, opts: { twoStrikes: boolean; practice: boolean }): SwingKind {
+  if (commitment === "cut" && !opts.twoStrikes && !opts.practice) return "power";
+  return "contact";
+}
+
+/** The words for the swing she actually offered. */
+export function commitmentForKind(kind: SwingKind): SwingCommitment {
+  return kind === "power" ? "cut" : "shorten";
+}
+
+/**
+ * Her timing for a committed swing. A swing she already chose keeps that
+ * draw, widened or tightened when the cut changes. A take spends one new
+ * draw, so a forced offer has her hands and not a perfect barrel.
+ */
+export function commitTimingErr(ctx: SwingContext, decision: SwingDecision, kind: SwingKind, r: () => number): number {
+  if (!decision.swing) return gaussianFrom(r) * timingSigma(ctx, kind === "power");
+  if ((decision.kind === "power") === (kind === "power")) return decision.timingErr;
+  return kind === "power" ? decision.timingErr * POWER_SIGMA : decision.timingErr / POWER_SIGMA;
+}
+
+/**
  * How often she gets the barrel from the sit to a pitch one cell off it.
  * Contact is the hands, Eye is seeing it early. A pitch two cells off the
  * sit is never adjusted to: that is what a wrong sit costs.
@@ -184,83 +222,48 @@ export function swingProgress(timingErr: number, speed: number): number {
   return Math.max(SWING_U_MIN, Math.min(SWING_U_MAX, u));
 }
 
-/** Hold a sheet swing until the plate so a release can still land on time. */
+/** Hold a sheet swing until the plate so a commitment can still replace the swing. */
 export function heldMeetU(u: number): number {
   return Math.max(u, 1);
 }
 
-export type ReleaseBand = "early" | "now" | "late";
-
-/** A release before this reads early. 0.78 itself is on time. */
-const RELEASE_EARLY_U = 0.78;
-/** A release after this reads late. 1.06 itself is on time. */
-const RELEASE_LATE_U = 1.06;
-/** The middle of the on-time band. */
-const RELEASE_CENTER_U = 0.92;
-
-/** Early, on time, or late. The band is wide on purpose: this is a swing, not a reflex bar. */
-export function releaseBand(u: number): ReleaseBand {
-  if (u < RELEASE_EARLY_U) return "early";
-  if (u > RELEASE_LATE_U) return "late";
-  return "now";
-}
-
 /**
- * Timing error for a human release. Early and late sit outside a good
- * contact window. On time stays inside it, centered on the plate.
+ * What she says she did, only when the Coach committed. Three of each, picked
+ * by the pitch, so a career of swings doesn't hear one line. The card already
+ * says whether it was a hit.
  */
-export function releaseTimingErr(u: number): number {
-  const band = releaseBand(u);
-  if (band === "early") return -0.18;
-  if (band === "late") return 0.18;
-  const t = Math.max(-1, Math.min(1, (u - RELEASE_CENTER_U) / 0.14));
-  return t * 0.05;
-}
-
-/**
- * The reaction, only when the Coach released: she says how it felt, in her own voice.
- * Three of each, picked by the pitch, so a career of swings doesn't hear one line.
- */
-const RELEASE_VOICE: Record<CharacterId, Record<ReleaseBand, readonly [string, string, string]>> = {
+const RELEASE_VOICE: Record<CharacterId, Record<SwingCommitment, readonly [string, string, string]>> = {
   aoi: {
-    early: ["Way early! Sorry. I could feel it the second I started.", "Um, sorry. I was out in front of that one. Way out.", "Too early. That's on me, Coach. I'll write it down."],
-    now: ["That's the one. Right on time.", "Um. That felt really good, actually.", "On time! I mean, yes. On time, Coach."],
-    late: ["Late. It got in on my hands. Sorry.", "Um, sorry, I was late. It was right there, too.", "Late again. I'll be quicker. I promise."],
+    shorten: ["Shortened up, I just wanted to meet it.", "Um, I shortened, just a meeting.", "A short swing, Coach, I'll put it in play."],
+    cut: ["I cut, that's the one I wanted.", "Um, I went for the full cut.", "The cut, Coach, I swung through it."],
   },
   miki: {
-    early: ["Early. Cool. Super cool.", "Way out in front. Gary could've timed that better.", "So. That was early. Moving on."],
-    now: ["...Okay. That one was right on.", "On time. Don't make it a thing.", "Cool. Actually cool, that time."],
-    late: ["Late. It ate me up. Cool.", "It got in on me. Gary's laughing somewhere.", "So I was late. Don't say it."],
+    shorten: ["Shortened. Cool. Just meet it.", "A short swing, Gary would call that careful.", "So. Shortened up. Moving on."],
+    cut: ["The cut. Don't make it a thing.", "I cut. Cool. Super cool.", "Full cut, Gary can watch this one."],
   },
   yuki: {
-    early: ["Early! I went before the ball did, Stopwatch.", "Too fast. Even for me. Don't say it.", "Early. Already gone before it got here."],
-    now: ["Right on it! Did you see? Right on it!", "On time. Write that down, Stopwatch.", "That's the timing. Already had it."],
-    late: ["Late! Me! Don't write it down.", "It beat me there. That never happens.", "Late, Stopwatch. Your thumb was slow, not me."],
+    shorten: ["Shortened, just enough, Stopwatch.", "A short swing, I can still be first.", "Shortened up, write that I met it."],
+    cut: ["The cut, did you see, I cut!", "Full cut, Stopwatch, already gone.", "I cut, that's how you hit it far."],
   },
   reina: {
-    early: ["Early. A tenth, maybe less.", "Out in front. Again.", "Early. I counted it wrong."],
-    now: ["On time. Exactly.", "That was right. Don't clap.", "On the barrel. Note it."],
-    late: ["Late. Two hundredths. Again.", "Late. It got in on me.", "Late. I saw it and still waited."],
+    shorten: ["Shortened. To meet it.", "A short swing. On purpose.", "Shortened up. Note it."],
+    cut: ["The cut. Exactly.", "I cut. Don't clap.", "Full cut. Note the carry."],
   },
   sol: {
-    early: ["Early, Jefe. Too much heat in my hands.", "Out in front. Hitting's dumb.", "Early. Don't tell Luz."],
-    now: ["Ha. On time. Hitting's easy, Jefe.", "That's the one.", "Right on it. Tell Luz."],
-    late: ["Late. Who throws that slow?", "Late, Jefe. Don't look at me.", "It got in on me. Fine."],
+    shorten: ["Shortened, Jefe, just meet it.", "A short swing, hitting's still dumb.", "Shortened up. Don't tell Luz."],
+    cut: ["Ha, the cut, hitting's easy, Jefe.", "I cut, tell Luz.", "Full cut, that's the one."],
   },
   kira: {
-    early: ["Early! Deal's off, I wasn't ready.", "Way early, Partner. Like, first-bus early.", "Out in front. I'm counting that as enthusiasm."],
-    now: ["Right on time, Partner! Put it in the contract.", "On time! That's a deal.", "Ha! Right on it!"],
-    late: ["Late. Like the last bus. Classic.", "It got in on me, Partner. Rude.", "Late! I was still bouncing."],
+    shorten: ["Shortened up, Partner, just a meeting.", "A short swing, deal's still on.", "Shortened, I'm counting that as smart."],
+    cut: ["The cut, Partner, put it in the contract.", "I cut, that's a deal.", "Ha! Full cut!"],
   },
 };
 
-/** The Coach's swing as she felt it, in quotes. `seed` (the pitch) picks the line; no girl is the booth's plain call. */
-export function releaseLine(band: ReleaseBand, who?: CharacterId | null, seed = 0): string {
-  const lines = who ? RELEASE_VOICE[who]?.[band] : undefined;
+/** The swing she offered, in quotes. `seed` (the pitch) picks the line. No girl is the booth's plain call. */
+export function releaseLine(commitment: SwingCommitment, who?: CharacterId | null, seed = 0): string {
+  const lines = who ? RELEASE_VOICE[who]?.[commitment] : undefined;
   if (lines) return `"${lines[Math.abs(Math.floor(seed)) % lines.length]}"`;
-  if (band === "early") return "She was way out in front of that one.";
-  if (band === "late") return "It got in on her hands. She was late.";
-  return "Right on time. She was all over it.";
+  return commitment === "cut" ? "She cut through the ball." : "She shortened up and met it.";
 }
 
 /** Her decision on one pitch. `r` is the seeded source for this pitch. */
@@ -314,15 +317,15 @@ export function paCardLine(opts: { beat: string | null; banner: string; reached:
   const s = opts.seed ?? 0;
   if (opts.beat === "hr") {
     if (opts.rbi > 1) return `She hit it out, and ${runsIn(opts.rbi)}!`;
-    return pick(["She hit it out of the park!", "That one's gone. Home run!", "Over the wall. She gets to jog this one."], s);
+    return pick(["She hit it out of the park!", "That one's gone, home run!", "Over the wall, and she gets to jog this one."], s);
   }
   if (opts.beat === "k") return pick(["She's out on strikes.", "She goes down on strikes.", "Back to the dugout on strikes."], s);
   if (opts.beat === "walk") return opts.rbi > 0 ? `She takes her base, and ${runsIn(opts.rbi)}.` : pick(["She takes her base.", "She jogs down to first.", "That's a walk, and she'll take it."], s);
   if (opts.beat === "bunt-down") return opts.rbi > 0 ? `She beats out the bunt, and ${runsIn(opts.rbi)}.` : "She bunts and beats the throw.";
   if (opts.beat === "single") return opts.rbi > 0 ? `She's on, and ${runsIn(opts.rbi)}!` : pick(["She's on first.", "She's aboard, and the dugout's up on the rail.", "She gets on."], s);
-  if (opts.beat === "double") return opts.rbi > 0 ? `Into the gap for a double, and ${runsIn(opts.rbi)}!` : pick(["Into the gap. She's standing on second.", "She rips it into the gap and coasts into second.", "That's a double. She's on second."], s);
-  if (opts.beat === "sac-fly") return pick(["It's caught, but it's deep enough. The run scores.", "Deep enough. The runner tags and scores."], s);
-  if (opts.beat === "fly-out") return pick(["Caught in the air. She's out.", "It hangs up there, and they catch it.", "A fly ball, and they're under it."], s);
+  if (opts.beat === "double") return opts.rbi > 0 ? `Into the gap for a double, and ${runsIn(opts.rbi)}!` : pick(["Into the gap, and she's standing on second.", "She rips it into the gap and coasts into second.", "That's a double, and she's on second."], s);
+  if (opts.beat === "sac-fly") return pick(["It's caught, but it's deep enough, and the run scores.", "Deep enough, and the runner tags and scores."], s);
+  if (opts.beat === "fly-out") return pick(["Caught in the air, and she's out.", "It hangs up there, and they catch it.", "A fly ball, and they're under it."], s);
   if (opts.beat === "grounder-out") return pick(["On the ground, and they throw her out.", "She runs it out, but they get her at first.", "A grounder, and they make the play."], s);
   if (opts.beat === "bunt-out") return "They field the bunt and get her at first.";
   return opts.banner;
@@ -334,43 +337,43 @@ type AtBatMood = "hr" | "hit" | "walk" | "k" | "out" | "sac" | "caught" | "score
 /** Her own words on the card after the at-bat, in quotes: the girl reacting, never a caption. */
 const AT_BAT_TRIP: Partial<Record<CharacterId, Partial<Record<AtBatMood, readonly string[]>>>> = {
   aoi: {
-    caught: ["Um. I was out by a lot. Sorry, Coach.", "That's a CS in my scorebook. I hate writing CS."],
-    scored: ["I scored! Mom's going to need another sticker.", "Um, I touched home. Did everyone see? I touched home."],
+    caught: ["Um, I was out by a lot, sorry, Coach.", "That's a CS in my scorebook, I hate writing CS."],
+    scored: ["I scored, Mom's going to need another sticker.", "Um, I touched home, did everyone see, I touched home."],
   },
   miki: {
-    caught: ["Caught stealing. Cool. Gary would've made it.", "So. Running's not my thing. Noted."],
-    scored: ["I scored. Section 4 is losing it. I'm fine. Totally fine.", "Home. Cool. Don't look at me."],
+    caught: ["Caught stealing, cool, Gary would've made it.", "So, running's not my thing, noted."],
+    scored: ["I scored, Section 4 is losing it, I'm fine, totally fine.", "Home. Cool. Don't look at me."],
   },
   yuki: {
-    caught: ["Out by a step. One step! I'd go again.", "She threw me out. Don't make the face, Stopwatch."],
-    scored: ["Home! Already! Did you get the time?", "Scored. That's what the legs are for."],
+    caught: ["Out by a step, one step, I'd go again.", "She threw me out, don't make the face, Stopwatch."],
+    scored: ["Home, already, did you get the time?", "Scored. That's what the legs are for."],
   },
 };
 
 const AT_BAT_VOICE: Record<CharacterId, Record<"hr" | "hit" | "walk" | "k" | "out" | "sac", readonly string[]>> = {
   aoi: {
-    hr: ["Um. Sorry. Did that just go out? Coach, it went out.", "I don't have a symbol for that in my scorebook. I'll make one.", "Mom's going to need a bigger sticker."],
-    hit: ["I got on! Sorry. I reached base, Coach.", "That's a hit in my book. In pen.", "On base. That's where I like it."],
-    walk: ["Four balls. I'll take first, thank you.", "Um, sorry, I'll just be standing on first now.", "A walk's as good as a hit. Mom says so, anyway."],
-    k: ["Sorry, Coach. I'm writing that pitch down so I remember her.", "Sorry. That's a K in my book.", "Um. That one's going in the scorebook with a frown."],
-    out: ["I hit it! Um. Right at somebody. Moral victory?", "That's a 6-3 in my head, and I don't like it.", "Sorry. I ran it out, at least."],
-    sac: ["That's a sac fly. A run's a run, Coach."],
+    hr: ["Um, sorry, did that just go out, Coach, it went out.", "I don't have a symbol for that in my scorebook, I'll make one.", "Mom's going to need a bigger sticker."],
+    hit: ["I got on, sorry, I reached base, Coach.", "That's a hit in my book, in pen.", "On base, that's where I like it."],
+    walk: ["Four balls, I'll take first, thank you.", "Um, sorry, I'll just be standing on first now.", "A walk's as good as a hit, Mom says so, anyway."],
+    k: ["Sorry, Coach, I'm writing that pitch down so I remember her.", "Sorry, that's a K in my book.", "Um, that one's going in the scorebook with a frown."],
+    out: ["I hit it, um, right at somebody, moral victory?", "That's a 6-3 in my head, and I don't like it.", "Sorry, I ran it out, at least."],
+    sac: ["That's a sac fly, a run's a run, Coach."],
   },
   miki: {
-    hr: ["...Cool. That went out. Cool cool cool.", "Did Section 4 see that? Tell me they saw that.", "Okay. I'm gonna go stand somewhere and not cry."],
-    hit: ["Cool. I'm on.", "Section 4's ringing the bell. I'm pretending I can't hear it.", "It's a hit. Don't make it a thing."],
-    walk: ["I'll take the walk. Free base, no feelings.", "Four balls. Cool. I'm going.", "So. That's a walk."],
+    hr: ["...Cool, that went out, cool cool cool.", "Did Section 4 see that, tell me they saw that.", "Okay, I'm gonna go stand somewhere and not cry."],
+    hit: ["Cool. I'm on.", "Section 4's ringing the bell, I'm pretending I can't hear it.", "It's a hit. Don't make it a thing."],
+    walk: ["I'll take the walk, free base, no feelings.", "Four balls. Cool. I'm going.", "So. That's a walk."],
     k: ["Cool. Super cool.", "So. That happened.", "Don't do the talk. I know the talk."],
-    out: ["Right at her. Cool.", "So I hit it hard and it didn't matter. Normal.", "Even Gary would've caught that one."],
-    sac: ["Run scored. I'm out. I'll call that a trade."],
+    out: ["Right at her. Cool.", "So I hit it hard and it didn't matter, normal.", "Even Gary would've caught that one."],
+    sac: ["Run scored, I'm out, I'll call that a trade."],
   },
   yuki: {
-    hr: ["Home run! I didn't even have to run fast. Weird.", "Already gone! The ball, I mean.", "Did you time that? Stopwatch, did you time it?"],
-    hit: ["On! Already looking at second.", "I'm on. Watch the catcher's knees, Stopwatch.", "First base. Already bored of it."],
-    walk: ["Walk. Fine. At least I don't have to run yet.", "Four balls. Whatever. I'm stealing second.", "Already on first. Ugh, walking."],
-    k: ["Struck out. Already over it. Mostly.", "Don't make the face. I saw the face.", "Strike three. Next time I'm… never mind. Next time."],
-    out: ["Out by a step. One step!", "I ran it out faster than last time. Still out.", "I'd go again. Don't make the face."],
-    sac: ["A run scored! Not me, but somebody did."],
+    hr: ["Home run, I didn't even have to run fast, weird.", "Already gone, the ball, I mean.", "Did you time that, Stopwatch, did you time it?"],
+    hit: ["On! Already looking at second.", "I'm on, watch the catcher's knees, Stopwatch.", "First base. Already bored of it."],
+    walk: ["Walk, fine, at least I don't have to run yet.", "Four balls, whatever, I'm stealing second.", "Already on first, ugh, walking."],
+    k: ["Struck out, already over it, mostly.", "Don't make the face, I saw the face.", "Strike three, next time I'm… never mind, next time."],
+    out: ["Out by a step, one step!", "I ran it out faster than last time, still out.", "I'd go again, don't make the face."],
+    sac: ["A run scored, not me, but somebody did."],
   },
   reina: {
     hr: ["That counts. I checked."],
@@ -389,12 +392,12 @@ const AT_BAT_VOICE: Record<CharacterId, Record<"hr" | "hit" | "walk" | "k" | "ou
     sac: ["A run's a run, Jefe."],
   },
   kira: {
-    hr: ["Partner! Was that a home run? That's a deal!"],
-    hit: ["I'm on! I have no idea what I'm doing."],
-    walk: ["Free base! Best deal in baseball."],
-    k: ["Okay. New deal. I pitch, you hit."],
-    out: ["Out. I'm counting that as cardio."],
-    sac: ["Run scored! I'll take a cut of that."],
+    hr: ["Partner, was that a home run, that's a deal!"],
+    hit: ["I'm on, I have no idea what I'm doing."],
+    walk: ["Free base, best deal in baseball."],
+    k: ["Okay, new deal, I pitch, you hit."],
+    out: ["Out, I'm counting that as cardio."],
+    sac: ["Run scored, I'll take a cut of that."],
   },
 };
 

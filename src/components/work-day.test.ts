@@ -10,8 +10,11 @@ import {
   allMorningLines,
   energyTone,
   facilityFace,
+  facilitySays,
+  failStamp,
   gainArrows,
   herMorning,
+  morningTalk,
   isTrainingTile,
   moodFace,
   morningAfter,
@@ -112,6 +115,9 @@ describe("the work grid", () => {
     assert.equal(riskyFail(15), true);
     assert.equal(gainArrows("likely"), "↑↑");
     assert.equal(gainArrows("possible"), "↑");
+    assert.deepEqual(failStamp(12), { jp: "失敗", en: "She's tired, so this misses 12% more" });
+    assert.doesNotMatch(failStamp(12).en, /won't take/);
+    assert.match(failStamp(19).en, /19%/);
   });
 
   it("gives the lead to the Trainer's room only on an empty day", () => {
@@ -123,6 +129,17 @@ describe("the work grid", () => {
 });
 
 describe("what each tile trains", () => {
+  it("reads a training door like a coach, not a GM board", () => {
+    const run = workRun("aoi", 80, 3, "door");
+    const open = facilitySays("Cage", facilityFace("cage", run, true), true);
+    assert.match(open, /Cage/);
+    assert.match(open, /her contact/i);
+    assert.doesNotMatch(open, /Works her|Facilities|station/i);
+    const shut = facilitySays("Track", facilityFace("looks", run, false), false, "After Academy Gate");
+    assert.match(shut, /her eye/i);
+    assert.match(shut, /opens after Academy Gate/i);
+  });
+
   it("names the skill the station works, as the engine does", () => {
     assert.deepEqual(stationLifts("cage").map((l) => `${l.en}${l.up}`), ["Contact2", "Power1"]);
     assert.deepEqual(stationLifts("poles").map((l) => `${l.en}${l.up}`), ["Speed2", "Power1"]);
@@ -389,6 +406,34 @@ describe("her own words", () => {
       assert.doesNotMatch(l, /["“”]/, l);
       assert.ok(l.length <= 70, `${l} is too long for the bubble`);
     }
+  });
+
+  it("reads the first free morning one line at a time, Coach then her", () => {
+    const run = workRun("aoi", 80, 2, "free-morning");
+    run.turn = 3;
+    const lines = morningTalk(run, null, 2);
+    assert.ok(lines.length >= 2, "Coach, then her");
+    assert.equal(lines[0]!.who, "coach");
+    assert.equal(lines.at(-1)!.who, "her");
+    assert.equal(lines.filter((l) => l.who === "her").length, 1);
+    assert.match(lines[0]!.text, /I'd put her|cage|poles|today/i);
+    for (const l of lines) {
+      assert.doesNotMatch(l.text, FORBIDDEN_IN_STORY, l.text);
+      assert.doesNotMatch(l.text, /\bRecord\b/, l.text);
+    }
+    const joined = lines.map((l) => l.text).join(" ");
+    assert.ok(joined.length > lines[0]!.text.length, "the Coach's pick is not dumped with her reply");
+  });
+
+  it("says yesterday's work, then the Gate, then her, the morning before", () => {
+    const run = workRun("aoi", 80, 2, "gate-eve");
+    run.turn = 4;
+    run.lastWork = { stat: "contact", turn: 3, from: 6, to: 7, outcome: "success" };
+    const lines = morningTalk(run, null, 2);
+    assert.equal(lines[0]!.who, "coach");
+    assert.ok(lines.some((l) => l.text === "The Gate is tomorrow."));
+    assert.equal(lines.at(-1)!.who, "her");
+    assert.doesNotMatch(lines.map((l) => l.text).join(" | "), /→|\d|window/);
   });
 
   it("says how tired she is before anything else", () => {

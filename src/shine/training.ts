@@ -16,7 +16,7 @@ export function moodLevel(mood: number): 0 | 1 | 2 | 3 | 4 {
 }
 
 export function looksFailCopy() {
-  return "The ? locked. She never read it out of the hand.";
+  return "She never picked it up, and the next pitch is already on the way.";
 }
 
 /** Circle-up #1: after a missed official PG, Guts cuts the mood hit. Never a tooltip. */
@@ -28,12 +28,12 @@ export function pgMissMoodDrop(guts: number) {
 export function stationStaff(station: StationId, run?: TraineeRun): string | null {
   if (station === "cage") return "Cage Coach is throwing.";
   if (station === "poles") return "Poles Coach is on the line.";
-  if (station === "looks") return "The thrower is feeding looks.";
+  if (station === "looks") return "The thrower is feeding pitches.";
   if (station === "bp") return "BP arm on the mound.";
   if (station === "situational") return "The skip is calling two-strike.";
   if (station === "charting") return "The booth left the last-3 column.";
   if (station === "side") return "Bullpen catcher. Mitt up.";
-  if (station === "spots") return "Flat ground. The catcher sets up on the corners.";
+  if (station === "spots") return "Flat ground, and the catcher sets up on the corners.";
   if (station === "hitch") return run?.parentId ? "She's throwing her mother's BP." : null;
   return null;
 }

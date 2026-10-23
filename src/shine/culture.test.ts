@@ -18,6 +18,7 @@ import {
   postgamePicture,
   datePark,
   fanLetter,
+  fanLetterScene,
   recapLine,
   recapPoolSize,
   shouldCurtainCall,
@@ -27,6 +28,10 @@ import {
   verseCount,
   verseTier,
   yearCard,
+  yearEndCta,
+  yearEndNextLine,
+  yearStartLine,
+  yearStartLines,
   CURTAIN_CTA,
   CURTAIN_FLASHES,
   CURTAIN_STAMP,
@@ -108,11 +113,11 @@ describe("culture presentation", () => {
     assert.equal(curtainSkin(datePark("night-classic", "koi")), "dugout");
     assert.equal(curtainSkin(datePark("lantern-classic", "stars")), "otachidai");
     const sol = "Dugout. Someone asks how she feels. She says ninety-seven.";
-    assert.equal(curtainCallLine(sol, curtainSkin(datePark("lantern-classic", "dusters"))), "お立ち台. Someone asks how she feels. She says ninety-seven.");
-    assert.equal(curtainCallLine(sol, curtainSkin(datePark("night-classic", "dusters"))), sol);
+    assert.equal(curtainCallLine(sol, curtainSkin(datePark("lantern-classic", "dusters"))), "Up on the hero's platform, Someone asks how she feels. She says ninety-seven.");
+    assert.equal(curtainCallLine(sol, curtainSkin(datePark("night-classic", "dusters"))), "Back in the dugout, Someone asks how she feels. She says ninety-seven.");
     const aoi = "お立ち台. She's already looking.";
-    assert.equal(curtainCallLine(aoi, curtainSkin(datePark("lantern-classic", "koi"))), aoi);
-    assert.equal(curtainCallLine(aoi, curtainSkin(datePark("night-classic", "koi"))), "Dugout. She's already looking.");
+    assert.equal(curtainCallLine(aoi, curtainSkin(datePark("lantern-classic", "koi"))), "Up on the hero's platform, She's already looking.");
+    assert.equal(curtainCallLine(aoi, curtainSkin(datePark("night-classic", "koi"))), "Back in the dugout, She's already looking.");
     // Voice v2: the openers are whole phrases, and still swap by park.
     const sol2 = "Back in the dugout, somebody asks how she feels.";
     assert.equal(curtainCallLine(sol2, "otachidai"), "Up on the hero's platform, somebody asks how she feels.");
@@ -144,14 +149,34 @@ describe("culture presentation", () => {
   });
 
   it("opens a new year on a card with its name, and stamps the Call in gold", () => {
-    assert.deepEqual(yearCard(2), { kana: "クラシック級", name: "Classic", sub: "Year two · Spring" });
+    assert.deepEqual(yearCard(1), { kana: "ジュニア級", name: "Rookie", sub: "First spring" });
+    assert.deepEqual(yearCard(2), { kana: "クラシック級", name: "Classic", sub: "Spring" });
     assert.equal(yearCard(3).name, "Senior");
-    assert.equal(yearCard(1).name, "Rookie");
+    assert.equal(yearCard(3).sub, "Last spring");
+    assert.deepEqual(yearStartLines(1), ["First morning at the Academy.", "She hasn't learned the shortcuts yet."]);
     for (const y of [1, 2, 3] as const) {
       const c = yearCard(y);
       assert.doesNotMatch(`${c.kana} ${c.name} ${c.sub}`, FORBIDDEN_IN_STORY);
       assert.doesNotMatch(c.sub, /\d/);
+      assert.doesNotMatch(c.sub, /Year (?:one|two|three)/i, c.sub);
+      const line = yearStartLine(y);
+      assert.doesNotMatch(line, FORBIDDEN_IN_STORY, line);
+      assert.doesNotMatch(line, /\bunlock/i, line);
+      assert.doesNotMatch(line, /Day (?:\d+|one|two|three)/i, line);
+      const lines = yearStartLines(y);
+      assert.ok(lines.length >= 2, `year ${y}`);
+      assert.equal(lines.join(" "), line);
+      for (const part of lines) {
+        assert.doesNotMatch(part, FORBIDDEN_IN_STORY, part);
+        assert.doesNotMatch(part, /Day (?:\d+|one|two|three)/i, part);
+        assert.doesNotMatch(part, /complex/i, part);
+      }
     }
+    assert.equal(yearEndCta(1), "On to the lantern year");
+    assert.equal(yearEndCta(2), "On to last spring");
+    assert.doesNotMatch(yearEndCta(1) + yearEndCta(2), /Classic year|senior year/i);
+    assert.doesNotMatch(yearEndNextLine(1), /Classic year|senior year/i);
+    assert.doesNotMatch(yearEndNextLine(2), /Classic year|senior year/i);
     assert.deepEqual(CURTAIN_STAMP, { jp: "喝采", en: "Curtain Call", tone: "gold" });
     // Check-in 31 (N10): she takes a bow, under flashbulbs kept to the stands.
     assert.equal(CURTAIN_CTA, "Take the bow");
@@ -167,6 +192,23 @@ describe("culture presentation", () => {
     assert.match(letter, /Night Classic/);
     assert.match(letter, /base hit/);
     assert.doesNotMatch(letter, /walked twice|bunt|3-1/);
+  });
+
+  it("reads the fan letter one line at a time, not as a dumped Shell", () => {
+    const scene = fanLetterScene({
+      characterId: "aoi",
+      highlights: [{ kind: "game", label: "Night Classic", line: "She got what she came for vs Sol. Her first time up: reached on a base hit." }],
+    });
+    assert.equal(scene.id, "fan-letter");
+    assert.ok(scene.beats.length >= 3);
+    assert.equal(scene.beats.filter((b) => b.who === "coach").length, 1);
+    for (const b of scene.beats) {
+      assert.doesNotMatch(b.text, FORBIDDEN_IN_STORY, b.text);
+      assert.doesNotMatch(b.text, /[぀-ヿ一-鿿]/, b.text);
+    }
+    assert.doesNotMatch(scene.place, FORBIDDEN_IN_STORY);
+    const empty = fanLetterScene({ characterId: "yuki" });
+    assert.match(empty.beats[0]!.text, /number 2/);
   });
 
   it("maps 14 US parks onto four crowd stems", () => {
@@ -202,6 +244,8 @@ describe("culture presentation", () => {
     assert.doesNotMatch(workMorningLine("koi"), /[぀-ヿ一-鿿]/);
     assert.match(workMorningLine("heat"), /early/);
     assert.match(workMorningLine("north"), /Morning/);
+    assert.doesNotMatch(workMorningLine("stars"), /complex/i);
+    assert.match(workMorningLine("stars"), /Academy/);
   });
 
   it("speaks every crowd line in whole sentences, with no Japanese inside them", () => {
@@ -221,7 +265,7 @@ describe("culture presentation", () => {
   });
 
   it("rotates the year-start voice without a gacha tile", () => {
-    assert.match(yearVoice(2), /The new one/);
+    assert.match(yearVoice(2), /the new one/i);
     assert.doesNotMatch(yearVoice(2), /Palms/);
     assert.equal(
       morningSpeech("She's moving to the Palms organization. A new voice arrives.", 2, "palms"),
@@ -229,11 +273,11 @@ describe("culture presentation", () => {
     );
     assert.equal(
       morningSpeech("She was on. The goal she came for stayed open.", 2, "palms"),
-      "She reached once. She needed two.",
+      "She reached once, and she needed two.",
     );
     assert.equal(
       morningSpeech("She struck out. The sit never found the pitch.", 3, "palms"),
-      "She put the ball in play. She never got on.",
+      "She put the ball in play, and she never got on.",
     );
     // A pitcher's rotating mentor is the Bullpen Coach.
     assert.match(yearVoice(2, true), /Bullpen Coach/);
@@ -241,7 +285,13 @@ describe("culture presentation", () => {
     assert.match(yearVoice(2), /Cage Coach/);
     assert.equal(morningSpeech("She's moving to the Palms organization. A new voice arrives.", 2, "palms", true), yearVoice(2, true));
     assert.match(yearVoice(3), /The Stretch is next/);
+    assert.doesNotMatch(yearVoice(3), /complex/i);
     assert.doesNotMatch(yearVoice(3), /legs are fresh/);
     assert.doesNotMatch(yearVoice(3), /Energy|BP/);
+    assert.doesNotMatch(yearVoice(1), /Rookie year|Everything starts now/i);
+    assert.doesNotMatch(yearVoice(3), /Senior year/);
+    assert.match(yearVoice(1), /cage/);
+    assert.match(yearVoice(1, true), /bullpen/);
+    assert.doesNotMatch(yearVoice(1, true), /cage/i);
   });
 });

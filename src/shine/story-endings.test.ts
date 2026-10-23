@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { endingChip, endingScene, endingTier } from "./story-endings.ts";import { FORBIDDEN_IN_STORY } from "./story.ts";
+import { endingChip, endingLastLine, endingScene, endingTier } from "./story-endings.ts";import { FORBIDDEN_IN_STORY } from "./story.ts";
 import type { CharacterId, EndingRank } from "./types.ts";
 
 const GIRLS: CharacterId[] = ["aoi", "reina", "miki", "sol", "kira", "yuki"];
@@ -94,6 +94,20 @@ test("the lost-Finale lines only touch the top tier", () => {
     for (const rank of ["B", "C", "D", "never-quit"] as EndingRank[]) {
       assert.deepEqual(endingScene(girl, rank, false), endingScene(girl, rank, true), `${girl} ${rank}`);
       assert.equal(endingChip(endingTier(girl, rank), false), endingChip(endingTier(girl, rank), true));
+    }
+  }
+});
+
+test("the Last Bow quote is the last thing she said, not a narrator dump", () => {
+  assert.match(endingLastLine("yuki", "A", false), /Stopwatch/);
+  assert.doesNotMatch(endingLastLine("yuki", "A", false), /stretching again before the lights/);
+  for (const girl of GIRLS) {
+    for (const rank of RANKS) {
+      for (const won of [true, false]) {
+        const line = endingLastLine(girl, rank, won);
+        assert.ok(line.length > 0, `${girl} ${rank} won=${won}`);
+        assert.doesNotMatch(line, FORBIDDEN_IN_STORY, `${girl} ${rank}: ${line}`);
+      }
     }
   }
 });

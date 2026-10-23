@@ -34,6 +34,7 @@ import {
   morningPanel,
   moundDayChips,
   moundRead,
+  sixBattersChip,
   RACE_COPY,
   scorePhrase,
 } from "@/components/race-ui";
@@ -43,7 +44,7 @@ import { loadActionManifest, preloadActionClips, warmActionArt } from "@/compone
 import { castSide, DateTitleCard, FinaleWinMoment, LowerThird, SkillBanner, VsSplash } from "@/components/DateChrome";
 import { inningOrdinal, moundCaption, moundPitchReadout, MOUND_MIDDLE_HEAD, pitchCountLine } from "@/components/mound-chrome";
 import { ShineMute } from "@/components/ShineMute";
-import { DayStrip, DoneHeader, PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
+import { DayStrip, DoneHeader, DoneTalk, doneTalkLines, PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
 import {
   duckCrowd,
   setCrowdLevel,
@@ -67,7 +68,7 @@ import { moundBeatSpec, PREPARE_MS_REDUCED } from "@/shine/beats.ts";
 import { cheerLines, crowdStem, ouenSwell } from "@/shine/culture.ts";
 import { morningDeparture } from "@/shine/ending.ts";
 import { featuredParkId, kitAccent } from "@/shine/stage.ts";
-import { parkSrc, portraitMood, portraitSrc, officialFor, sceneBustSrc, sheet } from "@/shine/bible.ts";
+import { careerFilmSrc, parkSrc, portraitMood, officialFor, sceneBustSrc, sheet, stillSrc } from "@/shine/bible.ts";
 import { finaleDonePicture, finaleWinPicture } from "@/shine/ending-pictures.ts";
 import { decodePicture } from "@/components/preload";
 import { finaleExtrasBug, finaleResultLine, finaleTeamWon, speakGoal } from "@/shine/goals.ts";
@@ -166,7 +167,7 @@ export function ShineMound() {
       restore: saved ? { game: saved.game, aim: saved.aim } : undefined,
       initialAim: aimRef.current,
       reducedMotion: reducedRef.current,
-      vsStill: (id, pose) => stillFor(manifestRef.current?.girls[id], pose)?.url ?? portraitSrc(id, "focused"),
+      vsStill: (id, pose) => stillFor(manifestRef.current?.girls[id], pose)?.url ?? stillSrc(id, pose),
     });
     setMound(c);
     unlockAudio();
@@ -395,7 +396,7 @@ function MoundFrame({
     if (e.code === settings.keys.pause || e.code === "Escape") {
       e.preventDefault();
       if (paused) {
-        // Back in the box: the throw button returns under the thumb, so re-arm the input guard.
+        // Resume: the throw button returns under the thumb, so re-arm the input guard.
         useShine.getState().bumpView();
         mound.resume();
       } else mound.pause("user");
@@ -503,7 +504,7 @@ function MoundFrame({
   const practice = game.kind === "practice";
   const morning = morningKind(run.turn) === "practice";
   // The rep's real work, read before leave applies it (same seed, same roll), and what
-  // yesterday's pick did: this morning never shows the complex, so its chips ride here.
+  // yesterday's pick did: this morning never shows the complex, so those chips sit in the HUD.
   const rep = useMemo(() => (morning ? previewPracticeRep(run) : null), [morning, run]);
   const yesterday = useMemo(() => (morning ? morningAfter(run).chips : []), [morning, run]);
   const ask = practice ? null : officialFor(run.characterId, run.turn);
@@ -566,7 +567,7 @@ function MoundFrame({
   }
 
   function resumeMound() {
-    // Back on the rubber: the grid and Go return under the thumb, so re-arm the input guard.
+    // Resume: the grid and Go return under the thumb, so re-arm the input guard.
     useShine.getState().bumpView();
     mound.resume();
   }
@@ -596,9 +597,13 @@ function MoundFrame({
   const panel = morning ? morningPanel(run, closeLine ?? "") : null;
   const middle = game.done ? middleRead(game.simLog) : null;
   // The finish at a glance (C6b): one chip per batter she finished, in her side's tones.
-  const dayChips = doneUp ? moundDayChips(game.events) : [];
+  const dayChips = doneUp
+    ? game.kind === "first-light" && game.pgId === "k-2"
+      ? [...moundDayChips(game.events), sixBattersChip()]
+      : moundDayChips(game.events)
+    : [];
   // Under the done panel, her own face (C4): joy when she did it, heartbreak when she didn't.
-  const bustMood = game.pgMet ? "elated" : "crushed";
+  const bustMood = game.pgMet ? "elated" : finale && finaleTeamWon(game) ? "focused" : "crushed";
   const finaleDone = finale && game.done ? finaleDonePicture(run.characterId, game.pgMet, finaleTeamWon(game)) : null;
   // The card after each batter (C8), from her stamp clearing to the next wind-up.
   const cardShown = cardUp !== null && paEnd !== null && cardUp === paEnd.key && !game.done;
@@ -636,8 +641,9 @@ function MoundFrame({
     banner: game.banner,
     morning,
     characterId: run?.characterId ?? null,
+    kind: game.kind,
   });
-  const goLabel = stage === "dead" ? "Back on the rubber" : RACE_COPY.go;
+  const goLabel = stage === "dead" ? RACE_COPY.nextPitch : RACE_COPY.go;
   // The middle innings' montage says its newest inning out loud.
   const middleNow = montage ? montage.rows.at(-1) : null;
   const middleSay = middleNow ? `${middleNow.label}. ${middleNow.line}` : null;
@@ -684,7 +690,7 @@ function MoundFrame({
             stopMusic();
             openTitle();
           }}
-          resumeLabel="Back on the rubber"
+          resumeLabel={RACE_COPY.go}
           // The bullpen date is never saved; every other mound date is, between pitches.
           titleLabel={practice ? RACE_COPY.title : PAUSE_TITLE_SAVED}
         />
@@ -711,7 +717,7 @@ function MoundFrame({
           paused={paused}
           fallback={
             <div className="absolute inset-0 overflow-hidden">
-              <img src={portraitSrc(run.characterId, "focused")} alt="" className="absolute inset-0 size-full object-cover shine-mound-close" aria-hidden />
+              <img src={careerFilmSrc(run.characterId)} alt="" className="absolute inset-0 size-full object-cover shine-mound-close" aria-hidden />
             </div>
           }
         >
@@ -800,6 +806,7 @@ function MoundFrame({
               tagGold={ask ? speakGoal(ask.verb) : undefined}
               tier={tier}
             />
+            {morning && picking && !doneUp ? <WorkChips chips={yesterday} label="What yesterday's work did" kind="yesterday" /> : null}
           </div>
           <div className="flex items-center gap-1.5">
             <ShineMute />
@@ -815,35 +822,34 @@ function MoundFrame({
 
         {/* Over the foot of the film: the Coach's lines, Go, the caption, the done panel.
             The walk-in card owns the screen until it leaves; then the glove and Go are the choice. */}
-        {titleUp ? null : (
+        {titleUp || paused ? null : (
         <section ref={coachRef} className="shine-race-coach" aria-label="The Coach">
-          {morning && picking && !doneUp ? <WorkChips chips={yesterday} label="What yesterday's work did" kind="yesterday" /> : null}
           {/* At the done panel the letter reads where the rep's work leaves her. */}
           {morning ? <LetterMarks run={doneUp && rep ? rep.after : run} rep /> : null}
-          {/* One live region for the whole date, so the closing line is heard when the panel swaps in. */}
-          <p className="sr-only" aria-live="polite">
-            {doneUp ? [closeLine, rep?.result.line, panel?.under].filter(Boolean).join(" ") : (middleSay ?? caption)}
-          </p>
+          {/* The inning board is for the eye (aria-hidden). This says the new row once. */}
+          {!doneUp && middleSay ? (
+            <p className="sr-only" aria-live="polite">
+              {middleSay}
+            </p>
+          ) : null}
           {savedChip && picking ? <p className="shine-saved-chip shine-mound-saved">Saved</p> : null}
           {doneUp ? (
             <div className="flex flex-col gap-2" data-mound-done={game.kind} data-long-head={(closeLine ?? "").length > 44 ? "" : undefined}>
               {/* The result screen (C3): the label, her 達成 / 未達 stamp, the headline big, the day's chips. */}
-              <DoneHeader met={practice ? null : game.pgMet} label={doneLabelFor(game.kind, { morning, mound: true })} headline={closeLine ?? ""} reduced={reduced} paused={paused} />
-              {!practice ? (
-                <p className="text-center font-story text-sm italic text-cream" data-her-line>
-                  {dateQuote(run.characterId, game.pgMet, game.kind)}
-                </p>
-              ) : null}
+              <DoneHeader met={practice ? null : game.pgMet} label={doneLabelFor(game.kind, { morning, mound: true })} headline={closeLine ?? ""} reduced={reduced} paused={paused} live />
               <DayStrip chips={dayChips} label="Batter by batter" reduced={reduced} paused={paused} />
-              {readUnder ? <p className="text-center font-story text-sm text-cream/85">{readUnder}</p> : null}
-              {rep ? <RepWork result={rep.result} /> : null}
-              {panel?.under ? <p className="text-center font-story text-sm text-cream/85" data-morning-next>{panel.under}</p> : null}
-              {resultLine ? (
-                <p className="text-center font-story text-sm text-gold" data-finale-result>
-                  {resultLine}
-                </p>
-              ) : null}
-              {middle ? <p className="text-center font-story text-sm text-cream/80">{middle}</p> : null}
+              <DoneTalk
+                key={`${run.id}:${run.turn}:done`}
+                lines={doneTalkLines([
+                  !practice ? { text: dateQuote(run.characterId, game.pgMet, game.kind), kind: "her" } : null,
+                  readUnder ? { text: readUnder, kind: "read" } : null,
+                  rep ? { text: rep.result.line, kind: "rep" } : null,
+                  panel?.under ? { text: panel.under, kind: "morning" } : null,
+                  resultLine ? { text: resultLine, kind: "finale" } : null,
+                  middle ? { text: middle, kind: "middle" } : null,
+                ])}
+              />
+              {rep ? <RepWork result={rep.result} hideLine /> : null}
               {/* The way forward wears Go's gold (C16). */}
               <PixelBtn className="shine-go h-12" onClick={leave}>
                 {panel ? panel.leave : leaveLabel({ practice })}
@@ -863,15 +869,11 @@ function MoundFrame({
                   {game.callback}
                 </p>
               ) : null}
-              {/* The section sings while she throws; at the aim the grid needs the room. */}
+              {/* The section sings while she throws: one verse, the way a crowd actually does. */}
               {verses.length && !picking && !game.done && !montage ? (
-                <ul className="space-y-0.5 text-center">
-                  {verses.map((v, i) => (
-                    <li key={i} className="font-ui text-xs text-gold/80">
-                      {v}
-                    </li>
-                  ))}
-                </ul>
+                <p className="text-center font-ui text-xs text-gold/80" data-cheer-verse>
+                  {verses[game.pitchCount % verses.length]}
+                </p>
               ) : null}
               {readLine && !cardShown ? (
                 <p className="text-center font-story text-sm text-gold" data-mound-read>
@@ -888,7 +890,7 @@ function MoundFrame({
                   <span className="shine-atbat-verdict">{paEnd.meta}</span>
                 </div>
               ) : (
-                <p className="min-h-10 text-center font-story text-sm text-cream/90">{caption}</p>
+                <p className="min-h-10 text-center font-story text-sm text-cream/90" aria-live="polite">{caption}</p>
               )}
               {picking && !game.done ? (
                 <PixelBtn className="shine-go h-14 text-sm" onClick={() => mound.throw()} disabled={!glovePicked} ariaLabel={goLabel}>
@@ -905,34 +907,29 @@ function MoundFrame({
 }
 
 /**
- * The long start's middle innings (check-in 20): a broadcast board in the Coach's
- * slot, under her face. One row lands a beat, her count and her arm under them.
- * The live region says each row; the board is for the eye. Reduced motion sets
- * the rows down still.
+ * The long start's middle innings: the inning that just landed, her count, her arm.
+ * Past innings stay in the live region; this slot is the race, not a box score.
  */
 function MiddleInnings({ middle, reduced, paused }: { middle: MiddleUp; reduced: boolean; paused: boolean }) {
+  const row = middle.rows.at(-1);
+  if (!row) return null;
   // Her arm between full and gone (the pull at ARM_GONE_TANK is the empty end).
   const arm = Math.max(0, Math.min(1, (middle.tank - ARM_GONE_TANK) / (1 - ARM_GONE_TANK)));
   return (
     <div className={`shine-mound-middle ${reduced ? "is-reduced" : ""}`} data-mound-summary={middle.rows.length} data-dc-paused={paused ? "" : undefined} aria-hidden>
       <p className="shine-middle-head">
-        <span>{MOUND_MIDDLE_HEAD.text}</span>
         <span className="shine-kana" lang="ja">
           {MOUND_MIDDLE_HEAD.jp}
         </span>
       </p>
-      <ol className="shine-middle-rows">
-        {middle.rows.map((r, i) => (
-          <li key={r.inning} className="shine-middle-row" data-summary-row data-new={i === middle.rows.length - 1 ? "" : undefined} data-gold={r.gold ? "" : undefined}>
-            <span className="shine-middle-inn">{r.label}</span>
-            <span className="shine-middle-line">{r.line}</span>
-          </li>
-        ))}
-      </ol>
+      <p className="shine-middle-row" data-summary-row data-new="" data-gold={row.gold ? "" : undefined}>
+        <span className="shine-middle-inn">{row.label}</span>
+        <span className="shine-middle-line">{row.line}</span>
+      </p>
       <div className="shine-middle-foot">
         <span>{pitchCountLine(middle.pitchCount)}</span>
         <span className="shine-middle-arm">
-          <span>Arm</span>
+          <span>Her arm</span>
           <span className="shine-middle-tank" data-low={arm < 0.3 ? "" : undefined}>
             <i style={{ width: `${Math.round(arm * 100)}%` }} />
           </span>

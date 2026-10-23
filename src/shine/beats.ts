@@ -32,7 +32,7 @@ export interface BeatSpec {
 
 const SPECS: Record<FieldBeat, BeatSpec> = {
   miss: { css: "shine-beat-miss", cue: "miss", fieldMs: 0, reactionMs: 320, big: false, label: "Swing and a miss.", portrait: "focused" },
-  "foul-tip": { css: "shine-foul-tip", cue: "foul-tip", fieldMs: 0, reactionMs: 320, big: false, label: "Foul tip. She just got a piece of it.", portrait: "focused" },
+  "foul-tip": { css: "shine-foul-tip", cue: "foul-tip", fieldMs: 0, reactionMs: 320, big: false, label: "Foul tip, and she just got a piece of it.", portrait: "focused" },
   foul: { css: "shine-foul-pull", cue: "foul", fieldMs: 0, reactionMs: 320, big: false, label: "Fouled off.", portrait: "focused" },
   "take-strike": { css: "", cue: "take-strike", fieldMs: 0, reactionMs: 280, big: false, label: "Called strike.", portrait: "focused" },
   ball: { css: "", cue: "ball", fieldMs: 0, reactionMs: 240, big: false, label: "Ball.", portrait: "neutral" },

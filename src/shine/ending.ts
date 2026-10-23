@@ -1,7 +1,8 @@
 import { uid } from "./core/rng.ts";
 import { turnMeta } from "./calendar.ts";
 import { isPitcherStyle, officialFor, sheet, yearStillLine } from "./bible.ts";
-import { scrapbookPages } from "./scrapbook.ts";
+import { keepsakeWallLine, scrapbookPages } from "./scrapbook.ts";
+import { endingLastLine } from "./story-endings.ts";
 import type {
   ClubhouseCard,
   EndingRank,
@@ -62,8 +63,8 @@ export function finaleUnlocked(run: TraineeRun) {
 }
 
 export function finaleGap(run: TraineeRun) {
-  if (finaleFloorMet(run)) return "That's the Series done. The Diamond Finale is next, and she's ready for it.";
-  return "That's the Series done. The Diamond Finale is next, and she's still growing into the player it needs.";
+  if (finaleFloorMet(run)) return "The Series is done, and she's ready for the Diamond Finale.";
+  return "The Series is done, and she's still growing into the player the Diamond Finale needs.";
 }
 
 export function careerClosesEarly(run: TraineeRun) {
@@ -79,11 +80,11 @@ export function seriesFinaleLine(run: TraineeRun): string | null {
 
 /** The fold sentence is the two-miss close. Miki's path stays a countdown. */
 export function yearFoldLine(run: TraineeRun, dateName: string, countdown: string) {
-  return careerClosesEarly(run) ? `That was her last big game. Her Academy days end tonight, after ${dateName}.` : countdown;
+  return careerClosesEarly(run) ? `That was her last big game, and her Academy days end tonight after ${dateName}.` : countdown;
 }
 
 export function postgameLeaveLabel(run: TraineeRun, finale: boolean) {
-  return finale || careerClosesEarly(run) ? "End of the year" : "Back to the complex";
+  return finale || careerClosesEarly(run) ? "End of the year" : "Back to the morning";
 }
 
 /**
@@ -137,9 +138,9 @@ export function rankGap(run: TraineeRun, target: "S" | "A", finalePlayed: boolea
   const gap: string[] = [];
   // A Finale her side won short of her ask isn't "a Finale win" away: it's the ask.
   if (!(finalePlayed && finalePg)) gap.push(finaleWonShortRun(run, finalePlayed, finalePg) ? "the Finale she came for" : "a Finale win");
-  if (target === "S" ? run.pgMisses > 0 : run.pgMisses > 1) gap.push(target === "S" ? "no big game lost" : "no more than one big game lost");
+  if (target === "S" ? run.pgMisses > 0 : run.pgMisses > 1) gap.push(target === "S" ? "every big game" : "no more than one big game getting away");
   const need = target === "S" ? sFans(run) : RANK_FANS.A;
-  if (run.fans < need) gap.push(`${need} fans`);
+  if (run.fans < need) gap.push(`${need} in the seats`);
   return gap;
 }
 
@@ -148,56 +149,107 @@ export function finaleWonShortRun(run: Pick<TraineeRun, "finaleTeamWon">, finale
   return finalePlayed && !finalePg && run.finaleTeamWon === true;
 }
 
-function listed(items: string[]): string {
-  return items.length <= 1 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+function crowdCame(fans: number): string {
+  if (fans <= 0) return "The park was empty.";
+  if (fans === 1) return "One person came for her.";
+  return `${fans} people came for her.`;
 }
 
-function gamesLost(run: TraineeRun): string {
-  return run.pgMisses === 0 ? "she never lost a big game that counted" : run.pgMisses === 1 ? "one big game got away from her" : `${run.pgMisses} big games got away from her`;
+function nightsLost(run: TraineeRun): string {
+  if (run.pgMisses === 0) return "She never lost a night that counted";
+  if (run.pgMisses === 1) return "One of the big nights got away from her";
+  return `${run.pgMisses} of the big nights got away from her`;
+}
+
+/** Lowercase the first letter so a night-line can take "and she won the Finale." */
+function andThen(sentence: string): string {
+  return sentence.charAt(0).toLowerCase() + sentence.slice(1);
+}
+
+function withFinale(night: string, finale: string): string {
+  if (!finale) return `${night}.`;
+  // A clean win rides on the night line. A loss, or a win she came up short of, stays its own sentence.
+  if (finale === "She won the Finale.") return `${night}, and ${andThen(finale)}`;
+  return `${night}. ${finale}`;
+}
+
+function finaleWhy(run: TraineeRun, finalePlayed: boolean, finalePg: boolean, teamWon: boolean): string {
+  if (!finalePlayed) return "";
+  if (finalePg && teamWon) return "She won the Finale.";
+  if (teamWon) return finaleWonShortRun(run, finalePlayed, finalePg)
+    ? "They won the Finale, but she didn't get what she came for."
+    : "They won the Finale.";
+  if (finalePg) return "She did what she came for in the Finale, and they lost it.";
+  return "She played the Finale and came up short.";
 }
 
 /**
- * Why she finished where she did, in one plain line, and what the next rank
- * up needs. The rank is fair math; this is what lets the player see it.
+ * What stood between this year and the next letter, said to the Coach, never as a rank table.
+ * `rankGap` stays the key list the tests grant; this is the line the player reads.
+ */
+function shortOf(gap: string[], kind: "everything" | "further"): string {
+  const bits: string[] = [];
+  if (gap.includes("a Finale win")) bits.push("winning the Finale");
+  if (gap.includes("the Finale she came for")) bits.push("getting what she came for in the Finale");
+  if (gap.includes("every big game")) bits.push("keeping every big night");
+  if (gap.includes("no more than one big game getting away")) bits.push("not letting more than one night get away");
+  if (gap.some((g) => g.endsWith(" in the seats"))) bits.push("a fuller park");
+  if (bits.length === 0) return "";
+  const want = bits.length === 1 ? bits[0]! : `${bits.slice(0, -1).join(" and ")} and ${bits.at(-1)}`;
+  if (kind === "everything") {
+    if (bits.length === 1 && bits[0] === "a fuller park") {
+      return "A fuller park is the only thing that kept this from being everything.";
+    }
+    if (bits.length === 1 && bits[0] === "keeping every big night") {
+      return "If that one night hadn't gotten away, this would have been everything.";
+    }
+    return `${capFirst(want)} is the only thing that kept this from being everything.`;
+  }
+  return `${capFirst(want)} is what would have taken this further.`;
+}
+
+/**
+ * Why she finished where she did. The storyteller talks to the Coach: the crowd,
+ * the nights, the Finale, then what stood between this and the next letter.
  */
 export function endingWhy(run: TraineeRun, rank: EndingRank, finalePlayed: boolean, finalePg: boolean): string {
-  const fans = `${run.fans} fans`;
-  const lost = gamesLost(run);
-  // "Won the Finale" only when her side did (check-in 27, N1); a save from before the scoreboard reads her ask.
+  const crowd = crowdCame(run.fans);
+  const night = nightsLost(run);
   const teamWon = finalePlayed && (run.finaleTeamWon ?? finalePg);
-  const finaleSaid = teamWon ? "she won the Finale" : "she did what she came for in the Finale, and they lost it";
-  // Said the way you'd explain it to her: what she did, then what the next letter up would have taken.
-  if (rank === "S") return `She finished with ${fans}, ${lost}, and ${finaleSaid}. There's nothing above this.`;
-  if (rank === "A") return `She finished with ${fans}, ${lost}, and ${finaleSaid}. An S would have taken ${listed(rankGap(run, "S", finalePlayed, finalePg))}.`;
+  const finale = finaleWhy(run, finalePlayed, finalePg, teamWon);
+  if (rank === "S") return `${crowd} ${withFinale(night, finale)}`;
+  if (rank === "A") {
+    return `${crowd} ${withFinale(night, finale)} ${shortOf(rankGap(run, "S", finalePlayed, finalePg), "everything")}`;
+  }
   if (rank === "never-quit") {
-    // Miki always plays the Finale (finaleUnlocked); this rank is the one where she never grew all the way into it.
-    const finale = finalePg && teamWon ? "She won the Finale" : teamWon ? "They won the Finale" : finalePg ? "She did what she came for in a Finale they lost" : "She played the Finale";
-    return `She finished with ${fans}. ${finale} before she'd grown all the way into it, and Section 4 stayed anyway. An A would have taken ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
+    const grew = finalePg && teamWon
+      ? "She won the Finale"
+      : teamWon
+        ? "They won the Finale"
+        : finalePg
+          ? "She did what she came for in a Finale they lost"
+          : "She played the Finale";
+    const next = shortOf(rankGap(run, "A", finalePlayed, finalePg), "further");
+    return `${crowd} ${grew} before she'd grown all the way into it, and Section 4 stayed anyway.${next ? ` ${next}` : ""}`;
   }
   if (rank === "B") {
-    const finale = !finalePlayed
-      ? ""
-      : finalePg
-        ? teamWon
-          ? " She won the Finale."
-          : " She did what she came for in the Finale, and they lost it."
-        : finaleWonShortRun(run, finalePlayed, finalePg)
-          ? " They won the Finale, but she didn't get what she came for."
-          : " She played the Finale and came up short.";
-    return `She finished with ${fans}, and ${lost}.${finale} An A would have taken ${listed(rankGap(run, "A", finalePlayed, finalePg))}.`;
+    const next = shortOf(rankGap(run, "A", finalePlayed, finalePg), "further");
+    return `${crowd} ${withFinale(night, finale)}${next ? ` ${next}` : ""}`;
   }
-  if (rank === "C") return `Her Academy days ended early, with ${fans}. A B would have taken getting all the way to the Diamond Finale.`;
-  return `Her Academy days ended early, with ${fans}. A C would have taken ${RANK_FANS.C} fans.`;
+  if (rank === "C") {
+    return `${crowd} Her Academy days ended early, and playing through to the Diamond Finale is what would have kept her here.`;
+  }
+  return `${crowd} Her Academy days ended early.`;
 }
 
 /** Her quote when she got what she came for and her side lost the Finale (check-in 27, N1). */
 export const FINALE_LOST_MET_QUOTES: Record<TraineeRun["characterId"], string> = {
-  aoi: "A run came home on her in the Diamond Finale. Koi lost it anyway, and she wrote the final score down in pencil.",
-  reina: "She did her part in the Diamond Finale, pitch for pitch. They lost it, and she wrote the count in the notebook anyway.",
-  miki: "She never struck out in the Diamond Finale, not once. They lost, and Section 4 rang the cowbell anyway.",
-  sol: "She did her part in the Diamond Finale. They lost it, and she iced her arm on Luz's tailgate and called it ninety-six.",
-  kira: "She held up her end of the deal in the Diamond Finale. They lost it, and she still caught the last bus home.",
-  yuki: "She did what she came for in the Diamond Finale. They lost it, and she was stretching again before the lights went off.",
+  aoi: "A run came home on her in the Diamond Finale they lost, and she wrote the final score down in pencil.",
+  reina: "She did her part in the Diamond Finale they lost, and she wrote the count in the notebook anyway.",
+  miki: "She never struck out in the Diamond Finale they lost, and Section 4 rang the cowbell anyway.",
+  sol: "She did her part in the Diamond Finale they lost, and she iced her arm on Luz's tailgate and called it ninety-six.",
+  kira: "She held up her end of the deal in the Diamond Finale they lost, and she still caught the last bus home.",
+  yuki: "She did what she came for in the Diamond Finale they lost, and she was stretching again before the lights went off.",
 };
 
 function closingDateLabel(run: TraineeRun): string | null {
@@ -206,37 +258,76 @@ function closingDateLabel(run: TraineeRun): string | null {
   return turnMeta(run.turn).label;
 }
 
+const COUNT_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"] as const;
+
+function capCountWord(n: number): string {
+  const w = COUNT_WORDS[n] ?? String(n);
+  return w.charAt(0).toUpperCase() + w.slice(1);
+}
+
+/** The punchouts the done panel already named, so the Live doesn't repeat the ask's "two". */
+function punchoutsInRead(read: string | null | undefined): number | null {
+  if (!read) return null;
+  const m = read.match(/struck out (one|two|three|four|five|six|seven|eight|nine|ten|\d+)/i);
+  if (!m) return null;
+  const key = m[1]!.toLowerCase();
+  const idx = (COUNT_WORDS as readonly string[]).indexOf(key);
+  if (idx >= 0) return idx;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** A won-short Finale's Last Bow line: they won, and what she didn't get, in one breath. */
+function wonShortQuote(read: string | null | undefined): string {
+  const fallback = "They won the Diamond Finale, though she didn't get the thing she came for.";
+  if (!read) return fallback;
+  let rest = "";
+  if (read.startsWith("They won, and ")) rest = read.slice("They won, and ".length).trim();
+  else if (read.startsWith("They won.")) rest = read.slice("They won.".length).trim();
+  if (!rest) return fallback;
+  if (/^One punchout\. She wanted two\.?$/i.test(rest)) rest = "she got one strikeout though she wanted two.";
+  else if (/^[A-Z]/.test(rest)) rest = rest[0]!.toLowerCase() + rest.slice(1);
+  if (!rest.endsWith(".")) rest += ".";
+  return `They won the Diamond Finale, and ${rest}`;
+}
+
 export function endingQuote(run: TraineeRun, rank: EndingRank) {
   const who = sheet(run.characterId);
   if (rank === "never-quit") return "Miki peels the price tag off Section 4's second cowbell and hands it to you. \"Cool,\" she says, and this time she means it.";
   // The chip already says S or A, and the frame line carries the 胴上げ; the quote is hers alone.
   // Her ask met and her side lost the Finale (check-in 27, N1): the quote says both, never a win.
-  if (finaleLostMetRun(run) && (rank === "S" || rank === "A" || rank === "B")) return FINALE_LOST_MET_QUOTES[run.characterId];
+  if (finaleLostMetRun(run) && (rank === "S" || rank === "A" || rank === "B")) {
+    const hers = endingLastLine(run.characterId, rank, false);
+    return hers || FINALE_LOST_MET_QUOTES[run.characterId];
+  }
   if (rank === "S" || rank === "A") return who.endings.show;
   if (rank === "B") {
     const finale = officialFor(run.characterId, 60);
     // Each pitcher's Finale ask, said as what she did.
     if (run.pgResults[6] === "met" && finale?.pgId === "clean-ninth") return "She took the ninth inning of the Diamond Finale, got her three outs, and nobody scored.";
-    if (run.pgResults[6] === "met" && finale?.pgId === "k-2") return "She struck out two in the Diamond Finale's ninth, and the lead held.";
+    if (run.pgResults[6] === "met" && finale?.pgId === "k-2") {
+      const n = Math.max(2, punchoutsInRead(run.finaleRead) ?? 2);
+      return `${capCountWord(n)} punchouts in the ninth of the Diamond Finale, and nobody scored.`;
+    }
     if (run.pgResults[6] === "met" && finale?.pgId === "hold-one-run") return "She came in to protect a one-run lead in the Diamond Finale, and it was still a lead when she walked off.";
-    if (run.pgResults[6] === "met") return "She won the Diamond Finale. The top of the Academy takes more than one good night, though, and she knows it.";
+    if (run.pgResults[6] === "met") return "She won the Diamond Finale, and she knows the top of the Academy takes more than one good night.";
     // Her side won the Finale and her ask missed: say both, never "one win away" (check-in 24).
     if (finaleWonShortRun(run, run.pgResults[6] !== "pending", false)) {
-      const rest = run.finaleRead?.startsWith("They won.") ? run.finaleRead.slice("They won.".length).trim() : "";
-      return `They won the Diamond Finale. ${rest || "She didn't get the thing she came for, but she was smiling in the dugout anyway."}`;
+      return wonShortQuote(run.finaleRead);
     }
     // "One win away" only when winning the Finale is all that stood between her and A.
     if (run.pgResults[6] !== "pending")
       return rankGap(run, "A", true, true).length === 0
-        ? "She played in the Diamond Finale and lost it. That left her one win away from the top."
-        : "She played in the Diamond Finale and lost it. The top needed more from her than one night.";
+        ? "She played in the Diamond Finale and lost it, which left her one win away from the top."
+        : "She played in the Diamond Finale and lost it, and the top needed more from her than one night.";
     return who.endings.dugout;
   }
   if (rank === "D") {
     if (run.characterId === "yuki") return yearStillLine("yuki", run.turn, run.pgResults, run.definingPa);
     const date = closingDateLabel(run);
-    const rest = who.endings.miss2.replace(/^The Academy path closed\. ?/, "");
-    return date ? `${date} was her last big game. ${rest}` : who.endings.miss2;
+    const rest = who.endings.miss2.replace(/^The Academy (?:let her go early|path closed)[,.] (?:and )?/i, "").trim();
+    const tail = /^(She |That |By )/i.test(rest) ? `${rest[0]!.toLowerCase()}${rest.slice(1)}` : rest;
+    return date ? `${date} was her last big game, and ${tail}` : who.endings.miss2;
   }
   return who.endings.lantern;
 }
@@ -377,17 +468,29 @@ export function nextGirlName(id: TraineeRun["characterId"]) {
   return sheet(nextGirlId(id)).name;
 }
 
-/** Clubhouse hook. Never a plate constant. */
+/** The Clubhouse card body, one tap at a time: who she faced, then the rest. */
+export function wallCardLines(card: ClubhouseCard, quote: string): string[] {
+  const who = sheet(card.characterId);
+  const lines = [`${sheet(who.rival).name} was across from her.`];
+  if (cardBanner(card)) lines.push(`Her number, ${who.number}, went up on a park banner.`);
+  if (cardAltLook(card)) lines.push("The kids at the gate are wearing her number now.");
+  const keepsake = keepsakeWallLine(card.characterId, card.keepsake);
+  if (keepsake) lines.push(keepsake);
+  lines.push(sparkWallLine(card.sparks));
+  if (quote) lines.push(quote);
+  return lines;
+}
+
+/** Clubhouse hook. One breath. Never a plate constant. */
 export function sparkGapLine(cards: ClubhouseCard[]) {
   if (!cards.length) return null;
   const last = cards[cards.length - 1]!;
   const who = sheet(last.characterId);
-  const next = nextGirlName(last.characterId);
+  const nextId = nextGirlId(last.characterId);
   const floor = styleFloors(who.style)[0];
-  if (!floor) return `${next} is next.`;
-  const spark = last.sparks.find((s) => s.kind === floor.key);
-  if (!spark) return `${next} is next. ${WAITING[nextGirlId(last.characterId)]}`;
-  return `${who.name} passes on what she learned about ${SPARK_LESSON[spark.kind]}. ${next} is next.`;
+  const spark = floor ? last.sparks.find((s) => s.kind === floor.key) : undefined;
+  if (spark) return `${who.name} passes on what she learned about ${SPARK_LESSON[spark.kind]}.`;
+  return WAITING[nextId];
 }
 
 /** What a passed-on habit is about, in baseball words: "her fastball", never the bare "stuff". */
@@ -407,7 +510,7 @@ export const SPARK_LESSON: Record<SparkKind, string> = {
 
 /** Where the next girl already is when the title names her. */
 const WAITING: Record<TraineeRun["characterId"], string> = {
-  aoi: "Aoi's already in the cage at Koi. She hasn't turned the machine on.",
+  aoi: "Aoi's already in the cage at Koi, and she hasn't turned the machine on.",
   reina: "Reina's in the Koi bullpen, throwing at the same spot.",
   miki: "Miki's in North's cage, swinging in two shirts.",
   sol: "Sol's in the Dusters' pen, and it's already ninety-four degrees.",
@@ -442,17 +545,17 @@ export function pickInheritSparks(from: Spark[], chosen: Spark[]) {
 }
 
 export function sparkEffectLine(kind: SparkKind) {
-  if (kind === "contact") return "She squares the ball up more often";
-  if (kind === "power") return "The ball carries farther off her bat";
-  if (kind === "eye") return "She picks up the pitch out of the hand sooner";
-  if (kind === "guts") return "She's calmer when the game is on the line";
-  if (kind === "speed") return "She gets a quicker first step";
-  if (kind === "wit") return "She remembers what the pitcher just threw her";
-  if (kind === "stuff") return "Her pitches move more";
-  if (kind === "control") return "She hits the catcher's glove more often";
-  if (kind === "stamina") return "Her arm lasts deeper into games";
-  if (kind === "legend") return "A habit nobody taught her";
-  return "A little extra polish";
+  if (kind === "contact") return "She squares the ball up more often.";
+  if (kind === "power") return "The ball carries farther off her bat.";
+  if (kind === "eye") return "She picks up the pitch out of the hand sooner.";
+  if (kind === "guts") return "She's calmer when the game is on the line.";
+  if (kind === "speed") return "She gets a quicker first step.";
+  if (kind === "wit") return "She remembers what the pitcher just threw her.";
+  if (kind === "stuff") return "Her pitches move more.";
+  if (kind === "control") return "She hits the catcher's glove more often.";
+  if (kind === "stamina") return "Her arm lasts deeper into games.";
+  if (kind === "legend") return "A habit nobody taught her.";
+  return "A little extra polish.";
 }
 
 export function sparkCount(sparks: Spark[], kind: SparkKind) {
@@ -696,21 +799,15 @@ export function wallCardPicture(id: TraineeRun["characterId"]): { kind: "film"; 
   return { kind: "bust", mood: id === "reina" ? "focused" : "elated" };
 }
 
-const SPARK_NAME: Record<SparkKind, string> = {
-  contact: "Contact",
-  speed: "Speed",
-  eye: "Eye",
-  power: "Power",
-  guts: "Guts",
-  wit: "Wit",
-  stuff: "Stuff",
-  control: "Control",
-  stamina: "Stamina",
-  legend: "Legend",
-  polish: "Polish",
-};
+/** What she passes on, in baseball words: "finding the barrel". */
+export const SPARK_NONE = "She didn't leave a habit.";
 
-/** What she passes on, once per kind: "Contact ×2 · Speed". */
+/** The Clubhouse card's pass-on: one habit, never a counted list. */
+export function sparkWallLine(sparks: Spark[]): string {
+  const first = sparks.find((s) => s.kind !== "polish");
+  return first ? `She passed on ${SPARK_LESSON[first.kind]}.` : SPARK_NONE;
+}
+
 export function sparkSummary(sparks: Spark[], max = 3): string {
   const order: SparkKind[] = [];
   const counts = new Map<SparkKind, number>();
@@ -721,9 +818,16 @@ export function sparkSummary(sparks: Spark[], max = 3): string {
   }
   return order
     .slice(0, max)
-    .map((k) => (counts.get(k)! > 1 ? `${SPARK_NAME[k]} ×${counts.get(k)}` : SPARK_NAME[k]))
-    .join(" · ");
+    .map((k) => (counts.get(k)! > 1 ? `${SPARK_LESSON[k]}, twice` : SPARK_LESSON[k]))
+    .join(", then ");
 }
+
+/** The Clubhouse door, one sentence at a time. */
+export const CLUBHOUSE_INTRO: readonly string[] = [
+  "The girls who finished their year live on this wall.",
+  "One of them can leave her a habit.",
+  "The rest of it, she still has to do herself.",
+];
 
 export function careerStill(run: TraineeRun): CareerStill {
   const finalePlayed = run.pgResults[6] !== "pending";

@@ -1,4 +1,5 @@
-import type { StationId, StyleId, TurnType } from "./types.ts";
+import type { SceneLike } from "./story.ts";
+import type { CharacterId, StationId, StyleId, TurnType } from "./types.ts";
 
 export interface CalendarBeat {
   turn: number;
@@ -13,17 +14,17 @@ function workRange(from: number, to: number): CalendarBeat[] {
 }
 
 export const CAREER_CALENDAR: CalendarBeat[] = [
-  { turn: 1, type: "tutorial-forced", label: "The First Day" },
+  { turn: 1, type: "tutorial-forced", label: "First morning" },
   { turn: 2, type: "tutorial-plate", label: "Practice at the Plate" },
-  { turn: 3, type: "semi-free", label: "First Free Choice" },
-  { turn: 4, type: "semi-free", label: "Calendar Preview" },
+  { turn: 3, type: "semi-free", label: "Morning" },
+  { turn: 4, type: "semi-free", label: "Morning" },
   { turn: 5, type: "gate", label: "Academy Gate" },
   ...workRange(6, 13),
   { turn: 14, type: "mentor-event", label: "Cage Coach" },
   ...workRange(15, 17),
   { turn: 18, type: "first-light", label: "First Light" },
   { turn: 19, type: "work", label: "Work" },
-  { turn: 20, type: "forced-scene", label: "Rookie Year-End" },
+  { turn: 20, type: "forced-scene", label: "End of first spring" },
   { turn: 21, type: "year-start", label: "Classic Spring" },
   ...workRange(22, 27),
   { turn: 28, type: "lantern-classic", label: "Lantern Classic" },
@@ -32,8 +33,8 @@ export const CAREER_CALENDAR: CalendarBeat[] = [
   ...workRange(34, 36),
   { turn: 37, type: "mentor-event", label: "Cage Coach" },
   ...workRange(38, 39),
-  { turn: 40, type: "forced-scene", label: "Classic Year-End" },
-  { turn: 41, type: "year-start", label: "Senior Spring" },
+  { turn: 40, type: "forced-scene", label: "End of the lantern year" },
+  { turn: 41, type: "year-start", label: "Last spring" },
   ...workRange(42, 49),
   { turn: 50, type: "stretch", label: "The Stretch" },
   ...workRange(51, 54),
@@ -83,10 +84,15 @@ export function plateKindFor(turn: number): PlateKind | null {
 /** The date name the Coach sees. Work is a morning. Pitchers do not get a cage night. */
 export function dateLabel(beat: Pick<CalendarBeat, "type" | "label">, style: StyleId): string {
   const pitcher = style === "ace" || style === "closer";
-  if (pitcher && beat.type === "tutorial-plate") return "Practice in the Bullpen";
+  if (beat.type === "tutorial-plate") return pitcher ? "The bullpen" : "The cage";
   if (pitcher && beat.type === "mentor-event") return "Bullpen Coach";
   if (beat.type === "work" || beat.type === "semi-free") return "Morning";
   return beat.label;
+}
+
+/** When a recovery save was taken: the date's name, never Day N. */
+export function backupWhen(turn: number, style: StyleId, at: number): string {
+  return `${dateLabel(turnMeta(turn), style)} · ${new Date(at).toLocaleString()}`;
 }
 
 export function looksUnlocked(turn: number) {
@@ -111,7 +117,7 @@ export function facilityUnlock(station: StationId, turn: number): { open: boolea
   if (station === "bp" || station === "situational") {
     return powerStationsUnlocked(turn) ? { open: true } : { open: false, reason: "After First Light" };
   }
-  if (station === "poles") return turn >= 3 ? { open: true } : { open: false, reason: "From Day 3" };
+  if (station === "poles") return turn >= 3 ? { open: true } : { open: false, reason: "After two mornings" };
   return { open: true };
 }
 
@@ -192,4 +198,17 @@ export function calendarPeekLine(turn: number) {
   const left = next.turn - turn;
   if (left <= 1) return `${next.label} is in 1 day.`;
   return `${next.label} is in ${left} days.`;
+}
+
+/** The Gate peek, one tap, one line. The Shell dump is gone. */
+export function calendarPeekScene(girl: CharacterId, turn: number): SceneLike {
+  return {
+    id: "calendar-peek",
+    girl,
+    place: "Academy office · the board by the door",
+    beats: [
+      { who: "narration", text: "There's a card on the board by the door, and tomorrow's name is already written." },
+      { who: "coach", text: calendarPeekLine(turn) },
+    ],
+  };
 }

@@ -117,6 +117,7 @@ function pitcherOf(id: CharacterId): boolean {
  */
 export function finaleDoneSrcs(id: CharacterId, met: boolean, teamWon = met): string[] {
   if (pitcherOf(id)) return [finaleDonePicture(id, met, teamWon).src];
+  if (!met && teamWon) return [`/art/action/${id}/trot.webp`];
   return [`/art/action/${id}/${met ? "celebrate" : "crushed"}.webp`];
 }
 
@@ -167,11 +168,13 @@ export function finaleWinPicture(id: CharacterId, met: boolean): EndingPicture {
  * moment's picture, which played over it. A hitter's is fixed (`finaleDoneSrcs`).
  */
 export function finaleDonePicture(id: CharacterId, met: boolean, teamWon: boolean): EndingPicture {
-  if (!pitcherOf(id)) return film(finaleDoneSrcs(id, met)[0]!);
+  if (!pitcherOf(id)) return film(finaleDoneSrcs(id, met, teamWon)[0]!);
   const avoid = [...fixedBeforeRank(id, met), ...(teamWon ? [finaleWinPicture(id, met).src] : [])];
   const candidates = met
     ? [still(id, "k", "focused"), still(id, "follow", "focused"), still(id, "windup", "focused"), still(id, "release", "focused"), bust(id, "focused")]
-    : [bust(id, "crushed"), still(id, "windup", "crushed"), bust(id, "focused")];
+    : teamWon
+      ? [still(id, "follow", "focused"), still(id, "windup", "focused"), still(id, "release", "focused"), bust(id, "focused")]
+      : [bust(id, "crushed"), still(id, "windup", "crushed"), bust(id, "focused")];
   // The 優勝 moment plays over it and the curtain follows it: never theirs, even when her art runs out.
   const curtain = finaleCurtainSrc(id, met);
   return pick(candidates, avoid, [], [...(teamWon ? [finaleWinPicture(id, met).src] : []), ...(curtain ? [curtain] : [])]);
@@ -316,7 +319,7 @@ export function finaleEnding(opts: {
   const { id, met, teamWon, rank } = opts;
   const stage = opts.stage ?? endingStage(rank, teamWon);
   const win = teamWon ? finaleWinPicture(id, met) : null;
-  const done = pitcherOf(id) ? finaleDonePicture(id, met, teamWon) : film(finaleDoneSrcs(id, met)[0]!);
+  const done = pitcherOf(id) ? finaleDonePicture(id, met, teamWon) : film(finaleDoneSrcs(id, met, teamWon)[0]!);
   const curtain = finaleCurtainSrc(id, met);
   const sceneOpen = endingSceneOpenSrc(id, rank);
   const sceneLast = endingSceneSrc(id, rank);

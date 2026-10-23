@@ -13,12 +13,12 @@ import type { CharacterId, StationId, StyleId, TraineeRun, TraineeStatKey } from
 
 /** Fresh and in a good mood: she says so herself, in her own voice. */
 const READY_LINE: Record<CharacterId, string> = {
-  aoi: "\"I'm good, Coach. Pencil's out. What do you see today?\"",
-  reina: "\"Again. Tell me what we're fixing.\"",
-  miki: "\"Cool. The heater's actually working today. So. What's the plan?\"",
+  aoi: "\"I'm good, Coach, pencil's out, what do you see today?\"",
+  reina: "\"Again, tell me what we're fixing.\"",
+  miki: "\"Cool, the heater's actually working today, so, what's the plan?\"",
   sol: "\"Ninety-six. What are we throwing, Jefe?\"",
-  kira: "\"Here's the deal. I'm ready. You pick, Partner.\"",
-  yuki: "\"Already stretched. What's first, Stopwatch?\"",
+  kira: "\"Here's the deal, I'm ready, you pick, Partner.\"",
+  yuki: "\"Already stretched, what's first, Stopwatch?\"",
 };
 
 export interface CoachBrief {
@@ -118,7 +118,7 @@ export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeSt
     case "innings-5-k7":
       return { stat: "stuff", need: "Seven punchouts in five innings. Stuff makes them miss." };
     case "perfect-ninth":
-      return { stat: "control", need: "Three up, three down. Control keeps everyone off the bases." };
+      return { stat: "control", need: "Nobody on and nobody scores, and control is how she keeps them off." };
     case "see-3-one-pa":
     case "see-4-one-pa":
     case "see-5-one-pa":
@@ -155,7 +155,7 @@ export function goalNeed(id: GoalId | null, pitcher: boolean): { stat: TraineeSt
     case "out-1":
     case "clean-ninth":
     case "hold-one-run":
-      return { stat: "control", need: "Record outs. Control puts the ball where the glove is." };
+      return { stat: "control", need: "Get the outs. Control puts the ball where the glove is." };
     case "k-3":
     case "k-2":
     case "k-side":
@@ -191,7 +191,7 @@ export function coachBrief(run: TraineeRun): CoachBrief {
 
   // The card is the other coach on staff talking to you: what they'd do with her today, and why.
   const forDate = theGame(next.label);
-  const ready = (s: TraineeStatKey) => `I'd put her ${WHERE[STAT_STATION[s]]} today. ${ASKS[s]} is what ${forDate} is going to ask of her.`;
+  const ready = (s: TraineeStatKey) => `I'd put her ${WHERE[STAT_STATION[s]]} today, and ${ASKS[s][0]!.toLowerCase()}${ASKS[s].slice(1)} is what she'll need at ${forDate}.`;
   let why = ready(stat);
   let choiceStation = station;
   let choiceStat = stat;
@@ -203,21 +203,21 @@ export function coachBrief(run: TraineeRun): CoachBrief {
   if (repToday) {
     choiceStat = pitcher ? "stuff" : "contact";
     choiceStation = STAT_STATION[choiceStat];
-    why = `It's the morning before ${forDate}, so she gets one rep at her own spot and that's it. Nobody rests today. She needs the feel of it.`;
+    why = `It's the morning before ${forDate}, so she gets one rep at her own spot, and nobody rests today.`;
   } else if (run.energy < 40 && turnsAway <= 2) {
     choiceStation = "off-day";
     why = repTomorrow
-      ? `She's worn out, and tomorrow is one rep she can't skip before ${forDate}. Rest her today. It's the last day off she gets before the game.`
-      : `She's dragging, and ${forDate} is almost here. Rest her. Tired work goes sideways, and she'd carry it into the game.`;
+      ? `She's worn out, and tomorrow is one rep she can't skip before ${forDate}, so rest her today.`
+      : `She's dragging, and ${forDate} is almost here, so rest her before tired work goes sideways.`;
   } else if (run.energy < 25) {
     choiceStation = "treatment";
-    why = "She's running on empty, and nothing sticks when she's like this. Send her to the trainer's room.";
+    why = "She's running on empty, and nothing sticks when she's like this, so send her to the trainer's room.";
   } else if (run.lastWork && run.lastWork.stat === stat && run.lastWork.outcome === "fail" && run.lastWork.turn === run.turn - 1) {
     const alt = secondNeed(goalId, pitcher);
     if (alt && alt !== stat) {
       choiceStation = STAT_STATION[alt];
       choiceStat = alt;
-      why = `Yesterday's work did not take. I'd put her ${WHERE[choiceStation]} instead. It still helps for ${forDate}, and a change of drill breaks a bad streak.`;
+      why = `Yesterday's work did not take, so I'd put her ${WHERE[choiceStation]} instead.`;
     }
   }
   if (!repToday && choiceStation !== "off-day" && choiceStation !== "treatment") {
@@ -227,9 +227,11 @@ export function coachBrief(run: TraineeRun): CoachBrief {
       choiceStat = picked.stat;
       choiceStation = STAT_STATION[choiceStat];
       if (picked.why === "ceiling")
-        why = `She's close to her ceiling in ${cap(picked.from)}, so it barely moves now. ${cap(choiceStat)} work pays more today. I'd put her ${WHERE[choiceStation]}.`;
+        why = `She's close to her ceiling ${ASKS[picked.from].charAt(0).toLowerCase()}${ASKS[picked.from].slice(1)}, so I'd leave that for now, and ${cap(choiceStat)} work pays more today if I put her ${WHERE[choiceStation]}.`;
       else if (failed && failed !== choiceStat)
-        why = `Yesterday's work did not take. I'd put her ${WHERE[choiceStation]} instead, and a change of drill breaks a bad streak.`;
+        why = `Yesterday's work did not take, so I'd put her ${WHERE[choiceStation]} instead.`;
+      else if (picked.why === "locked")
+        why = `I'd put her ${WHERE[choiceStation]} today, and ${ASKS[stat][0]!.toLowerCase()}${ASKS[stat].slice(1)} is still what she'll need at ${forDate}.`;
       else why = ready(choiceStat);
     }
   }
@@ -238,9 +240,9 @@ export function coachBrief(run: TraineeRun): CoachBrief {
     run.energy < 25
       ? "She's running on nothing."
       : run.energy < 45
-        ? "Tired. One more push, or a day off."
+        ? "Tired, one more push, or a day off."
         : moodLevel(run.mood) <= 1
-          ? "Body's fine. Head isn't. Give her work she can win."
+          ? "Body's fine, head isn't, give her work she can win."
           : READY_LINE[run.characterId];
 
   return {
@@ -287,7 +289,10 @@ function facilityPick(
     }
   }
   if (!open(stat)) {
-    stat = open(main) && main !== avoid ? main : (lowest(roles.filter((s) => s !== avoid && open(s))) ?? (pitcher ? "stuff" : "contact"));
+    const second = style === "closer" ? "stuff" : style === "ace" ? "control" : style === "move" ? "contact" : "speed";
+    if (open(main) && main !== avoid) stat = main;
+    else if (open(second) && second !== avoid) stat = second;
+    else stat = lowest(roles.filter((s) => s !== avoid && open(s))) ?? (pitcher ? "stuff" : "contact");
     why = "locked";
   }
   return { stat, why, from };
@@ -356,7 +361,7 @@ export function workComparison(run: TraineeRun): WorkComparison | null {
   const where = `You'll see it at ${theGame(next.label)}.`;
   let line: string;
   if (w.to === w.from) {
-    line = w.outcome === "bad-fail" ? "Yesterday's work didn't stick. She was worn out, and it showed." : "Yesterday's work didn't stick. It happens to everybody.";
+    line = w.outcome === "bad-fail" ? "Yesterday's work didn't stick, and she was worn out, and it showed." : "Yesterday's work didn't stick, and it happens to everybody.";
   } else {
     line = gainLine(w.stat);
   }
@@ -367,19 +372,19 @@ export function workComparison(run: TraineeRun): WorkComparison | null {
 function gainLine(stat: TraineeStatKey) {
   switch (stat) {
     case "contact":
-      return "Something clicked in the cage yesterday. She won't say what, but she's grinning.";
+      return "Something clicked in the cage yesterday, she won't say what, but she's grinning.";
     case "power":
       return "The ball was jumping off her bat in batting practice yesterday.";
     case "guts":
       return "She's steadier with the game on the line than she was a week ago.";
     case "speed":
-      return "Her first step got quicker yesterday. The catchers are going to notice.";
+      return "Her first step got quicker yesterday, the catchers are going to notice.";
     case "eye":
-      return "She's picking up the spin sooner. You could see it in her takes yesterday.";
+      return "She's picking up the spin sooner, you could see it in her takes yesterday.";
     case "wit":
       return "She's starting to read the hitters' habits before they show them.";
     case "stuff":
-      return "Her pitches had more on them yesterday. The bullpen catcher shook her hand out after.";
+      return "Her pitches had more on them yesterday, the bullpen catcher shook her hand out after.";
     case "control":
       return "She was hitting the glove yesterday, pitch after pitch.";
     case "stamina":
@@ -391,7 +396,7 @@ function gainLine(stat: TraineeStatKey) {
 export function outingLabel(grade: OutingGrade): { name: string; meaning: string } {
   switch (grade) {
     case "A":
-      return { name: "Full outing", meaning: "She goes the distance. She stays out there until the game is hers." };
+      return { name: "Full outing", meaning: "She goes the distance, and the date stays until the inning is hers." };
     case "D":
       return { name: "Closer", meaning: "The ninth only." };
     case "G":

@@ -24,7 +24,7 @@
 import type { Cell, PitchType } from "./core/zone.ts";
 import { resultStamp, STAMP_DELAY_MS, stampHoldMs, type HrNameplate, type ResultStamp } from "./action-art.ts";
 import { moundBeatSpec, PREPARE_MS_REDUCED, type BeatSpec, type Stage } from "./beats.ts";
-import { portraitSrc, sheet } from "./bible.ts";
+import { sheet, stillSrc } from "./bible.ts";
 import { GATE_MISSED_BANNER, type GameKind } from "./featured-game.ts";
 import { gutsActive, leverageIndex } from "./oracle.ts";
 import {
@@ -322,7 +322,7 @@ export class MoundController {
     this.sched = opts.scheduler ?? realScheduler;
     this.timers = opts.timers ?? new SuspendableTimers(this.sched);
     this.reduced = opts.reducedMotion ?? false;
-    this.vsStill = opts.vsStill ?? ((id) => portraitSrc(id, "focused"));
+    this.vsStill = opts.vsStill ?? ((id, pose) => stillSrc(id, pose));
     this.game = opts.restore ? structuredClone(opts.restore.game) : startPitchingGame(opts.run, opts.kind);
     if (opts.looks !== undefined) this.game.looks = opts.looks;
     this.aim = opts.restore?.aim ?? opts.initialAim ?? { row: 1, col: 1 };
@@ -413,17 +413,18 @@ export class MoundController {
 
   /**
    * The attempt is saved between pitches: whenever the batter, the count, the act
-   * or whether she's at the aim changes, except in her wind-up and flight. The
-   * bullpen and a finished date are never saved.
+   * or whether she's at the aim changes, except in her wind-up and flight. A
+   * finished date and the morning's one throw save too, so a reload over the
+   * done panel reopens what just happened.
    */
   private checkSave(force: boolean) {
     const g = this.game;
-    const key = `${g.battersFaced}|${g.count.balls}|${g.count.strikes}|${g.act}|${this.stage === "idle"}|${g.leadoffWalk ?? "-"}`;
+    const key = `${g.battersFaced}|${g.count.balls}|${g.count.strikes}|${g.act}|${this.stage === "idle"}|${g.leadoffWalk ?? "-"}|${g.done}`;
     if (!force && key === this.saveKey) return;
     this.saveKey = key;
     // The landing that ends the date saves too, so a reload over the done panel reopens the
-    // finished date (Leave clears it), not the pitch before it at the aim.
-    if (g.kind === "practice") return;
+    // finished date (Leave clears it), not the pitch before it at the aim. Practice is the
+    // morning's one throw: saving it is what stops a reload from throwing the result away.
     if (this.stage === "flight" || this.stage === "prepare" || this.stage === "paused") return;
     this.cue({ t: "save", game: g, aim: this.aim, chip: this.stage === "idle" || this.stage === "dead" });
   }

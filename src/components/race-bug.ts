@@ -95,9 +95,6 @@ function basesFor(runners: number): Bases {
   return { first: runners >= 1, second: runners >= 2, third: runners >= 3 };
 }
 
-/** The tutorial bullpen is three throws (pitching.ts ends it on game.looks, default three). */
-const BULLPEN_LOOKS = 3;
-
 /**
  * The mound's scorebug, from the pitcher's side: her team's score, the count
  * she has on the batter, the outs she has, the runners on against her, and who
@@ -107,12 +104,11 @@ export function moundBug(
   game: Pick<PitchingGame, "kind" | "inning" | "scoreDiff" | "count" | "outs" | "runners" | "batterName" | "pitchCount"> & Partial<Pick<PitchingGame, "looks">>,
 ): BugState {
   if (game.kind === "practice") {
-    // A practice morning is one throw (check-in 35): the bug reads 1 of 1, like the cage's.
-    const looks = game.looks ?? BULLPEN_LOOKS;
+    // A practice morning is one throw: the bug names the pen, the way the cage's says Cage.
     return {
       inning: null,
       score: null,
-      atBat: `Bullpen · ${Math.min(looks, game.pitchCount + 1)} of ${looks}`,
+      atBat: "Bullpen",
       count: { balls: 0, strikes: 0 },
       outs: 0,
       bases: basesFor(0),

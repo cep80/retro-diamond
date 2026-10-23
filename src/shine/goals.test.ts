@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { BIBLE } from "./bible.ts";
 import { emptyBases, type PlateEvent } from "./events.ts";
-import { evalHitterPg, evalPitcherPg, goalDefinition, goalIdForVerb, proofLine, speakGoal, type HitterGoalView, type PitcherGoalView } from "./goals.ts";
+import { evalHitterPg, evalPitcherPg, evalPitcherSg, goalDefinition, goalIdForVerb, proofLine, speakGoal, type HitterGoalView, type PitcherGoalView } from "./goals.ts";
+import { FORBIDDEN_IN_STORY } from "./story.ts";
 
 function hitterView(events: PlateEvent[], patch: Partial<HitterGoalView> = {}): HitterGoalView {
   return {
@@ -57,6 +58,8 @@ describe("goals", () => {
         assert.ok(g.sgId, `${c.id} T${g.turn} SG "${g.sgVerb}" has an id`);
         assert.ok(goalDefinition(g.pgId).length > 10);
         assert.ok(goalDefinition(g.sgId).length > 10);
+        assert.doesNotMatch(goalDefinition(g.pgId), FORBIDDEN_IN_STORY, g.pgId);
+        assert.doesNotMatch(goalDefinition(g.sgId), FORBIDDEN_IN_STORY, g.sgId);
         assert.equal(speakGoal("Pitch 5+ innings, ≤3 ER"), "Five innings, three runs or fewer");
         assert.equal(speakGoal("Steal a base"), "Steal a base");
       }
@@ -195,6 +198,7 @@ describe("goals", () => {
     assert.equal(goalIdForVerb("Foul off a 2-strike pitch"), "foul-two-strike");
     assert.equal(goalIdForVerb("Work a 3-2 count"), "full-count");
     assert.equal(speakGoal("See 4 pitches in one PA"), "Four pitches in one at-bat");
+    assert.equal(speakGoal("See 4 pitches"), "Four pitches in one at-bat");
     assert.equal(speakGoal("See 5 pitches in one PA"), "Five pitches in one at-bat");
     assert.match(goalDefinition("see-4-one-pa"), /Four pitches/);
     assert.match(goalDefinition("see-5-one-pa"), /Five pitches/);
@@ -245,7 +249,8 @@ describe("goals", () => {
     assert.equal(goalIdForVerb("Steal with RISP"), "steal-risp");
     assert.equal(goalIdForVerb("Clean ninth"), "clean-ninth");
     assert.equal(speakGoal("Pitch 5+ innings, 7+ K"), "Five innings, seven punchouts");
-    assert.equal(speakGoal("Three up, three down"), "Three up, three down");
+    assert.equal(speakGoal("Three up, three down"), "Nobody reaches, and nobody scores");
+    assert.doesNotMatch(speakGoal("Three up, three down"), /Three up/);
     assert.equal(speakGoal("Get two hits"), "Two hits");
     assert.equal(speakGoal("Make contact on 2 breaking balls"), "Bat on two breaking balls");
     assert.equal(speakGoal("Steal with RISP and score"), "Steal with runners on, then score");
@@ -263,6 +268,11 @@ describe("goals", () => {
     assert.equal(evalPitcherPg("perfect-ninth", pitcherView({ outsRecorded: 3, battersFaced: 4 })), false);
     assert.equal(evalPitcherPg("clean-ninth", pitcherView({ outsRecorded: 3, battersFaced: 4 })), true, "a clean ninth still allows the single");
     assert.equal(evalPitcherPg("perfect-ninth", pitcherView({ outsRecorded: 3, battersFaced: 3, blown: true })), false);
+
+    // Night Classic smaller ask: runners still on is not already stranded.
+    assert.equal(evalPitcherSg("strand-inherited", pitcherView({ inherited: 2, inheritedStranded: true, done: false })), false);
+    assert.equal(evalPitcherSg("strand-inherited", pitcherView({ inherited: 2, inheritedStranded: true, done: true })), true);
+    assert.equal(evalPitcherSg("strand-inherited", pitcherView({ inherited: 2, inheritedStranded: false, done: true })), false);
 
     // Two hits; a bunt she beats out counts (the game adds it to hits).
     assert.equal(evalHitterPg("hits-2", hitterView([], { hits: 1 })), false);

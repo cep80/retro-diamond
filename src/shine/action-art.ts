@@ -27,7 +27,7 @@ export function ballLeavesBat(beat: FieldBeat): boolean {
 /** The outcome card, one line per beat (PA film bible §1.4). */
 export const RESULT_LINE: Record<FieldBeat, string> = {
   miss: "Swing and a miss.",
-  "foul-tip": "Foul tip. She just got a piece of it.",
+  "foul-tip": "Foul tip, and she just got a piece of it.",
   foul: "Fouled off.",
   "take-strike": "Called strike.",
   ball: "Ball.",
@@ -43,12 +43,12 @@ export const RESULT_LINE: Record<FieldBeat, string> = {
   hr: "That ball is gone!",
 };
 
-export const TWO_STRIKE_FOUL_SUFFIX = " Still two strikes.";
+export const TWO_STRIKE_FOUL_SUFFIX = ", and it's still two strikes.";
 
-/** One readable callout per resolved pitch; two-strike fouls add the count sentence. */
+/** One readable callout per resolved pitch; two-strike fouls add the count in the same breath. */
 export function resultReadout(opts: { beat: FieldBeat; twoStrikeHold: boolean }): string {
   const line = RESULT_LINE[opts.beat];
-  if (opts.twoStrikeHold && (opts.beat === "foul" || opts.beat === "foul-tip")) return `${line}${TWO_STRIKE_FOUL_SUFFIX}`;
+  if (opts.twoStrikeHold && (opts.beat === "foul" || opts.beat === "foul-tip")) return `${line.replace(/\.$/, "")}${TWO_STRIKE_FOUL_SUFFIX}`;
   return line;
 }
 
@@ -300,15 +300,15 @@ export interface ActionView {
   reduced: boolean;
   /**
    * The done panel: the date is over and her still holds how it went, never a
-   * replay. "met" / "missed" puts the date's verdict on her face; true settles
-   * the closing beat as itself (a day with no verdict: the exhibition, the cage,
-   * the weekly look). Unset mid-date, and on the mound.
+   * replay. "met" / "missed" / "won-short" puts the date's verdict on her face;
+   * true settles the closing beat as itself (a day with no verdict: the
+   * exhibition, the cage, the weekly look). Unset mid-date, and on the mound.
    */
   settled?: DateVerdict | true | null;
 }
 
-/** How a date ended, for her face at the done panel. */
-export type DateVerdict = "met" | "missed";
+/** How a date ended, for her face at the done panel. "won-short": they won, her ask missed. */
+export type DateVerdict = "met" | "missed" | "won-short";
 
 export interface ActionPicture {
   pitcher: PitcherPose;
@@ -361,6 +361,7 @@ const AFTER_STAGES: ReadonlySet<Stage> = new Set(["field", "reaction", "idle"]);
  * trot: how she got there is the picture.
  */
 export function settledBatterPose(beat: FieldBeat | null, verdict: DateVerdict | null = null): BatterPose | null {
+  if (verdict === "won-short") return "trot";
   if (verdict === "missed") return "crushed";
   if (verdict === "met") return beat === "walk" ? "trot" : "celebrate";
   if (beat === "hr") return "celebrate";

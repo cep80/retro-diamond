@@ -3,9 +3,10 @@
  *
  *   pick → Go → (prepare → flight → beat) × pitches → PA card → next PA …
  *
- * The Coach sits once, presses Go, and can release one swing while the ball
- * is in the air. With no release, she swings from her sheet. She steps into
- * the next plate appearance on her own. Every pitch is dealt and resolved by
+ * The Coach sits once, presses Go, and can commit one swing while the ball
+ * is in the air. A tap shortens. A hold is the cut. With no commit, she
+ * swings from her sheet. She steps into the next plate appearance on her
+ * own. Every pitch is dealt and resolved by
  * the shared `PlateController`; this layer adds her swing decision (`race.ts`)
  * and the sequencing between pitches and PAs. Renders nothing, persists nothing.
  */
@@ -18,6 +19,8 @@ import type { PlateEvent } from "./events.ts";
 import {
   dealPitch,
   ensureExhibitionScratch,
+  exhibitionDue,
+  exhibitionDueIsHost,
   featuredLi,
   fieldBeatFor,
   finishExhibitionPitch,
@@ -34,13 +37,22 @@ import {
 import { gutsActive, leverageIndex } from "./oracle.ts";
 import { PlateController, realScheduler, type PlateCue, type PlateScheduler, type PlateSnapshot } from "./plate-controller.ts";
 import { morningDeparture } from "./ending.ts";
-import { atBatQuote, decideSwing, heldMeetU, paCardLine, RACE_MODS, RACE_PACE, releaseBand, releaseTimingErr, type RacePick, type ReleaseBand, type SwingDecision } from "./race.ts";
+import {
+  atBatQuote,
+  commitTimingErr,
+  commitmentForKind,
+  committedKind,
+  decideSwing,
+  heldMeetU,
+  paCardLine,
+  RACE_MODS,
+  RACE_PACE,
+  type RacePick,
+  type SwingCommitment,
+  type SwingContext,
+  type SwingDecision,
+} from "./race.ts";
 import type { TraineeRun } from "./types.ts";
-
-/** Their half is still open. A function so the side can flip to hers inside the at-bat. */
-function theirHalfOpen(board: FeaturedGame): boolean {
-  return !board.done && Boolean(board.encounter?.fullGame) && board.batting === "theirs";
-}
 
 /** The next pitch starts. Until then the film keeps the half that just ended. */
 function releaseHalfShown(board: FeaturedGame) {
@@ -53,8 +65,8 @@ export type RaceCue =
   /** `introMs` > 0: the first pitch waits that long (the VS card plays over it). */
   | { t: "go"; pa: number; introMs: number }
   | { t: "decision"; decision: SwingDecision }
-  /** The Coach released a swing during flight. `u` is flight progress. */
-  | { t: "release"; u: number; band: ReleaseBand }
+  /** The Coach committed a swing during flight. `u` is flight progress at the press. */
+  | { t: "release"; u: number; commitment: SwingCommitment; kind: SwingKind }
   /** `scored`: she came around to score on this trip (not a home run's own trot); the card holds for her 得点. */
   | { t: "pa-card"; pa: number; beat: FieldBeat; line: string; reached: boolean; scored: boolean }
   | { t: "pick"; pa: number }
@@ -115,13 +127,49 @@ export function pitchKmh(pitch: { type: PitchType; speed: number }): number {
   return Math.round(Math.max(GUN_MIN_KMH, Math.min(GUN_MAX_KMH, kmh)));
 }
 
-/** The broadcast plate's words: "Fastball · 148 km/h" (the plate sets it in caps). */
+/** The gun's three words while the ball is in the air. The card still names the pitch. */
+export function pitchReadKind(type: PitchType): "Fast" | "Breaking" | "Slow" {
+  if (type === "fastball") return "Fast";
+  if (type === "changeup") return "Slow";
+  return "Breaking";
+}
+
+/** The broadcast plate's words: "Fast · 148 km/h" (the plate sets it in caps). */
 export function pitchReadout(pitch: { type: PitchType; speed: number }): string {
-  return `${PITCH_NAME[pitch.type] ?? "Pitch"} · ${pitchKmh(pitch)} km/h`;
+  return `${pitchReadKind(pitch.type)} · ${pitchKmh(pitch)} km/h`;
 }
 
 /** The readout comes up this far into the flight, once the gun has it; it stays through the result. */
 export const READOUT_FROM_U = 0.15;
+
+/** Her swing context for this pitch. `decide` and a commit share one read of it. */
+export function swingContextFor(
+  run: TraineeRun,
+  plate: { pitch: LivePitch | null; game: FeaturedGame; aim: Cell; call: DuelCall },
+): SwingContext | null {
+  const pitch = plate.pitch;
+  if (!pitch) return null;
+  const game = plate.game;
+  const who = sheet(run.characterId);
+  const li = featuredLi(run, game);
+  const guts =
+    gutsActive({
+      li: leverageIndex(game.scoreDiff, game.inning, game.outs, game.risp, game.count),
+      lastSpurt: game.lastSpurt,
+      trailingBy: Math.max(0, -game.scoreDiff),
+      gutsWhenTrail5: who.aptitude === "G",
+      sparks: run.carry,
+    }) || li >= 2;
+  return {
+    stats: run.stats,
+    style: who.style,
+    count: game.count,
+    pitch: { loc: pitch.loc, speed: pitch.speed, family: pitch.family, stuff: pitch.stuff },
+    pick: { sit: plate.aim, call: plate.call },
+    practice: game.kind === "practice",
+    guts,
+  };
+}
 
 /**
  * The Duel verdict under the card line, minus any sentence the line already
@@ -152,8 +200,11 @@ export interface RaceSnapshot {
   pick: RacePick;
   /** Her decision on the pitch in the air (or just resolved). */
   decision: SwingDecision | null;
-  /** The Coach's release on this pitch, or null when she let it go. */
-  release: { band: ReleaseBand; u: number } | null;
+  /**
+   * The Coach's commit on this pitch, or null when she let the sheet go.
+   * `asked` is the press. `commitment` is the swing she offered.
+   */
+  release: { asked: SwingCommitment; commitment: SwingCommitment; kind: SwingKind; u: number } | null;
   /** The last plate appearance's card; stays through the next pick. */
   card: PaCard | null;
   /** Pitches she has seen this PA, for the count bulbs and the caption. */
@@ -184,13 +235,11 @@ export class RaceController {
   readonly run: TraineeRun;
   private phase: RacePhase = "pick";
   private decision: SwingDecision | null = null;
-  private releaseInfo: { band: ReleaseBand; u: number } | null = null;
+  private releaseInfo: { asked: SwingCommitment; commitment: SwingCommitment; kind: SwingKind; u: number } | null = null;
   private released = false;
   private card: PaCard | null = null;
   private paAtGo = 1;
   private watching = false;
-  /** Their half just ended. The next pick is hers: sit, then Go. */
-  private handHerTheBat = false;
   private nextPa = false;
   private pending: "pitch" | "card" | null = null;
   private pendingHandle: unknown = null;
@@ -227,7 +276,7 @@ export class RaceController {
       flightScale: this.pace.flightScale,
       prepareMs: this.pace.prepareMs,
       prepareMsReduced: this.pace.prepareMsReduced,
-      // A release can still land at the plate; the beat lets the swing finish.
+      // A commitment can still replace the swing at the plate; the beat lets it finish.
       beatPace: "race",
       // Sit + Go is the 1.0 race. The Duel hand is a later expansion.
       duel: opts.duel ?? false,
@@ -332,14 +381,15 @@ export class RaceController {
     this.released = false;
     this.releaseInfo = null;
     const fullGame = Boolean(snap.game.encounter?.fullGame);
-    const batting = snap.game.batting;
     if (fullGame) {
       snap.game.cutaway = null;
       releaseHalfShown(snap.game);
+      const due = exhibitionDue(snap.game);
+      if (due) snap.game.shownBatter = due;
     }
     this.cue({ t: "go", pa: this.paAtGo, introMs: intro });
     this.changed();
-    if (fullGame && batting === "theirs") {
+    if (fullGame && !exhibitionDueIsHost(snap.game, this.run.characterId)) {
       if (intro > 0) this.later("pitch", () => this.playTheirAtBat(), intro);
       else this.playTheirAtBat();
       return true;
@@ -350,13 +400,13 @@ export class RaceController {
   }
 
   /**
-   * Their half is a watched at-bat: the same swing rules, then the beat the
-   * plate already named. She does not sit this one.
+   * A watched at-bat: anyone but her. The same swing rules, then one card.
+   * She does not sit this one.
    */
   private playTheirAtBat() {
     if (this.phase !== "racing") return;
     const board = this.plate.getSnapshot().game;
-    if (!theirHalfOpen(board)) return;
+    if (board.done || !board.encounter?.fullGame || exhibitionDueIsHost(board, this.run.characterId)) return;
     const side = ensureExhibitionScratch(this.run, board);
     const scratch = side.game;
     const strike: LivePitch = { type: "fastball", loc: { x: 1.5, y: 1.5 }, inZone: true, speed: 0.6, recognizeAt: 0, family: "hard" };
@@ -391,7 +441,6 @@ export class RaceController {
       takeExhibitionPitch(this.run, board, strike);
     }
     if (scratch.done && board.sidePlate) finishExhibitionPitch(board);
-    if (board.batting === "hers" && !board.done) this.handHerTheBat = true;
     const cut = board.cutaway;
     const beat = cut?.beat ?? fieldBeatFor(board);
     const swung = cut ? cut.swung : true;
@@ -412,24 +461,31 @@ export class RaceController {
   }
 
   /**
-   * One swing while the ball is in the air. Replaces her sheet timing and can
-   * force an offer she was going to take. A second release, a pause, or a
-   * pitch that has already landed does nothing. Returns false when nothing resolved.
+   * One swing while the ball is in the air. A shorten is contact. A cut is
+   * power, except at two strikes and in the cage, which stay a shorten.
+   * Her timing stays the sheet's: the same draw when the swing matches,
+   * scaled when it changes, and a fresh draw when she was taking. A second
+   * commit, a pause, or a pitch that has already landed does nothing.
+   * Returns false when nothing resolved.
    */
-  release(u: number): boolean {
+  release(u: number, asked: SwingCommitment = "shorten"): boolean {
     if (this.released || this.phase !== "racing" || !Number.isFinite(u)) return false;
     const snap = this.plate.getSnapshot();
     if (snap.stage !== "flight" || snap.paused || !this.decision) return false;
+    const ctx = swingContextFor(this.run, snap);
+    if (!ctx) return false;
     const decision = this.decision;
-    const band = releaseBand(u);
-    const timingErr = releaseTimingErr(u);
-    const kind = decision.swing ? decision.kind : "contact";
+    const practice = snap.game.kind === "practice";
+    const kind = committedKind(asked, { twoStrikes: snap.game.count.strikes >= 2, practice });
+    const commitment = commitmentForKind(kind);
+    const r = makeRng(hashId(`${this.run.rngSeed}|race|${snap.game.kind}|pa${snap.game.paIndex}|p${snap.game.pitchesSeen}|commit`));
+    const timingErr = commitTimingErr(ctx, decision, kind, r);
     const aim = decision.aim;
     this.released = true;
-    this.releaseInfo = { band, u };
+    this.releaseInfo = { asked, commitment, kind, u };
     this.decision = { ...decision, swing: true, kind, aim, timingErr, u };
-    this.cue({ t: "release", u, band });
-    const mods = snap.game.kind === "practice" ? undefined : RACE_MODS;
+    this.cue({ t: "release", u, commitment, kind });
+    const mods = practice ? undefined : RACE_MODS;
     const swung = this.plate.coachSwing(timingErr, kind, aim, mods);
     if (!swung) {
       this.released = false;
@@ -457,10 +513,7 @@ export class RaceController {
     this.plate.resume();
     if (this.nextPa && this.phase === "pick") {
       this.nextPa = false;
-      if (this.handHerTheBat) {
-        this.handHerTheBat = false;
-        this.watching = false;
-        this.plate.getSnapshot().game.cutaway = null;
+      if (this.passTheBat()) {
         this.changed();
         return;
       }
@@ -619,36 +672,16 @@ export class RaceController {
 
   private decide() {
     const snap = this.plate.getSnapshot();
-    const pitch = snap.pitch;
-    if (!pitch) return;
+    const ctx = swingContextFor(this.run, snap);
+    if (!ctx) return;
     const game = snap.game;
-    const who = sheet(this.run.characterId);
-    const li = featuredLi(this.run, game);
-    const guts = gutsActive({
-      li: leverageIndex(game.scoreDiff, game.inning, game.outs, game.risp, game.count),
-      lastSpurt: game.lastSpurt,
-      trailingBy: Math.max(0, -game.scoreDiff),
-      gutsWhenTrail5: who.aptitude === "G",
-      sparks: this.run.carry,
-    }) || li >= 2;
     const r = makeRng(hashId(`${this.run.rngSeed}|race|${game.kind}|pa${game.paIndex}|p${game.pitchesSeen}`));
-    const decision = decideSwing(
-      {
-        stats: this.run.stats,
-        style: who.style,
-        count: game.count,
-        pitch: { loc: pitch.loc, speed: pitch.speed, family: pitch.family, stuff: pitch.stuff },
-        pick: { sit: snap.aim, call: snap.call },
-        practice: game.kind === "practice",
-        guts,
-      },
-      r,
-    );
+    const decision = decideSwing(ctx, r);
     this.decision = decision;
     this.cue({ t: "decision", decision });
     this.changed();
     // Held to the plate: a sheet swing as early as 0.62 would already be gone
-    // before the Coach could meet the ball. The timing error stays hers.
+    // before a commit could replace it. The timing error stays hers.
     if (decision.swing) this.plate.swingAt(decision.kind, heldMeetU(decision.u), decision.timingErr, decision.aim, game.kind === "practice" ? undefined : RACE_MODS);
   }
 
@@ -683,6 +716,22 @@ export class RaceController {
     this.armNextPa();
   }
 
+  /**
+   * The next due batter is her. Stop the watch and wait for Go.
+   * A teammate, or the other nine, keeps the watch running.
+   */
+  private passTheBat(): boolean {
+    const game = this.plate.getSnapshot().game;
+    if (!game.encounter?.fullGame || game.done) return false;
+    if (!exhibitionDueIsHost(game, this.run.characterId)) return false;
+    this.watching = false;
+    this.nextPa = false;
+    game.cutaway = null;
+    const due = exhibitionDue(game);
+    if (due) game.shownBatter = due;
+    return true;
+  }
+
   /** The date is already going. She steps in again without another Go. */
   private armNextPa() {
     if (!this.watching) return;
@@ -695,11 +744,7 @@ export class RaceController {
       this.nextPa = true;
       return;
     }
-    if (this.handHerTheBat) {
-      this.handHerTheBat = false;
-      this.watching = false;
-      this.nextPa = false;
-      snap.game.cutaway = null;
+    if (this.passTheBat()) {
       this.changed();
       return;
     }

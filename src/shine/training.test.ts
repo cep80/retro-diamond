@@ -222,9 +222,10 @@ describe("the 失敗 figure is the risk rest and mood control (check-in 31, F2)"
 
 describe("work copy and odds", () => {
 
-  it("names a Live looks fail as a ? lock, not a Contact miss", () => {
-    assert.match(looksFailCopy(), /\? locked/);
+  it("names a Live eye-work miss as a take, not a Contact miss", () => {
+    assert.match(looksFailCopy(), /never picked it up/i);
     assert.doesNotMatch(looksFailCopy(), /Contact/i);
+    assert.doesNotMatch(looksFailCopy(), /\? locked/);
   });
 
   it("stands staff at the matching station, not a gacha tile", () => {

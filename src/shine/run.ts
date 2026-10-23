@@ -34,12 +34,14 @@ const SMALLER_DONE: Record<string, string> = {
 export function smallerAskLine(sgVerb: string | null | undefined): string {
   const done = sgVerb ? SMALLER_DONE[sgVerb] : undefined;
   if (done === "") return KEEPS_HER_IN;
-  return done ? `${done} ${KEEPS_HER_IN}` : `She still got the smaller thing she was after. ${KEEPS_HER_IN}`;
+  return done
+    ? `${done.replace(/\.$/, "")}, and that keeps her in it.`
+    : "She still got something out of it, and that keeps her in it.";
 }
 
 /** A coach line is relief (the smaller ask held) or a warning (a miss that counts). */
 export function coachWarningTone(line: string): "relief" | "warning" {
-  return line.includes(SMALLER_ASK_HELD) || line.includes(KEEPS_HER_IN) ? "relief" : "warning";
+  return line.includes(SMALLER_ASK_HELD) || line.toLowerCase().includes(KEEPS_HER_IN.toLowerCase()) ? "relief" : "warning";
 }
 import { awardGameSparks, awardStatSparks, awardTrainingSpark, careerClosesEarly, finaleUnlocked, inheritSparks, isMikiPath, mintClubhouseCard } from "./ending.ts";
 import { addHighlight, definingPaFrom, GATE_NOTE, gameHighlight, KEEPSAKE_NOTE, keepsakeHighlight, keepsakeLine, rivalHighlight, type GameRecord } from "./scrapbook.ts";
@@ -392,7 +394,7 @@ export function resolveCatchWithCoach(run: TraineeRun) {
   advance(run);
 }
 
-const YEAR_NAME: Record<1 | 2 | 3, string> = { 1: "Rookie year", 2: "Classic year", 3: "senior year" };
+const YEAR_NAME: Record<1 | 2 | 3, string> = { 1: "first spring", 2: "lantern year", 3: "last spring" };
 
 export function resolveYearScene(run: TraineeRun) {
   if (run.clubhouseCard) return;
@@ -440,7 +442,7 @@ export const FAN_FEWER = "Fewer people came to the park for her.";
 export const FAN_LINES: Record<CharacterId, { more: string; fewer: string }> = {
   aoi: { more: "Haruko ran out of 6-4-3 flags and started cutting new ones.", fewer: "A couple of the 6-4-3 regulars stayed home." },
   reina: { more: "There were more scorecards than ever behind the plate at Koi.", fewer: "There were a few empty seats behind the plate at Koi." },
-  miki: { more: "Section 4 had to make room on the bench.", fewer: "Section 4 was a little quieter. The cowbell still came." },
+  miki: { more: "Section 4 had to make room on the bench.", fewer: "Section 4 was a little quieter, but the cowbell still came." },
   sol: { more: "Luz sold out of elote before the third.", fewer: "Luz had elote left over after the game." },
   kira: { more: "More people stayed past the eighth to see her come in.", fewer: "A few more people left for the last bus before the ninth." },
   yuki: { more: "The shaved-ice line went all the way to first base.", fewer: "The shaved-ice stand closed early." },
@@ -452,28 +454,30 @@ export const FAN_LINES: Record<CharacterId, { more: string; fewer: string }> = {
  */
 export const FAN_MORE_TAKES: Record<CharacterId, [string, string]> = {
   aoi: [
-    "There's a line out the door at 6-4-3 after the game. Haruko is thrilled about it.",
+    "There's a line out the door at 6-4-3 after the game, and Haruko is thrilled about it.",
     "Somebody behind the dugout has started keeping score with a pencil stub, the way Aoi does.",
   ],
-  reina: ["Somebody behind the plate brought a sign that just says ZERO WALKS.", "The seats behind home plate filled up early. They came to watch her throw."],
-  miki: ["Section 4 brought a third cowbell. Nobody knows where they got it.", "Even the people who never clap at North were clapping."],
-  sol: ["Luz had to send somebody out for more corn by the fifth inning.", "The radar-gun crowd behind the plate doubled. They cheer every hundred."],
+  reina: ["Somebody behind the plate brought a sign that just says ZERO WALKS.", "The seats behind home plate filled up early, they came to watch her throw."],
+  miki: ["Section 4 brought a third cowbell, and nobody knows where they got it.", "Even the people who never clap were clapping tonight."],
+  sol: ["Luz had to send somebody out for more corn by the fifth inning.", "The radar-gun crowd behind the plate doubled, they cheer every hundred."],
   kira: ["Half the section was waving old bus transfers when the bullpen door opened.", "People stayed in their seats for the ninth just to watch her jog in."],
-  yuki: ["Kids along the first-base line were timing her with their phones.", "The Palms crowd was yelling for her to run before she even got on base."],
+  yuki: ["Kids along the first-base line were timing her with their phones.", "The crowd was yelling for her to run before she even got on base."],
 };
 export const FAN_FEWER_TAKES: Record<CharacterId, [string, string]> = {
-  aoi: ["The 6-4-3 crowd was a little thinner tonight. Haruko saved them seats anyway.", "Haruko had okonomiyaki left over after the game. That never happens."],
-  reina: ["The scorecard crowd behind the plate thinned out a little.", "A few regulars left early. Reina noticed, and she counted them."],
-  miki: ["North was half empty tonight. The cowbell didn't care.", "A few seats in Section 4 sat empty. The cowbell rang for them too."],
-  sol: ["The line at Luz's truck was shorter tonight. She gave Sol the extra.", "A few fans left before the ninth. Luz stayed, like always."],
-  kira: ["The stands were thinner by the ninth. The bus schedule won.", "Fewer people waited around for the bullpen door to open tonight."],
-  yuki: ["The first-base seats were a little emptier tonight.", "The shaved-ice line was short tonight. She got hers fast, at least."],
+  aoi: ["The 6-4-3 crowd was a little thinner tonight, and Haruko saved them seats anyway.", "Haruko had okonomiyaki left over after the game, and that never happens."],
+  reina: ["The scorecard crowd behind the plate thinned out a little.", "A few regulars left early, Reina noticed, and she counted them."],
+  miki: ["North was half empty tonight, and the cowbell didn't care.", "A few seats in Section 4 sat empty, and the cowbell rang for them too."],
+  sol: ["The line at Luz's truck was shorter tonight, and she gave Sol the extra.", "A few fans left before the ninth, and Luz stayed, like always."],
+  kira: ["The stands were thinner by the ninth, and the bus schedule won.", "Fewer people waited around for the bullpen door to open tonight."],
+  yuki: ["The first-base seats were a little emptier tonight.", "The shaved-ice line was short tonight, and she got hers fast, at least."],
 };
 
 /** Her line when a date moves her crowd. Zero stays quiet. A threshold line still wins. */
 export function fanAnnouncement(before: number, after: number, id: CharacterId, turn?: number): string | null {
   const lines = FAN_LINES[id];
   const take = turn === undefined ? 0 : Math.abs(turn) % 3;
+  // Finale night: Luz closed the truck to sit in row one. Don't say she sold out.
+  if (id === "sol" && turn === 60 && after > before) return "Row one was Luz, two bags of churros.";
   if (after > before) return (take && FAN_MORE_TAKES[id]?.[take - 1]) || (lines?.more ?? FAN_MORE);
   if (after < before) return (take && FAN_FEWER_TAKES[id]?.[take - 1]) || (lines?.fewer ?? FAN_FEWER);
   return null;
@@ -485,13 +489,13 @@ function tickFanBeat(run: TraineeRun) {
     run.fanBeat = "The kids at the gate are wearing her number now.";
   } else if (run.fans >= 80 && run.fanStory < 80) {
     run.fanStory = 80;
-    run.fanBeat = "People in the stands are calling her a fan favorite now. Her Clubhouse card is going to be gold.";
+    run.fanBeat = "People in the stands are calling her a fan favorite now, and her Clubhouse card is going to be gold.";
   } else if (run.fans >= 60 && run.fanStory < 60) {
     run.fanStory = 60;
     run.fanBeat = "Somebody hung a banner with her number on it out by the outfield wall.";
   } else if (run.fans >= 30 && run.fanStory < 30) {
     run.fanStory = 30;
-    run.fanBeat = "Letters are showing up at the complex for her. People come out just to watch her now.";
+    run.fanBeat = "Letters are showing up at the Academy for her, and people come out just to watch her now.";
   }
 }
 
@@ -544,7 +548,8 @@ export function applyGameResult(
     run.faced = { ...run.faced, [carry.record.arm]: (run.faced[carry.record.arm] ?? 0) + 1 };
     addHighlight(run, rivalHighlight(run, carry.record.arm));
   }
-  addHighlight(run, gameHighlight(run, kind, pgMet, sgMet, carry?.record));
+  const smaller = !pgMet && sgMet ? smallerAskLine(officialFor(run.characterId, run.turn)?.sgVerb) : null;
+  addHighlight(run, gameHighlight(run, kind, pgMet, sgMet, carry?.record, smaller));
   const minted =
     carry?.definingPa ??
     (carry?.record ? definingPaFrom(run, kind, carry.record, pgMet, carry.inning ?? 1, carry.outs ?? 0, carry.scoreDiff ?? 0) : null);
@@ -566,7 +571,13 @@ export function applyGameResult(
       warm: true,
     });
   }
-  if (kind === "first-light") remember(run, { kind: "first-light", turn: run.turn, note: pgMet ? "First Light: the goal held." : "First Light: the goal slipped.", warm: pgMet });
+  if (kind === "first-light")
+    remember(run, {
+      kind: "first-light",
+      turn: run.turn,
+      note: pgMet ? "First Light went her way." : "First Light got away from her.",
+      warm: pgMet,
+    });
 
   const official = kind !== "gate" && kind !== "finale";
   if (reached) {
@@ -595,19 +606,19 @@ export function applyGameResult(
     run.coachWarning = null;
   } else if (official) {
     if (sgMet) {
-      // Name the smaller ask, since nothing else on the screen does. It's good news, so it reads as relief.
-      run.coachWarning = smallerAskLine(officialFor(run.characterId, run.turn)?.sgVerb);
+      // Name what she still did, since nothing else on the screen does. It's good news, so it reads as relief.
+      run.coachWarning = smaller ?? smallerAskLine(officialFor(run.characterId, run.turn)?.sgVerb);
     } else {
       run.pgMisses += 1;
       applyMood(run, pgMissMoodDrop(run.stats.guts));
       run.fans = Math.max(0, run.fans - 3);
       run.coachWarning = isMikiPath(run)
-        ? "That one got away. Section 4 doesn't care, and neither does North. She plays on."
+        ? "That one got away, and Section 4 doesn't care and neither does North, so she plays on."
         : run.pgMisses >= 2
-          ? `That's two big games lost. ${turnMeta(run.turn).label} was her last one at the Academy.`
+          ? `That's two big games lost, and ${turnMeta(run.turn).label} was her last one at the Academy.`
           : turnMeta(run.turn).type === "series"
-            ? "That one got away, but nothing left this year can end her run. Let her breathe."
-            : "That's one big game lost. Lose one more and her Academy days are over.";
+            ? "That one got away, but nothing left this year can end her run, so let her breathe."
+            : "One more like that and they close her file, and we don't let it be one more.";
       if (run.pgMisses >= 2 && !isMikiPath(run)) {
         const page = [...run.highlights].reverse().find((h) => h.kind === "game" && h.turn === run.turn);
         const date = turnMeta(run.turn).label;
@@ -675,7 +686,7 @@ export function practiceRepResult(before: TraineeRun, after: TraineeRun): RepRes
   const energyChip: RepChip[] =
     energy > 0 ? [{ text: `Energy +${energy}`, cost: false }] : energy < 0 ? [{ text: `Energy ${REP_MINUS}${-energy}`, cost: true }] : [];
   if (!w) {
-    return { outcome: "treatment", gains: [], chips: energyChip, line: "She had nothing left to work with. The trainer took her after." };
+    return { outcome: "treatment", gains: [], chips: energyChip, line: "She had nothing left to work with, so the trainer took her after." };
   }
   const gains: RepResult["gains"] = [];
   if (w.to > w.from) gains.push({ stat: w.stat, from: w.from, to: w.to });
@@ -697,39 +708,39 @@ export function practiceRepResult(before: TraineeRun, after: TraineeRun): RepRes
 const REP_SAID: Record<CharacterId, { success: [string, string]; bonus: string; fail: string; badFail: string }> = {
   // About the whole morning's work, never the one pitch on screen: the rep can look great and the work still not take.
   aoi: {
-    success: ["\"My hands feel quicker than yesterday. I'm writing that down.\"", "\"Um, sorry, that felt good. The whole morning did. Can I say that?\""],
-    bonus: "\"Coach, everything felt right this morning. Write it down in pen.\"",
-    fail: "\"Something's off in my hands today. Tomorrow, though.\"",
-    badFail: "\"Sorry. My hands were somewhere else this morning. I'll go find them.\"",
+    success: ["\"My hands feel quicker than yesterday, I'm writing that down.\"", "\"Um, sorry, that felt good, the whole morning did, can I say that?\""],
+    bonus: "\"Coach, everything felt right this morning, write it down in pen.\"",
+    fail: "\"Something's off in my hands today, tomorrow, though.\"",
+    badFail: "\"Sorry, my hands were somewhere else this morning, I'll go find them.\"",
   },
   reina: {
-    success: ["\"Again.\" She doesn't say it like it was bad, which is how you know it wasn't.", "\"The slot held all morning. Write that down.\""],
+    success: ["\"Again.\" She doesn't say it like it was bad, which is how you know it wasn't.", "\"The slot held all morning, write that down.\""],
     bonus: "\"Every pitch this morning went where I said.\" She checks the notebook anyway. \"Every one.\"",
-    fail: "\"The slot dropped this morning. You saw it. Don't say it. I know.\"",
+    fail: "\"The slot dropped this morning, you saw it, don't say it, I know.\"",
     badFail: "\"Don't talk yet.\" She stands on the mound a long time before she walks off.",
   },
   miki: {
-    success: ["\"Cool.\" And for once, she means it.", "\"Gary clanked twice this morning. That means he approves.\""],
-    bonus: "\"Okay, this morning was actually good. Don't make it a thing, Coach.\"",
+    success: ["\"Cool.\" And for once, she means it.", "\"Gary clanked twice this morning, that means he approves.\""],
+    bonus: "\"Okay, this morning was actually good, don't make it a thing, Coach.\"",
     fail: "\"Cool. Cool cool. Same time tomorrow, I guess.\"",
-    badFail: "\"Don't do the talk. Just walk slow with me.\"",
+    badFail: "\"Don't do the talk, just walk slow with me.\"",
   },
   sol: {
-    success: ["\"Ninety-six.\" That's good. That's her saying good.", "\"Arm's fine, Jefe. Better than fine.\""],
+    success: ["\"Ninety-six.\" That's good. That's her saying good.", "\"Arm's fine, Jefe, better than fine.\""],
     bonus: "\"Ninety-eight.\" She almost smiles. \"Don't tell Luz.\"",
-    fail: "\"Arm's tight this morning. Ninety-one. Ask me again after lunch.\"",
+    fail: "\"Arm's tight this morning, ninety-one, ask me again after lunch.\"",
     badFail: "\"Ninety-nine.\" That means leave her alone for a while.",
   },
   kira: {
-    success: ["\"Here's the deal, Partner. That was a good morning, so you buy the juice.\"", "\"In and out, Partner. That's how I like it.\""],
-    bonus: "\"Partner, I'd sign this morning's deal again. Every single day.\"",
-    fail: "\"This morning wasn't the deal. New deal tomorrow.\"",
+    success: ["\"Here's the deal, Partner, that was a good morning, so you buy the juice.\"", "\"In and out, Partner, that's how I like it.\""],
+    bonus: "\"Partner, I'd sign this morning's deal again, every single day.\"",
+    fail: "\"This morning wasn't the deal, new deal tomorrow.\"",
     badFail: "\"That was me being dumb in an exciting new way. I'll be at the door.\"",
   },
   yuki: {
-    success: ["\"My hands were quick today. Did you see? You didn't see.\"", "\"Faster than yesterday, Stopwatch. Don't argue.\""],
-    bonus: "\"Everything was quick this morning, Stopwatch. You should've timed it.\"",
-    fail: "\"I kept swinging early this morning. It's fine. It's fine.\"",
+    success: ["\"My hands were quick today, did you see, you didn't see.\"", "\"Faster than yesterday, Stopwatch, don't argue.\""],
+    bonus: "\"Everything was quick this morning, Stopwatch, you should've timed it.\"",
+    fail: "\"I kept swinging early this morning, it's fine, it's fine.\"",
     badFail: "\"Hands are cold, that's all.\" She's rubbing her leg, not her hands.",
   },
 };

@@ -3,7 +3,7 @@
  * Every field added to `TraineeRun` gets a default here; every persisted screen
  * is vetted here; the live attempt only survives when it matches the run.
  */
-import { morningKind } from "./calendar.ts";
+import { morningKind, turnMeta } from "./calendar.ts";
 import { endingRank, mintClubhouseCard } from "./ending.ts";
 import type { FeaturedGame } from "./featured-game.ts";
 import type { PitchingGame } from "./pitching.ts";
@@ -104,12 +104,19 @@ export function patchRun(run: TraineeRun | null): TraineeRun | null {
 /**
  * The plate only survives a reload when a live attempt was saved; otherwise a
  * reload lands on the title like before, so nothing half-dealt is resumed.
+ * A practice or first-day cage is the morning: it stays on the plate even
+ * before Go, so a reload cannot dump the Coach on the title and throw the one
+ * pitch away. A real date still needs a live attempt, or it returns to title.
  */
-export function persistedScreen(screen: ShineScreen, hasRun: boolean, hasLive: boolean): ShineScreen {
+export function persistedScreen(screen: ShineScreen, hasRun: boolean, hasLive: boolean, repMorning = false): ShineScreen {
   // The 3D exhibition is in-memory only: a reload starts fresh from the title.
   if (screen === "exhibition") return "title";
-  if (screen === "weekly" || screen === "wall" || screen === "settings" || screen === "help") return hasRun ? "complex" : "title";
-  if (screen === "plate") return hasLive ? "plate" : "title";
+  if (screen === "weekly" || screen === "wall" || screen === "settings" || screen === "help") {
+    if (!hasRun) return "title";
+    return repMorning ? "plate" : "complex";
+  }
+  if (screen === "plate") return hasLive || repMorning ? "plate" : "title";
+  if (screen === "complex" && repMorning) return "plate";
   return screen;
 }
 
@@ -154,9 +161,15 @@ export function remintPendingCard(run: TraineeRun | null): TraineeRun | null {
  * tiles would skip the rep. Old saves made on the complex on those mornings land on the rep too.
  * Nothing is dealt yet when it opens from here, so it starts fresh.
  */
-function plateDay(run: TraineeRun): boolean {
+export function plateDay(run: TraineeRun): boolean {
   if (run.phase === "postgame" || run.phase === "year-end") return false;
   return run.phase === "plate" || morningKind(run.turn) === "practice";
+}
+
+/** The one-pitch morning: a practice rep, or her first day in the cage. */
+export function repMorning(run: TraineeRun): boolean {
+  if (run.phase === "postgame" || run.phase === "year-end") return false;
+  return morningKind(run.turn) === "practice" || turnMeta(run.turn).type === "tutorial-plate";
 }
 
 export function migratePersisted(persisted: unknown, version: number) {
@@ -164,13 +177,16 @@ export function migratePersisted(persisted: unknown, version: number) {
   const patched = patchRun(p.run ?? null);
   const run = version < 7 ? remintPendingCard(patched) : patched;
   const live = liveMatches(p.liveGame, run);
-  const screen =
-    p.screen && p.screen !== "weekly" && p.screen !== "wall" && p.screen !== "settings" && p.screen !== "help" && p.screen !== "exhibition"
-      ? p.screen
-      : "title";
+  const overlay = p.screen === "weekly" || p.screen === "wall" || p.screen === "settings" || p.screen === "help";
+  let screen: ShineScreen;
+  if (!p.screen || p.screen === "exhibition") screen = "title";
+  else if (overlay) screen = run && plateDay(run) ? "plate" : run ? "complex" : "title";
+  else screen = p.screen;
+  if (screen === "plate" && !live && !(run && repMorning(run))) screen = "title";
+  else if (screen === "complex" && run && plateDay(run)) screen = "plate";
   return {
     run,
-    screen: screen === "plate" && !live ? ("title" as ShineScreen) : screen === "complex" && run && plateDay(run) ? ("plate" as ShineScreen) : screen,
+    screen,
     lastLine: p.lastLine ?? null,
     clubhouse: (version < 4 ? [] : (p.clubhouse ?? [])).map((c) => ({
       // The pending card was pushed to the wall the moment the career closed, under the same

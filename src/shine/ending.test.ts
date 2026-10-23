@@ -8,6 +8,7 @@ import {
   cardBanner,
   cardGold,
   endingRank,
+  endingWhy,
   finaleFloorMet,
   finaleGap,
   postgameLeaveLabel,
@@ -21,11 +22,15 @@ import {
   pickInheritSparks,
   sparkEffectLine,
   nextGirlId,
+  SPARK_NONE,
   sparkGapLine,
+  wallCardLines,
   applyParentPeak,
   awardTrainingSpark,
 } from "./ending.ts";
 import { keepsakeWallLine } from "./scrapbook.ts";
+import { endingLastLine } from "./story-endings.ts";
+import { teachLines } from "./teach.ts";
 import { contactTimingMult, shineSwingWindow } from "./oracle.ts";
 import { applyGameResult, leavePostgame, newAoiRun, newRun, resolveOffDay } from "./run.ts";
 
@@ -43,7 +48,7 @@ describe("Diamond Finale and endings", () => {
     run.pgMisses = 1;
     assert.equal(finaleUnlocked(run), true);
     assert.equal(finaleFloorMet(run), false);
-    assert.equal(finaleGap(run), "That's the Series done. The Diamond Finale is next, and she's still growing into the player it needs.");
+    assert.equal(finaleGap(run), "The Series is done, and she's still growing into the player the Diamond Finale needs.");
     assert.doesNotMatch(finaleGap(run), /needs \d|contact \d|speed \d/i);
   });
 
@@ -65,12 +70,12 @@ describe("Diamond Finale and endings", () => {
     miki.pgMisses = 2;
     miki.turn = 33;
     assert.equal(yearFoldLine(miki, "Night Classic", "The Stretch is in 17 days."), "The Stretch is in 17 days.");
-    assert.equal(postgameLeaveLabel(miki, false), "Back to the complex");
+    assert.equal(postgameLeaveLabel(miki, false), "Back to the morning");
     assert.equal(postgameLeaveLabel(miki, true), "End of the year");
     const aoi = newAoiRun();
     aoi.pgMisses = 2;
     aoi.turn = 33;
-    assert.equal(yearFoldLine(aoi, "Night Classic", "The Stretch is in 17 days."), "That was her last big game. Her Academy days end tonight, after Night Classic.");
+    assert.equal(yearFoldLine(aoi, "Night Classic", "The Stretch is in 17 days."), "That was her last big game, and her Academy days end tonight after Night Classic.");
     assert.equal(postgameLeaveLabel(aoi, false), "End of the year");
   });
 
@@ -85,7 +90,7 @@ describe("Diamond Finale and endings", () => {
     const run = newAoiRun();
     floorsForAoi(run);
     assert.equal(finaleFloorMet(run), true);
-    assert.equal(finaleGap(run), "That's the Series done. The Diamond Finale is next, and she's ready for it.");
+    assert.equal(finaleGap(run), "The Series is done, and she's ready for the Diamond Finale.");
     assert.doesNotMatch(finaleGap(run), /hers/);
   });
 
@@ -268,8 +273,10 @@ describe("Diamond Finale and endings", () => {
     run.pgResults[6] = "met";
     run.pgMisses = 1;
     run.fans = 33;
-    assert.equal(careerStill(run).quote, "She struck out two in the Diamond Finale's ninth, and the lead held.");
+    assert.equal(careerStill(run).quote, "Two punchouts in the ninth of the Diamond Finale, and nobody scored.");
     assert.equal(careerStill(run).frame, "Three years, and she made it all the way to the Finale.");
+    run.finaleRead = "She struck out three hitters.";
+    assert.equal(careerStill(run).quote, "Three punchouts in the ninth of the Diamond Finale, and nobody scored.");
   });
 
   it("does not put a sat Finale back in the pen", () => {
@@ -341,16 +348,23 @@ describe("Diamond Finale and endings", () => {
     const run = newAoiRun();
     const empty = mintClubhouseCard(run);
     const gap = sparkGapLine([{ ...empty, sparks: [] }]);
-    assert.match(gap ?? "", /Reina is next/i);
+    assert.match(gap ?? "", /Reina/);
     assert.doesNotMatch(gap ?? "", /PA style|Spark is 1 turn/i);
+    assert.equal((gap ?? "").split(/(?<=[.!])\s+/).filter(Boolean).length, 1);
     const carried = sparkGapLine([{ ...empty, sparks: [{ kind: "contact", power: 1 }] }]);
-    assert.match(carried ?? "", /Reina is next/i);
+    assert.match(carried ?? "", /passes on what she learned about finding the barrel/);
+    assert.doesNotMatch(carried ?? "", /is next/i);
+    assert.equal((carried ?? "").split(/(?<=[.!])\s+/).filter(Boolean).length, 1);
+    const yukiWait = sparkGapLine([{ ...mintClubhouseCard(newRun("yuki")), sparks: [] }]);
+    assert.match(yukiWait ?? "", /Aoi/);
+    assert.equal((yukiWait ?? "").split(/(?<=[.!])\s+/).filter(Boolean).length, 1);
   });
 
   it("names sparks without formula tooltips", () => {
     assert.doesNotMatch(sparkEffectLine("contact"), /×|\d+\.\d+|window/);
     assert.doesNotMatch(sparkEffectLine("guts"), /leverage|fires 0/);
     assert.match(sparkEffectLine("contact"), /squares the ball up/i);
+    assert.match(sparkEffectLine("contact"), /[.]$/);
   });
 
   it("lets the Coach pick at most three inherit sparks", () => {
@@ -430,7 +444,7 @@ describe("Diamond Finale and endings", () => {
 });
 
 describe("the ending says why", () => {
-  it("names the numbers, and the next rank's ask is what would have lifted her", async () => {
+  it("names the crowd and the nights, not a rank table", async () => {
     const { endingRank, endingWhy, RANK_FANS } = await import("./ending.ts");
     const { newRun } = await import("./run.ts");
     const run = newRun("aoi");
@@ -440,8 +454,9 @@ describe("the ending says why", () => {
     assert.equal(a, "A");
     assert.equal(
       endingWhy(run, a, true, true),
-      "She finished with 70 fans, one big game got away from her, and she won the Finale. An S would have taken no big game lost and 78 fans.",
+      "70 people came for her. One of the big nights got away from her, and she won the Finale. Keeping every big night and a fuller park is the only thing that kept this from being everything.",
     );
+    assert.doesNotMatch(endingWhy(run, a, true, true), /in the seats|An S wanted|An A wanted/);
     assert.equal(RANK_FANS.S, 75);
     assert.equal(RANK_FANS.sHitter, 78);
     run.pgMisses = 0;
@@ -456,7 +471,27 @@ describe("the ending says why", () => {
     run.fans = 45;
     const b = endingRank(run, false, false);
     assert.equal(b, "B");
-    assert.match(endingWhy(run, b, false, false), /An A would have taken a Finale win and 60 fans\.$/);
+    assert.equal(
+      endingWhy(run, b, false, false),
+      "45 people came for her. She never lost a night that counted. Winning the Finale and a fuller park is what would have taken this further.",
+    );
+    assert.doesNotMatch(endingWhy(run, b, false, false), /in the seats|An A wanted/);
+  });
+
+  it("splits How the year landed into one-sentence taps, never a dumped blob", () => {
+    const run = newRun("yuki");
+    run.pgMisses = 0;
+    run.fans = 64;
+    run.pgResults = ["met", "met", "met", "met", "met", "met", "met"];
+    run.finaleTeamWon = false;
+    const why = endingWhy(run, "A", true, true);
+    const parts = teachLines(why);
+    assert.ok(parts.length >= 3, why);
+    for (const part of parts) {
+      assert.match(part, /[.!]$/, part);
+      assert.doesNotMatch(part, /[.!].+[.!]/, part);
+    }
+    assert.doesNotMatch(why, /in the seats|An S wanted|An A wanted/);
   });
 
   it("ranks by the table: closed early is C or D, the Finale is B or better, and never-quit never blocks an earned S or A", async () => {
@@ -500,9 +535,9 @@ describe("the ending says why", () => {
                 // Grant exactly what the gap names, and nothing else.
                 const lifted = newRun(id);
                 lifted.stats = { ...run.stats };
-                const fansGap = gap.find((g) => g.endsWith(" fans"));
+                const fansGap = gap.find((g) => g.endsWith(" in the seats"));
                 lifted.fans = fansGap ? Number.parseInt(fansGap, 10) : run.fans;
-                lifted.pgMisses = gap.includes("no big game lost") ? 0 : gap.includes("no more than one big game lost") ? 1 : run.pgMisses;
+                lifted.pgMisses = gap.includes("every big game") ? 0 : gap.includes("no more than one big game getting away") ? 1 : run.pgMisses;
                 const finaleWon = gap.includes("a Finale win") ? true : won;
                 const got = endingRank(lifted, finaleWon || played, finaleWon);
                 const why = `${id} fans=${fans} misses=${misses} played=${played} won=${won} floor=${floor} → ${rank}, ask for ${target}: ${gap.join(" | ")} → ${got}`;
@@ -523,7 +558,10 @@ describe("the ending says why", () => {
     run.fans = 52;
     run.pgResults[6] = "met";
     assert.equal(endingRank(run, true, true), "B");
-    assert.equal(endingWhy(run, "B", true, true), "She finished with 52 fans, and one big game got away from her. She won the Finale. An A would have taken 60 fans.");
+    assert.equal(
+      endingWhy(run, "B", true, true),
+      "52 people came for her. One of the big nights got away from her, and she won the Finale. A fuller park is what would have taken this further.",
+    );
     assert.doesNotMatch(endingQuote(run, "B"), /one win away/, "a won Finale isn't a game short");
   });
 
@@ -537,7 +575,7 @@ describe("the ending says why", () => {
     assert.equal(endingRank(run, true, false), "B");
     assert.equal(
       endingWhy(run, "B", true, false),
-      "She finished with 45 fans, and one big game got away from her. She played the Finale and came up short. An A would have taken a Finale win and 60 fans.",
+      "45 people came for her. One of the big nights got away from her. She played the Finale and came up short. Winning the Finale and a fuller park is what would have taken this further.",
     );
     assert.doesNotMatch(endingQuote(run, "B"), /one win away/);
     run.fans = 70;
@@ -551,7 +589,8 @@ describe("the ending says why", () => {
     run.fans = 64;
     run.pgResults[6] = "missed";
     const why = endingWhy(run, "never-quit", true, false);
-    assert.match(why, /^She finished with 64 fans\. She played the Finale/);
+    assert.match(why, /^64 people came for her\. She played the Finale/);
+    assert.doesNotMatch(why, /in the seats|An A wanted/);
     assert.doesNotMatch(why, /no Finale/);
     assert.doesNotMatch(endingQuote(run, "never-quit"), /brought a second cowbell/, "the second cowbell came in Year 1");
   });
@@ -599,16 +638,67 @@ describe("the last screen: Winning Live or Last Bow (check-in 22)", () => {
     assert.deepEqual(wallCardPicture("reina"), { kind: "bust", mood: "focused" });
   });
 
-  it("names what she passes on once per kind", async () => {
-    const { sparkSummary } = await import("./ending.ts");
+  it("names one habit she passed on, never a counted list", async () => {
+    const { sparkSummary, sparkWallLine } = await import("./ending.ts");
     assert.equal(
       sparkSummary([
         { kind: "contact", power: 1 },
         { kind: "speed", power: 1 },
         { kind: "contact", power: 1 },
       ]),
-      "Contact ×2 · Speed",
+      "finding the barrel, twice, then the first step",
     );
     assert.equal(sparkSummary([{ kind: "polish", power: 0.5 }]), "");
+    assert.equal(SPARK_NONE, "She didn't leave a habit.");
+    assert.doesNotMatch(SPARK_NONE, /Nothing this time/);
+    assert.equal(
+      sparkWallLine([
+        { kind: "contact", power: 1 },
+        { kind: "speed", power: 1 },
+        { kind: "contact", power: 1 },
+      ]),
+      "She passed on finding the barrel.",
+    );
+    assert.doesNotMatch(
+      sparkWallLine([
+        { kind: "contact", power: 1 },
+        { kind: "speed", power: 1 },
+        { kind: "contact", power: 1 },
+      ]),
+      /twice|, then /,
+    );
+    assert.equal(sparkWallLine([{ kind: "polish", power: 0.5 }]), SPARK_NONE);
+  });
+
+  it("reads the Clubhouse door one sentence at a time, not as a dumped wall", async () => {
+    const { CLUBHOUSE_INTRO } = await import("./ending.ts");
+    assert.ok(CLUBHOUSE_INTRO.length >= 2);
+    assert.doesNotMatch(CLUBHOUSE_INTRO.join(" "), /from scratch|three years|you coach/);
+    assert.match(CLUBHOUSE_INTRO[0]!, /finished their year/);
+    assert.match(CLUBHOUSE_INTRO.join(" "), /leave her a habit/);
+    assert.doesNotMatch(CLUBHOUSE_INTRO.join(" "), /earn the rest|pick up a habit/);
+    for (const line of CLUBHOUSE_INTRO) {
+      assert.doesNotMatch(line, /\b(PA|plate appearance|sit cell|ask|sheet|window|held|unlock|spark|stat)\b/i, line);
+      assert.match(line, /[.!]$/, line);
+    }
+  });
+
+  it("reads a Clubhouse card one line at a time, not as a dumped plaque", () => {
+    const run = newRun("yuki");
+    run.fans = 64;
+    run.keepsake = "ball";
+    run.pgResults = ["met", "met", "met", "met", "met", "met", "met"];
+    run.finaleTeamWon = false;
+    const card = mintClubhouseCard(run);
+    const lines = wallCardLines(card, "Time that one, Stopwatch.");
+    assert.equal(lines[0], "Aoi was across from her.");
+    assert.ok(lines.some((l) => /park banner/.test(l)));
+    assert.ok(lines.some((l) => l === SPARK_NONE || /^She passed on /.test(l)));
+    assert.equal(lines.at(-1), "Time that one, Stopwatch.");
+    assert.doesNotMatch(lines.join(" "), /Her rival was/);
+    assert.doesNotMatch(lines.join(" "), /What she passes on/);
+    const hers = endingLastLine("yuki", "A", false);
+    assert.ok(teachLines(hers).length >= 2, hers);
+    assert.equal(teachLines(hers)[0], "Time that one, Stopwatch.");
   });
 });

@@ -7,6 +7,7 @@
 import type { Stage } from "../shine/beats.ts";
 import type { PitchType } from "../shine/core/zone.ts";
 import type { PlateEvent } from "../shine/events.ts";
+import type { GameKind } from "../shine/featured-game.ts";
 import { PITCH_NAME } from "../shine/race-controller.ts";
 import type { CharacterId } from "../shine/types.ts";
 import { moundBatterLine, moundResultChip, morningPrompt, RACE_COPY, type ChipTone, type MoundResult } from "./race-ui.ts";
@@ -127,14 +128,14 @@ function punchouts(n: number): string {
 
 /**
  * One inning of the montage in a line, the way the booth sums an inning up: how it
- * went, then her strikeouts. "Three up, three down. She struck out two." ·
- * "A run scored. She struck out one." · "Two got on, and she stranded both."
+ * went, then her strikeouts. "Nobody reached, and she struck out two." ·
+ * "A run scored, and she struck out one." · "Two got on, and she stranded both."
  */
 export function middleInningLine(s: { ks: number; hits: number; hrs: number; walks: number; runs: number; jam?: boolean }): string {
   const on = s.hits + s.walks;
   if (on === 0) {
     if (s.ks >= 3) return "She struck out the side.";
-    return s.ks > 0 ? `Three up, three down. ${punchouts(s.ks)}` : "Three up, three down.";
+    return s.ks > 0 ? `Nobody reached, and ${punchouts(s.ks).replace(/^She /, "she ")}` : "Nobody reached, and nobody scored.";
   }
   let what: string;
   if (s.hrs > 0) what = s.runs <= 1 ? "Somebody took her deep." : `Somebody took her deep, and ${word(s.runs).toLowerCase()} runs scored.`;
@@ -143,7 +144,7 @@ export function middleInningLine(s: { ks: number; hits: number; hrs: number; wal
   else if (s.jam) what = on >= 3 ? "Bases loaded, and she got out of it." : "Two on, and she got out of it.";
   else what = on === 1 ? "One got on, and stayed there." : on === 2 ? "Two got on, and she stranded both." : "Bases loaded, and she left them all there.";
   const k = punchouts(s.ks);
-  return k ? `${what} ${k}` : what;
+  return k ? `${what.replace(/\.$/, "")}, and ${k[0]!.toLowerCase()}${k.slice(1)}` : what;
 }
 
 /** Her pitch count under the montage: "58 pitches". */
@@ -172,10 +173,15 @@ export function moundCaption(o: {
   morning?: boolean;
   /** Whose morning it is: she asks for the throw herself (check-in 35). */
   characterId?: CharacterId | null;
+  /** Named dates after the Gate keep this slot for the day's banner, not the grid lesson. */
+  kind?: GameKind;
 }): string {
   if (o.stage === "prepare") return o.vsName ? `${o.vsName} steps in.` : "She comes set.";
   if (o.stage === "flight") return "";
-  if (o.picking && o.firstPitch && !o.done) return o.morning ? morningPrompt(o.characterId, true) : RACE_COPY.moundFirstPick;
+  if (o.picking && o.firstPitch && !o.done) {
+    if (o.morning) return morningPrompt(o.characterId, true);
+    if (!o.kind || o.kind === "gate") return RACE_COPY.moundFirstPick;
+  }
   if (o.practice) return o.banner;
   if (o.paLine) return o.paLine;
   if (o.beatLabel) return o.beatLabel;

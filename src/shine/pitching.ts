@@ -110,21 +110,21 @@ export interface PitchingGame {
 export const THREE_LOOKS_LINE = "Three throws, and she's ready for a real hitter.";
 
 /** A practice morning on the mound: one throw, then she is done. */
-export const ONE_THROW_LINE = "That's her one throw. Her arm rests until tomorrow.";
+export const ONE_THROW_LINE = "That's her one throw, and her arm rests until tomorrow.";
 
 /** The bullpen throw, in her own voice: on the glove or off it. Unknown girls get the booth's plain call. */
 const BULLPEN_VOICE: Partial<Record<TraineeRun["characterId"], { hit: readonly string[]; miss: readonly string[] }>> = {
   reina: {
-    hit: ["Right on the glove. Again.", "That's where I said. Write it down.", "On the glove. Exactly."],
-    miss: ["A quarter-inch up. You didn't see it. I did.", "Off the glove. Again.", "That missed. Don't say it was close."],
+    hit: ["Right on the glove, again.", "That's where I said, write it down.", "On the glove, exactly."],
+    miss: ["A quarter-inch up, you didn't see it, I did.", "Off the glove, again.", "That missed, don't say it was close."],
   },
   sol: {
-    hit: ["Ninety-six, right on the glove.", "Right there, Jefe. Heat goes where I say.", "On the glove. Tell Luz."],
-    miss: ["Missed the glove. Don't say it, Jefe.", "Ninety-nine. Leave me alone.", "That one got away. Again."],
+    hit: ["Ninety-six, right on the glove.", "Right there, Jefe, heat goes where I say.", "On the glove, tell Luz."],
+    miss: ["Missed the glove, don't say it, Jefe.", "Ninety-nine, leave me alone.", "That one got away, again."],
   },
   kira: {
-    hit: ["Bang. Right on the glove, Partner.", "On the glove! That's a deal.", "Right there. Juice is on you."],
-    miss: ["Okay, that one missed. Doesn't count. New deal.", "Whoops. Warm-up pitch. Obviously.", "Missed. I was still bouncing."],
+    hit: ["Bang. Right on the glove, Partner.", "On the glove, that's a deal.", "Right there, juice is on you."],
+    miss: ["Okay, that one missed, doesn't count, new deal.", "Whoops, warm-up pitch, obviously.", "Missed, I was still bouncing."],
   },
 };
 
@@ -186,7 +186,7 @@ function throwLeadoffBall(run: TraineeRun, game: PitchingGame, type: PitchType) 
 }
 
 /** Ball four is in (the card under it says the Coach stays in the dugout): the ninth her ask is about. */
-export const LEADOFF_WALK_BANNER = "Ball four to lead off. Now watch her throw the next one.";
+export const LEADOFF_WALK_BANNER = "Ball four to lead off, and now watch her throw the next one.";
 
 /** A closer's miss that isn't a blown lead: the done panel reads it by this banner. */
 export const HOLD_SLIPPED_BANNER = "She couldn't close it out.";
@@ -194,7 +194,7 @@ export const HOLD_SLIPPED_BANNER = "She couldn't close it out.";
 export const MISSED_BANNER = "It got away from her.";
 
 /** She's pulled: the arm's gone, or the runs were too many. */
-export const PULLED_BANNER = "That's it for her today. The bullpen coach is walking out for the ball.";
+export const PULLED_BANNER = "That's it for her today, and the bullpen coach is walking out for the ball.";
 
 /** Her goal came, said like the booth says it. */
 function metBanner(game: Pick<PitchingGame, "role">): string {
@@ -227,14 +227,14 @@ function noteCallback(run: TraineeRun, game: PitchingGame, what: "stuff" | "cont
   if (run.lastWork.stat !== what) return;
   game.callback =
     what === "stuff"
-      ? "All that bullpen work. That pitch had real bite on it."
+      ? "All that bullpen work, and that pitch had real bite on it."
       : what === "control"
-        ? "All that bullpen work. She hit the glove like it was painted there."
+        ? "All that bullpen work, and she hit the glove like it was painted there."
         : what === "stamina"
-          ? "All those runs on the poles. She's still got plenty left in her arm."
+          ? "All those runs on the poles, and she's still got plenty left in her arm."
           : what === "guts"
-            ? "Runners on, and she came through. That's the whole job, and she did it."
-            : "All that charting paid off. She knew exactly where to throw it.";
+            ? "Runners on, and she came through."
+            : "All that charting paid off, and she knew exactly where to throw it.";
 }
 
 function stagePark(run: TraineeRun, kind: string) {
@@ -339,27 +339,27 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
           : kind === "finale" && pgId === "hold-one-run"
             ? "Ninth inning, and the tying run is already on first."
             : pgId === "k-2" && sit.inning === 9
-              ? "Ninth inning. She wants two strikeouts, and she wants the lead."
+              ? "Ninth inning, two strikeouts, and she wants the lead."
         : role === "closer"
           ? pgId === "k-side"
-            ? "Ninth inning. She wants to strike out the side."
+            ? "Ninth inning, and she wants to strike out the side."
             : pgId === "perfect-ninth"
-              ? "Ninth inning. She wants three up and three down."
+              ? "Ninth inning, and she wants nobody on and nobody scoring."
             : pgId === "four-out"
-              ? "Two outs in the eighth. She has to get four outs and keep the lead."
+              ? "Two outs in the eighth, and she has to get four outs and keep the lead."
               : kind === "gate"
-                ? "Ninth inning at the Academy Gate. Three outs to go."
+                ? "Ninth inning at the Academy Gate, and three outs to go."
                 : pgId === "strand-inherited"
                   ? "Runners on, and her job is to leave them there."
                   : sit.inherited > 0
                     ? "Runners on, and she has to keep the lead."
-                    : "Ninth inning. She has to keep the lead."
+                    : "Ninth inning, and she has to keep the lead."
           : pgId === "escape-loaded-jam"
-            ? "Bases loaded. She has to get out of the inning."
+            ? "Bases loaded, and she has to get out of the inning."
             : pgId === "escape-jam"
-              ? "Runners on. She has to get out of the inning."
+              ? "Runners on, and she has to get out of the inning."
               : pgId === "k-side"
-                ? "Ninth inning. She wants to strike out the side."
+                ? "Ninth inning, and she wants to strike out the side."
                 : pgId === "innings-5-k7"
                   ? "She wants five innings and seven strikeouts."
                 : pgId === "innings-5"
@@ -367,7 +367,9 @@ export function startPitchingGame(run: TraineeRun, kind: GameKind): PitchingGame
                   : pgId === "quality-start"
                     ? "She wants six innings with one run or fewer."
                     : pgId === "k-2"
-                      ? "She wants two strikeouts."
+                      ? kind === "first-light"
+                        ? "Two strikeouts in six batters."
+                        : "She wants two strikeouts."
                       : pgId === "k-3"
                       ? "She wants three strikeouts."
                       : pgId === "k-consecutive"
@@ -557,7 +559,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
           ? finaleTeamWon(game)
             ? FINALE_WON_BANNER
             : game.blown
-              ? "They came back on her. The lead is gone."
+              ? "They came back on her."
               : HOLD_SLIPPED_BANNER
           : finaleTeamWon(game)
             ? FINALE_WON_BANNER
@@ -611,7 +613,7 @@ function finishBatter(run: TraineeRun, game: PitchingGame, r: () => number) {
 
   game.lastSpurt = maybeLastSpurtCloser(game);
   if (game.lastSpurt) game.spurtFired = true;
-  game.banner = game.lastSpurt ? "It's a one-run game now. This is the one she trained for." : nextBatterBanner(game);
+  game.banner = game.lastSpurt ? "It's a one-run game now, and this is the one she trained for." : nextBatterBanner(game);
   tickPitcherSg(run, game);
 }
 
@@ -696,7 +698,7 @@ export function enterSeventh(run: TraineeRun, game: PitchingGame, r?: () => numb
   game.outs = 0;
   game.runners = rng() < 0.4 ? 1 : 0;
   game.count = { balls: 0, strikes: 0 };
-  game.banner = "Seventh inning. The crowd stands to stretch, and she stays on the mound.";
+  game.banner = "The crowd stands to stretch in the seventh, and she stays on the mound.";
   game.pgMet = evaluatePg(run, game);
 }
 
@@ -767,7 +769,7 @@ export function resolveDelivery(
       if (game.count.strikes >= 3) {
         recordK(game);
         retireInning(game, "k");
-        game.banner = "Strike three, looking. She froze her.";
+        game.banner = "Strike three looking, and she froze her.";
         finishBatter(run, game, r);
       }
       return;
@@ -790,7 +792,7 @@ export function resolveDelivery(
         push(game.events, { t: "pitcherRun", runs: 1, earned: true });
         if ((game.role === "closer" || game.kind === "finale") && game.scoreDiff <= 0) game.blown = true;
       }
-      game.banner = forced ? "Ball four, and that walks in a run." : "Ball four. She walks her.";
+      game.banner = forced ? "Ball four, and that walks in a run." : "Ball four, and she walks her.";
       finishBatter(run, game, r);
     }
     return;
@@ -813,7 +815,7 @@ export function resolveDelivery(
 
   if (!contact.reach) {
     game.count.strikes += 1;
-    game.banner = `Swing and a miss. Strike ${COUNT_WORDS[Math.min(2, game.count.strikes)]}.`;
+    game.banner = `Swing and a miss, strike ${COUNT_WORDS[Math.min(2, game.count.strikes)]}.`;
     push(game.events, { t: "swing", pa: game.battersFaced, kind: "contact", timingErr: swing.error });
     push(game.events, { t: "contact", pa: game.battersFaced, tier: "miss", quality: 0 });
     if (game.count.strikes >= 3) {

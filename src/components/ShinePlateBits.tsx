@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
-import { dayChipLabel, doneStamp, scorebugLabel, type DateTier, type DayChip } from "@/components/race-ui";
+import { dayChipLabel, doneStamp, fitDayChips, RACE_COPY, scorebugLabel, type DateTier, type DayChip } from "@/components/race-ui";
 import { portraitSrc } from "@/shine/bible.ts";
 import type { Cell } from "@/shine/core/zone.ts";
 import type { Bases } from "@/shine/events.ts";
@@ -106,14 +106,14 @@ export function PauseButton({ onPause }: { onPause: () => void }) {
 }
 
 /** The pause dialog's way out on a screen whose attempt is saved (the career plate and mound). */
-export const PAUSE_TITLE_SAVED = "Title screen (your game is saved)";
+export const PAUSE_TITLE_SAVED = RACE_COPY.titleSaved;
 
 export function PauseOverlay({
   reason,
   onResume,
   onSettings,
   onTitle,
-  resumeLabel = "Back in the box",
+  resumeLabel = RACE_COPY.go,
   titleLabel = PAUSE_TITLE_SAVED,
 }: {
   reason: PauseReason;
@@ -130,11 +130,7 @@ export function PauseOverlay({
       <div className="w-full max-w-sm rounded-2xl border border-white/20 bg-panel p-5 text-cream shadow-2xl">
         <p className="font-display text-xs uppercase tracking-widest text-grass-2">Time</p>
         <p className="mt-2 font-display text-xl font-bold">{reason === "hidden" ? "She stepped out of the box." : "Paused."}</p>
-        <p className="mt-1 font-ui text-sm text-cream/75">
-          {reason === "hidden"
-            ? "You looked away, so she called time. Nothing happens until you're back."
-            : "Everything stays right where it is, even a pitch that's already in the air."}
-        </p>
+        <p className="mt-1 font-ui text-sm text-cream/75">{reason === "hidden" ? RACE_COPY.pauseAway : RACE_COPY.pauseHold}</p>
         <div className="mt-4 flex flex-col gap-2">
           {/* The way back in is the date's one action colour: Go's gold. */}
           <PixelBtn className="shine-go h-12" onClick={onResume}>
@@ -258,8 +254,12 @@ export function Scorebug({
         // The dot stays with the date's name (a no-break space before it) and the goal never splits,
         // so a wrap reads "DIAMOND FINALE ·" over "Two strikeouts", never a line opening on the dot (check-in 31, F6).
         <span className="shine-bug-tag" aria-hidden>
-          {tag}
-          {tag && tagGold ? " · " : null}
+          {tag ? (
+            <span className="shine-bug-tag-name">
+              {tag}
+              {tagGold ? " ·" : null}
+            </span>
+          ) : null}
           {tagGold ? <b className="shine-bug-tag-gold">{tagGold}</b> : null}
         </span>
       ) : null}
@@ -279,12 +279,15 @@ export function DoneHeader({
   headline,
   reduced = false,
   paused = false,
+  live = false,
 }: {
   met: boolean | null;
   label: string;
   headline: string;
   reduced?: boolean;
   paused?: boolean;
+  /** The mound's closing line: one live region, on the headline the eye already has. */
+  live?: boolean;
 }) {
   const stamp = met === null ? null : doneStamp(met);
   return (
@@ -304,7 +307,7 @@ export function DoneHeader({
           </span>
         </div>
       ) : null}
-      <p className="shine-done-headline font-story text-3xl font-extrabold text-cream">{headline}</p>
+      <p className="shine-done-headline font-story text-3xl font-extrabold text-cream" aria-live={live ? "polite" : undefined}>{headline}</p>
     </div>
   );
 }
@@ -315,6 +318,17 @@ export function DoneHeader({
  * stamp's tone. A steal, a run she scored, or runs in against her ride the
  * chip's corner. Pictures, not a stat line.
  */
+function subscribeShortViewport(onStoreChange: () => void) {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
+  const mq = window.matchMedia("(max-height: 700px)");
+  mq.addEventListener("change", onStoreChange);
+  return () => mq.removeEventListener("change", onStoreChange);
+}
+
+function isShortViewport() {
+  return typeof window !== "undefined" && !!window.matchMedia?.("(max-height: 700px)")?.matches;
+}
+
 export function DayStrip({
   chips,
   label = "The day",
@@ -326,10 +340,12 @@ export function DayStrip({
   reduced?: boolean;
   paused?: boolean;
 }) {
-  if (!chips.length) return null;
+  const short = useSyncExternalStore(subscribeShortViewport, isShortViewport, () => false);
+  const shown = fitDayChips(chips, short);
+  if (!shown.length) return null;
   return (
     <ol className={`shine-day-strip ${reduced ? "is-reduced" : ""}`} aria-label={label} data-dc-paused={paused ? "" : undefined}>
-      {chips.map((c, i) => (
+      {shown.map((c, i) => (
         <li key={c.key} className="shine-day-chip" data-tone={c.tone} style={{ ["--i" as string]: i }} aria-label={dayChipLabel(c)}>
           <span className="shine-day-jp" aria-hidden>
             {c.jp}
@@ -382,5 +398,61 @@ export function ScoutingCard({ report, park }: { report: ScoutingReport; park: s
         <p className="mt-2 font-ui text-xs text-gold/80">Late in the game, they've got a reliever who comes right after hitters.</p>
       ) : null}
     </section>
+  );
+}
+
+/** A line under the done stamp: her quote, the path, the next beat. One tap, one line. */
+export type DoneTalkKind = "her" | "path" | "read" | "morning" | "tutorial" | "finale" | "rep" | "middle";
+
+export interface DoneTalkLine {
+  text: string;
+  kind: DoneTalkKind;
+}
+
+const DONE_TALK: Record<DoneTalkKind, { className: string; attr?: string }> = {
+  her: { className: "text-center font-story text-sm italic text-cream", attr: "data-her-line" },
+  path: { className: "text-center font-story text-sm text-gold" },
+  read: { className: "text-center font-story text-sm text-cream/85" },
+  morning: { className: "text-center font-story text-sm text-cream/85", attr: "data-morning-next" },
+  tutorial: { className: "text-center font-story text-sm text-cream/90", attr: "data-first-look-read" },
+  finale: { className: "text-center font-story text-sm text-gold", attr: "data-finale-result" },
+  rep: { className: "text-center font-story text-sm text-cream/90", attr: "data-rep-line" },
+  middle: { className: "text-center font-story text-sm text-cream/80" },
+};
+
+export function doneTalkLines(rows: Array<DoneTalkLine | null | undefined | false>): DoneTalkLine[] {
+  return rows.filter((row): row is DoneTalkLine => Boolean(row && row.text.trim()));
+}
+
+export function DoneTalk({ lines }: { lines: readonly DoneTalkLine[] }) {
+  const [i, setI] = useState(0);
+  if (!lines.length) return null;
+  const at = Math.min(i, lines.length - 1);
+  const line = lines[at]!;
+  const more = at < lines.length - 1;
+  const look = DONE_TALK[line.kind];
+  const next = () => {
+    if (more) setI((n) => n + 1);
+  };
+  return (
+    <p
+      key={at}
+      className={look.className}
+      data-done-talk=""
+      data-more={more ? "true" : undefined}
+      {...(look.attr ? { [look.attr]: "" } : {})}
+      role={more ? "button" : undefined}
+      tabIndex={more ? 0 : undefined}
+      onClick={next}
+      onKeyDown={(e) => {
+        if (!more) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          next();
+        }
+      }}
+    >
+      {line.text}
+    </p>
   );
 }

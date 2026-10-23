@@ -39,7 +39,7 @@ describe("style sit and miss read", () => {
     const run = newRun("yuki");
     run.turn = 2;
     const game = startFeaturedGame(run, "practice");
-    assert.equal(plateRead(run, game), "That's her first swing. The next one's in a real game.");
+    assert.equal(plateRead(run, game), "That's her first swing, and the next one's in a real game.");
   });
 
   it("names a miss without a formula tooltip", () => {
@@ -51,12 +51,15 @@ describe("style sit and miss read", () => {
     assert.equal(plateRead(run, game), "She struck out looking for a different pitch.");
     game.qualityAbs = 2;
     assert.equal(plateRead(run, game), "She hit the ball, but she never got on base.");
+    game.lastContact = "hit";
+    assert.equal(plateRead(run, game), "She put it in play, but she never got on.");
+    game.lastContact = "miss";
     game.qualityAbs = 0;
     game.hits = 2;
     assert.equal(plateRead(run, game), "She got on base, just not the way she needed to.");
     game.pgId = "reach-twice";
     game.hits = 1;
-    assert.equal(plateRead(run, game), "She reached once. She needed two.");
+    assert.equal(plateRead(run, game), "She reached once, and she needed two.");
     game.pgId = "hit-late";
     game.hits = 1;
     game.walks = 1;
@@ -67,7 +70,7 @@ describe("style sit and miss read", () => {
     game.hits = 2;
     game.walks = 1;
     game.sgMet = true;
-    assert.equal(plateRead(run, game), "She got a hit, but nobody was on base. She did get her walk.");
+    assert.equal(plateRead(run, game), "She got a hit, but nobody was on base, and she did get her walk.");
     game.walks = 0;
     game.struckOut = true;
     game.struckOut = false;
@@ -75,7 +78,7 @@ describe("style sit and miss read", () => {
     assert.equal(plateRead(run, game), "She got a hit with runners on base.");
     // A met reach says what she did, so the headline isn't just her verb.
     game.pgId = "reach-once";
-    assert.equal(plateRead(run, game), "Two hits. She just kept getting on.");
+    assert.equal(plateRead(run, game), "Two hits, and she just kept getting on.");
     game.hits = 1;
     assert.equal(plateRead(run, game), "She got on with a hit.");
     game.hits = 2;
@@ -89,7 +92,7 @@ describe("style sit and miss read", () => {
     game.kind = "gate";
     game.pgMet = false;
     game.maxPaPitches = 2;
-    assert.equal(plateRead(run, game), "Her longest at-bat was two pitches. She wanted three.");
+    assert.equal(plateRead(run, game), "Her longest at-bat was two pitches, and she wanted three.");
     game.pgId = "no-k";
     game.kind = "first-light";
     game.pgMet = true;
@@ -108,7 +111,7 @@ describe("style sit and miss read", () => {
     game.struckOut = false;
     assert.equal(plateRead(run, game), "She fouled one off with two strikes and stayed alive.");
     game.pgMet = false;
-    assert.equal(plateRead(run, game), "She never got the two-strike foul. She kept swinging anyway.");
+    assert.equal(plateRead(run, game), "She never got the two-strike foul, and she kept swinging anyway.");
     game.pgId = "full-count";
     game.kind = "night-classic";
     game.pgMet = true;
@@ -122,7 +125,7 @@ describe("style sit and miss read", () => {
     assert.equal(plateRead(run, game), "She made the pitcher throw her four in one at-bat.");
     game.pgMet = false;
     game.maxPaPitches = 3;
-    assert.equal(plateRead(run, game), "Her longest at-bat was three pitches. She wanted four.");
+    assert.equal(plateRead(run, game), "Her longest at-bat was three pitches, and she wanted four.");
     game.maxPaPitches = 0;
     assert.equal(plateRead(run, game), "None of her at-bats got to four pitches.");
     game.pgId = "see-5-one-pa";
@@ -132,9 +135,9 @@ describe("style sit and miss read", () => {
     assert.equal(plateRead(run, game), "She made the pitcher throw her five in one at-bat.");
     game.pgMet = false;
     game.maxPaPitches = 4;
-    assert.equal(plateRead(run, game), "Her longest at-bat was four pitches. She wanted five.");
+    assert.equal(plateRead(run, game), "Her longest at-bat was four pitches, and she wanted five.");
     game.maxPaPitches = 1;
-    assert.equal(plateRead(run, game), "Her longest at-bat was one pitch. She wanted five.");
+    assert.equal(plateRead(run, game), "Her longest at-bat was one pitch, and she wanted five.");
     game.pgId = "contact-breaking";
     game.kind = "stretch";
     game.pgMet = true;
@@ -252,7 +255,7 @@ describe("style sit and miss read", () => {
     assert.equal(line, "She got a hit, but no run came home on her.");
     assert.doesNotMatch(line, /loss/i);
     game.sgMet = true;
-    assert.equal(plateRead(run, game), "She got a hit, but no run came home on her. She did get her walk.");
+    assert.equal(plateRead(run, game), "She got a hit, but no run came home on her, and she did get her walk.");
     game.hits = 0;
     game.walks = 2;
     assert.equal(plateRead(run, game), "She drew a walk, but no run came home on her.");

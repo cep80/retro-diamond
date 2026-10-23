@@ -279,7 +279,7 @@ describe("1.0 bible", () => {
   it("names Reina's rookie still from the outs and the punchouts", () => {
     assert.equal(
       yearStillLine("reina", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"]),
-      "She got her three outs at the Gate. At First Light the punchouts never came.",
+      "She got her three outs at the Gate, and at First Light the punchouts never came.",
     );
     assert.doesNotMatch(
       yearStillLine("reina", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"]),
@@ -295,7 +295,7 @@ describe("1.0 bible", () => {
     // Check-in 35: true under the old three-runs ask and the new seven-punchout ask alike.
     assert.equal(
       yearStillLine("reina", 40, ["met", "met", "missed", "met", "pending", "pending", "pending"]),
-      "At the Night Classic she struck out two in a row. The Lantern Classic got away from her.",
+      "At the Night Classic she struck out two in a row, and the Lantern Classic got away from her.",
     );
     assert.doesNotMatch(
       yearStillLine("reina", 40, ["met", "met", "met", "missed", "pending", "pending", "pending"]),
@@ -306,11 +306,11 @@ describe("1.0 bible", () => {
   it("names Sol's rookie still from the outs and the punchouts", () => {
     assert.equal(
       yearStillLine("sol", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"]),
-      "She got her three outs at the Gate. At First Light the punchouts never came.",
+      "She got her three outs at the Gate, and at First Light the punchouts never came.",
     );
     assert.equal(
       yearStillLine("sol", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"], null, "One punchout. She needed three."),
-      "She got her three outs at the Gate. At First Light she got one punchout, and she needed three.",
+      "She got her three outs at the Gate, and at First Light she got one punchout, and she needed three.",
     );
     assert.doesNotMatch(
       yearStillLine("sol", 20, ["met", "missed", "pending", "pending", "pending", "pending", "pending"]),
@@ -342,7 +342,7 @@ describe("1.0 bible", () => {
   it("names Kira's classic still from the two punchouts and the inherited runners", () => {
     assert.equal(
       yearStillLine("kira", 40, ["met", "met", "missed", "met", "pending", "pending", "pending"]),
-      "At the Lantern Classic the two punchouts never came. At the Night Classic she stranded the runners she inherited.",
+      "At the Lantern Classic the two punchouts never came, and at the Night Classic she stranded the runners she inherited.",
     );
     assert.doesNotMatch(
       yearStillLine("kira", 40, ["met", "met", "missed", "met", "pending", "pending", "pending"]),
@@ -363,7 +363,7 @@ describe("1.0 bible", () => {
   it("names Miki's classic still from the four-pitch at-bat and the five-pitch at-bat", () => {
     assert.equal(
       yearStillLine("miki", 40, ["missed", "met", "missed", "missed", "pending", "pending", "pending"]),
-      "She came up short at both Classics. None of her at-bats went long enough.",
+      "She came up short at both Classics, and none of her at-bats went long enough.",
     );
     assert.equal(
       yearStillLine("miki", 40, ["met", "met", "met", "met", "pending", "pending", "pending"]),
@@ -371,7 +371,7 @@ describe("1.0 bible", () => {
     );
     assert.equal(
       yearStillLine("miki", 40, ["met", "met", "met", "missed", "pending", "pending", "pending"]),
-      "She got an at-bat to four pitches at the Lantern Classic. At the Night Classic, none reached five.",
+      "She got an at-bat to four pitches at the Lantern Classic, and at the Night Classic none reached five.",
     );
     assert.doesNotMatch(yearStillLine("miki", 20, ["met", "met", "pending", "pending", "pending", "pending", "pending"]), /\blook\b/);
     assert.doesNotMatch(
@@ -384,8 +384,13 @@ describe("1.0 bible", () => {
 describe("bible: saves from before the copy pass", () => {
   it("still recognize the old First Light strikeout lines", async () => {
     const { firstLightStill, lightCardFrom } = await import("./bible.ts");
-    assert.equal(firstLightStill("Two punchouts. The date asked for three."), "Two punchouts. She needed three.");
-    assert.equal(lightCardFrom("One punchout. The date asked for three."), "One punchout. She needed three.");
-    assert.equal(firstLightStill("Two punchouts. She needed three."), "Two punchouts. She needed three.");
+    assert.equal(firstLightStill("Two punchouts. The date asked for three."), "She got two strikeouts, and she needed three.");
+    assert.equal(lightCardFrom("One punchout. The date asked for three."), "She got one strikeout, and she needed three.");
+    assert.equal(lightCardFrom("The outs came. The punchouts didn't."), "The outs came, and the punchouts didn't.");
+    assert.equal(lightCardFrom("The outs came, and the punchouts didn't."), "The outs came, and the punchouts didn't.");
+    assert.equal(firstLightStill("Two punchouts. She needed three."), "She got two strikeouts, and she needed three.");
+    assert.equal(lightCardFrom("One punchout. She needed two."), "She got one strikeout, and she needed two.");
+    assert.equal(lightCardFrom("She got one strikeout, and she needed two."), "She got one strikeout, and she needed two.");
+    assert.equal(lightCardFrom("Six batters, and no punchouts."), "The outs came, and the punchouts didn't.");
   });
 });

@@ -49,8 +49,12 @@ describe("the big dates' ladder", () => {
     }
     assert.equal(dateTitle("night-classic", "kings").place, "Under the lights.");
     assert.equal(dateTitle("lantern-classic", "koi").place, "Lantern Field.");
-    assert.equal(dateTitle("night-classic", "kings").step, "Classic Year · 2 of 2");
-    assert.equal(dateTitle("finale", "koi").step, "Senior Year · the last one");
+    assert.equal(dateTitle("night-classic", "kings").step, "Lantern year · 2 of 2");
+    assert.equal(dateTitle("finale", "koi").step, "Last spring · the last one");
+    assert.equal(dateTitle("gate", "koi").step, "First spring · 1 of 2");
+    for (const kind of BIG_DATES) {
+      assert.doesNotMatch(dateTitle(kind, "koi").step, /Rookie Year|Classic Year|Senior Year/);
+    }
     assert.equal(dateTitle("finale", "koi").place, "Every seat is sold.");
   });
 
@@ -70,22 +74,22 @@ describe("head to head", () => {
     const results: GoalMark[] = ["met", "met", "missed", "met", "missed", "met", "pending"];
     const h = headToHead("aoi", "finale", results)!;
     assert.deepEqual(h, { rival: "reina", meeting: 6, hers: 3, theirs: 2 });
-    assert.equal(headToHeadLine(h, "Aoi"), "These two have met five times before. Aoi leads, 3–2.");
+    assert.equal(headToHeadLine(h, "Aoi"), "These two have met five times before, and Aoi leads, 3–2.");
   });
 
   it("says nothing the first time they meet, and calls an even record even", () => {
     assert.equal(headToHeadLine(headToHead("aoi", "gate", SEVEN_PENDING), "Aoi"), null);
     const even = headToHead("aoi", "lantern-classic", ["met", "missed", "pending", "pending", "pending", "pending", "pending"]);
-    assert.equal(headToHeadLine(even, "Aoi"), "These two have met twice before. It's even, 1–1.");
+    assert.equal(headToHeadLine(even, "Aoi"), "These two have met twice before, and it's even, 1–1.");
     const behind = headToHead("aoi", "lantern-classic", ["missed", "missed", "pending", "pending", "pending", "pending", "pending"]);
-    assert.equal(headToHeadLine(behind, "Aoi"), "These two have met twice before. Reina leads, 2–0.");
+    assert.equal(headToHeadLine(behind, "Aoi"), "These two have met twice before, and Reina leads, 2–0.");
   });
 
   it("gives a pitcher her rival's bat at every date", () => {
     const h = headToHead("sol", "series", ["met", "met", "met", "missed", "met", "pending", "pending"])!;
     assert.equal(h.rival, "aoi");
     assert.equal(h.meeting, 6);
-    assert.equal(headToHeadLine(h, "Sol"), "These two have met five times before. Sol leads, 4–1.");
+    assert.equal(headToHeadLine(h, "Sol"), "These two have met five times before, and Sol leads, 4–1.");
   });
 
   it("has no record on a date that isn't a big one", () => {

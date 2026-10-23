@@ -4,16 +4,16 @@
  * The race view: Pretty Derby baseball.
  *
  * One frame. The Coach sits her (3×3 glass on the film), presses Go, and can
- * swing once while the ball is in the air. With no swing, she decides from her
- * sheet. No call, no cards.
+ * commit one swing while the ball is in the air. A tap shortens. A hold is
+ * the cut. With no commit, she decides from her sheet. No call, no cards.
  *
  * Serves the career plate and the exhibition.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type Dispatch, type PointerEvent, type SetStateAction } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
 import { ActionStage, hrMomentUp, StampMark } from "@/components/action/ActionStage";
 import { loadActionManifest, preloadActionClips, warmActionArt } from "@/components/action/action-manifest";
-import { DayStrip, DoneHeader, PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
+import { DayStrip, DoneHeader, DoneTalk, doneTalkLines, PAUSE_TITLE_SAVED, PauseButton, PauseOverlay, Scorebug, SitZone } from "@/components/ShinePlateBits";
 import { castSide, DateTitleCard, FinaleWinMoment, LowerThird, SkillBanner, VsSplash, type VsSide } from "@/components/DateChrome";
 import { ShineMute } from "@/components/ShineMute";
 import { exhibitionAudioCue, type ExhibitionAudioIo } from "@/components/exhibition/audio-cues";
@@ -73,7 +73,7 @@ import { locCell } from "@/shine/core/zone.ts";
 import { track as trackEvent } from "@/lib/telemetry.ts";
 import type { ActionManifest, ActionView, StingFlags } from "@/shine/action-art.ts";
 import { HR_STAMP_HOLD_MS, resultStamp, SCORE_STAMP, SCORE_STAMP_HOLD_MS, STAMP_DELAY_MS, stampHoldMs, stillFor } from "@/shine/action-art.ts";
-import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, portraitSrc, sceneBustSrc, sheet } from "@/shine/bible.ts";
+import { BIBLE, careerFilmSrc, isPitcherStyle, officialFor, parkSrc, portraitMood, sceneBustSrc, sheet } from "@/shine/bible.ts";
 import { finaleWinPicture } from "@/shine/ending-pictures.ts";
 import { decodePicture } from "@/components/preload";
 import { finaleExtrasBug, finaleResultLine, finaleTeamWon, speakGoal } from "@/shine/goals.ts";
@@ -83,7 +83,7 @@ import { settleBug, type BugState } from "@/components/race-bug";
 import { exhibitionOtherHitter, type EncounterConfig, type FeaturedGame, type GameKind, type LivePitch } from "@/shine/featured-game.ts";
 import type { PlateCue } from "@/shine/plate-controller.ts";
 import { pitchReadout, RaceController, READOUT_FROM_U, type RaceCue } from "@/shine/race-controller.ts";
-import { heldMeetU, RACE_PACE, releaseLine } from "@/shine/race.ts";
+import { heldMeetU, RACE_PACE, releaseLine, SWING_HOLD_MS, SWING_OPEN_U, type SwingCommitment } from "@/shine/race.ts";
 import { rivalProfile, type RivalArmId } from "@/shine/rivals.ts";
 import { newRun, previewPracticeRep } from "@/shine/run.ts";
 import { morningDeparture } from "@/shine/ending.ts";
@@ -384,7 +384,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const practice = game.kind === "practice";
   const morning = mode === "career" && morningKind(run.turn) === "practice";
   // The rep's real work, read before the leave button applies it (same seed, same roll), and
-  // what yesterday's pick did: this morning never shows the complex, so its chips ride here.
+  // what yesterday's pick did: this morning never shows the complex, so those chips sit in the HUD.
   const rep = useMemo(() => (morning ? previewPracticeRep(run) : null), [morning, run]);
   const yesterday = useMemo(() => (morning ? morningAfter(run).chips : []), [morning, run]);
   // Every career date starts on an empty sit. Exhibition and weekly keep one-tap Go.
@@ -605,7 +605,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     });
     const offRace = race.onCue((cue: RaceCue) => {
       if (cue.t === "decision") {
-        // The sheet swing waits at the plate so a release can still meet it.
+        // The sheet swing waits at the plate so a commitment can still replace it.
         const meet = cue.decision.swing ? heldMeetU(cue.decision.u) : null;
         decisionU.current = meet;
         if (meet !== null) {
@@ -675,6 +675,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     // The at-bat whose pitcher was last named, and whether her skill fired on the pitch being dealt.
     let namedPa: number | null = null;
     let stung = false;
+    let spurtShown = false;
     // The 得点 showing that is still due; a skipped card (Next) or the next Go drops it.
     let scoreKey: number | null = null;
     const dropScore = () => {
@@ -704,7 +705,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           // The first wind-up of each at-bat names the pitcher; a last spurt gets its coral band (her skill wins the frame).
           namedPa = g.paIndex;
           flash(setLower, { ...armPlate(g.arm), line: placeRef.current }, CHROME_MS.lowerThird);
-          if (g.lastSpurt && !stung) {
+          if (g.lastSpurt && !stung && !spurtShown) {
+            spurtShown = true;
             flash(setSkill, { text: SPURT_BANNER.text, jp: SPURT_BANNER.jp, tone: "spurt" }, CHROME_MS.skill);
             sfxWhoosh();
           }
@@ -868,9 +870,11 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     };
   }, [race]);
 
-  // The career attempt is saved between plate appearances.
+  // The career attempt is saved between plate appearances, on the result card,
+  // and on the done panel, so a reload cannot throw the morning's one pitch away.
   useEffect(() => {
-    if (mode !== "career" || snap.phase !== "pick" || game.done) return;
+    if (mode !== "career") return;
+    if (snap.phase === "racing" && !game.done) return;
     saveLive({ side: "plate", runId: run.id, turn: run.turn, game, aim: plate.aim, swing: "contact" });
   }, [mode, snap.phase, game, plate.aim, run.id, run.turn, saveLive]);
 
@@ -884,14 +888,51 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     if (race.go({ introMs })) introPlayed.current = true;
   }, [race, sitNeeded, sitPicked]);
 
-  const swing = useCallback(() => {
+  // A hold that crosses the cut while the pointer or key is still down. Letting
+  // go before that is a shorten. The press progress is when the bat starts.
+  const swingHold = useRef<{ timer: number; pointerId: number | null } | null>(null);
+  const commitSwing = useCallback((commitment: SwingCommitment) => {
     const s = race.getSnapshot();
     if (s.phase !== "racing" || s.plate.stage !== "flight" || s.plate.paused) return;
+    const at = race.plate.progress(performance.now());
+    if (at < SWING_OPEN_U) return;
     unlockAudio();
-    race.release(race.plate.progress(performance.now()));
+    race.release(at, commitment);
   }, [race]);
+  const beginSwing = useCallback((pointerId: number | null) => {
+    if (swingHold.current) return;
+    const s = race.getSnapshot();
+    if (s.phase !== "racing" || s.plate.stage !== "flight" || s.plate.paused) return;
+    const at = race.plate.progress(performance.now());
+    if (at < SWING_OPEN_U) return;
+    const timer = window.setTimeout(() => {
+      swingHold.current = null;
+      commitSwing("cut");
+    }, SWING_HOLD_MS);
+    swingHold.current = { timer, pointerId };
+  }, [race, commitSwing]);
+  const finishSwing = useCallback((pointerId: number | null) => {
+    const held = swingHold.current;
+    // A keyup must not shorten a pointer hold, and the other way around.
+    if (!held || held.pointerId !== pointerId) return false;
+    window.clearTimeout(held.timer);
+    swingHold.current = null;
+    commitSwing("shorten");
+    return true;
+  }, [commitSwing]);
+  const swing = useCallback((ev: PointerEvent<HTMLButtonElement>) => {
+    if (ev.button !== 0) return;
+    ev.currentTarget.setPointerCapture(ev.pointerId);
+    beginSwing(ev.pointerId);
+  }, [beginSwing]);
+  useEffect(() => {
+    return () => {
+      if (swingHold.current) window.clearTimeout(swingHold.current.timer);
+      swingHold.current = null;
+    };
+  }, []);
 
-  // Back in the box: the dialog leaves and the sit grid or Go is under the thumb
+  // After the title card: the dialog leaves and the sit grid or Go is under the thumb
   // again, so the resume re-arms the input guard like any other swap of view.
   const resumeRace = useCallback(() => {
     useShine.getState().bumpView();
@@ -899,7 +940,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   }, [race]);
 
   // Keys: the pause key (Settings › Keys, Escape always) calls and ends Time.
-  // Enter / Space go, or swing while the ball is in the air.
+  // Enter / Space go, or arm a swing while the ball is in the air. Holding
+  // the key past the cut is the full swing. Letting go before that shortens.
   useEffect(() => {
     const onKey = (ev: KeyboardEvent) => {
       if (ev.repeat) return;
@@ -928,17 +970,27 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       }
       if (ev.code === "Enter" || ev.code === "Space") {
         // A focused button (Mute, Time, a sit cell, the card) takes its own key.
+        // Swing is the exception: Space on it has to measure the hold.
         const t = ev.target instanceof Element ? ev.target : null;
-        if (t?.closest("button, a, input, select, textarea, [role=button]")) return;
+        const onSwing = Boolean(t?.closest(".shine-swing"));
+        if (!onSwing && t?.closest("button, a, input, select, textarea, [role=button]")) return;
         ev.preventDefault();
-        if (s.phase === "racing" && s.plate.stage === "flight") swing();
+        if (s.phase === "racing" && s.plate.stage === "flight") beginSwing(null);
         else if (s.phase === "pick" && filmWarmRef.current) go();
         else if (s.phase === "pa-card") race.next();
       }
     };
+    const onKeyUp = (ev: KeyboardEvent) => {
+      if (ev.code !== "Enter" && ev.code !== "Space") return;
+      if (finishSwing(null)) ev.preventDefault();
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [race, go, swing, resumeRace, endTitle, endWin]);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [race, go, beginSwing, finishSwing, resumeRace, endTitle, endWin]);
 
   // ?debug=1 hooks for the browser probes.
   useEffect(() => {
@@ -953,7 +1005,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         race.setSit(c);
         setSitPicked(true);
       },
-      release: (u?: number) => race.release(u ?? race.plate.progress(performance.now())),
+      release: (u?: number, commitment?: SwingCommitment) => race.release(u ?? race.plate.progress(performance.now()), commitment ?? "shorten"),
       setCall: (c: Parameters<RaceController["setCall"]>[0]) => race.setCall(c),
       snapshot: () => race.getSnapshot(),
       pause: () => race.pause("user"),
@@ -964,6 +1016,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
       delete w.__dsRace;
     };
   }, [race, go]);
+
+  const releaseSpoken = snap.release ? releaseLine(snap.release.commitment, run.characterId, game.pitchesSeen) : null;
 
   function leave() {
     stopCrowd();
@@ -1004,7 +1058,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         stage,
         arm: practice ? null : armCallName(game.arm),
         // Her own word on the Coach's swing (voice v2): she says how it felt.
-        release: snap.release ? releaseLine(snap.release.band, run.characterId, game.pitchesSeen) : null,
+        release: releaseSpoken,
         lookSeen: game.paPitches,
         lookNeed: null,
         card: snap.card,
@@ -1020,7 +1074,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     ? RACE_COPY.exhibitionWatch
     : herStepIn
       ? RACE_COPY.firstPick
-      : pickPrompt({ phase: snap.phase, pitchesSeen: game.pitchesSeen, practice, morning, characterId: run.characterId });
+      : pickPrompt({ phase: snap.phase, pitchesSeen: game.pitchesSeen, practice, morning, characterId: run.characterId, kind: game.kind, count: game.count });
   const scoutingLine = snap.phase === "pick" && !snap.watching && game.pitchesSeen === 0 && !practice && !exhibition ? rivalProfile(game.arm).tells[0] : null;
   // The title card owns the walk-in. The sit and Go come up when it leaves.
   const sitGrid = showSitGrid({ phase: snap.phase, stage }) && !snap.watching && !titleUp && !theirLead;
@@ -1036,7 +1090,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
         arm: practice ? null : armCallName(game.arm),
         lookSeen: game.paPitches,
         lookNeed: practice || exhibition ? null : lookNeed(game.pgId),
-        release: snap.release ? releaseLine(snap.release.band, run.characterId, game.pitchesSeen) : null,
+        release: releaseSpoken,
       });
   // Only the at-bat that just ended: at the done panel an earlier at-bat's steal line
   // never stands under the last one's (the exhibition's headline is the whole day).
@@ -1073,9 +1127,12 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
   const contactHeld = countDate && (game.pgId === "contact-breaking" || game.pgId === "contact-breaking-2") && game.pgMet;
   const swung = contactHeld || foulHeld ? true : beat === "walk" || takeMiss ? false : beat === "single" || beat === "hr" ? true : holdFilm && actionCue.swung;
   // The done panel holds her settled still, never a replay. A career date puts its verdict on her
-  // face (celebrate when she got it, crushed when she didn't; a walk or a run keeps its trot); a day
-  // with no verdict (the exhibition, the cage, the weekly look) settles the closing beat as itself.
-  const settled: ActionView["settled"] = snap.phase !== "done" ? null : exhibition || practice || weekly ? true : game.pgMet ? "met" : "missed";
+  // face (celebrate when she got it, crushed when she didn't, trot when they won without her ask;
+  // a walk or a run keeps its trot); a day with no verdict (the exhibition, the cage, the weekly
+  // look) settles the closing beat as itself.
+  const teamWonShort = finale && !game.pgMet && finaleTeamWon(game);
+  const settled: ActionView["settled"] =
+    snap.phase !== "done" ? null : exhibition || practice || weekly ? true : game.pgMet ? "met" : teamWonShort ? "won-short" : "missed";
   const actionView: ActionView = {
     stage,
     beat,
@@ -1134,7 +1191,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
     ? {
         inning: parts.inning,
         score: parts.score === null ? null : game.scoreDiff,
-        atBat: parts.atBat,
+        atBat: frame?.batter ?? parts.atBat,
         count: { ...game.count },
         outs: game.outs,
         bases: { ...game.bases },
@@ -1276,7 +1333,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           fallback={
             <div className="absolute inset-0 overflow-hidden" aria-busy={manifestSettled ? undefined : "true"}>
               {manifestSettled ? (
-                <img src={portraitSrc(run.characterId, "focused")} alt="" className="absolute inset-0 size-full object-cover shine-mound-close" aria-hidden />
+                <img src={careerFilmSrc(run.characterId)} alt="" className="absolute inset-0 size-full object-cover shine-mound-close" aria-hidden />
               ) : null}
             </div>
           }
@@ -1290,7 +1347,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
                 if (sitNeeded) setSitPicked(true);
               }}
               ghost={ghost}
-              label="Where she looks"
+              label="Where the pitch is coming"
             />
           ) : null}
         </ActionStage>
@@ -1348,6 +1405,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
                 ) : null}
               </p>
             )}
+            {morning && snap.phase === "pick" && !snap.watching ? <WorkChips chips={yesterday} label="What yesterday's work did" kind="yesterday" /> : null}
           </div>
           <div className="flex items-center gap-1.5">
             <ShineMute />
@@ -1363,9 +1421,8 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
 
         {/* Over the bottom of the film: the pick, the caption, the card.
             The walk-in card covers this; the sit is the choice once it is gone. */}
-        {titleUp ? null : (
+        {titleUp || paused ? null : (
         <section className="shine-race-coach" aria-label="The Coach">
-          {morning && snap.phase === "pick" && !snap.watching ? <WorkChips chips={yesterday} label="What yesterday's work did" kind="yesterday" /> : null}
           {/* At the done panel the letter reads where the rep's work leaves her. */}
           {morning ? <LetterMarks run={doneUp && rep ? rep.after : run} rep /> : null}
           {snap.phase === "pick" && snap.watching ? (
@@ -1387,9 +1444,28 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           {snap.phase === "racing" ? (
             // Under the VS card the two names are the caption; the Coach's line waits for her set.
             <div className="flex flex-col gap-2">
-              {stage === "flight" && !paused ? (
-                <PixelBtn className="h-14 w-full text-sm shine-swing" onClick={swing} onPointerDown={swing} ariaLabel="Swing">
-                  Swing
+              {stage === "flight" && !paused && u >= SWING_OPEN_U ? (
+                <PixelBtn
+                  className="h-14 w-full text-sm shine-swing"
+                  ariaLabel={
+                    practice || game.count.strikes >= 2
+                      ? `${RACE_COPY.swing}. ${RACE_COPY.swingShort}`
+                      : `${RACE_COPY.swing}. ${RACE_COPY.swingHold}`
+                  }
+                  onPointerDown={swing}
+                  onPointerUp={(ev) => {
+                    finishSwing(ev.pointerId);
+                  }}
+                  onPointerCancel={(ev) => {
+                    finishSwing(ev.pointerId);
+                  }}
+                >
+                  <span className="flex flex-col items-center gap-1">
+                    <span>{RACE_COPY.swing}</span>
+                    <span className="font-story text-[10px] font-normal normal-case tracking-normal">
+                      {practice || game.count.strikes >= 2 ? RACE_COPY.swingShort : RACE_COPY.swingHold}
+                    </span>
+                  </span>
                 </PixelBtn>
               ) : null}
               <p className="min-h-10 text-center font-story text-sm text-cream/90" aria-live="polite">
@@ -1406,6 +1482,7 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
               className="shine-atbat-card"
               data-race-card={snap.card.beat}
               data-tone={resultStamp(snap.card.beat, true)?.tone ?? "slate"}
+              aria-label={RACE_COPY.next}
               onClick={() => race.next()}
             >
               <span className="shine-atbat-line">{snap.card.line}</span>
@@ -1423,23 +1500,19 @@ function RaceFrame({ race, mode, run, kind, restore, onReplay, onChangeMatchup }
           {doneUp ? (
             <div className="shine-race-done flex flex-col gap-2" data-race-done={game.kind} data-long-head={headline.length > 44 ? "" : undefined}>
               <DoneHeader met={doneMet} label={exhibition ? RACE_COPY.doneLabelExhibition : doneLabelFor(game.kind, { morning })} headline={headline} reduced={reduced} paused={paused} />
-              {herLine ? (
-                <p className="text-center font-story text-sm italic text-cream" data-her-line>
-                  {herLine}
-                </p>
-              ) : null}
               <DayStrip chips={dayChips} reduced={reduced} paused={paused} />
-              {/* The exhibition's headline already told the whole day, runs and steals included. */}
-              {basepath && !countDate && !exhibition ? <p className="text-center font-story text-sm text-gold">{basepath}</p> : null}
-              {rep ? <RepWork result={rep.result} /> : null}
-              {closeLine ? <p className="text-center font-story text-sm text-cream/85" data-morning-next={panel?.under ? "" : undefined}>{closeLine}</p> : null}
-              {tutorialLook ? <p className="text-center font-story text-sm text-cream/90" data-first-look-read>{tutorialLook}</p> : null}
-              {/* The scoreboard under her read (N1, N2): how a tie came out, or "They lost." on a met ask. */}
-              {resultLine ? (
-                <p className="text-center font-story text-sm text-gold" data-finale-result>
-                  {resultLine}
-                </p>
-              ) : null}
+              <DoneTalk
+                key={`${run.id}:${run.turn}:done`}
+                lines={doneTalkLines([
+                  herLine ? { text: herLine, kind: "her" } : null,
+                  basepath && !countDate && !exhibition ? { text: basepath, kind: "path" } : null,
+                  closeLine ? { text: closeLine, kind: panel?.under ? "morning" : "read" } : null,
+                  tutorialLook ? { text: tutorialLook, kind: "tutorial" } : null,
+                  resultLine ? { text: resultLine, kind: "finale" } : null,
+                  rep ? { text: rep.result.line, kind: "rep" } : null,
+                ])}
+              />
+              {rep ? <RepWork result={rep.result} hideLine /> : null}
               {exhibition ? (
                 <>
                   {/* The way forward is the date's one action colour: Go's gold. */}

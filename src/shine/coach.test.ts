@@ -18,6 +18,7 @@ test("coachBrief names the next official date and a definition the record can pr
   assert.ok(b.nextTest.definition && b.nextTest.definition.length > 10);
   assert.ok(b.need.length > 10);
   assert.ok(b.choice.why.includes("Academy Gate"));
+  assert.doesNotMatch(b.choice.why, /\basks?\b/i);
 });
 
 test("coachBrief recommends rest when she is tired the day before a date", () => {
@@ -26,7 +27,7 @@ test("coachBrief recommends rest when she is tired the day before a date", () =>
   run.energy = 30;
   const b = coachBrief(run);
   assert.equal(b.choice.station, "off-day");
-  assert.match(b.choice.why, /Rest/);
+  assert.match(b.choice.why, /rest her/i);
 });
 
 test("coachBrief sends her to the trainer when she is empty", () => {
@@ -101,11 +102,14 @@ test("a shut facility sends her to her main tile", () => {
       assert.ok(roleFacilities(isPitcherStyle(c.style)).includes(b.choice.station), `${c.id} day ${t}: ${b.choice.station}`);
     }
   }
-  // A closer's main work is Spot work; before the Gate it's shut, so she throws her Bullpen or runs.
+  // A closer's main work is Spot work; before the Gate it's shut, so she throws her Bullpen, not a deep-game Poles.
   const kira = newRun("kira");
   kira.turn = 3;
   kira.energy = 90;
-  assert.ok(["side", "poles"].includes(coachBrief(kira).choice.station));
+  const kiraBrief = coachBrief(kira);
+  assert.equal(kiraBrief.choice.station, "side");
+  assert.match(kiraBrief.choice.why, /bullpen/i);
+  assert.doesNotMatch(kiraBrief.choice.why, /Lasting deep/);
 });
 
 test("every goal id has a need", () => {
@@ -117,6 +121,8 @@ test("every goal id has a need", () => {
   for (const id of ids) {
     const n = goalNeed(id, false);
     assert.ok(n.need.length > 5, id);
+    assert.doesNotMatch(n.need, FORBIDDEN_IN_STORY, n.need);
+    assert.doesNotMatch(n.need, /\bRecord\b/, n.need);
   }
 });
 

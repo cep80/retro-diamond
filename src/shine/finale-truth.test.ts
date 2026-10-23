@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { BIBLE, isPitcherStyle, sheet } from "./bible.ts";
 import { careerStill, endingQuote, endingStage, endingWhy, finaleWonRun, runEndingStage, FINALE_LOST_MET_QUOTES } from "./ending.ts";
+import { endingLastLine } from "./story-endings.ts";
 import { endingPictureRun, endingStagePicture, finaleDoneSrcs, firstPolaroidSrc, repeatedPicture } from "./ending-pictures.ts";
 import { dealPitch, resolveSwing, resolveTake, startFeaturedGame } from "./featured-game.ts";
 import {
@@ -78,17 +79,17 @@ describe("N2: the rest of a tied Finale", () => {
   });
 
   it("the line names the side that won it", () => {
-    assert.equal(finaleExtrasLine({ won: true, inning: 10 }, "pitcher"), "Tied in the 9th. They won it in the 10th.");
-    assert.equal(finaleExtrasLine({ won: false, inning: 11 }, "pitcher"), "Tied in the 9th. They lost it in the 11th.");
-    assert.equal(finaleExtrasLine({ won: true, inning: 9 }, "pitcher"), "Tied in the 9th. They walked it off in the 9th.");
-    assert.equal(finaleExtrasLine({ won: false, inning: 12 }, "hitter"), "Tied after her last at-bat. They lost it in the 12th.");
+    assert.equal(finaleExtrasLine({ won: true, inning: 10 }, "pitcher"), "Tied in the 9th, and they won it in the 10th.");
+    assert.equal(finaleExtrasLine({ won: false, inning: 11 }, "pitcher"), "Tied in the 9th, and they lost it in the 11th.");
+    assert.equal(finaleExtrasLine({ won: true, inning: 9 }, "pitcher"), "Tied in the 9th, and they walked it off in the 9th.");
+    assert.equal(finaleExtrasLine({ won: false, inning: 12 }, "hitter"), "Tied after her last at-bat, and they lost it in the 12th.");
     assert.deepEqual(finaleExtrasBug({ won: true, inning: 11 }), { inning: "11th", score: "Won" });
     for (const won of [true, false])
       for (const inning of [9, 10, 11, 12])
         for (const role of ["hitter", "pitcher"] as const) {
           if (inning === 9 && !won) continue;
           const line = finaleExtrasLine({ won, inning }, role);
-          assert.match(line, won ? /They (won|walked) it/ : /They lost it/);
+          assert.match(line, won ? /they (won|walked) it/i : /they lost it/i);
           assert.doesNotMatch(line, FORBIDDEN_IN_STORY);
         }
   });
@@ -107,7 +108,7 @@ describe("N2: the rest of a tied Finale", () => {
         assert.ok(g.extras, `${id} ${s}: a tie is played out`);
         assert.equal(finaleTeamWon(g), g.extras!.won);
         const line = finaleResultLine(g, "hitter")!;
-        assert.match(line, g.extras!.won ? /^Tied after her last at-bat\. They won it/ : /^Tied after her last at-bat\. They lost it/);
+        assert.match(line, g.extras!.won ? /^Tied after her last at-bat, and they won it/ : /^Tied after her last at-bat, and they lost it/);
       }
     }
     assert.ok(ties > 0, "a hitter's Finale can end level after her last at-bat");
@@ -123,9 +124,9 @@ describe("N2: the rest of a tied Finale", () => {
         ties += 1;
         assert.ok(g.extras, `${id} ${s}: a tie is played out`);
         assert.equal(finaleTeamWon(g), g.extras!.won);
-        assert.match(finaleResultLine(g, "pitcher")!, g.extras!.won ? /^Tied in the 9th\. They (won|walked) it/ : /^Tied in the 9th\. They lost it/);
+        assert.match(finaleResultLine(g, "pitcher")!, g.extras!.won ? /^Tied in the 9th, and they (won|walked) it/ : /^Tied in the 9th, and they lost it/);
         const read = moundRead(g);
-        if (g.extras!.won) assert.equal(read, "They won. The tying run scored on her, though.");
+        if (g.extras!.won) assert.equal(read, "They won, and the tying run scored on her, though.");
         else assert.doesNotMatch(read, /They won/);
       }
     }
@@ -160,7 +161,8 @@ describe("N1: the scoreboard, not her ask", () => {
         assert.doesNotMatch(line, FORBIDDEN_IN_STORY);
         if (k.met && !k.won) {
           assert.equal(line, FINALE_NIGHT_LOST_MET[c.id]);
-          assert.match(line, /^They lost\./);
+          assert.match(line, /^They lost\b/);
+          assert.doesNotMatch(line, /They lost\./);
         } else assert.equal(line, FINALE_NIGHT[c.id][k.met ? "met" : k.won ? "wonShort" : "missed"]);
       }
       // An old save (no scoreboard) reads her ask.
@@ -198,7 +200,10 @@ describe("N1: the scoreboard, not her ask", () => {
           }
           if (k.met && !k.won) {
             assert.match(`${still.quote} ${still.why}`, /They lost|they lost/, tag);
-            if (still.rank !== "never-quit") assert.equal(still.quote, FINALE_LOST_MET_QUOTES[c.id], tag);
+            if (still.rank !== "never-quit") {
+              assert.equal(still.quote, endingLastLine(c.id, still.rank, false), tag);
+              assert.notEqual(still.quote, FINALE_LOST_MET_QUOTES[c.id], tag);
+            }
           }
           // The 胴上げ, said in English: the team tosses her.
           if (k.won && (still.rank === "S" || still.rank === "A")) assert.match(still.frame, /throws her (up )?in the air/, tag);
@@ -222,7 +227,8 @@ describe("N1: the scoreboard, not her ask", () => {
 
   it("endingQuote for an A whose side lost is hers, and never the celebration", () => {
     const run = endingRun("miki", true, false, 65, 1);
-    assert.equal(endingQuote(run, "A"), FINALE_LOST_MET_QUOTES.miki);
+    assert.equal(endingQuote(run, "A"), endingLastLine("miki", "A", false));
+    assert.notEqual(endingQuote(run, "A"), FINALE_LOST_MET_QUOTES.miki);
     assert.notEqual(endingQuote(run, "A"), sheet("miki").endings.show);
   });
 });

@@ -4,9 +4,11 @@ import { describe, it } from "node:test";
 import { cellLoc } from "./core/zone.ts";
 import { LEAD_DEFAULT_SIT } from "./oracle.ts";
 import { recapLine } from "./culture.ts";
+import { FORBIDDEN_IN_STORY } from "./story.ts";
 import { risp, type Bases } from "./events.ts";
 import {
   aoiHeat,
+  countMood,
   dealPitch,
   FINALE_APPEARANCES,
   FINALE_NINTH_MARGIN,
@@ -141,8 +143,8 @@ describe("featured game", () => {
     // Digests of seeded take-only games, recorded from HEAD b1c91ae before the second steal
     // attempt existed. Yuki's Lantern and Series are forced back to the ids they had then.
     const GOLDEN: Record<string, string> = {
-      "aoi|gate": "7bb90f1f20ba", "aoi|first-light": "16d6ebda36b2", "aoi|lantern-classic": "0aab7f271587",
-      "aoi|night-classic": "4a579d2c82d1", "aoi|stretch": "e40a3d86e398", "aoi|series": "f6239f381a38", "aoi|finale": "01316aaf9fd0",
+      "aoi|gate": "961b0742be34", "aoi|first-light": "c83ec3b85932", "aoi|lantern-classic": "31ad105d98a8",
+      "aoi|night-classic": "4a579d2c82d1", "aoi|stretch": "7a7b73f0b907", "aoi|series": "f979a9d331e1", "aoi|finale": "01316aaf9fd0",
       "miki|gate": "06e6a6048ec8", "miki|first-light": "68f4f3aa5295", "miki|lantern-classic": "f3f5465fd053",
       "miki|night-classic": "bfcf122d61d8", "miki|stretch": "4502359f1c2a", "miki|series": "4c1c96cb164a", "miki|finale": "095211bf260a",
       "yuki|gate": "64580adbb2bc", "yuki|first-light": "694af7a54cb3", "yuki|lantern-classic": "25fcd5b074dd",
@@ -223,6 +225,7 @@ describe("featured game", () => {
     const run = newAoiRun();
     run.turn = 28;
     const game = startFeaturedGame(run, "lantern-classic");
+    game.arm = "sol";
     game.inning = 7;
     game.scoreDiff = 8;
     game.pgMet = true;
@@ -282,6 +285,7 @@ describe("featured game", () => {
     const run = newAoiRun();
     run.turn = 18;
     const game = startFeaturedGame(run, "first-light");
+    game.arm = "sol";
     assert.notEqual(game.pgId, "no-k");
     game.inning = 7;
     game.pgMet = true;
@@ -367,16 +371,44 @@ describe("featured game", () => {
     const run = newAoiRun();
     run.turn = 5;
     const game = startFeaturedGame(run, "gate");
+    game.arm = "sol";
     game.count = { balls: 3, strikes: 0 };
     resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
     assert.equal(game.reached, true);
     assert.equal(game.pgMet, true);
   });
 
+  it("Reina does not walk Aoi before the Finale", () => {
+    const run = newAoiRun();
+    run.turn = 5;
+    const game = startFeaturedGame(run, "gate");
+    assert.equal(game.arm, "reina");
+    game.count = { balls: 3, strikes: 0 };
+    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
+    assert.equal(game.walks, 0);
+    assert.equal(game.count.balls, 3);
+    assert.equal(game.count.strikes, 1);
+    assert.equal(game.reached, false);
+    const take = game.events.find((e) => e.t === "take");
+    assert.ok(take && take.t === "take" && take.strike);
+  });
+
+  it("Reina still walks Aoi in the Finale", () => {
+    const run = newAoiRun();
+    run.turn = 60;
+    const game = startFeaturedGame(run, "finale", { arm: "reina", appearances: 3, neutral: true });
+    assert.equal(game.arm, "reina");
+    game.count = { balls: 3, strikes: 0 };
+    resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
+    assert.equal(game.walks, 1);
+    assert.equal(game.reached, true);
+  });
+
   it("does not treat a walk as Drive in a run", () => {
     const run = newAoiRun();
     run.turn = 28;
     const game = startFeaturedGame(run, "lantern-classic");
+    game.arm = "sol";
     setBases(game, { first: false, second: false, third: false });
     game.count = { balls: 3, strikes: 0 };
     resolveTake(run, game, { type: "fastball", loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const });
@@ -448,6 +480,7 @@ describe("featured game", () => {
     const run = newAoiRun();
     run.turn = 18;
     const game = startFeaturedGame(run, "first-light");
+    game.arm = "sol";
     const away = { type: "fastball" as const, loc: { x: -0.8, y: 1.5 }, inZone: false, speed: 2, recognizeAt: 0, family: "hard" as const };
     for (let i = 0; i < 4; i++) resolveTake(run, game, away);
     assert.equal(game.walks, 1);
@@ -487,6 +520,7 @@ describe("featured game", () => {
     const run = newAoiRun();
     run.turn = 50;
     const game = startFeaturedGame(run, "stretch");
+    game.arm = "sol";
     const heart = { type: "fastball" as const, loc: cellLoc(LEAD_DEFAULT_SIT), inZone: true, speed: 2, recognizeAt: 0, family: "hard" as const };
     const away = { type: "fastball" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const };
     resolveTake(run, game, heart);
@@ -565,6 +599,7 @@ describe("featured game", () => {
     const run = newAoiRun();
     run.turn = 55;
     const walked = startFeaturedGame(run, "series");
+    walked.arm = "sol";
     const away = { type: "fastball" as const, loc: { x: -2, y: 1 }, inZone: false, speed: 0.6, recognizeAt: 0, family: "hard" as const };
     for (let pa = 0; pa < 3; pa++) {
       for (let i = 0; i < 4; i++) resolveTake(run, walked, away);
@@ -634,7 +669,7 @@ describe("the Duel: resolvers", () => {
     assert.equal(on.takesThisArm, 1);
     assert.equal(on.bookOpen, 2);
     assert.equal(on.pendingBook, 2);
-    assert.match(on.lastVerdict, /^Took it\./);
+    assert.match(on.lastVerdict, /^She took /);
   });
 
   it("protect coerces a power swing to contact and the verdict names the call", () => {
@@ -648,7 +683,7 @@ describe("the Duel: resolvers", () => {
     resolveSwing(run, g, pitch, { row: 1, col: 1 }, 0.0, "power");
     const ev = g.events.find((e) => e.t === "swing") as { kind?: string } | undefined;
     assert.equal(ev?.kind, "contact", "power under Protect swings for contact");
-    assert.ok(g.lastVerdict.startsWith("Protected."), g.lastVerdict);
+    assert.match(g.lastVerdict, /^She protected/, g.lastVerdict);
   });
 
   it("the call and the fight meter reset when the PA ends", () => {
@@ -663,5 +698,25 @@ describe("the Duel: resolvers", () => {
     resolveTake(run, g, { type: "fastball", loc: { x: 1.5, y: 1.5 }, inZone: true, speed: 0.6, recognizeAt: 0, family: "hard" as const });
     assert.equal(g.call, "sit-cell");
     assert.equal(g.fightMeter, 0);
+  });
+});
+
+describe("the count talks like a booth, not a window", () => {
+  it("names two strikes and 3-0 in whole sentences", () => {
+    assert.equal(countMood({ balls: 0, strikes: 2 }), "She's down 0-2, and the next one will try to make her chase.");
+    assert.equal(countMood({ balls: 3, strikes: 0 }), "Three balls, no strikes, and they have to throw her one.");
+    assert.equal(countMood({ balls: 1, strikes: 2 }), "Two strikes, and one more puts her out of there.");
+    assert.equal(countMood({ balls: 3, strikes: 1 }), "Three balls, and they have to throw a strike.");
+    assert.equal(countMood({ balls: 0, strikes: 0 }), null);
+    for (const line of [
+      countMood({ balls: 0, strikes: 2 }),
+      countMood({ balls: 3, strikes: 0 }),
+      countMood({ balls: 1, strikes: 2 }),
+      countMood({ balls: 3, strikes: 1 }),
+    ]) {
+      assert.ok(line);
+      assert.doesNotMatch(line, FORBIDDEN_IN_STORY, line);
+      assert.doesNotMatch(line, /window/i, line);
+    }
   });
 });

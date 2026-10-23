@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { startFeaturedGame } from "./featured-game.ts";
-import { keepLiveExhibitionScreen, liveMatches, migratePersisted, patchRun, patchSettings, persistedScreen, pushBackup, BACKUP_CAP } from "./persist.ts";
+import { keepLiveExhibitionScreen, liveMatches, migratePersisted, patchRun, patchSettings, persistedScreen, pushBackup, BACKUP_CAP, repMorning } from "./persist.ts";
 import { newAoiRun } from "./run.ts";
 import { DEFAULT_KEYS, EMPTY_TELLS, type TraineeRun } from "./types.ts";
 
@@ -64,6 +64,27 @@ describe("persist", () => {
     assert.equal(persistedScreen("exhibition", false, false), "title");
   });
 
+  it("keeps a practice morning on the plate even without a live attempt", () => {
+    assert.equal(persistedScreen("plate", true, false, true), "plate");
+    assert.equal(persistedScreen("wall", true, false, true), "plate");
+    assert.equal(persistedScreen("complex", true, false, true), "plate");
+    const run = newAoiRun();
+    run.turn = 17;
+    run.phase = "plate";
+    assert.equal(repMorning(run), true);
+    const morning = migratePersisted({ run, screen: "plate" }, 7);
+    assert.equal(morning.screen, "plate");
+    assert.equal(morning.liveGame, null);
+    const fromWall = migratePersisted({ run, screen: "wall" }, 7);
+    assert.equal(fromWall.screen, "plate");
+    const date = newAoiRun();
+    date.turn = 5;
+    date.phase = "plate";
+    assert.equal(repMorning(date), false);
+    const gate = migratePersisted({ run: date, screen: "plate" }, 7);
+    assert.equal(gate.screen, "title");
+  });
+
   it("does not evict a live exhibition when persist hydrates title", () => {
     assert.equal(keepLiveExhibitionScreen("exhibition", "title"), "exhibition");
     assert.equal(keepLiveExhibitionScreen("exhibition", "settings"), "exhibition");
@@ -89,6 +110,22 @@ describe("persist", () => {
     const otherRun = { ...run, id: "someone-else" };
     assert.equal(liveMatches(live, otherRun), null);
     assert.equal(liveMatches(live, { ...run, phase: "complex" }), null, "a run no longer at the plate has no live attempt");
+  });
+
+  it("keeps a finished practice morning on the plate, so a reload cannot throw the one pitch away", () => {
+    const run = newAoiRun();
+    run.turn = 17;
+    run.phase = "plate";
+    const game = startFeaturedGame(run, "practice");
+    game.done = true;
+    game.pitchesSeen = 1;
+    const live = { side: "plate" as const, runId: run.id, turn: run.turn, game, aim: { row: 1 as const, col: 1 as const }, swing: "contact" as const };
+    const ok = migratePersisted({ run, screen: "plate", liveGame: live }, 6);
+    assert.equal(ok.screen, "plate");
+    assert.ok(ok.liveGame && ok.liveGame.side === "plate" && ok.liveGame.game.done);
+    assert.equal(ok.liveGame.game.pitchesSeen, 1);
+    assert.equal(repMorning(run), true);
+    assert.equal(persistedScreen("plate", true, true, true), "plate");
   });
 
   it("migrates a v5 save without settings or backups", () => {

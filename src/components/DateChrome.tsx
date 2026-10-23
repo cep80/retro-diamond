@@ -189,7 +189,7 @@ export function castSide(id: CharacterId): TitleSide {
 
 /**
  * The card before a big date's first Go, letterboxed over the film: the date's
- * name in kana and English, where it is, and its rung ("Classic Year · 2 of 2").
+ * name in kana and English, where it is, and its rung ("Lantern year · 2 of 2").
  * The Finale's entrance is the same card grown: its own stadium plate, both
  * nameplates, and the head-to-head. Unlike the rest of the chrome it takes a
  * tap: anywhere on it skips it. The caller times it (CHROME_MS.title or
@@ -320,10 +320,10 @@ export function FinaleWinMoment({
   const hold = { ["--hr-hold" as string]: `${CHROME_MS.finaleWin}ms` } as React.CSSProperties;
   // Waiting on the pictures: a tap still goes on, but nothing plays on bare rays.
   if (!ready)
-    return <button type="button" className="shine-finale-win-wait" onClick={onSkip} aria-label={`${name} won the Diamond Finale. Tap to go on.`} data-finale-win="waiting" />;
+    return <button type="button" className="shine-finale-win-wait" onClick={onSkip} aria-label={`${name} won the Diamond Finale, tap to go on.`} data-finale-win="waiting" />;
   return (
     <>
-      <button type="button" className={`shine-finale-win ${reduced ? "is-reduced" : ""}`} style={hold} onClick={onSkip} aria-label={`${FINALE_WIN_STAMP.en}. ${name} won the Diamond Finale. Tap to go on.`} data-finale-win="">
+      <button type="button" className={`shine-finale-win ${reduced ? "is-reduced" : ""}`} style={hold} onClick={onSkip} aria-label={`${name} won the Diamond Finale, tap to go on.`} data-finale-win="">
         {picture.kind === "bust" ? (
           <>
             <img
@@ -382,7 +382,7 @@ export function FinaleWinMoment({
                 <span className="shine-kana">{jp}</span>{" "}
               </>
             ) : null}
-            {/* The PA's call, the one big moment that's his to say (voice v2). */}
+            {/* The PA's call, the one big moment that's hers to say (voice v2). */}
             Your Diamond Finale champion, {name}!
           </p>
         </div>

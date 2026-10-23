@@ -21,9 +21,9 @@ import {
   type ScreenMusic,
 } from "@/shine/audio.ts";
 import { ShineHelp, ShineSettings } from "@/components/ShineSettings";
-import { nextNamedBeat, nextDateLine, turnMeta, dateLabel, daysAwayLabel, yearOf, morningKind, PLATE_TURNS, FINALE_POSTGAME } from "@/shine/calendar.ts";
+import { nextNamedBeat, nextDateLine, turnMeta, dateLabel, daysAwayLabel, yearOf, morningKind, PLATE_TURNS, FINALE_POSTGAME, calendarPeekScene } from "@/shine/calendar.ts";
 import { BIBLE, careerFilmSrc, endingClipSrc, endingFilmSrc, isPitcherStyle, parkSrc, sceneBustSrc, sceneFilmSrc, sheet, yearStillLine, type PortraitMood } from "@/shine/bible.ts";
-import { NEVER_SOLD, SKUS, cosmeticClasses, previewClaimable } from "@/shine/commerce.ts";
+import { SKUS, SHOP_INTRO, cosmeticClasses, neverSoldLines, previewClaimable, skuPreview } from "@/shine/commerce.ts";
 import { kitAccent } from "@/shine/stage.ts";
 import {
   cheerLines,
@@ -37,17 +37,20 @@ import {
   datePark,
   dateSpeech,
   endingRankLabel,
-  fanLetter,
+  fanLetterScene,
   postgamePicture,
   shouldCurtainCall,
   yearCard,
+  yearEndCta,
+  yearEndNextLine,
+  yearStartLines,
 } from "@/shine/culture.ts";
 import { bookStamp, doneStamp, postgameFiller } from "@/components/race-ui";
 import { ShineComplexWork, YearGrades, markSpring } from "./ShineComplexWork";
 import {
   careerStill,
   cardAltLook,
-  cardBanner,
+  CLUBHOUSE_INTRO,
   endingRank,
   endingStageCta,
   endingStageLabel,
@@ -63,7 +66,8 @@ import {
   seriesFinaleLine,
   sparkEffectLine,
   sparkGapLine,
-  sparkSummary,
+  sparkWallLine,
+  wallCardLines,
   wallCardPicture,
   yearFoldLine,
 } from "@/shine/ending.ts";
@@ -73,20 +77,22 @@ import { loadActionManifest, warmActionExhibition } from "./action/action-manife
 import { filmReady, type ActionManifest } from "@/shine/action-art.ts";
 import { MOOD_LABELS, moodLevel } from "@/shine/training.ts";
 import { useShine } from "@/shine/store.ts";
+import { mentorScene } from "@/shine/mentor.ts";
 import { finaleEveScene, promiseScene, TITLE_LINES, type SceneLike } from "@/shine/story.ts";
 import { lowPointScene, rivalIntro, RIVAL_KINDS, type RivalKind } from "@/shine/story-arcs.ts";
-import { cappedEffect, effectChips, eventChip, eventDue, eventKey, type EventChoice, type TrainingEvent } from "@/shine/training-events.ts";
+import { cappedEffect, effectChips, effectTalk, eventChip, eventDue, eventKey, type EventChoice, type TrainingEvent } from "@/shine/training-events.ts";
 import { EVENT_LIBRARY } from "@/shine/training-events-library.ts";
 import { endingChip, endingScene, endingTier } from "@/shine/story-endings.ts";
+import { teachLines } from "@/shine/teach.ts";
 import { endingSceneSrc, endingStagePicture, finaleEnding, firstPolaroidSrc } from "@/shine/ending-pictures.ts";
 
 function isRivalKind(t: string | null): t is RivalKind {
   return t !== null && (RIVAL_KINDS as readonly string[]).includes(t);
 }
 import { ScenePlayer } from "./ScenePlayer";
-import { catchWithCoachScene, memoryLine, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
-import { keepsakeWallLine, letterPage, replayLines, scrapbookBook, type BookEntry } from "@/shine/scrapbook.ts";
-import type { CharacterId, DefiningPa, Highlight, Spark } from "@/shine/types.ts";
+import { catchScene, relationshipScene, type RelationshipScene } from "@/shine/relationship.ts";
+import { letterLines, letterPage, polaroidLines, replayLines, scrapbookBook, type BookEntry } from "@/shine/scrapbook.ts";
+import type { CharacterId, DefiningPa, Highlight, Spark, TraineeRun, TurnType } from "@/shine/types.ts";
 
 /** A layout effect in the browser; the server render has no layout to wait for. */
 const useScreenLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
@@ -174,12 +180,14 @@ function Title() {
   }, []);
 
   const start = () => {
-    if (started) return;
+    // The module flag is what stops a bubble from the pill plus the art from unlocking twice.
+    if (titleStarted) return;
+    titleStarted = true;
     unlockAudio();
     sfxTitleSting();
     playScreenMusic(TITLE_MUSIC);
-    titleStarted = true;
     setStarted(true);
+    useShine.getState().bumpView();
   };
 
   useEffect(() => {
@@ -201,7 +209,12 @@ function Title() {
   };
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream" style={{ ["--shine-accent" as string]: kitAccent(girl) }}>
+    <div
+      className={`relative flex min-h-dvh flex-col overflow-hidden bg-ink text-cream ${started ? "" : "shine-title-gate"}`}
+      style={{ ["--shine-accent" as string]: kitAccent(girl) }}
+      onClick={started ? undefined : start}
+      data-title-gate={started ? undefined : ""}
+    >
       {/* On a wide screen the portrait art stands whole at the right; this blurred copy fills the rest. Phones never show it. */}
       <img src={art} alt="" className="shine-title-fill" aria-hidden />
       <img src={art} alt="" className={`shine-title-art ${started ? "" : "shine-title-breathe"}`} data-art={girl === "aoi" ? "key" : "still"} />
@@ -224,22 +237,18 @@ function Title() {
         ) : (
           <div className="shine-title-menu-in mt-5 flex w-full max-w-sm flex-col gap-3">
             {/* Her face already fills the screen, so her line sits on the art like a subtitle. */}
-            <p className="shine-title-sub">
-              <span className="shine-title-sub-name">{who.jp}</span>
-              {TITLE_LINES[girl]}
-            </p>
-            {nextHook ? <p className="shine-title-hook">{nextHook}</p> : null}
+            <TitleTalk name={who.jp} line={TITLE_LINES[girl]} hook={nextHook} />
             {run ? (
               <PixelBtn className="min-h-14 justify-between px-5 py-2.5 text-sm" onClick={go(continueRun)}>
-                {run.clubhouseCard ? `See how ${who.name}'s story ended` : `Continue ${who.name} · Day ${run.turn}`}
+                {run.clubhouseCard ? `See how ${who.name}'s story ended` : `Continue ${who.name} · ${dateLabel(turnMeta(run.turn), who.style)}`}
                 <span aria-hidden>→</span>
               </PixelBtn>
             ) : (
-              // Her line above says who she is; the door says what the year is.
+              // Her line above says who she is; the door names the year.
               <PixelBtn className="min-h-14 justify-between px-5 py-2.5 text-sm" onClick={go(openSelect, true)}>
                 <span className="flex flex-col items-start gap-1 text-left">
                   Start coaching
-                  <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Pick a girl and coach her for three years.</span>
+                  <span className="font-ui text-[11px] font-medium normal-case tracking-normal text-ink/70">Three years at the Academy.</span>
                 </span>
                 <span aria-hidden>→</span>
               </PixelBtn>
@@ -272,12 +281,12 @@ function Title() {
                     setEndYear(true);
                   }}
                 >
-                  New Rookie year
+                  Coach someone new
                 </button>
               )
             ) : run?.clubhouseCard ? (
               <button type="button" className="shine-title-end" onClick={go(openSelect, true)}>
-                New Rookie year
+                Coach someone new
               </button>
             ) : null}
           </div>
@@ -310,7 +319,7 @@ function Wall() {
             type="button"
             className={`shine-wall-frame ${c.id === nextUp ? "is-next" : ""}`}
             style={{ ["--face-accent" as string]: kitAccent(c.id) }}
-            aria-label={`Coach ${c.name}`}
+            aria-label={`${c.name}'s year`}
             onClick={() => {
               sfxSelect();
               wallPick = c.id;
@@ -340,15 +349,10 @@ function Wall() {
           <p className="episode-chip w-fit">ダイヤシャイン</p>
         </div>
         <h1 className="mt-4 font-display text-2xl font-bold">Clubhouse</h1>
-        <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">
-          Every girl you coach all the way through gets a card up here. The next girl can learn a few things from her, but she still starts her own three years from scratch.
-        </p>
-        {nextHook ? (
-          <p className="mt-4 rounded-xl border border-gold/40 bg-ink/70 px-4 py-3 font-ui text-sm text-gold">{nextHook}</p>
-        ) : null}
+        <ClubhouseTalk lines={nextHook ? [...CLUBHOUSE_INTRO, nextHook] : CLUBHOUSE_INTRO} />
         {clubhouse.length === 0 ? (
           <>
-            <p className="mt-6 font-ui text-sm text-muted">No cards yet. Coach a girl to the end of her Academy days, and her card goes up here.</p>
+            <p className="mt-6 font-ui text-sm text-muted">No cards yet, so finish a year and her picture goes up here.</p>
             {/* The wall already has a frame for each of them, dimmed until her year is done. */}
             {frames}
           </>
@@ -359,8 +363,6 @@ function Wall() {
               const who = sheet(c.characterId);
               const pic = wallCardPicture(c.characterId);
               const rank = endingRankLabel(c.ending);
-              const keepsake = keepsakeWallLine(c.characterId, c.keepsake);
-              const passes = sparkSummary(c.sparks);
               return (
                 <article
                   key={c.id}
@@ -386,21 +388,9 @@ function Wall() {
                     <p className="mt-3 font-display text-sm font-bold uppercase tracking-wide">
                       #{who.number} {who.name}
                     </p>
-                    <p className="mt-1 font-ui text-xs text-muted">Her rival was {sheet(who.rival).name}.</p>
-                    {cardBanner(c) ? (
-                      <p className="mt-1 font-ui text-xs text-gold">Her number, {who.number}, went up on a park banner.</p>
-                    ) : null}
-                    {cardAltLook(c) ? (
-                      <p className="mt-1 font-ui text-xs text-gold">The kids at the gate are wearing her number now.</p>
-                    ) : null}
-                    {keepsake ? <p className="mt-1 font-ui text-xs text-cream/70">{keepsake}</p> : null}
-                    <p className="mt-2 font-ui text-sm leading-relaxed text-cream/85">
-                      {run?.clubhouseCard?.id === c.id && liveQuote ? liveQuote : c.quote}
-                    </p>
-                  </div>
-                  <div className="border-t border-white/10 bg-panel/80 px-4 py-3">
-                    <p className="font-display text-[10px] uppercase tracking-widest text-muted">What she passes on</p>
-                    <p className="mt-1 font-ui text-xs text-gold">{passes || "Nothing this time"}</p>
+                    <WallCardTalk
+                      lines={wallCardLines(c, run?.clubhouseCard?.id === c.id && liveQuote ? liveQuote : c.quote)}
+                    />
                   </div>
                 </article>
               );
@@ -409,26 +399,24 @@ function Wall() {
           {waiting.length ? (
             <>
               {/* The girls not coached yet wait in their frames, dimmed. A tap opens her Rookie year. */}
-              <p className="mt-6 font-display text-[10px] uppercase tracking-widest text-muted">Still to coach</p>
+              <p className="mt-6 font-display text-[10px] uppercase tracking-widest text-muted">Waiting</p>
               {frames}
             </>
           ) : null}
+          <div className="shine-wall-next">
+            <GoButton
+              onClick={() => {
+                sfxSelect();
+                wallPick = nextUp;
+                openSelect();
+              }}
+            >
+              {`${sheet(nextUp).name}'s year next`}
+            </GoButton>
+          </div>
           </>
         )}
       </div>
-      {clubhouse.length > 0 ? (
-        <GoDock>
-          <GoButton
-            onClick={() => {
-              sfxSelect();
-              wallPick = nextUp;
-              openSelect();
-            }}
-          >
-            {`Coach ${sheet(nextUp).name} next`}
-          </GoButton>
-        </GoDock>
-      ) : null}
     </main>
   );
 }
@@ -447,16 +435,21 @@ function Shop() {
           <p className="episode-chip w-fit">ダイヤシャイン</p>
         </div>
         <h1 className="mt-4 font-display text-2xl font-bold">Shop</h1>
-        <p className="mt-2 max-w-lg font-ui text-sm text-cream/80">
-          Everything here changes how the game looks, and nothing else. This is a preview, so nothing actually charges you. There are no banners and no pull rates, and the prices you see are the prices.
-        </p>
+        <ShopTalk lines={SHOP_INTRO} />
         <ul className="mt-6 space-y-3">
-          {SKUS.filter((s) => previewClaimable(s)).map((s) => (
+          {SKUS.filter((s) => previewClaimable(s)).map((s) => {
+            const preview = skuPreview(s.id);
+            return (
             <li key={s.id} className="club-nav-tile px-4 py-3">
               <p className="font-display text-xs font-bold uppercase tracking-wide">
                 {s.name} · ${s.usd.toFixed(2)}
               </p>
               <p className="mt-1 font-ui text-sm text-muted">{s.blurb}</p>
+              {preview ? (
+                <div className={`shine-shop-preview ${preview.skin}`} data-shop-preview={s.id}>
+                  <img src={preview.src} alt={preview.caption} />
+                </div>
+              ) : null}
               <PixelBtn
                 variant="ghost"
                 className="mt-3 h-10"
@@ -469,13 +462,12 @@ function Shop() {
                 {owned.includes(s.id) ? "It's on" : "Try it on"}
               </PixelBtn>
             </li>
-          ))}
+            );
+          })}
         </ul>
         {note ? <p className="mt-4 font-ui text-sm text-grass-2">{note}</p> : null}
         <p className="mt-6 font-display text-[10px] uppercase tracking-widest text-gold">Never for sale</p>
-        <p className="mt-2 font-ui text-sm text-cream/80">
-          {`We'll never sell you ${NEVER_SOLD.slice(0, -1).join(", ")}, or ${NEVER_SOLD.at(-1)}. Those you earn by coaching her.`}
-        </p>
+        <ShopTalk lines={neverSoldLines()} />
       </div>
     </main>
   );
@@ -487,27 +479,27 @@ function Shop() {
  */
 const MEET: Record<CharacterId, { line: string; lore: string }> = {
   aoi: {
-    line: "I run out every ground ball. Even the easy outs. Mom says I don't have to. …I do.",
-    lore: "She leads off for Koi Park. Her mom runs the okonomiyaki shop by the gate.",
+    line: "I run out every ground ball, even the easy outs, Mom says I don't have to, …I do.",
+    lore: "She leads off for Koi Park, and her mom runs the okonomiyaki shop by the gate.",
   },
   reina: {
-    line: "I put every pitch where I say it'll go. When I miss, I want to know by how much.",
-    lore: "She's Koi Park's ace, and she has never once walked a batter.",
+    line: "I put every pitch where I say it'll go, and when I miss, I want to know by how much.",
+    lore: "She's Koi Park's ace, and a walk goes in the notebook like it didn't happen on purpose.",
   },
   miki: {
-    line: "I hit it foul until the pitcher gives up. I'm annoying like that. Coaches think so too. So. Hi.",
-    lore: "She's the toughest out at North Field. She keeps two melon pan in her bag, always, just in case.",
+    line: "I hit it foul until the pitcher gives up, I'm annoying like that, coaches think so too, so, hi.",
+    lore: "She's the toughest out at North Field, and she keeps two melon pan in her bag, always, just in case.",
   },
   sol: {
-    line: "I throw hard, Jefe. People clap. That's the whole story. Don't ask about the rest.",
-    lore: "She's the Dusters' ace. Her big sister taught her three more pitches, and she won't throw them where anyone can see.",
+    line: "I throw hard, Jefe, people clap, that's the whole story, the rest stays with me.",
+    lore: "She's the Dusters' ace, her big sister taught her three more pitches, and she won't throw them where anyone can see.",
   },
   kira: {
-    line: "Here's the deal, Partner. You get me a lead, I get you three outs. Then I'm out the door. Deal?",
-    lore: "She closes for Stars Park. Two taps on the bullpen door, then the ninth, and she's gone by the last bus.",
+    line: "Here's the deal, Partner, you get me a lead, I get you three outs, then I'm out the door, deal?",
+    lore: "She closes for Stars Park, two taps on the bullpen door, then the ninth, and she's gone by the last bus.",
   },
   yuki: {
-    line: "Everybody says wait. Wait for the pitch, wait for the sign, wait for— no. I don't wait.",
+    line: "Everybody says wait, wait for the pitch, wait for the sign, no, I don't wait.",
     lore: "She steals bases for the Palms, and she's the first one at the park every single morning.",
   },
 };
@@ -549,10 +541,10 @@ function Select() {
   const pending = manifest === null;
   const ready = filmReady(pick, manifest);
   const legacyLabel = parent
-    ? `${sheet(parent.characterId).name} is teaching her${sparks.length ? ` ${sparks.length === 1 ? "one thing" : `${sparks.length === 2 ? "two" : "three"} things`}` : ""}`
+    ? `${sheet(parent.characterId).name} left her a habit`
     : eligible.length
-      ? "Who does she learn from?"
-      : "Add a friend's card";
+      ? "Who left her a habit?"
+      : "A girl who already had her year";
 
   useEffect(() => {
     let live = true;
@@ -573,7 +565,7 @@ function Select() {
       </div>
       <div className="shine-pick-top">
         <ShineBack onClick={openTitle} />
-        <h1 className="shine-pick-ask">Who will you coach?</h1>
+        <h1 className="shine-pick-ask">Whose year is this?</h1>
       </div>
       <div className="shine-pick-grid" role="group" aria-label="The girls">
         {BIBLE.map((c) => {
@@ -584,7 +576,11 @@ function Select() {
               key={c.id}
               type="button"
               aria-pressed={on}
-              aria-label={inFilm ? `${c.name}, number ${c.number}` : `${c.name}. Her art isn't ready yet.`}
+              aria-label={
+                inFilm
+                  ? `${c.name}, number ${c.number}, ${isPitcherStyle(c.style) ? "pitches" : "hits"}`
+                  : `${c.name}, and her picture isn't ready yet.`
+              }
               data-locked={inFilm ? undefined : "true"}
               onClick={() => {
                 if (on) return;
@@ -601,6 +597,7 @@ function Select() {
                 <span className="shine-pick-face-num">{c.number}</span>
               </span>
               <span className="shine-pick-face-name">{c.name}</span>
+              <span className="shine-pick-face-role">{isPitcherStyle(c.style) ? "Pitches" : "Hits"}</span>
             </button>
           );
         })}
@@ -624,11 +621,9 @@ function Select() {
             <span className="shine-kana">{who.jp}</span>
             {who.name}
             <span className="shine-pick-num">#{who.number}</span>
+            <span className="shine-pick-role">{isPitcherStyle(who.style) ? "Pitches" : "Hits"}</span>
           </span>
-          <p key={pick} className="shine-pick-line">
-            {meet.line}
-          </p>
-          <p className="shine-pick-lore">{meet.lore}</p>
+          <PickTalk key={pick} line={meet.line} lore={meet.lore} />
           <PixelBtn
             className="shine-pick-go h-12 w-full justify-between px-5 text-sm"
             disabled={pending || !ready}
@@ -637,19 +632,19 @@ function Select() {
               startRun(pick, parentId, pickInheritSparks(parent?.sparks ?? [], sparks));
             }}
           >
-            {pending || ready ? `Coach ${who.name}` : "Not ready yet"}
+            {pending || ready ? `${who.name}'s year` : "Not ready yet"}
             {pending || ready ? <span aria-hidden>→</span> : null}
           </PixelBtn>
         </section>
       </div>
       {legacyOpen ? (
-        <div className="shine-pick-sheet" role="dialog" aria-modal="true" aria-label={eligible.length ? "Who she learns from" : "A friend's card"}>
+        <div className="shine-pick-sheet" role="dialog" aria-modal="true" aria-label={eligible.length ? "Who left her a habit" : "A girl who already had her year"}>
           <div className="shine-pick-sheet-body">
-            <p className="shine-pick-sheet-title">{eligible.length ? `Who ${who.name} learns from` : "A friend's card"}</p>
+            <p className="shine-pick-sheet-title">{eligible.length ? `Who left ${who.name} a habit` : "A girl who already had her year"}</p>
             {eligible.length ? (
               <div className="mt-4">
-                <p className="font-display text-[10px] uppercase tracking-widest text-gold">Learn from an older card</p>
-                <p className="mt-1 font-ui text-xs text-muted">The new girl picks up a few of her habits. Everything else, she earns herself.</p>
+                <p className="font-display text-[10px] uppercase tracking-widest text-gold">A girl who already had her year</p>
+                <p className="mt-1 font-ui text-xs text-muted">She can pick up a habit, and she does the rest herself.</p>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <button
                     type="button"
@@ -675,25 +670,20 @@ function Select() {
                       className={`club-nav-tile px-4 py-3 text-left ${parentId === c.id ? "border-gold" : ""}`}
                     >
                       <p className="font-display text-xs font-bold uppercase">
-                        {sheet(c.characterId).name} · {c.ending}
+                        {sheet(c.characterId).name}
                       </p>
                       <p className="mt-1 font-ui text-sm text-muted">
-                        {sparkSummary(c.sparks.slice(0, 3)) || "Nothing to pass on"}
+                        {sparkWallLine(c.sparks)}
                       </p>
                     </button>
                   ))}
                 </div>
-                {parent ? (
-                  <p className="mt-2 font-ui text-xs text-grass-2">
-                    {parent.sparks.slice(0, 3).map((s) => sparkEffectLine(s.kind)).join(" · ")}
-                  </p>
-                ) : null}
                 {parent && cardAltLook(parent) ? (
-                  <p className="mt-2 font-ui text-xs text-gold">She wears the look the kids at the gate copied last time.</p>
+                  <p className="mt-2 font-ui text-xs text-gold">She wears what the kids at the gate copied last time.</p>
                 ) : null}
                 {parent && parent.sparks.length ? (
                   <div className="mt-3">
-                    <p className="font-display text-[10px] uppercase tracking-widest text-gold">Pick up to 3 to pass on</p>
+                    <p className="font-display text-[10px] uppercase tracking-widest text-gold">She left these with you</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {parent.sparks.filter((s) => s.kind !== "polish").map((s, i) => {
                         const on = sparks.includes(s);
@@ -708,8 +698,7 @@ function Select() {
                             }}
                             className={`club-nav-tile px-3 py-2 ${on ? "border-gold" : ""}`}
                           >
-                            <p className="font-display text-[10px] font-bold uppercase">{sparkSummary([s])}</p>
-                            <p className="font-ui text-[10px] text-muted">{sparkEffectLine(s.kind)}</p>
+                            <p className="font-ui text-xs text-cream">{sparkEffectLine(s.kind)}</p>
                           </button>
                         );
                       })}
@@ -766,6 +755,8 @@ function Complex() {
   const lastLine = useShine((s) => s.lastLine);
   const storyCard = useShine((s) => s.storyCard);
   const dismissStoryCard = useShine((s) => s.dismissStoryCard);
+  const calendarPeek = useShine((s) => s.calendarPeek);
+  const dismissCalendarPeek = useShine((s) => s.dismissCalendarPeek);
   const openTitle = useShine((s) => s.openTitle);
   const openSettings = useShine((s) => s.openSettings);
   const [catchBeat, setCatchBeat] = useState(false);
@@ -779,33 +770,44 @@ function Complex() {
 
   if (storyCard) {
     return (
-      <Shell runTurn={run.turn} label="Letters" mood="elated" pill={{ kana: "ファンレター", name: "Fan mail", tone: "gold" }} action={{ label: "Start the morning", onClick: dismissStoryCard }}>
-        <p className="shine-shell-line">{fanLetter(run)}</p>
-        <p className="shine-shell-aside text-gold">There's a whole stack of them at the front desk now. She read every one twice.</p>
-      </Shell>
+      <StoryScreen
+        scene={fanLetterScene(run)}
+        chip="Fan mail"
+        cta="Start the morning"
+        onDone={() => {
+          useShine.getState().bumpView();
+          dismissStoryCard();
+        }}
+      />
     );
   }
 
   if (catchBeat) {
-    const catchScene = catchWithCoachScene(run);
     return (
-      <Shell
-        runTurn={run.turn}
-        label="Catch with Coach"
-        chipLabel
-        mood={catchScene.mood}
-        pill={{ kana: who.jp, name: who.name, tone: "accent" }}
-        action={{
-          label: "Toss it back",
-          onClick: () => {
-            train("clubhouse");
-            setCatchBeat(false);
-          },
+      <StoryScreen
+        scene={catchScene(run)}
+        chip="Catch with Coach"
+        cta="Toss it back"
+        onDone={() => {
+          useShine.getState().bumpView();
+          train("clubhouse");
+          setCatchBeat(false);
         }}
-      >
-        <SceneLines scene={catchScene} />
-        <p className="shine-shell-aside text-muted">She walks back in lighter than she walked out.</p>
-      </Shell>
+      />
+    );
+  }
+
+  if (calendarPeek) {
+    return (
+      <StoryScreen
+        scene={calendarPeekScene(run.characterId, run.turn)}
+        chip="The Gate"
+        cta="Start the morning"
+        onDone={() => {
+          useShine.getState().bumpView();
+          dismissCalendarPeek();
+        }}
+      />
     );
   }
 
@@ -815,7 +817,6 @@ function Complex() {
       <Shell
         runTurn={run.turn}
         label={meta.label}
-        chipLabel
         card={
           <div className="shine-year-card" data-year-card={run.year}>
             <span className="shine-year-card-kana shine-kana">{card.kana}</span>
@@ -833,34 +834,20 @@ function Complex() {
           },
         }}
       >
-        {/* The card already names the year, and the Coach's note next morning carries the new coach: this is her. */}
-        <p className="shine-shell-line">
-          {run.year === 2
-            ? "She was at the complex before anyone unlocked the gate. She's a year older and still wearing the same number."
-            : run.year === 3
-              ? "Her last spring at the Academy. She knows where everything is now, even the good hose."
-              : "Day one at the Academy. Everything starts here."}
-        </p>
+        {/* The card already names the year. The line under it taps through, like every other talk. */}
+        <YearStartTalk year={run.year} />
       </Shell>
     );
   }
 
   if (meta.type === "mentor-event") {
-    const pitcher = isPitcherStyle(who.style);
     return (
-      <Shell
-        runTurn={run.turn}
-        label={dateLabel(meta, who.style)}
-        mood="focused"
-        pill={{ kana: "居残り", name: dateLabel(meta, who.style), tone: "gold" }}
-        action={{ label: "Listen", onClick: finishMentor }}
-      >
-        <p className="shine-shell-line">
-          {pitcher
-            ? "She and the Bullpen Coach stay after the last pitch. You hold the bucket."
-            : "She and the Cage Coach stay after the last bucket. You feed the machine."}
-        </p>
-      </Shell>
+      <StoryScreen
+        scene={mentorScene(run)}
+        chip={dateLabel(meta, who.style)}
+        cta="See you in the morning"
+        onDone={finishMentor}
+      />
     );
   }
 
@@ -902,6 +889,7 @@ function Postgame() {
   const [curtain, setCurtain] = useState(calledOut);
   const verses = cheerLines(run.characterId, run.fans);
   const [canSkipCurtain, setCanSkipCurtain] = useState(() => last?.type !== "lantern-classic");
+  const [verseI, setVerseI] = useState(0);
 
   useEffect(() => {
     if (last?.type !== "lantern-classic") return;
@@ -938,7 +926,6 @@ function Postgame() {
   const bustMood = finalePic?.kind === "bust" ? finalePic.mood : picture.mood;
   const plate = finalePic?.kind === "bust" ? finalePic.plate : parkSrc(parkId);
   const stamp = doneStamp(met);
-  const keptToday = run.highlights.some((h) => h.kind === "keepsake" && h.turn === last?.turn);
 
   if (curtain) {
     const call = curtainFilmSrc(run.characterId);
@@ -960,11 +947,35 @@ function Postgame() {
           )}
         </div>
         <header className="shine-after-top">
-          <p className="episode-chip w-fit">{skin === "otachidai" ? "お立ち台" : "Dugout"}</p>
+          <p className="episode-chip w-fit">
+            {skin === "otachidai" ? (
+              <>
+                <span className="shine-kana">お立ち台</span>
+                Hero&apos;s platform
+              </>
+            ) : (
+              "Dugout"
+            )}
+          </p>
           <TopButtons />
         </header>
         <div className="flex-1" />
-        <section className="shine-after-body">
+        <section
+          className="shine-after-body"
+          data-more={verseI < verseLines.length - 1 ? "true" : undefined}
+          role={verseI < verseLines.length - 1 ? "button" : undefined}
+          tabIndex={verseI < verseLines.length - 1 ? 0 : undefined}
+          onClick={() => {
+            if (verseI < verseLines.length - 1) setVerseI((n) => n + 1);
+          }}
+          onKeyDown={(e) => {
+            if (verseI >= verseLines.length - 1) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setVerseI((n) => n + 1);
+            }
+          }}
+        >
           <div className="shine-after-head">
             <div className={`shine-stamp shine-stamp-${CURTAIN_STAMP.tone} shine-after-stamp shine-curtain-stamp ${reduced ? "shine-stamp-still" : ""}`} role="img" aria-label={CURTAIN_STAMP.en}>
               <span className="shine-stamp-jp" aria-hidden>
@@ -976,17 +987,18 @@ function Postgame() {
             </div>
             <h1 className="shine-after-name">{dateName}</h1>
           </div>
-          {verseLines.map((v, i) => (
-            <p key={i} className={`shine-curtain-verse ${i === 0 ? "is-call" : i === 1 ? "is-caption" : "is-verse"}`} style={{ ["--i" as string]: i }}>
-              {v}
-            </p>
-          ))}
+          <p
+            key={verseI}
+            className={`shine-curtain-verse ${verseI === 0 ? "is-call" : verseI === 1 ? "is-caption" : "is-verse"}${verseI > 0 ? " is-next" : ""}`}
+          >
+            {verseLines[Math.min(verseI, verseLines.length - 1)]}
+          </p>
         </section>
         <GoDock>
           {canSkipCurtain ? (
             <GoButton
               onClick={() => {
-                // "Back to the complex" takes this spot; re-arm the guard so a double tap can't skip the read.
+                // "Back to the morning" takes this spot; re-arm the guard so a double tap can't skip the read.
                 bumpView();
                 setCurtain(false);
               }}
@@ -994,7 +1006,7 @@ function Postgame() {
               {CURTAIN_CTA}
             </GoButton>
           ) : (
-            <p className="shine-dock-wait">Stay a minute. Her first curtain call at the Lantern Classic is all hers.</p>
+            <p className="shine-dock-wait">Stay a minute, and her first curtain call at the Lantern Classic is all hers.</p>
           )}
         </GoDock>
       </main>
@@ -1016,7 +1028,7 @@ function Postgame() {
         {bust ? <div className="shine-keylight" /> : null}
       </div>
       <header className="shine-after-top">
-        <p className="episode-chip w-fit">{last ? `Day ${last.turn}` : "The game"}</p>
+        <p className="episode-chip w-fit">{dateName}</p>
         <TopButtons />
       </header>
       <div className="flex-1" />
@@ -1034,30 +1046,21 @@ function Postgame() {
           <h1 className="shine-after-name">{dateName}</h1>
         </div>
         <div className="max-w-md">
-          {lastLine ? <p className="shine-after-line">{dateSpeech(lastLine)}</p> : null}
-          {run.fanBeat ? <p className="mt-3 font-ui text-sm text-gold">{run.fanBeat}</p> : null}
-          {last?.type === "gate" ? <SceneBlock scene={relationshipScene(run, "post-gate")} /> : null}
-          {/* The keepsake line speaks only for today: a pitcher who kept the Gate's ball didn't keep another. */}
-          {last?.type === "first-light" && keptToday && run.keepsake === "dirt" ? (
-            <p className="mt-3 font-ui text-sm text-gold">She kept a pinch of dirt from the baseline and wrapped it in a sock. &ldquo;Don&apos;t tell anyone. It&apos;s dirt.&rdquo;</p>
-          ) : last?.type === "first-light" && keptToday && run.keepsake === "ball" && isPitcherStyle(who.style) ? (
-            <p className="mt-3 font-ui text-sm text-cream/70">She kept the ball from the last out and wouldn't let anybody else hold it.</p>
-          ) : last?.type === "first-light" && !run.keepsake ? (
-            <p className="mt-3 font-ui text-sm text-cream/70">
-              {isPitcherStyle(who.style) ? "She didn't keep a ball this time. Maybe next time." : "She didn't take anything home from the baseline this time."}
-            </p>
-          ) : null}
-          {/* The Finale says her own line; every other big date steps through the park's booth, never twice running. */}
-          <p className="shine-after-recap mt-2 font-ui text-sm text-cream/70">
-            {postgameFiller({ id: run.characterId, kind: last?.type ?? "", parkId, turn: run.turn, met, teamWon: run.finaleTeamWon })}
-          </p>
-          {seriesFinale ? <p className="mt-3 font-ui text-sm text-gold">{seriesFinale}</p> : null}
+          <SceneBlock
+            key={`${run.id}-post-${last?.turn ?? run.turn}`}
+            scene={postgameTalk({
+              run,
+              lastType: last?.type,
+              lastTurn: last?.turn ?? run.turn,
+              lastLine,
+              met,
+              parkId,
+              seriesFinale,
+            })}
+          />
           {run.coachWarning && last?.type !== "finale" ? (
             <p className={`mt-4 font-ui text-sm ${coachWarningTone(run.coachWarning) === "relief" ? "text-gold" : "text-coral"}`}>{run.coachWarning}</p>
           ) : null}
-          <p className="mt-4 font-ui text-sm text-cream/80">
-            {yearFoldLine(run, dateLabel(turnMeta(run.turn), who.style), nextDateLine(run.turn, last?.type))}
-          </p>
         </div>
       </section>
       <GoDock>
@@ -1200,15 +1203,29 @@ function YearEnd() {
                 </span>
               </div>
               <div className={`shine-live-words ${revealed ? "is-in" : ""}`}>
-                <p className="shine-after-line max-w-md">{still.quote}</p>
-                <p className={`mt-3 font-display text-lg font-bold text-gold ${still.rank === "never-quit" ? "shine-cowbell-line" : ""}`}>{still.frame}</p>
+                <LiveTalk quote={still.quote} frame={still.frame} cowbell={still.rank === "never-quit"} />
               </div>
             </>
           ) : (
             <>
-              <p className="max-w-md font-ui text-sm text-gold">{still.trained}</p>
-              <p className="mt-2 max-w-md font-ui text-sm text-gold">{still.mentor}</p>
-              <p className="mt-3 max-w-md font-ui text-sm text-gold">{sparkGapLine([card]) ?? `${nextGirlName(run.characterId)} is next.`}</p>
+              <BookTalk
+                lines={[
+                  ...teachLines(still.trained),
+                  ...teachLines(still.mentor),
+                  sparkGapLine([card]) ?? `${nextGirlName(run.characterId)} is next.`,
+                ]}
+              />
+              {/* Above the scrapbook so the Clubhouse dock never sits on her why. */}
+              <details className="shine-ending-why mt-4 max-w-md">
+                <summary className="flex min-h-11 cursor-pointer items-center font-display text-[11px] uppercase tracking-widest text-gold">
+                  How the year landed
+                </summary>
+                <TapTalk
+                  lines={teachLines(still.why)}
+                  className="pb-2 font-ui text-xs text-cream/70"
+                  mark="ending-why"
+                />
+              </details>
               <Scrapbook
                 highlights={book}
                 entries={ending?.book ?? undefined}
@@ -1218,15 +1235,6 @@ function YearEnd() {
                 finalePlayed={finalePlayed}
                 finaleClip={stage === "live" && !reduced && card.ending !== "B" ? endingClipSrc(run.characterId, card.ending) : null}
               />
-              {/* The fans and the rank's numbers wait at the very bottom, folded (check-in 27, N5). */}
-              <details className="shine-ending-why mt-4 max-w-md">
-                <summary className="flex min-h-11 cursor-pointer items-center font-display text-[11px] uppercase tracking-widest text-gold">
-                  How she got this rank
-                </summary>
-                <p className="pb-2 font-ui text-xs text-cream/70" data-ending-why>
-                  {still.why}
-                </p>
-              </details>
             </>
           )}
         </section>
@@ -1249,7 +1257,7 @@ function YearEnd() {
       </main>
     );
   }
-  const nextYear = run.turn <= 20 ? "On to her Classic year" : "On to her senior year";
+  const nextYear = yearEndCta(run.turn <= 20 ? 1 : 2);
   return (
     <main className="shine-after" data-year-end={run.year}>
       <div className="shine-backdrop" aria-hidden>
@@ -1258,20 +1266,14 @@ function YearEnd() {
       </div>
       <header className="shine-after-top">
         <p className="episode-chip w-fit">
-          Day {run.turn} · {dateLabel(turnMeta(run.turn), who.style)}
+          {dateLabel(turnMeta(run.turn), who.style)}
         </p>
         <TopButtons />
       </header>
       <div className="flex-1" />
       <section className="shine-after-body">
         <div className="max-w-md">
-          <p className="shine-after-line">{yearStillLine(run.characterId, run.turn, run.pgResults, run.definingPa, run.lightCard, run.finaleTeamWon)}</p>
-          <p className="mt-3 font-ui text-sm text-cream/80">
-            {run.turn <= 20
-              ? "Next spring is her Classic year, and that means the Lantern Classic."
-              : "Next spring is her senior year. The Stretch comes up fast."}
-          </p>
-          <SceneBlock scene={relationshipScene(run, "year-end")} />
+          <SceneBlock key={`${run.id}-year-end-${run.year}`} scene={yearEndTalk(run)} />
         </div>
       </section>
       <GoDock>
@@ -1285,42 +1287,98 @@ function isSpoken(line: string) {
   return /^["“「]/.test(line.trim());
 }
 
-/** Her beat's lines as the scene box sets them: her words and the Coach's memory under them. */
-function SceneLines({ scene }: { scene: RelationshipScene }) {
-  return (
-    <>
-      {scene.lines.map((l, i) => (
-        // Her words open on a quote mark; anything else is the narrator, set as a caption, not in her mouth.
-        <p key={i} className={`shine-vn-line ${isSpoken(l) ? "" : "is-narration"}`}>
-          {l}
-        </p>
-      ))}
-      {scene.quoted ? <p className="shine-vn-note">{memoryLine(scene.quoted)}</p> : null}
-    </>
-  );
+function firstLightKeepsake(run: TraineeRun, lastTurn: number): string | null {
+  const keptToday = run.highlights.some((h) => h.kind === "keepsake" && h.turn === lastTurn);
+  const pitcher = isPitcherStyle(sheet(run.characterId).style);
+  if (keptToday && run.keepsake === "dirt") {
+    return `She kept a pinch of dirt from the baseline and wrapped it in a sock, and she told you not to tell anyone it's dirt.`;
+  }
+  if (keptToday && run.keepsake === "ball" && pitcher) {
+    return "She kept the ball from the last out and wouldn't let anybody else hold it.";
+  }
+  if (!run.keepsake) {
+    return pitcher ? "She didn't keep a ball this time, so maybe next time." : "She didn't take anything home from the baseline this time.";
+  }
+  return null;
+}
+
+function postgameTalk(opts: {
+  run: TraineeRun;
+  lastType: TurnType | undefined;
+  lastTurn: number;
+  lastLine: string | null;
+  met: boolean;
+  parkId: string;
+  seriesFinale: string | null;
+}): RelationshipScene {
+  const { run, lastType, lastTurn, lastLine, met, parkId, seriesFinale } = opts;
+  const gate = lastType === "gate" ? relationshipScene(run, "post-gate") : null;
+  const lines: string[] = [];
+  if (lastLine) lines.push(dateSpeech(lastLine));
+  if (run.fanBeat) lines.push(run.fanBeat);
+  if (gate) lines.push(...gate.lines);
+  if (lastType === "first-light") {
+    const keep = firstLightKeepsake(run, lastTurn);
+    if (keep) lines.push(keep);
+  }
+  lines.push(postgameFiller({ id: run.characterId, kind: lastType ?? "", parkId, turn: run.turn, met, teamWon: run.finaleTeamWon }));
+  if (seriesFinale) lines.push(seriesFinale);
+  lines.push(yearFoldLine(run, dateLabel(turnMeta(run.turn), sheet(run.characterId).style), nextDateLine(run.turn, lastType)));
+  return {
+    slot: gate?.slot ?? "post-gate",
+    speaker: run.characterId,
+    lines,
+    quoted: gate?.quoted ?? null,
+    mood: gate?.mood ?? (met ? "elated" : "focused"),
+  };
+}
+
+function yearEndTalk(run: TraineeRun): RelationshipScene {
+  const talk = relationshipScene(run, "year-end");
+  const still = yearStillLine(run.characterId, run.turn, run.pgResults, run.definingPa, run.lightCard, run.finaleTeamWon);
+  const next =
+    yearEndNextLine(run.turn <= 20 ? 1 : 2);
+  return { ...talk, lines: [...teachLines(still), ...teachLines(next), ...talk.lines] };
 }
 
 /**
- * Her beat on a screen that already shows her picture: the scenes' box, full width,
- * with her name on its pill (the picture is the screen's own, never a second copy).
+ * Her beat on a screen that already shows her picture: one line at a time,
+ * tap the box for the next. The picture is the screen's own, never a second copy.
  */
 function SceneBlock({ scene }: { scene: RelationshipScene }) {
   const who = sheet(scene.speaker);
+  const [i, setI] = useState(0);
+  const line = scene.lines[Math.min(i, scene.lines.length - 1)] ?? "";
+  const more = i < scene.lines.length - 1;
+  const spoken = isSpoken(line);
+  const next = () => {
+    if (!more) return;
+    setI((n) => n + 1);
+  };
   return (
     <div
       className="shine-vn-box"
       data-testid="relationship-scene"
       data-scene-mood={scene.mood}
+      data-more={more ? "true" : undefined}
+      role="button"
+      tabIndex={0}
+      onClick={next}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          next();
+        }
+      }}
       style={{ ["--shine-accent" as string]: kitAccent(scene.speaker) }}
     >
-      {/* Her name only when she says something. */}
-      {scene.lines.some(isSpoken) ? (
+      {spoken ? (
         <span className="shine-vn-name">
           <span className="shine-kana">{who.jp}</span>
           {who.name}
         </span>
       ) : null}
-      <SceneLines scene={scene} />
+      <p className={`shine-vn-line ${spoken ? "" : "is-narration"}`}>{line}</p>
     </div>
   );
 }
@@ -1355,6 +1413,19 @@ function Scrapbook({
   return (
     <div className="shine-book" data-testid="scrapbook">
       <p className="font-display text-[10px] uppercase tracking-widest text-gold">Her scrapbook</p>
+      {pa ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            aria-expanded={replay}
+            onClick={() => setReplay((v) => !v)}
+            className="min-h-11 font-display text-[10px] uppercase tracking-widest text-grass-2 underline-offset-2 hover:underline"
+          >
+            {replay ? "Close the replay" : isPitcherStyle(sheet(who).style) ? "Replay the inning" : "Replay the at-bat"}
+          </button>
+          {replay ? <ReplayTalk key={`${who}:${pa.turn}`} lines={replayLines(pa, who)} /> : null}
+        </div>
+      ) : null}
       <ol className="shine-book-pages">
         {entries.map((e, i) => {
           if (e.kind === "note") {
@@ -1386,42 +1457,17 @@ function Scrapbook({
                 </span>
               </div>
               <p className="shine-polaroid-title">{dateLabel(turnMeta(p.turn), style)}</p>
-              <p className="shine-polaroid-caption">{p.caption}</p>
-              {p.meeting ? <p className="shine-polaroid-aside">{p.meeting}</p> : null}
-              {p.notes.map((n) => (
-                <p key={n} className="shine-polaroid-aside is-note">
-                  {n}
-                </p>
-              ))}
+              <PolaroidTalk caption={p.caption} meeting={p.meeting} notes={p.notes} />
             </li>
           );
         })}
         {letter ? (
           <li className="shine-letter" data-fan-letter={who}>
             <p className="shine-letter-kicker">{letter.kicker}</p>
-            <p className="shine-letter-text">{letter.text}</p>
+            <LetterTalk lines={letterLines(letter.text)} />
           </li>
         ) : null}
       </ol>
-      {pa ? (
-        <div className="mt-3">
-          <button
-            type="button"
-            aria-expanded={replay}
-            onClick={() => setReplay((v) => !v)}
-            className="font-display text-[10px] uppercase tracking-widest text-grass-2 underline-offset-2 hover:underline"
-          >
-            {replay ? "Close the replay" : isPitcherStyle(sheet(who).style) ? "Replay the inning" : "Replay the at-bat"}
-          </button>
-          {replay ? (
-            <ol className="mt-2 space-y-1 font-ui text-xs text-cream/80">
-              {replayLines(pa, who).map((l, i) => (
-                <li key={i}>{l}</li>
-              ))}
-            </ol>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -1472,7 +1518,6 @@ type ShellPill ={ kana: string; name: string; tone: "gold" | "accent" };
 function Shell({
   runTurn,
   label,
-  chipLabel = false,
   mood = "neutral",
   pill = null,
   card = null,
@@ -1481,7 +1526,6 @@ function Shell({
 }: {
   runTurn: number;
   label: string;
-  chipLabel?: boolean;
   mood?: PortraitMood;
   pill?: ShellPill | null;
   card?: ReactNode;
@@ -1513,7 +1557,7 @@ function Shell({
       </div>
       <header className="shine-shell-top">
         <div className="shine-shell-heading">
-          <p className="episode-chip w-fit">{chipLabel ? `Day ${runTurn} · ${label}` : `Day ${runTurn}`}</p>
+          <p className="episode-chip w-fit">{label}</p>
           <p className="shine-shell-next">
             <span className="shine-shell-next-name">{dateLabel(next, style)}</span>
             <span className="shine-shell-next-when">{daysAwayLabel(turnsAway)}</span>
@@ -1536,6 +1580,221 @@ function Shell({
         </div>
       </section>
     </main>
+  );
+}
+
+/** The scrapbook already named the date. The replay taps through, one pitch at a time. */
+function ReplayTalk({ lines }: { lines: readonly string[] }) {
+  return <TapTalk lines={lines.flatMap(teachLines)} className="mt-2 font-ui text-xs text-cream/80" mark="replay-talk" />;
+}
+
+/** The scrapbook letter, one sentence at a time. */
+function LetterTalk({ lines }: { lines: readonly string[] }) {
+  return <TapTalk lines={lines} className="shine-letter-text" mark="letter-talk" />;
+}
+
+function ShopTalk({ lines }: { lines: readonly string[] }) {
+  return <TapTalk lines={lines} className="mt-2 font-ui text-sm text-cream/80" mark="shop-talk" />;
+}
+
+/** Her line, then who she is. One tap each. Switching girls starts over. */
+function PickTalk({ line, lore }: { line: string; lore: string }) {
+  const hers = teachLines(line);
+  const lines = [...hers, ...teachLines(lore)];
+  const [i, setI] = useState(0);
+  const at = Math.min(i, lines.length - 1);
+  const more = at < lines.length - 1;
+  const next = () => {
+    if (more) setI((n) => n + 1);
+  };
+  return (
+    <p
+      className={at < hers.length ? "shine-pick-line" : "shine-pick-lore"}
+      data-pick-talk=""
+      data-more={more ? "true" : undefined}
+      role={more ? "button" : undefined}
+      tabIndex={more ? 0 : undefined}
+      onClick={next}
+      onKeyDown={(e) => {
+        if (!more) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          next();
+        }
+      }}
+    >
+      {lines[at]}
+    </p>
+  );
+}
+
+function TitleTalk({ name, line, hook }: { name: string; line: string; hook: string | null }) {
+  const hers = teachLines(line);
+  const lines = hook ? [...hers, hook] : hers;
+  const [i, setI] = useState(0);
+  const at = Math.min(i, Math.max(0, lines.length - 1));
+  const more = at < lines.length - 1;
+  const next = () => {
+    if (more) setI((n) => n + 1);
+  };
+  const showingHook = Boolean(hook) && at >= hers.length;
+  return (
+    <p
+      className={showingHook ? "shine-title-hook" : "shine-title-sub"}
+      data-title-talk=""
+      data-more={more ? "true" : undefined}
+      role={more ? "button" : undefined}
+      tabIndex={more ? 0 : undefined}
+      onClick={next}
+      onKeyDown={(e) => {
+        if (!more) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          next();
+        }
+      }}
+    >
+      {showingHook ? null : <span className="shine-title-sub-name">{name}</span>}
+      {lines[at]}
+    </p>
+  );
+}
+
+function ClubhouseTalk({ lines }: { lines: readonly string[] }) {
+  return <TapTalk lines={lines} className="mt-2 max-w-lg font-ui text-sm text-cream/80" mark="clubhouse-talk" />;
+}
+
+function WallCardTalk({ lines }: { lines: readonly string[] }) {
+  return <TapTalk lines={lines.flatMap(teachLines)} className="mt-2 font-ui text-sm leading-relaxed text-cream/85" mark="wall-talk" />;
+}
+
+function BookTalk({ lines }: { lines: readonly string[] }) {
+  return <TapTalk lines={lines.filter(Boolean)} className="max-w-md font-ui text-sm text-gold" mark="book-talk" />;
+}
+
+function PolaroidTalk({ caption, meeting, notes }: { caption: string; meeting: string | null; notes: readonly string[] }) {
+  const captionParts = teachLines(caption);
+  const meetingParts = meeting ? teachLines(meeting) : [];
+  const noteParts = notes.flatMap(teachLines);
+  const lines = [...captionParts, ...meetingParts, ...noteParts];
+  const [i, setI] = useState(0);
+  const at = Math.min(i, Math.max(0, lines.length - 1));
+  const more = at < lines.length - 1;
+  const next = () => {
+    if (more) setI((n) => n + 1);
+  };
+  if (!lines.length) return null;
+  const line = lines[at]!;
+  const kind = at < captionParts.length ? "caption" : at < captionParts.length + meetingParts.length ? "aside" : "note";
+  return (
+    <p
+      className={kind === "caption" ? "shine-polaroid-caption" : kind === "aside" ? "shine-polaroid-aside" : "shine-polaroid-aside is-note"}
+      data-polaroid-talk=""
+      data-more={more ? "true" : undefined}
+      role={more ? "button" : undefined}
+      tabIndex={more ? 0 : undefined}
+      onClick={next}
+      onKeyDown={(e) => {
+        if (!more) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          next();
+        }
+      }}
+    >
+      {line}
+    </p>
+  );
+}
+
+function LiveTalk({ quote, frame, cowbell }: { quote: string; frame: string; cowbell: boolean }) {
+  const hers = teachLines(quote);
+  const lines = [...hers, ...teachLines(frame)].filter(Boolean);
+  const [i, setI] = useState(0);
+  const at = Math.min(i, Math.max(0, lines.length - 1));
+  const more = at < lines.length - 1;
+  const next = () => {
+    if (more) setI((n) => n + 1);
+  };
+  if (!lines.length) return null;
+  const isFrame = at >= hers.length;
+  return (
+    <p
+      className={isFrame ? `mt-3 font-display text-lg font-bold text-gold ${cowbell ? "shine-cowbell-line" : ""}` : "shine-after-line max-w-md"}
+      data-live-talk=""
+      data-more={more ? "true" : undefined}
+      role={more ? "button" : undefined}
+      tabIndex={more ? 0 : undefined}
+      onClick={next}
+      onKeyDown={(e) => {
+        if (!more) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          next();
+        }
+      }}
+    >
+      {lines[at]}
+    </p>
+  );
+}
+
+function TapTalk({ lines, className, mark }: { lines: readonly string[]; className: string; mark: "replay-talk" | "letter-talk" | "shop-talk" | "clubhouse-talk" | "book-talk" | "wall-talk" | "ending-why" }) {
+  const [i, setI] = useState(0);
+  const at = Math.min(i, Math.max(0, lines.length - 1));
+  const more = at < lines.length - 1;
+  const next = () => {
+    if (more) setI((n) => n + 1);
+  };
+  if (!lines.length) return null;
+  return (
+    <p
+      className={className}
+      {...{ [`data-${mark}`]: "" }}
+      data-more={more ? "true" : undefined}
+      role={more ? "button" : undefined}
+      tabIndex={more ? 0 : undefined}
+      onClick={next}
+      onKeyDown={(e) => {
+        if (!more) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          next();
+        }
+      }}
+    >
+      {lines[at]}
+    </p>
+  );
+}
+
+/** The year's card already named the class. The line under it taps through. */
+function YearStartTalk({ year }: { year: 1 | 2 | 3 }) {
+  const lines = yearStartLines(year);
+  const [i, setI] = useState(0);
+  const at = Math.min(i, lines.length - 1);
+  const more = at < lines.length - 1;
+  const next = () => {
+    if (more) setI((n) => n + 1);
+  };
+  return (
+    <p
+      className="shine-shell-line"
+      data-year-start-talk=""
+      data-more={more ? "true" : undefined}
+      role={more ? "button" : undefined}
+      tabIndex={more ? 0 : undefined}
+      onClick={next}
+      onKeyDown={(e) => {
+        if (!more) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          next();
+        }
+      }}
+    >
+      {lines[at]}
+    </p>
   );
 }
 
@@ -1634,6 +1893,7 @@ function EventScreen({ event }: { event: TrainingEvent }) {
   const key = eventKey(event);
   // What landed, split: gains float up in gold with a chime; costs are shown plainly.
   const landed = choice ? cappedEffect(run, choice.effect) : {};
+  const talk = choice ? effectTalk(landed) : "";
   const ups = effectChips({ mood: (landed.mood ?? 0) > 0 ? landed.mood : undefined, energy: (landed.energy ?? 0) > 0 ? landed.energy : undefined, stat: landed.stat });
   const costs = effectChips({ mood: (landed.mood ?? 0) < 0 ? landed.mood : undefined, energy: (landed.energy ?? 0) < 0 ? landed.energy : undefined });
   useEffect(() => {
@@ -1662,15 +1922,7 @@ function EventScreen({ event }: { event: TrainingEvent }) {
       ))
     ) : choice && replied ? (
       <>
-        {reduced || ups.length === 0 ? null : (
-          <div className="shine-gain-floats" aria-hidden>
-            {ups.map((g, i) => (
-              <span key={g} className="shine-gain-float" style={{ ["--i" as string]: i }}>
-                {g}
-              </span>
-            ))}
-          </div>
-        )}
+        {talk ? <p className="font-ui text-sm text-cream/85">{talk}</p> : null}
         <div className="flex flex-wrap gap-2">
           {ups.map((g, i) => (
             <span key={g} className="shine-gain-chip" style={{ ["--i" as string]: i }}>
@@ -1702,10 +1954,11 @@ function EventScreen({ event }: { event: TrainingEvent }) {
 }
 
 const RIVAL_CHIP: Record<RivalKind, string> = {
-  "lantern-classic": "Lantern Classic · before the game",
-  "night-classic": "Night Classic · before the game",
-  stretch: "The Stretch · before the game",
-  series: "Skyline Series · before the game",
+  "first-light": "First Light",
+  "lantern-classic": "Lantern Classic",
+  "night-classic": "Night Classic",
+  stretch: "The Stretch",
+  series: "Skyline Series",
 };
 
 const FOCUSABLE = "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
@@ -1832,7 +2085,7 @@ export function ShineApp() {
           screen: type === "forced-scene" ? "year-end" : plate ? "plate" : "complex",
           liveGame: null,
           establishing: false,
-          calendarPeek: false,
+          calendarPeek: turn === 4 && !plate,
         });
       },
       dismissPostgame: () => useShine.getState().dismissPostgame(),

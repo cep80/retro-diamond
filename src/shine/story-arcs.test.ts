@@ -22,7 +22,7 @@ function label(s: ArcScene) {
 }
 
 describe("story arcs: rival intros", () => {
-  it("every girl meets the right rival before each of the four big games", () => {
+  it("every girl meets the right rival before each named game from First Light through the Series", () => {
     let n = 0;
     for (const c of BIBLE) {
       for (const kind of RIVAL_KINDS) {
@@ -50,7 +50,15 @@ describe("story arcs: rival intros", () => {
         }
       }
     }
-    assert.equal(n, 24);
+    assert.equal(n, 30);
+  });
+
+  it("First Light is the first named meeting, at her home park", () => {
+    assert.equal(RIVAL_KINDS[0], "first-light");
+    for (const c of BIBLE) {
+      const s = rivalIntro(c.id, "first-light");
+      assert.match(s.place, /Koi|North|Dusters|Stars|Palms/, `${c.id}: ${s.place}`);
+    }
   });
 });
 
@@ -75,8 +83,8 @@ describe("story arcs: low point", () => {
 describe("story arcs: lint", () => {
   const all = allArcScenes();
 
-  it("has 24 rival intros and 6 low points", () => {
-    assert.equal(all.filter((s) => s.id === "rival").length, 24);
+  it("has 30 rival intros and 6 low points", () => {
+    assert.equal(all.filter((s) => s.id === "rival").length, 30);
     assert.equal(all.filter((s) => s.id === "low-point").length, 6);
   });
 

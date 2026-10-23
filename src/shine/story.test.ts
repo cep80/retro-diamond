@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { BIBLE } from "./bible.ts";
-import { allScenes, FORBIDDEN_IN_STORY, promiseScene } from "./story.ts";
+import { teachLines } from "./teach.ts";
+import { allScenes, FORBIDDEN_IN_STORY, promiseScene, TITLE_LINES } from "./story.ts";
 
 describe("story: the promise", () => {
   it("every girl has a promise scene in which the Coach says where they're going", () => {
@@ -47,5 +48,14 @@ describe("story: the promise", () => {
       // Gary is North's cage heater, not a player.
       for (const b of s.beats) if (!/\bGary\b/.test(b.text)) assert.doesNotMatch(b.text, /\b(he|him|his)\b/i, `${s.girl}: ${b.text}`);
     }
+  });
+
+  it("the title talks one sentence at a time", () => {
+    for (const [id, line] of Object.entries(TITLE_LINES)) {
+      const parts = teachLines(line);
+      assert.ok(parts.length >= 1, id);
+      for (const p of parts) assert.match(p, /[.!?]$/, `${id}: ${p}`);
+    }
+    assert.ok(teachLines(TITLE_LINES.yuki).length >= 3);
   });
 });

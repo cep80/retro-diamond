@@ -233,61 +233,61 @@ export function verdictLine(opts: {
     }
   }
   if (opts.card === "green-light") {
-    if (opts.outcome === "reach") return "Green light. She didn't miss.";
-    if (opts.outcome === "out") return "Green light. In play. Out.";
-    if (opts.outcome === "miss" || opts.outcome === "k") return "Green light. It was the wrong pitch.";
+    if (opts.outcome === "reach") return "Green light, and she didn't miss.";
+    if (opts.outcome === "out") return "Green light, and they caught it.";
+    if (opts.outcome === "miss" || opts.outcome === "k") return "Green light, and it was the wrong pitch.";
   }
-  if (opts.card === "spurt" && opts.outcome === "reach") return "Spurt. She wanted that one.";
+  if (opts.card === "spurt" && opts.outcome === "reach") return "She wanted that one, and she got it.";
   if (opts.call === "take") {
-    if (opts.outcome === "walk") return "Took it. Ball four. She walked her.";
-    if (opts.outcome === "take-ball") return `Took it. Ball. She showed the ${pitch}.`;
-    if (opts.outcome === "out") return "In play. Out.";
-    if (opts.outcome === "k") return "Took it. Strike three. Looking.";
-    return two ? "Took it for a read. Strike two." : "Took it for a read. Strike.";
+    if (opts.outcome === "walk") return "She took ball four, and she's walking.";
+    if (opts.outcome === "take-ball") return `She took it, a ball, and she showed the ${pitch}.`;
+    if (opts.outcome === "out") return "She took it, and they caught it.";
+    if (opts.outcome === "k") return "She took strike three looking.";
+    return two ? "She took it for a read, and that's strike two." : "She took it for a read, and that's a strike.";
   }
   if (opts.call === "protect") {
-    if (opts.outcome === "foul") return "Protected. Still two.";
-    if (opts.outcome === "reach") return "Protected. Found grass.";
-    if (opts.outcome === "out") return "Protected. In play. Out.";
-    if (opts.outcome === "k" || opts.outcome === "miss") return "Protected. It got through.";
+    if (opts.outcome === "foul") return "She protected, and it's still two.";
+    if (opts.outcome === "reach") return "She protected, and she found grass.";
+    if (opts.outcome === "out") return "She protected, and they caught it.";
+    if (opts.outcome === "k" || opts.outcome === "miss") return "She protected, and it got through.";
   }
   if (opts.call === "sit-hard" || opts.call === "sit-soft") {
     const right = satRight(opts.call, family);
-    const sat = opts.call === "sit-hard" ? "Sat hard." : "Sat soft.";
+    const looking = opts.call === "sit-hard" ? "looking for heat" : "looking for the breaking ball";
     if (right) {
-      if (opts.outcome === "reach") return `${sat} Got the ${pitch}.`;
-      if (opts.outcome === "out") return `${sat} In play. Out.`;
-      if (opts.outcome === "foul") return `${sat} Fought the ${pitch} off.`;
-      return `${sat} Right pitch. Missed it.`;
+      if (opts.outcome === "reach") return `She was ${looking}, and she got the ${pitch}.`;
+      if (opts.outcome === "out") return `She was ${looking}, and they caught it.`;
+      if (opts.outcome === "foul") return `She was ${looking}, and she fought the ${pitch} off.`;
+      return `She was ${looking}, and she missed the one she wanted.`;
     }
-    if (opts.outcome === "reach") return `${sat} It was the ${pitch}. Got it anyway.`;
-    if (opts.outcome === "out") return `${sat} It was the ${pitch}. Out.`;
-    if (opts.outcome === "foul") return `${sat} It was the ${pitch}. Fought it off.`;
-    return `${sat} It was the ${pitch}. ${family === "soft" ? "Early." : "Late."}`;
+    if (opts.outcome === "reach") return `She was ${looking}, it was the ${pitch}, and she got it anyway.`;
+    if (opts.outcome === "out") return `She was ${looking}, it was the ${pitch}, and they got her.`;
+    if (opts.outcome === "foul") return `She was ${looking}, it was the ${pitch}, and she fought it off.`;
+    return `She was ${looking}, it was the ${pitch}, and she was ${family === "soft" ? "out in front" : "late"}.`;
   }
   // The square the Coach picked: right where it came (0), or somewhere else. Said like a fan says it.
   const d = opts.satCell ?? 1;
   if (opts.outcome === "reach")
     return d === 0
-      ? pick(["She was looking right there, and she didn't miss it.", "Right where you told her to look. She got it.", "You called that spot, and she was all over it."])
-      : pick(["It wasn't where she was looking, and she got to it anyway.", "She had to reach for that one, and she still got it.", "Wrong spot, right swing. She got it anyway."]);
+      ? pick(["She was set up right there, and she didn't miss it.", "Right on the square you picked. She got it.", "You called that spot, and she was all over it."])
+      : pick(["It wasn't on the square you picked, and she got to it anyway.", "She had to reach for that one, and she still got it.", "Wrong spot, right swing. She got it anyway."]);
   if (opts.outcome === "out")
     return d === 0
-      ? pick(["Right where she was looking. She hit it, just right at somebody.", "Good spot, good swing, and they caught it anyway.", "She got the pitch she wanted and hit it at somebody."])
-      : pick(["It came in somewhere else, and she couldn't square it up.", "She had to chase that one, and they got her.", "Not where she was looking. Weak contact, and they make the play."]);
+      ? pick(["Right on the square you picked. She hit it, just right at somebody.", "Good spot, good swing, and they caught it anyway.", "She got the pitch she wanted and hit it at somebody."])
+      : pick(["It came in somewhere else, and she couldn't square it up.", "She had to chase that one, and they got her.", "Wrong square. Weak contact, and they make the play."]);
   if (opts.outcome === "foul") {
     const alive = two ? " She's still alive." : "";
     return d === 0
       ? pick([`She found it and fouled it back.${alive}`, `Right spot, a hair late. Foul ball.${alive}`, `She fought it off.${alive}`])
-      : pick([`Not where she was looking, but she got a piece of it.${alive}`, `She reached and fouled it off.${alive}`, `She just tipped that one away.${alive}`]);
+      : pick([`Not the square you picked, but she got a piece of it.${alive}`, `She reached and fouled it off.${alive}`, `She just tipped that one away.${alive}`]);
   }
   if (opts.outcome === "k")
     return d === 0
-      ? pick(["She was looking right there and still swung through it.", "Right spot, and she missed it anyway.", "She saw it coming and couldn't catch up."])
-      : pick(["It came in somewhere she wasn't looking.", "She was looking somewhere else, and it beat her.", "Wrong spot, and she couldn't recover."]);
+      ? pick(["She was set up right there and still swung through it.", "Right spot, and she missed it anyway.", "She saw it coming and couldn't catch up."])
+      : pick(["It came in off the square you picked.", "She was set up somewhere else, and it beat her.", "Wrong spot, and she couldn't recover."]);
   return d === 0
-    ? pick(["Right where she was looking, and she swung through it.", "She saw it coming and missed it anyway.", "Good spot, but she swung right under it."])
-    : pick(["It wasn't where she was looking. Swing and a miss.", "She guessed wrong on that one and missed.", "It came in somewhere else, and she swung through it."]);
+    ? pick(["Right on the square you picked, and she swung through it.", "She saw it coming and missed it anyway.", "Good spot, but she swung right under it."])
+    : pick(["It wasn't on the square you picked. Swing and a miss.", "She guessed wrong on that one and missed.", "It came in somewhere else, and she swung through it."]);
 }
 
 const COUNT_WORD = ["", "one", "two", "three"] as const;

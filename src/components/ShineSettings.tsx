@@ -4,11 +4,14 @@ import { useEffect, useId, useState } from "react";
 import { PixelBtn } from "@/components/pixel-btn";
 import { ShineBack } from "@/components/ShineRoundBtn";
 import { sfxSelect } from "@/shine/audio.ts";
+import { sheet } from "@/shine/bible.ts";
+import { backupWhen } from "@/shine/calendar.ts";
+import { TEACH_CARDS, teachLines } from "@/shine/teach.ts";
 import { useShine } from "@/shine/store.ts";
 import { DEFAULT_KEYS, type KeyMap, type ShineSettings as Settings } from "@/shine/types.ts";
 
 const KEY_LABELS: { id: keyof KeyMap; label: string; note: string }[] = [
-  { id: "pause", label: "Pause", note: "Stops the game where it is. Nothing is lost." },
+  { id: "pause", label: "Pause", note: "Calls time." },
 ];
 
 const TEXT_SIZES: { value: Settings["textScale"]; label: string }[] = [
@@ -105,7 +108,7 @@ export function ShineSettings() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="shine-settings-help-title">How it works</span>
-            <span className="shine-settings-help-note">Batting, pitching, and how the big games work.</span>
+            <span className="shine-settings-help-note">Where it's coming, then Go.</span>
           </span>
           <span className="shine-settings-help-go" aria-hidden>
             ›
@@ -118,7 +121,7 @@ export function ShineSettings() {
           </h3>
           <div className="mt-3 space-y-4">
             <Slider label="Music" value={settings.music} onChange={(v) => setSettings({ music: v })} />
-            <Slider label="Sound" value={settings.sfx} onChange={(v) => setSettings({ sfx: v })} note="The bat, the glove, the umpire, and the pitcher's windup." />
+            <Slider label="Sound" value={settings.sfx} onChange={(v) => setSettings({ sfx: v })} note="The bat and the glove, and her windup too." />
             <Slider label="Crowd" value={settings.crowd} onChange={(v) => setSettings({ crowd: v })} note="The stands, and the roar after a big hit." />
           </div>
         </section>
@@ -127,9 +130,6 @@ export function ShineSettings() {
           <h3 id={`${ids}-play`} className="shine-set-h">
             Play
           </h3>
-          <p className="shine-set-body mt-2">
-            At the plate, tap the square where you think the pitch is coming, then press Go. Tap Swing when the ball gets to her. If you don&apos;t, she&apos;ll decide for herself. On the mound, put the catcher&apos;s glove where you want the pitch, then press Go.
-          </p>
           {/* A real checkbox under the switch: role="switch" reads it as on or off, the label row is the target. */}
           <label className="shine-set-toggle mt-4">
             <span className="min-w-0 flex-1">
@@ -137,7 +137,7 @@ export function ShineSettings() {
                 Reduced motion
               </span>
               <span id={`${ids}-rm-note`} className="shine-set-note">
-                Less movement on screen: shorter animations, no trails behind the ball, and no shaking. You&apos;ll still see what happened.
+                Less movement on screen, and you&apos;ll still see what happened.
               </span>
             </span>
             <input
@@ -224,7 +224,7 @@ export function ShineSettings() {
               Save recovery
             </h3>
             <p className="shine-set-note">
-              The game keeps {backups.length === 1 ? "one save" : `${backups.length} saves`} from this career. If you go back to one, everything since then is gone.
+              If you go back, everything since then is gone.
             </p>
             <ul className="mt-3 space-y-2">
               {backups
@@ -235,7 +235,7 @@ export function ShineSettings() {
                     <span className="min-w-0">
                       <span className="shine-set-label block">{b.label}</span>
                       <span className="shine-set-note">
-                        Day <span className="shine-set-num">{b.run.turn}</span> · <span className="shine-set-num">{new Date(b.at).toLocaleString()}</span>
+                        <span className="shine-set-num">{backupWhen(b.run.turn, sheet(b.run.characterId).style, b.at)}</span>
                       </span>
                     </span>
                     {confirmRestore === i ? (
@@ -268,40 +268,45 @@ export function ShineSettings() {
   );
 }
 
-const TEACH_CARDS: { title: string; body: string }[] = [
-  {
-    title: "At the plate",
-    body: "You're her coach. Before each pitch, tap the square where you think it's coming, then press Go. Tap Swing when the ball gets to her. If you don't, she'll swing or take it on her own, looking where you told her to.",
-  },
-  {
-    title: "Guessing the pitch",
-    body: "The nine squares are the strike zone and just around it. Guess right and she's ready for it. Guess a square or two off and she's late, or fooled. That call is yours to make.",
-  },
-  {
-    title: "On the mound",
-    body: "Reina, Sol, and Kira pitch. Tap where you want the catcher to set up, then press Go. She picks the pitch herself.",
-  },
-  {
-    title: "The big games",
-    body: "Each big game asks one thing of her, like getting on base or getting three outs, and you watch whether she does it. If she gets a smaller thing instead, it doesn't count against her. Lose two big games and her Academy days are over.",
-  },
-  {
-    title: "Rivals",
-    body: "The girl across from her only knows what she's actually seen. If you haven't shown her something, she doesn't know it's coming.",
-  },
-  {
-    title: "Her mood",
-    body: "You'll see how she's feeling every morning, and she'll tell you herself. Tired or down, the work goes wrong more often. A day off or a game of catch fixes a lot.",
-  },
-  {
-    title: "Mornings",
-    body: "Pick one thing for her to work on each morning. The next morning, she'll tell you how it went. The next big game is always counting down at the top.",
-  },
-  {
-    title: "The shop",
-    body: "The shop only sells looks. You can't buy her talent, her games, her Clubhouse card, a spot in the Finale, or Never Quit.",
-  },
-];
+/** One sentence at a time, then the next card. */
+function TeachTalk() {
+  const [i, setI] = useState(0);
+  const [line, setLine] = useState(0);
+  const at = Math.min(i, TEACH_CARDS.length - 1);
+  const card = TEACH_CARDS[at]!;
+  const lines = teachLines(card.body);
+  const atLine = Math.min(line, Math.max(0, lines.length - 1));
+  const moreLines = atLine < lines.length - 1;
+  const moreCards = at < TEACH_CARDS.length - 1;
+  const more = moreLines || moreCards;
+  const next = () => {
+    if (moreLines) setLine((n) => n + 1);
+    else if (moreCards) {
+      setI((n) => n + 1);
+      setLine(0);
+    }
+  };
+  return (
+    <article
+      className="shine-set-card mt-5"
+      data-teach-talk=""
+      data-more={more ? "true" : undefined}
+      role={more ? "button" : undefined}
+      tabIndex={more ? 0 : undefined}
+      onClick={next}
+      onKeyDown={(e) => {
+        if (!more) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          next();
+        }
+      }}
+    >
+      <h3 className="shine-set-h">{card.title}</h3>
+      <p className="shine-set-body mt-2">{lines[atLine]}</p>
+    </article>
+  );
+}
 
 export function ShineHelp() {
   const closeOverlay = useShine((s) => s.closeOverlay);
@@ -312,14 +317,7 @@ export function ShineHelp() {
       <div className="relative z-10 mx-auto max-w-3xl px-4 pb-8 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-8 sm:pt-8">
         {/* How it works opens from Settings, so the back button goes back there; Done closes both. */}
         <PageHead kana="遊び方" title="How it works" back={openSettings} backLabel="Back to Settings" />
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          {TEACH_CARDS.map((c) => (
-            <article key={c.title} className="shine-set-card">
-              <h3 className="shine-set-h">{c.title}</h3>
-              <p className="shine-set-body mt-2">{c.body}</p>
-            </article>
-          ))}
-        </div>
+        <TeachTalk />
         <div className="mt-6 flex gap-3 pb-[env(safe-area-inset-bottom)]">
           <PixelBtn className="h-12" onClick={closeOverlay}>
             Done

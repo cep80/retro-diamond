@@ -9,7 +9,7 @@
 
 import { locCell, type Cell } from "./core/zone.ts";
 import { PREPARE_MS } from "./beats.ts";
-import type { FeaturedGame, FieldBeat, SwingKind } from "./featured-game.ts";
+import type { EncounterConfig, FeaturedGame, FieldBeat, SwingKind } from "./featured-game.ts";
 import { FLIGHT_RESOLVE_U, PlateController, type PlateCue, type PlateScheduler } from "./plate-controller.ts";
 import type { CoachCardId, DuelCall } from "./duel.ts";
 import { newRun } from "./run.ts";
@@ -56,14 +56,14 @@ export type ControllerPace = {
   duel?: boolean;
 };
 
-export function exhibitionController(seed: string, pace?: ControllerPace) {
+export function exhibitionController(seed: string, pace?: ControllerPace, encounter: EncounterConfig = EXHIBITION_ENCOUNTER) {
   const sched = new VirtualScheduler();
   const run = newRun("aoi");
   run.rngSeed = seed;
   const c = new PlateController({
     run,
     kind: "lantern-classic",
-    encounter: EXHIBITION_ENCOUNTER,
+    encounter,
     scheduler: sched,
     uniqueStings: false,
     flightScale: pace?.flightScale,
@@ -165,13 +165,13 @@ export interface FoundBeat {
 export function findBeat(
   target: FieldBeat,
   plan: (game: FeaturedGame) => PitchPlan,
-  opts?: { seeds?: number; prefix?: string; pace?: ControllerPace },
+  opts?: { seeds?: number; prefix?: string; pace?: ControllerPace; encounter?: EncounterConfig },
 ): FoundBeat | null {
   const max = opts?.seeds ?? 300;
   const prefix = opts?.prefix ?? target;
   for (let i = 0; i < max; i++) {
     const seed = `${prefix}-${i}`;
-    const { c, sched } = exhibitionController(seed, opts?.pace);
+    const { c, sched } = exhibitionController(seed, opts?.pace, opts?.encounter);
     c.stepIn();
     const beats: FieldBeat[] = [];
     let guard = 0;

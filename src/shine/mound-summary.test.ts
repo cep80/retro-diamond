@@ -275,17 +275,18 @@ describe("the middle innings: only the long starts", () => {
 
 describe("the middle innings: the lines", () => {
   it("says an inning broadcast-short", () => {
-    assert.equal(middleInningLine({ ks: 0, hits: 0, hrs: 0, walks: 0, runs: 0 }), "Three up, three down.");
-    assert.equal(middleInningLine({ ks: 2, hits: 0, hrs: 0, walks: 0, runs: 0 }), "Three up, three down. She struck out two.");
+    assert.equal(middleInningLine({ ks: 0, hits: 0, hrs: 0, walks: 0, runs: 0 }), "Nobody reached, and nobody scored.");
+    assert.equal(middleInningLine({ ks: 2, hits: 0, hrs: 0, walks: 0, runs: 0 }), "Nobody reached, and she struck out two.");
+    assert.doesNotMatch(middleInningLine({ ks: 0, hits: 0, hrs: 0, walks: 0, runs: 0 }), /Three up/);
     assert.equal(middleInningLine({ ks: 3, hits: 0, hrs: 0, walks: 0, runs: 0 }), "She struck out the side.");
-    assert.equal(middleInningLine({ ks: 1, hits: 1, hrs: 0, walks: 0, runs: 0 }), "One got on, and stayed there. She struck out one.");
+    assert.equal(middleInningLine({ ks: 1, hits: 1, hrs: 0, walks: 0, runs: 0 }), "One got on, and stayed there, and she struck out one.");
     assert.equal(middleInningLine({ ks: 0, hits: 1, hrs: 0, walks: 1, runs: 0 }), "Two got on, and she stranded both.");
     assert.equal(middleInningLine({ ks: 0, hits: 2, hrs: 0, walks: 1, runs: 0 }), "Bases loaded, and she left them all there.");
-    assert.equal(middleInningLine({ ks: 1, hits: 1, hrs: 0, walks: 1, runs: 0, jam: true }), "Two on, and she got out of it. She struck out one.");
-    assert.equal(middleInningLine({ ks: 1, hits: 2, hrs: 0, walks: 0, runs: 1 }), "A run scored. She struck out one.");
+    assert.equal(middleInningLine({ ks: 1, hits: 1, hrs: 0, walks: 1, runs: 0, jam: true }), "Two on, and she got out of it, and she struck out one.");
+    assert.equal(middleInningLine({ ks: 1, hits: 2, hrs: 0, walks: 0, runs: 1 }), "A run scored, and she struck out one.");
     assert.equal(middleInningLine({ ks: 0, hits: 3, hrs: 0, walks: 0, runs: 2 }), "Two runs scored.");
     assert.equal(middleInningLine({ ks: 0, hits: 1, hrs: 1, walks: 0, runs: 1 }), "Somebody took her deep.");
-    assert.equal(middleInningLine({ ks: 2, hits: 2, hrs: 1, walks: 0, runs: 2 }), "Somebody took her deep, and two runs scored. She struck out two.");
+    assert.equal(middleInningLine({ ks: 2, hits: 2, hrs: 1, walks: 0, runs: 2 }), "Somebody took her deep, and two runs scored, and she struck out two.");
   });
 
   it("names the inning", () => {

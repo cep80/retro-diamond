@@ -9,9 +9,10 @@ import { dirname, join, resolve } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { ACTION_MANIFEST_URL, clipFor, clipOwner, stillFor, type ActionManifest } from "./action-art.ts";
-import { RACE_COPY, exhibitionHalfLine, exhibitionScoreLine, situationParts } from "../components/race-ui.ts";
+import { RACE_COPY, exhibitionFrame, exhibitionHalfLine, exhibitionScoreLine, situationParts } from "../components/race-ui.ts";
 import {
-  exhibitionOtherHitter,
+  exhibitionBatterLine,
+  exhibitionDue,
   exhibitionWinnerLine,
   resolveTake,
   startFeaturedGame,
@@ -82,10 +83,10 @@ function theirOneRunHalf(run: TraineeRun, game: ReturnType<typeof openExhibition
 
 describe("exhibition", () => {
   it("opens as nine innings, in one voice", () => {
-    assert.equal(RACE_COPY.exhibitionPick, "Nine innings under the lanterns. Her team's at home, so they bat second.");
-    assert.doesNotMatch(RACE_COPY.exhibitionPick, /three at-bats/i);
-    assert.equal(RACE_COPY.exhibitionWatch, "The visitors bat first. Press Go and watch their half.");
-    assert.doesNotMatch(RACE_COPY.exhibitionWatch, /three at-bats/i);
+    assert.equal(RACE_COPY.exhibitionPick, "Nine innings under the lanterns.");
+    assert.doesNotMatch(RACE_COPY.exhibitionPick, /at home|bat second|hits last|three at-bats/i);
+    assert.equal(RACE_COPY.exhibitionWatch, "They bat first.");
+    assert.doesNotMatch(RACE_COPY.exhibitionWatch, /three at-bats|visitors|watch their half/i);
     assert.equal(exhibitionWinnerLine(2, 0), "She won, 2 to 0.");
     assert.equal(exhibitionWinnerLine(0, 1), "They won, 1 to 0.");
     assert.equal(RACE_COPY.exhibitionClose(2, 0), "She won, 2 to 0.");
@@ -95,7 +96,7 @@ describe("exhibition", () => {
     assert.equal(exhibitionScoreLine(0, 0), "0\u20130");
     assert.equal(exhibitionScoreLine(1, 0), "1\u20130");
     const { game } = openExhibition();
-    assert.deepEqual(situationParts(game, "pick"), { inning: "Top of the 1st", score: "0\u20130", atBat: "Their turn" });
+    assert.deepEqual(situationParts(game, "pick"), { inning: "Top of the 1st", score: "0\u20130", atBat: "They're up" });
     const lines = [
       RACE_COPY.exhibitionPick,
       RACE_COPY.exhibitionWatch,
@@ -105,10 +106,10 @@ describe("exhibition", () => {
       exhibitionHalfLine(10, "hers"),
       exhibitionScoreLine(0, 0),
       exhibitionScoreLine(1, 0),
-      "Their turn",
-      "Her turn",
-      "Their turn.",
-      "Her turn.",
+      "They're up",
+      "She's up",
+      "They're up.",
+      "She's up.",
     ];
     for (const line of lines) {
       assert.doesNotMatch(line, FORBIDDEN_IN_STORY);
@@ -118,6 +119,8 @@ describe("exhibition", () => {
 
   it("changes the side at three outs", () => {
     const { run, game } = openExhibition("aoi");
+    const due = game.shownBatter;
+    assert.equal(due?.film, "sol");
     strikeout(run, game);
     assert.equal(game.outs, 1);
     assert.equal(game.batting, "theirs");
@@ -126,14 +129,15 @@ describe("exhibition", () => {
     assert.ok(game.cutaway);
     assert.equal(game.cutaway.beat, "k");
     assert.equal(game.cutaway.swung, false);
+    assert.equal(game.cutaway.batterId, due?.film);
     assert.notEqual(game.cutaway.batterId, run.characterId);
-    assert.equal(game.cutaway.batterId, exhibitionOtherHitter("aoi"));
-    assert.equal(game.cutaway.batterId, "miki");
-    assert.deepEqual(situationParts(game, "pa-card"), { inning: "Top of the 1st", score: "0\u20130", atBat: "Their turn" });
-    if (manifest) {
+    assert.equal(game.order?.spot.theirs, 1);
+    assert.equal(game.shownBatter?.film, "sol");
+    assert.deepEqual(situationParts(game, "pa-card"), { inning: "Top of the 1st", score: "0\u20130", atBat: "They're up" });
+    if (manifest && due) {
       const owner = clipOwner({ swung: false, beat: "k" });
       assert.equal(owner, "pitcher");
-      const clip = clipFor("k", owner, { batter: manifest.girls.miki, pitcher: manifest.girls.kira });
+      const clip = clipFor("k", owner, { batter: manifest.girls[due.film], pitcher: manifest.girls.kira });
       const still = stillFor(manifest.girls.kira, "k");
       assert.ok(clip ?? still);
     }
@@ -181,6 +185,7 @@ describe("exhibition", () => {
     assert.equal(game.runsAgainst, 1);
     assert.equal(game.scoreDiff, 0);
     assert.equal(game.runs, 0);
+    assert.equal(game.walks, 1);
   });
 
   it("names the winner after a finished inning and leaves the career alone", () => {
@@ -261,6 +266,80 @@ describe("exhibition", () => {
     assert.equal(hers.game.winnerLine, "She won, 1 to 0.");
     assert.deepEqual(runSnap(hers.run), hersHost);
     assert.deepEqual(runSnap(career), careerBefore);
+  });
+
+  it("keeps two orders of nine, and the spot does not reset", () => {
+    const { run, game } = openExhibition("aoi");
+    const order = game.order;
+    assert.ok(order);
+    assert.equal(order.hers.length, 9);
+    assert.equal(order.theirs.length, 9);
+    assert.equal(order.hers[0]?.id, "aoi");
+    assert.equal(order.hers[1]?.id, "yuki");
+    assert.equal(order.hers[2]?.id, "miki");
+    assert.equal(order.theirs[0]?.id, "sol");
+    assert.equal(order.theirs[0]?.name, "Sol");
+    assert.equal(order.theirs[2]?.id, "reina");
+    assert.equal(order.theirs[8]?.id, "kira");
+    assert.deepEqual(
+      order.hers.slice(3).map((b) => b.name),
+      ["Nishi", "Cruz", "Vale", "Park", "Boone", "Ito"],
+    );
+    assert.equal(order.theirs[1]?.name, "Sato");
+    assert.equal(order.theirs[3]?.name, "Cho");
+    assert.deepEqual(order.theirs.slice(4, 8).map((b) => b.name), ["Reyes", "Quinn", "Berg", "Dahl"]);
+    const homeIds = order.hers.map((b) => b.id).filter((id) => id !== null);
+    const awayIds = order.theirs.map((b) => b.id).filter((id) => id !== null);
+    for (const id of homeIds) assert.equal(awayIds.includes(id), false);
+    const surnames = [...order.hers, ...order.theirs].filter((b) => b.film === "academy").map((b) => b.name);
+    assert.equal(surnames.length, 12);
+    assert.equal(new Set(surnames).size, surnames.length);
+    for (const batter of [...order.hers, ...order.theirs]) {
+      const line = exhibitionBatterLine(batter);
+      assert.doesNotMatch(line, FORBIDDEN_IN_STORY);
+      assert.doesNotMatch(line, NO_HE);
+    }
+    const frame = exhibitionFrame(game, "pick", false, "aoi");
+    assert.equal(frame.atBat, "They're up");
+    assert.equal(frame.batter, "Sol, batting leadoff.");
+    assert.equal(frame.film, "sol");
+
+    halfOuts(run, game);
+    assert.equal(game.batting, "hers");
+    assert.equal(game.inning, 1);
+    assert.equal(game.order?.spot.theirs, 3);
+    assert.equal(game.order?.spot.hers, 0);
+    halfOuts(run, game);
+    assert.equal(game.batting, "theirs");
+    assert.equal(game.inning, 2);
+    assert.equal(game.order?.spot.hers, 3);
+    assert.equal(game.order?.spot.theirs, 3);
+    assert.equal(exhibitionDue(game)?.id, order.theirs[3]?.id);
+
+    const yuki = openExhibition("yuki");
+    assert.equal(yuki.game.order?.hers[0]?.id, "aoi");
+    assert.equal(yuki.game.order?.hers[1]?.id, "miki");
+    assert.equal(yuki.game.order?.hers[2]?.id, "yuki");
+    assert.equal(yuki.game.order?.theirs[8]?.id, "kira");
+    assert.equal(yuki.game.order?.theirs[0]?.id, "sol");
+    assert.equal(yuki.game.order?.theirs[2]?.id, "reina");
+    halfOuts(yuki.run, yuki.game);
+    const before = sheetOf(yuki.game);
+    walk(yuki.run, yuki.game);
+    assert.equal(yuki.game.cutaway?.batterId, "aoi");
+    assert.notEqual(yuki.game.cutaway?.batterId, "yuki");
+    assert.deepEqual(sheetOf(yuki.game), before);
+    assert.equal(yuki.game.order?.spot.hers, 1);
+    assert.equal(yuki.game.batting, "hers");
+
+    const same = startFeaturedGame(newRun("kira"), "lantern-classic", { arm: "kira", appearances: 3, neutral: true, fullGame: true });
+    assert.equal(same.order?.hers[2]?.id, "kira");
+    assert.equal(same.order?.theirs.some((b) => b.id === "kira"), false);
+
+    const academy = startFeaturedGame(newRun("miki"), "lantern-classic", { arm: "academy", appearances: 3, neutral: true, fullGame: true });
+    assert.equal(academy.order?.hers[2]?.id, "miki");
+    assert.equal(academy.order?.theirs[8]?.film, "academy");
+    assert.equal(academy.order?.theirs.some((b) => b.id === "miki"), false);
   });
 
   it("still ends a three-at-bat lantern game with two outs", () => {

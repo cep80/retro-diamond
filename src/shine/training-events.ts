@@ -122,3 +122,21 @@ export function effectChips(effect: EventEffect): string[] {
   if (effect.stat) out.push(`${STAT_NAME[effect.stat.key]} +${effect.stat.delta}`);
   return out;
 }
+
+function capTalk(part: string): string {
+  return part.charAt(0).toUpperCase() + part.slice(1);
+}
+
+/** The sentence in front of the chips: a coach, not a spreadsheet. */
+export function effectTalk(effect: EventEffect): string {
+  const parts: string[] = [];
+  if (effect.stat) parts.push("the work took");
+  if ((effect.energy ?? 0) > 0) parts.push("she's got something left");
+  if ((effect.energy ?? 0) < 0) parts.push("it cost her some legs");
+  if (effect.mood === 1) parts.push("she's in a better place");
+  if (effect.mood === -1) parts.push("she's quieter after that");
+  if (!parts.length) return "";
+  if (parts.length === 1) return `${capTalk(parts[0]!)}.`;
+  if (parts.length === 2) return `${capTalk(parts[0]!)}, and ${parts[1]}.`;
+  return `${capTalk(parts[0]!)}, ${parts[1]}, and ${parts[2]}.`;
+}

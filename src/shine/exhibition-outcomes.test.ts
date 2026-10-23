@@ -86,7 +86,7 @@ describe("every producible outcome, end to end through the controller", () => {
 
   it("walk: four balls, walk counter and base state update", () => {
     const f = assertBeatContract(
-      findBeat("walk", () => TAKE),
+      findBeat("walk", () => TAKE, { encounter: { arm: "sol", appearances: 3, neutral: true } }),
       "walk",
     );
     assert.equal(f.result.after.walks, f.result.before.walks + 1);

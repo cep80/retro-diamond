@@ -164,7 +164,7 @@ const SPOKEN_GOAL: Record<string, string> = {
   "Strike out 2": "Two strikeouts",
   "Strike out 3": "Three strikeouts",
   "Pitch 5+ innings, 7+ K": "Five innings, seven punchouts",
-  "Three up, three down": "Three up, three down",
+  "Three up, three down": "Nobody reaches, and nobody scores",
   "Get two hits": "Two hits",
   "Make contact on 2 breaking balls": "Bat on two breaking balls",
   "Steal with RISP and score": "Steal with runners on, then score",
@@ -173,6 +173,9 @@ const SPOKEN_GOAL: Record<string, string> = {
   "Reach base once": "Get on base once",
   "Reach base twice": "Get on base twice",
   "Reach base": "Get on base",
+  "See 4 pitches": "Four pitches in one at-bat",
+  "See 3 pitches": "Three pitches in one at-bat",
+  "See 5 pitches": "Five pitches in one at-bat",
   "Hold a one-run lead": "Protect a one-run lead",
 };
 
@@ -192,15 +195,15 @@ export function goalDefinition(id: GoalId): string {
     case "hit-late":
       return "A base hit in the 9th.";
     case "quality-abs-3":
-      return "Three plate appearances that end in solid contact, hit or out.";
+      return "Three at-bats that end in solid contact, hit or out.";
     case "hit-risp":
       return "A base hit with a runner on 2nd or 3rd when the pitch is thrown.";
     case "see-3-one-pa":
-      return "Three pitches in a single plate appearance.";
+      return "Three pitches in a single at-bat.";
     case "see-4-one-pa":
-      return "Four pitches in a single plate appearance.";
+      return "Four pitches in a single at-bat.";
     case "see-5-one-pa":
-      return "Five pitches in a single plate appearance.";
+      return "Five pitches in a single at-bat.";
     case "no-k":
       return "Finish the game without a strikeout.";
     case "foul-two-strike":
@@ -210,7 +213,7 @@ export function goalDefinition(id: GoalId): string {
     case "contact-breaking":
       return "Put the bat on a slider, curve, or changeup. Foul counts.";
     case "runners-on-at-bat":
-      return "Start a plate appearance with any runner aboard.";
+      return "Start an at-bat with any runner aboard.";
     case "steal":
       return "Steal a base safely.";
     case "score-from-first":
@@ -236,7 +239,7 @@ export function goalDefinition(id: GoalId): string {
     case "see-3":
       return "See three pitches across the game.";
     case "see-2-one-pa":
-      return "Two pitches in one plate appearance.";
+      return "Two pitches in one at-bat.";
     case "outfield-ball":
       return "Put a ball in the air to the outfield, caught or not.";
     case "reach":
@@ -244,9 +247,9 @@ export function goalDefinition(id: GoalId): string {
     case "draw-walk":
       return "Take four balls.";
     case "outs-3":
-      return "Record three outs.";
+      return "Get three outs.";
     case "out-1":
-      return "Record one out.";
+      return "Get one out.";
     case "k-3":
       return "Three strikeouts.";
     case "k-2":
@@ -256,7 +259,7 @@ export function goalDefinition(id: GoalId): string {
     case "innings-5-k7":
       return "Five innings, seven or more strikeouts, and three or fewer earned runs.";
     case "perfect-ninth":
-      return "Three outs. Nobody reaches base, and nobody scores.";
+      return "Three outs, nobody on, and nobody scores.";
     case "quality-start":
       return "Six innings with one or fewer earned runs.";
     case "hold-one-run":
@@ -502,9 +505,9 @@ export function ordinalInning(n: number): string {
 
 /** The one line a played-out Finale gets on the done panel: how the tie came out, naming her side. */
 export function finaleExtrasLine(extras: FinaleExtras, role: "hitter" | "pitcher"): string {
-  const tied = role === "hitter" ? "Tied after her last at-bat." : "Tied in the 9th.";
-  if (extras.won && extras.inning === 9) return `${tied} They walked it off in the 9th.`;
-  return `${tied} ${extras.won ? "They won it" : "They lost it"} in the ${ordinalInning(extras.inning)}.`;
+  const tied = role === "hitter" ? "Tied after her last at-bat" : "Tied in the 9th";
+  if (extras.won && extras.inning === 9) return `${tied}, and they walked it off in the 9th.`;
+  return `${tied}, and they ${extras.won ? "won it" : "lost it"} in the ${ordinalInning(extras.inning)}.`;
 }
 
 /**
@@ -568,7 +571,8 @@ export function evalPitcherSg(id: PitcherSgId, g: PitcherSgView): boolean {
     case "curve-strike":
       return g.curveForStrike;
     case "strand-inherited":
-      return g.inheritedStranded;
+      // It starts true while they're still on. The date has to finish that way.
+      return g.done && g.inheritedStranded;
     case "escape-jam":
       return g.escapedJam;
     case "k-3":

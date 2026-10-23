@@ -28,3 +28,8 @@ content/3d/previews/engine/
 
 # Playwright probe screenshots (scripts/*-stage-probe.mjs)
 .stage-probe/
+
+# Local reference only. The cabinet ROM and store APKs never go in git or a deploy.
+semibase.zip
+content/apk/
+.claude/

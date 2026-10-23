@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { BIBLE } from "./bible.ts";
 import { HEADER_LINES, SPARK_LESSON, TRAINED_WORK, careerStill, sparkGapLine, mintClubhouseCard } from "./ending.ts";
+import { teachLines } from "./teach.ts";
 import { newRun } from "./run.ts";
 import { FORBIDDEN_IN_STORY } from "./story.ts";
 import type { CharacterId, TraineeStatKey } from "./types.ts";
@@ -30,6 +31,18 @@ function voiceClean(line: string, where: string) {
 describe("the ending's header lines are hers (check-in 27, N5)", () => {
   it("passes the story rules on every variant", () => {
     for (const id of GIRLS) for (const line of headerLines(id)) voiceClean(line, `${id}: ${line}`);
+  });
+
+  it("the scrapbook header taps one sentence at a time", () => {
+    for (const id of GIRLS) {
+      for (const line of headerLines(id)) {
+        const parts = teachLines(line);
+        assert.ok(parts.length >= 1, line);
+        for (const p of parts) assert.match(p, /[.!?]$/, p);
+      }
+    }
+    const yuki = HEADER_LINES.yuki.mentor;
+    assert.ok(teachLines(yuki).length >= 2, yuki);
   });
 
   it("shares no sentence between two girls", () => {
@@ -63,6 +76,7 @@ describe("the ending's header lines are hers (check-in 27, N5)", () => {
     const line = sparkGapLine([{ ...card, sparks: [{ kind: "stuff", power: 1 }] }]) ?? "";
     assert.match(line, /Reina passes on what she learned about her fastball\./);
     assert.doesNotMatch(line, /about stuff/);
+    assert.doesNotMatch(line, /is next/i);
   });
 });
 

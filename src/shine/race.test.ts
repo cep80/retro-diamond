@@ -5,7 +5,27 @@ import { cellLoc } from "./core/zone.ts";
 import { resolveContact } from "./oracle.ts";
 import { newRun } from "./run.ts";
 import { FORBIDDEN_IN_STORY } from "./story.ts";
-import { atBatQuote, barrelCell, decideSwing, offPlate, paCardLine, RACE_MODS, swingChance, swingKindFor, swingProgress, timingSigma, type SwingContext } from "./race.ts";
+import { gaussianFrom } from "./duel.ts";
+import {
+  atBatQuote,
+  barrelCell,
+  commitTimingErr,
+  commitmentForKind,
+  committedKind,
+  decideSwing,
+  offPlate,
+  paCardLine,
+  POWER_SIGMA,
+  RACE_MODS,
+  swingChance,
+  swingCommitment,
+  SWING_HOLD_MS,
+  swingKindFor,
+  swingProgress,
+  timingSigma,
+  type SwingContext,
+  type SwingDecision,
+} from "./race.ts";
 
 function ctx(over: Partial<SwingContext> = {}): SwingContext {
   const run = newRun("aoi");
@@ -144,13 +164,13 @@ describe("race: her swing decision", () => {
     assert.equal(paCardLine({ beat: "hr", banner: "", reached: true, struckOut: false, rbi: 3 }), "She hit it out, and three runs score!");
     assert.equal(paCardLine({ beat: "k", banner: "", reached: false, struckOut: true, rbi: 0 }), "She's out on strikes.");
     assert.equal(paCardLine({ beat: "walk", banner: "", reached: true, struckOut: false, rbi: 0 }), "She takes her base.");
-    assert.equal(paCardLine({ beat: "fly-out", banner: "x", reached: false, struckOut: false, rbi: 0 }), "Caught in the air. She's out.");
+    assert.equal(paCardLine({ beat: "fly-out", banner: "x", reached: false, struckOut: false, rbi: 0 }), "Caught in the air, and she's out.");
     // The same beat, another at-bat: three versions, so a career doesn't hear one line.
     const outs = new Set([0, 1, 2].map((seed) => paCardLine({ beat: "grounder-out", banner: "", reached: false, struckOut: false, rbi: 0, seed })));
     assert.equal(outs.size, 3);
     assert.equal(paCardLine({ beat: "single", banner: "", reached: true, struckOut: false, rbi: 2 }), "She's on, and two runs score!");
     // She says how it went, in quotes, in her own voice; a beat that didn't end an at-bat says nothing.
-    assert.equal(atBatQuote("aoi", "grounder-out", 0), '"I hit it! Um. Right at somebody. Moral victory?"');
+    assert.equal(atBatQuote("aoi", "grounder-out", 0), '"I hit it, um, right at somebody, moral victory?"');
     assert.match(atBatQuote("miki", "k", 0) ?? "", /Cool/);
     assert.match(atBatQuote("yuki", "single", 1) ?? "", /Stopwatch/);
     assert.equal(atBatQuote("aoi", "ball", 0), null);
@@ -161,5 +181,55 @@ describe("race: her swing decision", () => {
         assert.doesNotMatch(q, FORBIDDEN_IN_STORY, q);
       }
     }
+  });
+});
+
+describe("race: a commitment replaces only how big the swing is", () => {
+  const swinging = (over: Partial<SwingDecision> = {}): SwingDecision => ({
+    swing: true,
+    kind: "contact",
+    aim: { row: 1, col: 1 },
+    adjusted: false,
+    timingErr: 0.2,
+    u: 1,
+    why: "sat-on-it",
+    ...over,
+  });
+
+  it("a short press shortens, and a hold that reaches the cut is the cut", () => {
+    assert.equal(swingCommitment(0), "shorten");
+    assert.equal(swingCommitment(SWING_HOLD_MS - 1), "shorten");
+    assert.equal(swingCommitment(Number.NaN), "shorten");
+    assert.equal(swingCommitment(Number.POSITIVE_INFINITY), "shorten");
+    assert.equal(swingCommitment(SWING_HOLD_MS), "cut");
+    assert.equal(committedKind("cut", { twoStrikes: false, practice: false }), "power");
+    assert.equal(committedKind("cut", { twoStrikes: true, practice: false }), "contact");
+    assert.equal(committedKind("cut", { twoStrikes: false, practice: true }), "contact");
+    assert.equal(committedKind("shorten", { twoStrikes: false, practice: false }), "contact");
+    assert.equal(commitmentForKind("power"), "cut");
+    assert.equal(commitmentForKind("contact"), "shorten");
+    assert.equal(commitmentForKind("bunt"), "shorten");
+  });
+
+  it("keeps her draw when the swing matches, scales it when the cut changes, and spends a new draw on a take", () => {
+    const c = ctx();
+    const noDraw = () => {
+      throw new Error("a swing she already chose does not draw again");
+    };
+    const contact = swinging();
+    assert.equal(commitTimingErr(c, contact, "contact", noDraw), contact.timingErr);
+    assert.equal(commitTimingErr(c, contact, "power", noDraw), contact.timingErr * POWER_SIGMA);
+    const power = swinging({ kind: "power", timingErr: 0.3 });
+    assert.equal(commitTimingErr(c, power, "power", noDraw), power.timingErr);
+    assert.equal(commitTimingErr(c, power, "contact", noDraw), power.timingErr / POWER_SIGMA);
+
+    const take = swinging({ swing: false, timingErr: 0, why: "took" });
+    const seed = hashId("commit-take");
+    const got = commitTimingErr(c, take, "contact", makeRng(seed));
+    assert.equal(got, gaussianFrom(makeRng(seed)) * timingSigma(c, false));
+    assert.ok(Number.isFinite(got) && got !== 0, "a forced offer is her hands, not a perfect barrel");
+    const cut = commitTimingErr(c, take, "power", makeRng(seed));
+    assert.equal(cut, gaussianFrom(makeRng(seed)) * timingSigma(c, true));
+    assert.ok(Number.isFinite(cut) && cut !== 0);
   });
 });

@@ -6,7 +6,8 @@ import { workPreviewWindow } from "./oracle.ts";
 describe("unique stings", () => {
   it("names the skill from the bible, not SKILL", () => {
     assert.equal(uniqueName("aoi"), "Table-setter");
-    assert.equal(uniqueName("reina"), "Perfect Sequence");
+    assert.equal(uniqueName("reina"), "The ruled notebook");
+    assert.doesNotMatch(uniqueName("reina"), /Perfect Sequence/);
     assert.equal(uniqueName("miki"), "Cowbell Single");
     assert.equal(uniqueName("kira"), "Ninth Light");
     assert.doesNotMatch(uniqueName("aoi"), /SKILL/);

@@ -344,7 +344,10 @@ export function startFeaturedGame(run: TraineeRun, kind: GameKind, encounter?: E
     game.bases = emptyBases();
     game.scoreDiff = 0;
     game.paTarget = 999;
-    game.banner = "Their turn.";
+    game.banner = "They're up.";
+    const built = exhibitionOrders(run.characterId, arm);
+    game.order = { hers: built.hers, theirs: built.theirs, spot: { hers: 0, theirs: 0 } };
+    game.shownBatter = built.theirs[0] ?? null;
   }
   syncBases(game);
   push(game.events, { t: "paStart", pa: 1, inning: game.inning, outs: game.outs, bases: { ...game.bases } });
@@ -352,10 +355,10 @@ export function startFeaturedGame(run: TraineeRun, kind: GameKind, encounter?: E
 }
 
 export function countMood(count: { balls: number; strikes: number }) {
-  if (count.strikes >= 2 && count.balls === 0) return "0-2. Chase is coming.";
-  if (count.balls >= 3 && count.strikes === 0) return "3-0. She owns the zone.";
-  if (count.strikes >= 2) return "Two strikes. The window shrinks.";
-  if (count.balls >= 3) return "3-and. Make them throw it.";
+  if (count.strikes >= 2 && count.balls === 0) return "She's down 0-2, and the next one will try to make her chase.";
+  if (count.balls >= 3 && count.strikes === 0) return "Three balls, no strikes, and they have to throw her one.";
+  if (count.strikes >= 2) return "Two strikes, and one more puts her out of there.";
+  if (count.balls >= 3) return "Three balls, and they have to throw a strike.";
   return null;
 }
 
@@ -483,16 +486,16 @@ function noteCallback(run: TraineeRun, game: FeaturedGame, what: "contact" | "ey
   if (run.lastWork.stat !== what) return;
   const line =
     what === "contact"
-      ? "That's the cage work. She found the barrel."
+      ? "That's the cage work, she found the barrel."
       : what === "eye"
-        ? "Live looks. She read that one out of the hand."
+        ? "She read that one out of the hand."
         : what === "power"
-          ? "On-field BP. She let it travel."
+          ? "She let it travel, that's the extra BP talking."
           : what === "guts"
-            ? "Situational work. Two-strike baseball, and she stayed in it."
+            ? "Two strikes, and she stayed in it."
             : what === "speed"
-              ? "The poles. First step was hers."
-              : "Charting. She knew what was coming.";
+              ? "The poles, first step was hers."
+              : "She knew what was coming.";
   game.callback = line;
 }
 
@@ -709,7 +712,7 @@ function finishPa(run: TraineeRun, game: FeaturedGame, r: () => number, reachedT
     if (game.kind === "weekly") game.banner = "That's it for this week.";
     else if (game.pgMet) game.banner = `${verb}.`;
     else if (game.kind === "gate") game.banner = GATE_MISSED_BANNER;
-    else if (game.kind === "practice") game.banner = "That's the swing. Back to the complex.";
+    else if (game.kind === "practice") game.banner = "That's the swing, and that's enough for this morning.";
     // Her side can win the Finale while her ask misses: the banner says they won.
     else game.banner = finaleTeamWon(game) ? FINALE_WON_BANNER : "It got away from her.";
     return;
@@ -784,6 +787,11 @@ function setVerdict(game: FeaturedGame, pitch: LivePitch, outcome: VerdictOutcom
   });
 }
 
+/** Reina's walk is the Finale's beat. Before that, a fourth ball to Aoi is a strike. */
+function reinaHoldsAoiWalk(run: TraineeRun, game: FeaturedGame): boolean {
+  return run.characterId === "aoi" && game.arm === "reina" && run.turn < 60;
+}
+
 export function resolveTake(run: TraineeRun, game: FeaturedGame, pitch: LivePitch) {
   const r = makeRng(hashId(`${run.rngSeed}|${game.kind}|take|${game.paIndex}|${game.pitchesSeen}`));
   const first = isFirstPitch(game);
@@ -791,7 +799,9 @@ export function resolveTake(run: TraineeRun, game: FeaturedGame, pitch: LivePitc
   game.pitchesSeen += 1;
   game.paPitches += 1;
   game.live = null;
-  push(game.events, { t: "take", pa: game.paIndex, strike: pitch.inZone });
+  // The pitch was a ball, and it would have been ball four: call it a strike so the walk waits.
+  const calledStrike = pitch.inZone || (!pitch.inZone && game.count.balls >= 3 && reinaHoldsAoiWalk(run, game));
+  push(game.events, { t: "take", pa: game.paIndex, strike: calledStrike });
   if (game.duel) {
     game.takesThisArm += 1;
     const open = bookOpenFor(run.stats.wit, game.takesThisArm);
@@ -800,7 +810,7 @@ export function resolveTake(run: TraineeRun, game: FeaturedGame, pitch: LivePitc
       game.pendingBook = open;
     }
   }
-  if (pitch.inZone) {
+  if (calledStrike) {
     game.count.strikes += 1;
     game.banner = "Called strike.";
     setVerdict(game, pitch, game.count.strikes >= 3 ? "k" : "take-strike");
@@ -821,7 +831,7 @@ export function resolveTake(run: TraineeRun, game: FeaturedGame, pitch: LivePitc
   if (!pitch.inZone && game.count.strikes >= 2) noteCallback(run, game, "eye");
   if (game.count.balls >= 4) {
     const scored = reachBase(run, game, r, "walk", "walk");
-    game.banner = scored ? "Ball four, and a run walks in." : "Ball four. She takes her base.";
+    game.banner = scored ? "Ball four, and a run walks in." : "Ball four, and she takes her base.";
     finishPa(run, game, r, true, false);
     return;
   }
@@ -939,7 +949,7 @@ export function resolveSwing(
     game.lastQuality = contact.quality;
     game.lastContact = contact.foulKind === "tip" ? "foul-tip" : "foul";
     push(game.events, { t: "contact", pa: game.paIndex, tier: game.lastContact, quality: contact.quality });
-    game.banner = contact.foulKind === "tip" ? "Foul tip. She just got a piece of it." : "Fouled off.";
+    game.banner = contact.foulKind === "tip" ? "Foul tip, and she just got a piece of it." : "Fouled off.";
     const twoStrike = game.count.strikes >= 2;
     push(game.events, { t: "foul", pa: game.paIndex, twoStrike });
     if (!twoStrike) game.count.strikes += 1;
@@ -1018,6 +1028,25 @@ export type FieldBeat =
   | "take-strike"
   | "ball";
 
+/** One spot in an exhibition order. Academy has a film id and no girl. */
+export interface ExhibitionBatter {
+  film: CharacterId | "academy";
+  name: string;
+  /** Null for an academy bat. */
+  id: CharacterId | null;
+  /** Index into the exhibition surname pool. Null for a girl. */
+  academy: number | null;
+  /** 0 leadoff through 8 ninth. Frozen on the batter the film is showing. */
+  spot: number;
+}
+
+/** Both orders, and the spot that is due on each side. The spot does not reset when the inning turns. */
+export interface ExhibitionOrder {
+  hers: ExhibitionBatter[];
+  theirs: ExhibitionBatter[];
+  spot: { hers: number; theirs: number };
+}
+
 /** A full game's extra board. Career saves leave every field unset. */
 export interface FeaturedGame {
   /** Visitors bat the top. She bats the bottom. */
@@ -1027,9 +1056,16 @@ export interface FeaturedGame {
   /** Their runs. */
   runsAgainst?: number;
   winnerLine?: string | null;
-  /** The other side's live at-bat, and the throwaway run it belongs to. */
-  sidePlate?: { run: TraineeRun; game: FeaturedGame } | null;
-  cutaway?: { beat: FieldBeat; swung: boolean; batterId: CharacterId; scored: boolean } | null;
+  /** Nine batters a side. Absent on a career date and on a three-at-bat lantern. */
+  order?: ExhibitionOrder;
+  /**
+   * The batter the film and the scorebug are still showing. The order's spot
+   * moves when the plate appearance ends. This one waits for the next pitch.
+   */
+  shownBatter?: ExhibitionBatter | null;
+  /** A watched at-bat, and the throwaway run it belongs to. */
+  sidePlate?: { run: TraineeRun; game: FeaturedGame; film: CharacterId | "academy"; name: string } | null;
+  cutaway?: { beat: FieldBeat; swung: boolean; batterId: CharacterId | "academy"; name?: string; scored: boolean } | null;
   /**
    * The half the film and the card still belong to. Set when the third out
    * moves the board on, and cleared once that card leaves.
@@ -1079,6 +1115,123 @@ const EXHIBITION_HITTERS = ["aoi", "miki", "yuki"] as const;
 export function exhibitionOtherHitter(host: CharacterId): CharacterId {
   for (const id of EXHIBITION_HITTERS) if (id !== host) return id;
   return "miki";
+}
+
+/** Cast order for an exhibition lineup. The mound's six-spot order stays where it is. */
+const EXHIBITION_CAST: readonly CharacterId[] = ["aoi", "yuki", "miki", "reina", "sol", "kira"];
+
+/** Academy surnames for one game. The mound's six names stay on academyBatter. */
+const EXHIBITION_SURNAMES = ["Nishi", "Cruz", "Vale", "Park", "Boone", "Ito", "Sato", "Cho", "Reyes", "Quinn", "Berg", "Dahl"] as const;
+
+/** A watched academy bat stays modest, so a half does not turn into a string of reaches. */
+const ACADEMY_FILM: readonly { contact: number; power: number; eye: number; speed: number }[] = [
+  { contact: 4, power: 2, eye: 4, speed: 4 },
+  { contact: 5, power: 3, eye: 4, speed: 5 },
+  { contact: 6, power: 2, eye: 5, speed: 4 },
+  { contact: 4, power: 4, eye: 4, speed: 6 },
+  { contact: 5, power: 3, eye: 5, speed: 5 },
+  { contact: 6, power: 2, eye: 4, speed: 6 },
+  { contact: 4, power: 3, eye: 5, speed: 5 },
+  { contact: 5, power: 4, eye: 4, speed: 4 },
+  { contact: 6, power: 3, eye: 5, speed: 5 },
+  { contact: 4, power: 2, eye: 4, speed: 6 },
+  { contact: 5, power: 3, eye: 5, speed: 4 },
+  { contact: 6, power: 4, eye: 4, speed: 5 },
+];
+
+const EXHIBITION_SPOTS = [
+  "batting leadoff",
+  "batting second",
+  "batting third",
+  "batting cleanup",
+  "batting fifth",
+  "batting sixth",
+  "batting seventh",
+  "batting eighth",
+  "batting ninth",
+] as const;
+
+function exhibitionGirl(id: CharacterId, spot: number): ExhibitionBatter {
+  return { film: id, name: sheet(id).name, id, academy: null, spot };
+}
+
+function exhibitionAcademy(index: number, spot: number): ExhibitionBatter {
+  const academy = index % EXHIBITION_SURNAMES.length;
+  return { film: "academy", name: EXHIBITION_SURNAMES[academy]!, id: null, academy, spot };
+}
+
+function fillOpen(row: (ExhibitionBatter | null)[], ids: readonly CharacterId[]) {
+  let cursor = 0;
+  for (const id of ids) {
+    while (cursor < row.length && row[cursor]) cursor += 1;
+    if (cursor >= row.length) return;
+    row[cursor] = exhibitionGirl(id, cursor);
+    cursor += 1;
+  }
+}
+
+function fillAcademy(row: (ExhibitionBatter | null)[], from: number): number {
+  let academy = from;
+  for (let spot = 0; spot < row.length; spot += 1) {
+    if (row[spot]) continue;
+    row[spot] = exhibitionAcademy(academy, spot);
+    academy += 1;
+  }
+  return academy;
+}
+
+/**
+ * Two orders of nine. She keeps her slot (Aoi leads off, anyone else bats third).
+ * Home is her and the next two cast girls who are not on the mound. The arm,
+ * when she is a girl and not the one at home, bats ninth. The same girl is
+ * never on both sides. Academy surnames run through the open spots, home first.
+ */
+export function exhibitionOrders(host: CharacterId, arm: RivalArmId): { hers: ExhibitionBatter[]; theirs: ExhibitionBatter[] } {
+  const rest = EXHIBITION_CAST.filter((id) => id !== host && id !== arm);
+  const homeSlot = host === "aoi" ? 0 : 2;
+  const hers: (ExhibitionBatter | null)[] = Array.from({ length: 9 }, () => null);
+  hers[homeSlot] = exhibitionGirl(host, homeSlot);
+  fillOpen(hers, rest.slice(0, 2));
+
+  const awayGirls = rest.slice(2);
+  const theirs: (ExhibitionBatter | null)[] = Array.from({ length: 9 }, () => null);
+  const first = awayGirls[0];
+  if (first) theirs[2] = exhibitionGirl(first, 2);
+  if (arm !== "academy" && arm !== host) theirs[8] = exhibitionGirl(arm, 8);
+  fillOpen(theirs, awayGirls.slice(1));
+
+  const afterHome = fillAcademy(hers, 0);
+  fillAcademy(theirs, afterHome);
+  return { hers: hers as ExhibitionBatter[], theirs: theirs as ExhibitionBatter[] };
+}
+
+/** "Sol, batting leadoff." The spot is the one frozen on this batter. */
+export function exhibitionBatterLine(batter: ExhibitionBatter): string {
+  return `${batter.name}, ${EXHIBITION_SPOTS[batter.spot] ?? EXHIBITION_SPOTS[0]}.`;
+}
+
+/** Who is due on the side that is batting. The spot does not reset when the inning turns. */
+export function exhibitionDue(game: FeaturedGame): ExhibitionBatter | null {
+  const order = game.order;
+  const side = game.batting;
+  if (!order || (side !== "hers" && side !== "theirs")) return null;
+  const row = order[side];
+  return row[order.spot[side] % row.length] ?? null;
+}
+
+/**
+ * True when the due batter is the girl the Coach is sitting with.
+ * A board with no order treats her half as hers, so a live plate is never watched by accident.
+ */
+export function exhibitionDueIsHost(game: FeaturedGame, host: CharacterId): boolean {
+  if (!game.order) return game.batting === "hers";
+  return exhibitionDue(game)?.id === host;
+}
+
+function advanceExhibitionSpot(game: FeaturedGame) {
+  const side = game.batting;
+  if (!game.order || (side !== "hers" && side !== "theirs")) return;
+  game.order.spot[side] = (game.order.spot[side] + 1) % 9;
 }
 
 /** Who won, once both halves of the ninth (or later) are done. Never call this on a tie. */
@@ -1138,10 +1291,12 @@ function closeFullInningPa(game: FeaturedGame, reached: boolean) {
   game.struckOut = false;
   game.reached = false;
   syncBases(game);
+  // The next batter is due. The film keeps the one who just hit until the next pitch.
+  advanceExhibitionSpot(game);
   if (game.outs < 3) {
     game.paIndex += 1;
     push(game.events, { t: "paStart", pa: game.paIndex, inning: game.inning, outs: game.outs, bases: { ...game.bases } });
-    game.banner = game.batting === "theirs" ? "Their turn." : "Her turn.";
+    game.banner = game.batting === "theirs" ? "They're up." : "She's up.";
     return;
   }
   // The film and the card still belong to the half that just ended.
@@ -1160,7 +1315,7 @@ function closeFullInningPa(game: FeaturedGame, reached: boolean) {
   if (game.batting === "theirs") {
     game.batting = "hers";
     push(game.events, { t: "paStart", pa: game.paIndex, inning: game.inning, outs: game.outs, bases: { ...game.bases } });
-    game.banner = "Her turn.";
+    game.banner = "She's up.";
     return;
   }
   const runsFor = game.runsFor ?? 0;
@@ -1175,13 +1330,24 @@ function closeFullInningPa(game: FeaturedGame, reached: boolean) {
   game.batting = "theirs";
   push(game.events, { t: "inning", inning: game.inning });
   push(game.events, { t: "paStart", pa: game.paIndex, inning: game.inning, outs: game.outs, bases: { ...game.bases } });
-  game.banner = "Their turn.";
+  game.banner = "They're up.";
 }
 
-/** The other side's scratch at-bat, kept on the board until that plate appearance ends. */
-export function ensureExhibitionScratch(host: TraineeRun, board: FeaturedGame): { run: TraineeRun; game: FeaturedGame } {
+/** A watched at-bat, kept on the board until that plate appearance ends. */
+export function ensureExhibitionScratch(
+  host: TraineeRun,
+  board: FeaturedGame,
+): { run: TraineeRun; game: FeaturedGame; film: CharacterId | "academy"; name: string } {
   if (board.sidePlate) return board.sidePlate;
-  const run = newRun(exhibitionOtherHitter(host.characterId));
+  const due = exhibitionDue(board);
+  const film = due?.film ?? "academy";
+  const name = due?.name ?? EXHIBITION_SURNAMES[0];
+  const girlId = due?.id;
+  const run = newRun(girlId ?? exhibitionOtherHitter(host.characterId));
+  if (!girlId) {
+    const line = ACADEMY_FILM[due?.academy ?? 0] ?? ACADEMY_FILM[0]!;
+    run.stats = { ...run.stats, contact: line.contact, power: line.power, eye: line.eye, speed: line.speed };
+  }
   const game = startFeaturedGame(run, "lantern-classic", { arm: board.arm, appearances: 1, neutral: true, plateOnly: true });
   game.bases = { ...board.bases };
   game.outs = board.outs;
@@ -1189,7 +1355,7 @@ export function ensureExhibitionScratch(host: TraineeRun, board: FeaturedGame): 
   game.rbi = 0;
   game.runs = 0;
   syncBases(game);
-  board.sidePlate = { run, game };
+  board.sidePlate = { run, game, film, name };
   return board.sidePlate;
 }
 
@@ -1200,7 +1366,7 @@ export function finishExhibitionPitch(board: FeaturedGame): FieldBeat | null {
   const scratch = side.game;
   const beat = fieldBeatFor(scratch);
   const swung = swungThisPitch(scratch);
-  board.cutaway = { beat, swung, batterId: side.run.characterId, scored: scratch.scoreDiff > 0 };
+  board.cutaway = { beat, swung, batterId: side.film, name: side.name, scored: scratch.scoreDiff > 0 };
   board.scoreDiff += scratch.scoreDiff;
   board.bases = { ...scratch.bases };
   syncBases(board);
@@ -1211,13 +1377,13 @@ export function finishExhibitionPitch(board: FeaturedGame): FieldBeat | null {
 }
 
 /**
- * One taken pitch. Their half resolves on a throwaway plate and cuts away
- * when the at-bat ends. Her half resolves on the live game. An unfinished
+ * One taken pitch. Anyone but her resolves on a throwaway plate and cuts away
+ * when the at-bat ends. Her own at-bat resolves on the live game. An unfinished
  * count returns null.
  */
 export function takeExhibitionPitch(run: TraineeRun, board: FeaturedGame, pitch: LivePitch): FieldBeat | null {
   if (board.done) return null;
-  if (board.encounter?.fullGame && board.batting === "theirs") {
+  if (board.encounter?.fullGame && !exhibitionDueIsHost(board, run.characterId)) {
     const side = ensureExhibitionScratch(run, board);
     const scratch = side.game;
     if (scratch.done) return finishExhibitionPitch(board);

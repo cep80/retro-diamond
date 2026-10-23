@@ -1353,9 +1353,10 @@
 }
 .shine-race-tag {
   margin-top: 0.4rem;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  text-wrap: balance;
   font-family: var(--font-display);
   font-size: 10px;
   letter-spacing: 0.2em;
@@ -1460,6 +1461,7 @@
 }
 /* Time: a 36 px round icon, the twin of the mute speaker beside it. */
 .shine-hud-btn {
+  position: relative;
   display: inline-grid;
   flex: none;
   place-items: center;
@@ -1477,6 +1479,12 @@
   .shine-hud-btn:hover {
     border-color: var(--color-gold);
   }
+}
+.shine-hud-btn::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 999px;
 }
 .shine-hud-btn:focus-visible {
   outline: 2px solid var(--shine-accent, var(--color-gold));
@@ -1673,7 +1681,9 @@
 }
 .shine-scene-skip {
   flex: none;
-  padding: 0.35rem 0.85rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0.5rem 0.85rem;
   border: 1px solid rgb(255 255 255 / 0.25);
   border-radius: 999px;
   background: rgb(8 17 39 / 0.6);
@@ -2235,6 +2245,7 @@
 .episode-chip {
   display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
   min-height: 1.75rem;
   padding: 0.2rem 0.65rem;
   border: 1px solid color-mix(in srgb, var(--shine-accent, rgb(255 255 255)) 28%, rgb(255 255 255 / 0.18));
@@ -2514,6 +2525,9 @@
     transform: scale(1.04);
   }
 }
+.shine-title-gate {
+  cursor: pointer;
+}
 .shine-title-tap {
   width: fit-content;
   padding: 0.6rem 1.4rem;
@@ -2701,8 +2715,8 @@
 }
 .shine-title-dock {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.25rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
   padding: 0.3rem;
   border: 1px solid rgb(255 255 255 / 0.1);
   border-radius: 1.1rem;
@@ -2762,7 +2776,10 @@
   font-family: var(--font-story);
   font-size: 11px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.1;
+  max-width: 100%;
+  overflow: visible;
+  text-align: center;
   white-space: nowrap;
 }
 /* The quiet way out of a year, in the story face rather than a tracked caps link. */
@@ -2963,13 +2980,39 @@
   max-width: 100%;
   overflow: hidden;
   font-family: var(--font-story);
-  font-size: 0.7rem;
+  font-size: 0.62rem;
   font-weight: 700;
   line-height: 1.1;
   color: rgb(245 248 255 / 0.72);
   text-overflow: ellipsis;
   white-space: nowrap;
   text-shadow: 0 1px 4px #000c;
+}
+/* Hits / Pitches under the faces mash together; the girl you picked wears hers. */
+.shine-pick-face-role {
+  display: none;
+  font-family: var(--font-display);
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.shine-pick-face[aria-pressed="true"] .shine-pick-face-role {
+  display: block;
+}
+.shine-pick-role {
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(245 248 255 / 0.5);
+  text-shadow: 0 1px 4px #000c;
+}
+.shine-pick-role {
+  margin-left: 0.45rem;
+  letter-spacing: 0.2em;
+  color: rgb(245 248 255 / 0.62);
 }
 @media (hover: hover) {
   .shine-pick-face:hover img {
@@ -2986,7 +3029,8 @@
 .shine-pick-face[aria-pressed="true"] img {
   filter: none;
 }
-.shine-pick-face[aria-pressed="true"] .shine-pick-face-name {
+.shine-pick-face[aria-pressed="true"] .shine-pick-face-name,
+.shine-pick-face[aria-pressed="true"] .shine-pick-face-role {
   color: var(--face-accent);
 }
 .shine-pick-face:focus-visible {
@@ -4709,6 +4753,9 @@
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
   backdrop-filter: blur(6px);
 }
+.shine-vn-box[data-more="true"] {
+  cursor: pointer;
+}
 .shine-vn-line {
   font-family: var(--font-story);
   font-size: 0.95rem;
@@ -4890,6 +4937,12 @@
   line-height: 1.45;
   color: var(--color-gold);
 }
+.shine-curtain-verse.is-next {
+  animation-delay: 0ms;
+}
+.shine-after-body[data-more="true"] {
+  cursor: pointer;
+}
 @keyframes shine-curtain-verse-in {
   from {
     opacity: 0;
@@ -4908,6 +4961,11 @@
   margin: 0 auto;
   padding: 1.1rem 1rem calc(1rem + env(safe-area-inset-bottom));
   background: linear-gradient(0deg, var(--color-ink) 45%, rgb(8 17 39 / 0.85) 72%, rgb(8 17 39 / 0));
+  /* The fade is paint. Taps on a card under it still reach her talk. */
+  pointer-events: none;
+}
+.shine-dock > * {
+  pointer-events: auto;
 }
 .shine-dock-wait {
   display: flex;
@@ -4927,6 +4985,11 @@
   flex-direction: column;
   overflow: visible;
   overflow-x: clip;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+.shine-wall-next {
+  margin-top: 1.5rem;
+  max-width: 46rem;
 }
 .shine-wall-frames {
   display: grid;
@@ -4963,19 +5026,23 @@
   bottom: 0;
   left: 0;
   display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 0.35rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.08rem;
   padding: 1.2rem 0.3rem 0.45rem;
   background: linear-gradient(0deg, rgb(8 17 39 / 0.94), transparent);
   font-family: var(--font-display);
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: rgb(245 248 255 / 0.55);
+  white-space: nowrap;
 }
 .shine-wall-frame-tag .shine-kana {
   font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
   color: color-mix(in srgb, var(--face-accent, var(--color-gold)) 60%, rgb(245 248 255 / 0.35));
 }
 
@@ -5157,21 +5224,28 @@
 .shine-work-goal {
   grid-area: goal;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
   width: 100%;
   min-width: 0;
+  overflow: visible;
 }
 .shine-work-goal-top {
   display: flex;
+  width: 100%;
   min-width: 0;
   align-items: center;
+  justify-content: space-between;
   gap: 0.45rem;
 }
 .shine-work-goal-name {
-  flex: 1;
+  display: block;
+  width: 100%;
   min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow: visible;
+  white-space: normal;
+  line-height: 1.15;
+  letter-spacing: 0.06em;
 }
 .shine-work-goal-days {
   flex: none;
@@ -5525,7 +5599,22 @@
     "day btns"
     "meters meters"
     "grades grades"
+    "letter letter"
     "goal goal";
+}
+.shine-work-hud .shine-letter-fill {
+  grid-area: letter;
+  margin: 0;
+  gap: 0.16rem;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  text-wrap: pretty;
+}
+.shine-work-hud .shine-letter-line {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 /* The letter ramp, Pretty Derby's: grey, violet, lilac, teal, green, rose, orange, gold. */
 :is(.shine-grade-cell, .shine-grade-row, .shine-year-grade)[data-rank="0"] { --grade: #9aa6b8; }
@@ -6379,6 +6468,8 @@
 /* The scrapbook: a polaroid per big game, a note between them where a memory fell, then her letter. */
 .shine-book {
   margin-top: 1rem;
+  /* The Clubhouse dock is sticky; the letter and Why line have to clear it. */
+  padding-bottom: 6.5rem;
 }
 .shine-book-pages {
   display: grid;
@@ -6722,7 +6813,7 @@ img.shine-after-film[src^="/art/busts/"] {
 
 /* ===== Check-in 28 (facilities builder): five facilities in one row, the rest tiles in a
    second row under them. A facility names what it raises (kana over English), what it carries
-   over to (+POW), and how often it doesn't take today (失敗 12%). A shut facility stays in the
+   over to (+POW), and how often it doesn't take today (失敗 / won't take 12%). A shut facility stays in the
    row, dimmed, and says when it opens. ===== */
 .shine-work-facilities {
   display: grid;
@@ -6744,14 +6835,13 @@ img.shine-after-film[src^="/art/busts/"] {
 .shine-facility-name {
   max-width: 100%;
   overflow: hidden;
-  font-size: 0.56rem;
-  font-weight: 700;
+  font-family: var(--font-jp);
+  font-size: 0.62rem;
+  font-weight: 800;
   line-height: 1.2;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0;
   white-space: nowrap;
-  text-overflow: ellipsis;
-  color: rgb(245 248 255 / 0.72);
+  color: rgb(245 248 255 / 0.78);
 }
 .shine-facility-kana {
   max-width: 100%;
@@ -6765,17 +6855,7 @@ img.shine-after-film[src^="/art/busts/"] {
   color: color-mix(in srgb, var(--station-color, var(--color-gold)) 70%, var(--color-cream));
 }
 .shine-facility-stat {
-  max-width: 100%;
-  overflow: hidden;
-  font-family: var(--font-display);
-  font-size: 0.62rem;
-  font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  color: var(--color-cream);
+  display: none;
 }
 .shine-facility-plus {
   margin-top: 0.08rem;
@@ -6799,13 +6879,31 @@ img.shine-after-film[src^="/art/busts/"] {
   white-space: nowrap;
   color: rgb(245 248 255 / 0.78);
 }
+.shine-facility-fail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.02rem;
+  white-space: normal;
+}
 .shine-facility-fail-kana {
   font-family: var(--font-jp);
   font-size: 0.52rem;
   color: rgb(245 248 255 / 0.6);
 }
+.shine-facility-fail-en {
+  font-family: var(--font-ui);
+  font-size: 0.46rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
 .shine-facility-fail[data-risky] {
   color: var(--color-coral);
+}
+.shine-facility-fail[data-risky] .shine-facility-fail-kana {
+  color: color-mix(in srgb, var(--color-coral) 70%, rgb(245 248 255 / 0.5));
 }
 .shine-facility-lock {
   white-space: normal;
@@ -6864,12 +6962,32 @@ img.shine-after-film[src^="/art/busts/"] {
 @media (max-width: 370px) {
   .shine-facility-name {
     font-size: 0.52rem;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.02em;
+    white-space: normal;
+    text-overflow: clip;
+    line-height: 1.15;
   }
+  /* The kana already names the work. The English stat was ellipsizing to STU… / CON… */
   .shine-facility-stat {
-    font-size: 0.58rem;
-    letter-spacing: 0;
+    display: none;
   }
+}
+
+/* Year-end / Classic Spring: "Day 20 · Rookie Year-End" has to share the header with Mute. */
+.shine-after-top .episode-chip {
+  max-width: calc(100% - 7.5rem);
+  white-space: normal;
+  line-height: 1.25;
+  text-align: left;
+  border-radius: 0.85rem;
+  letter-spacing: 0.06em;
+}
+.shine-scene-top .episode-chip {
+  max-width: min(100%, 12.5rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.06em;
 }
 
 /* ===== Gameplay programmer (check-in 31): the 優勝 frame on film and its wait, a pitcher's
@@ -7071,4 +7189,125 @@ img.shine-after-film[src^="/art/busts/"] {
 [data-mound-done][data-long-head] .shine-done-headline {
   font-size: 1.5rem;
   line-height: 1.15;
+}
+
+/* F6 · The date's goal sits on its own line so a phone never turns it into "ACADEMY GATE · …". */
+.shine-scorebug[data-tagged] .shine-bug-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.04rem;
+  width: auto;
+  min-width: 100%;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  padding-bottom: 0.12rem;
+  border-bottom: 0;
+  letter-spacing: 0.14em;
+}
+.shine-bug-tag-name {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  text-wrap: balance;
+}
+.shine-bug-tag .shine-bug-tag-gold {
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  text-wrap: balance;
+}
+
+/* Yesterday's work on a practice sit: HUD, not over the 3×3. */
+.shine-race-hud .shine-rep-chips {
+  margin-top: 0.4rem;
+  justify-content: flex-start;
+  pointer-events: none;
+}
+.shine-race-hud .shine-gain-chip {
+  padding: 0.12rem 0.5rem;
+  font-size: 0.72rem;
+  box-shadow: 0 2px 8px rgb(1 5 16 / 0.45);
+}
+
+/* Coordinator: the date's done panel, one tap, one line under the stamp. */
+[data-done-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: campus morning, Coach then her, one tap, one line. */
+[data-morning-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: the year's door, one tap, one line under the card. */
+[data-year-start-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: the scrapbook replay, one tap, one pitch. */
+[data-replay-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: How it works, one tap, one card. */
+[data-teach-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: the scrapbook letter, one tap, one sentence. */
+[data-letter-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: Shop never-sold, one tap, one line. */
+[data-shop-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: Clubhouse door, one tap, one sentence. */
+[data-clubhouse-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: Last Bow / Live, her last line then the frame. */
+[data-live-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: Last Bow scrapbook header, one tap, one line. */
+[data-book-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: scrapbook polaroid, caption then the rest. */
+[data-polaroid-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: Clubhouse card body, one tap, one line. */
+[data-wall-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: title, her line then the pass-on. */
+[data-title-talk][data-more="true"] {
+  cursor: pointer;
+}
+
+/* Coordinator: Shop previews of the look, using the same park stills the packs tint. */
+.shine-shop-preview {
+  margin-top: 0.7rem;
+  overflow: hidden;
+  border-radius: 12px;
+  aspect-ratio: 16 / 9;
+  background: rgb(8 17 39);
+}
+.shine-shop-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }

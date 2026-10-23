@@ -142,7 +142,7 @@ describe("action art: cue → picture", () => {
 
   it("names a two-strike foul on the card", () => {
     const p = pictureFor(view({ stage: "reaction", beat: "foul", swung: true, resolvedAtMs: 0 }), {}, true);
-    assert.equal(p.card, "Fouled off. Still two strikes.");
+    assert.equal(p.card, "Fouled off, and it's still two strikes.");
   });
 
   it("names hr / k / walk with their own still once the swing settles", () => {
@@ -228,6 +228,7 @@ describe("action art: the done panel settles her face", () => {
     assert.equal(settledBatterPose("hr", "missed"), "crushed");
     assert.equal(settledBatterPose("walk", "met"), "trot");
     assert.equal(settledBatterPose("walk", "missed"), "crushed");
+    assert.equal(settledBatterPose("single", "won-short"), "trot");
     assert.equal(settledBatterPose("single"), null, "mid-date a plain hit keeps its row's pose");
   });
 });

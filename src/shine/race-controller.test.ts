@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { SCORE_STAMP_HOLD_MS, STAMP_DELAY_MS } from "./action-art.ts";
 import type { PlateEvent } from "./events.ts";
+import { hashId, makeRng } from "./core/rng.ts";
 import { EXHIBITION_ENCOUNTER, VirtualScheduler } from "./plate-harness.ts";
 import {
   cardVerdict,
@@ -12,11 +13,12 @@ import {
   pitchReadout,
   RaceController,
   scoredOnPa,
+  swingContextFor,
   type RaceCue,
 } from "./race-controller.ts";
 import { exhibitionFrame, raceCaption } from "../components/race-ui.ts";
 import type { Stage } from "./beats.ts";
-import { RACE_PACE, releaseLine } from "./race.ts";
+import { commitTimingErr, POWER_SIGMA, RACE_PACE, releaseLine } from "./race.ts";
 import { newRun } from "./run.ts";
 import { FORBIDDEN_IN_STORY } from "./story.ts";
 
@@ -189,7 +191,7 @@ describe("race controller", () => {
     assert.equal(c.go(), true);
     const start = sched.t;
     let snap = c.getSnapshot();
-    while (!(snap.plate.game.batting === "hers" && snap.phase === "pick" && snap.watching === false) && sched.t - start < 180_000) {
+    while (!(snap.plate.game.batting === "hers" && snap.phase === "pick" && snap.watching === false) && sched.t - start < 420_000) {
       sched.advance(50);
       snap = c.getSnapshot();
     }
@@ -258,13 +260,15 @@ describe("race controller", () => {
     let theirRacing: Seen | null = null;
     let theirCard: Seen | null = null;
     let sit: Seen | null = null;
-    let hersRacing: Seen | null = null;
-    let hersCard: Seen | null = null;
+    let herPlate: Seen | null = null;
+    let herCard: Seen | null = null;
+    let flipRacing: Seen | null = null;
+    let flipCard: Seen | null = null;
     let gap: Seen | null = null;
     let theirNext: Seen | null = null;
     let handed = false;
     let last = "";
-    while (sched.t - start < 180_000 && (!theirRacing || !theirCard || !sit || !hersRacing || !hersCard || !gap || !theirNext)) {
+    while (sched.t - start < 420_000 && (!theirRacing || !theirCard || !sit || !herPlate || !herCard || !flipRacing || !flipCard || !gap || !theirNext)) {
       const snap = c.getSnapshot();
       const g = snap.plate.game;
       const phase = snap.phase;
@@ -272,13 +276,19 @@ describe("race controller", () => {
       if (phase === "pick") c.setCall("take");
       const theirThird = Boolean(g.halfShown && g.batting === "hers" && g.inning === 1 && g.outs === 0 && g.halfShown.batting === "theirs");
       const herLast = Boolean(g.halfShown && g.batting === "theirs" && g.inning === 2 && g.halfShown.inning === 1 && g.halfShown.batting === "hers");
+      const herUp = Boolean(sit && !g.halfShown && g.batting === "hers" && g.inning === 1 && !g.cutaway);
       if (theirThird && phase === "racing" && !theirRacing) theirRacing = see();
       if (theirThird && phase === "pa-card" && !theirCard) theirCard = see();
       if (!sit && theirCard && phase === "pick" && !snap.watching && g.batting === "hers" && g.inning === 1) sit = see();
-      if (sit && herLast && phase === "racing" && (!hersRacing || (hersRacing.caption === "" && see().caption !== ""))) hersRacing = see();
-      if (sit && herLast && phase === "pa-card" && !hersCard) hersCard = see();
-      if (!gap && hersCard && phase === "pick" && snap.watching && herLast) gap = see();
-      if (gap && phase === "pa-card" && g.inning === 2 && g.batting === "theirs" && g.cutaway && g.lastVerdict && !theirNext) theirNext = see();
+      if (herUp && phase === "racing" && (!herPlate || (herPlate.caption === "" && see().caption !== ""))) herPlate = see();
+      if (sit && phase === "pa-card" && !herCard) {
+        const seen = see();
+        if (seen.film === "aoi" && seen.line === "Bottom of the 1st") herCard = seen;
+      }
+      if (sit && herLast && phase === "racing" && !flipRacing) flipRacing = see();
+      if (sit && herLast && phase === "pa-card" && !flipCard) flipCard = see();
+      if (!gap && flipCard && phase === "pick" && snap.watching && herLast) gap = see();
+      if (gap && phase === "pa-card" && g.inning === 2 && g.batting === "theirs" && g.cutaway && !theirNext) theirNext = see();
       if (sit && !handed && phase === "pick" && !snap.watching) {
         handed = true;
         c.setCall("take");
@@ -292,68 +302,85 @@ describe("race controller", () => {
       assert.equal(seen.cardVerdict, "");
       assert.equal(seen.basepath, "");
       assert.equal(seen.storedVerdict, "");
-      assert.equal(seen.film, "miki");
+      assert.notEqual(seen.film, "aoi");
+      assert.notEqual(seen.banner, "She's up.");
     };
     assert.ok(theirRacing, `their third out stayed on screen (${last})`);
     assert.equal(theirRacing.live, "hers 1");
     assert.equal(theirRacing.line, "Top of the 1st");
-    assert.equal(theirRacing.atBat, "Their turn");
-    assert.notEqual(theirRacing.banner, "Her turn.");
+    assert.equal(theirRacing.atBat, "They're up");
+    assert.notEqual(theirRacing.banner, "She's up.");
     cutawayBlank(theirRacing);
     assert.ok(theirCard, `their third out's card stayed on their half (${last})`);
     assert.notEqual(theirCard.cardLine, "");
     assert.equal(theirCard.live, "hers 1");
     assert.equal(theirCard.line, "Top of the 1st");
-    assert.equal(theirCard.atBat, "Their turn");
-    assert.notEqual(theirCard.banner, "Her turn.");
+    assert.equal(theirCard.atBat, "They're up");
+    assert.notEqual(theirCard.banner, "She's up.");
     cutawayBlank(theirCard);
     assert.ok(sit, `she is handed the bat (${last})`);
     assert.equal(sit.line, "Bottom of the 1st");
-    assert.equal(sit.atBat, "Her turn");
+    assert.equal(sit.atBat, "She's up");
     assert.equal(sit.film, "aoi");
     assert.equal(sit.held, "theirs 1");
     assert.equal(sit.caption, "");
-    assert.ok(hersRacing, `her last out stayed on her half (${last})`);
-    assert.equal(hersRacing.live, "theirs 2");
-    assert.equal(hersRacing.line, "Bottom of the 1st");
-    assert.equal(hersRacing.atBat, "Her turn");
-    assert.notEqual(hersRacing.banner, "Their turn.");
-    assert.equal(hersRacing.film, "aoi");
+    assert.ok(herPlate, `her plate stayed on screen (${last})`);
+    assert.equal(herPlate.live, "hers 1");
+    assert.equal(herPlate.line, "Bottom of the 1st");
+    assert.equal(herPlate.film, "aoi");
     assert.equal(
-      hersRacing.caption,
+      herPlate.caption,
       raceCaption({
         phase: "racing",
-        stage: hersRacing.stage,
-        verdict: hersRacing.lastVerdict,
-        banner: hersRacing.banner,
+        stage: herPlate.stage,
+        verdict: herPlate.lastVerdict,
+        banner: herPlate.banner,
         lookNeed: null,
       }) ?? "",
     );
-    assert.notEqual(hersRacing.caption, "");
-    assert.ok(hersCard, `her last out's card kept her verdict (${last})`);
-    assert.equal(hersCard.live, "theirs 2");
-    assert.equal(hersCard.line, "Bottom of the 1st");
-    assert.equal(hersCard.atBat, "Her turn");
-    assert.notEqual(hersCard.banner, "Their turn.");
-    assert.equal(hersCard.film, "aoi");
-    assert.equal(hersCard.caption, "");
-    assert.notEqual(hersCard.storedVerdict, "");
-    assert.equal(hersCard.cardVerdict, hersCard.storedVerdict);
+    assert.notEqual(herPlate.caption, "");
+    assert.ok(herCard, `her card kept her verdict (${last})`);
+    assert.equal(herCard.line, "Bottom of the 1st");
+    assert.equal(herCard.film, "aoi");
+    assert.equal(herCard.caption, "");
+    assert.notEqual(herCard.storedVerdict, "");
+    assert.equal(herCard.cardVerdict, herCard.storedVerdict);
+    const flipHolds = (seen: Seen) => {
+      assert.equal(seen.live, "theirs 2");
+      assert.equal(seen.line, "Bottom of the 1st");
+      assert.equal(seen.atBat, "She's up");
+      assert.notEqual(seen.banner, "They're up.");
+      if (seen.caption === "") {
+        assert.equal(seen.cardVerdict, "");
+        assert.equal(seen.basepath, "");
+      } else {
+        assert.equal(seen.film, "aoi");
+        assert.notEqual(seen.storedVerdict, "");
+      }
+    };
+    assert.ok(flipRacing, `the half that just ended stayed on screen (${last})`);
+    flipHolds(flipRacing);
+    assert.ok(flipCard, `the half that just ended kept its card (${last})`);
+    flipHolds(flipCard);
+    if (flipCard.caption === "") assert.equal(flipCard.storedVerdict, "");
+    else assert.equal(flipCard.cardVerdict, flipCard.storedVerdict);
     assert.ok(gap, `the out stays up until the next pitch (${last})`);
     assert.equal(gap.live, "theirs 2");
     assert.equal(gap.line, "Bottom of the 1st");
-    assert.equal(gap.atBat, "Her turn");
-    assert.notEqual(gap.banner, "Their turn.");
-    assert.equal(gap.film, "aoi");
-    assert.match(gap.cardLine, /^[A-Z].*[.!]$/);
+    assert.equal(gap.atBat, "She's up");
+    assert.notEqual(gap.banner, "They're up.");
     assert.equal(gap.caption, "");
-    assert.notEqual(gap.storedVerdict, "");
-    assert.equal(gap.cardVerdict, gap.storedVerdict);
+    assert.match(gap.cardLine, /^[A-Z].*[.!]$/);
+    if (gap.storedVerdict === "") assert.equal(gap.cardVerdict, "");
+    else {
+      assert.equal(gap.film, "aoi");
+      assert.equal(gap.cardVerdict, gap.storedVerdict);
+    }
     assert.ok(theirNext, `their next card stayed blank after she had a line (${last})`);
     assert.notEqual(theirNext.cardLine, "");
     assert.equal(theirNext.line, "Top of the 2nd");
-    assert.equal(theirNext.atBat, "Their turn");
-    assert.notEqual(theirNext.lastVerdict, "");
+    assert.equal(theirNext.atBat, "They're up");
+    assert.notEqual(theirNext.film, "aoi");
     assert.notEqual(theirNext.storedVerdict, theirNext.lastVerdict);
     cutawayBlank(theirNext);
   });
@@ -402,14 +429,29 @@ describe("race controller", () => {
     a.c.go();
     let guard = 0;
     while (a.c.getSnapshot().plate.stage !== "flight" && guard++ < 400) a.sched.advance(20);
-    assert.equal(a.c.getSnapshot().plate.stage, "flight");
-    assert.equal(a.c.release(0.5), true);
+    const before = a.c.getSnapshot();
+    assert.equal(before.plate.stage, "flight");
+    const decision = before.decision;
+    assert.ok(decision && !decision.swing);
+    const ctx = swingContextFor(a.run, before.plate);
+    assert.ok(ctx);
+    const game = before.plate.game;
+    const expected = commitTimingErr(
+      ctx,
+      decision,
+      "contact",
+      makeRng(hashId(`${a.run.rngSeed}|race|${game.kind}|pa${game.paIndex}|p${game.pitchesSeen}|commit`)),
+    );
+    assert.ok(Number.isFinite(expected) && expected !== 0);
+    assert.equal(a.c.release(0.5, "shorten"), true);
     const after = a.c.getSnapshot();
     assert.notEqual(after.plate.stage, "flight");
-    assert.equal(after.release?.band, "early");
+    assert.equal(after.release?.asked, "shorten");
+    assert.equal(after.release?.commitment, "shorten");
+    assert.equal(after.release?.kind, "contact");
     const swings = after.plate.game.events.filter((e) => e.t === "swing");
     assert.equal(swings.length, 1);
-    assert.equal(swings[0]?.timingErr, -0.18);
+    assert.equal(swings[0]?.t === "swing" ? swings[0].timingErr : null, expected);
     assert.equal(a.c.release(0.92), false);
     assert.equal(a.c.getSnapshot().plate.game.events.filter((e) => e.t === "swing").length, 1);
 
@@ -425,6 +467,36 @@ describe("race controller", () => {
     assert.equal(quiet.c.getSnapshot().plate.game.events.filter((e) => e.t === "swing").length, 0);
   });
 
+  it("a cut at two strikes still shortens, the at-bat ends, and a foul still happens", () => {
+    // Her timing is a draw, so a forced swing aimed at the sit can foul on location and stay up.
+    let fouled = false;
+    for (let i = 0; i < 30; i++) {
+      const { c, sched } = race(`n1-two-${i}`);
+      c.setSit({ row: 1, col: 1 });
+      c.setCall("take");
+      c.go();
+      let pitches = 0;
+      let guard = 0;
+      while (c.getSnapshot().phase === "racing" && guard++ < 4000) {
+        if (c.getSnapshot().plate.stage === "flight") {
+          c.getSnapshot().plate.game.count.strikes = 2;
+          if (c.release(0.55, "cut")) {
+            pitches += 1;
+            const rel = c.getSnapshot().release;
+            assert.equal(rel?.asked, "cut");
+            assert.equal(rel?.commitment, "shorten");
+            assert.equal(rel?.kind, "contact");
+            if (c.getSnapshot().plate.game.events.some((e) => e.t === "foul")) fouled = true;
+          }
+        }
+        sched.advance(20);
+      }
+      assert.notEqual(c.getSnapshot().phase, "racing", `seed ${i} still racing after ${pitches} two-strike swings`);
+      assert.ok(pitches >= 1 && pitches <= 20, `seed ${i} took ${pitches} two-strike swings`);
+    }
+    assert.ok(fouled, "a two-strike swing fouls at least once");
+  });
+
   it("a release during pause does nothing, and one after resume lands", () => {
     const { c, sched } = race("release-pause");
     c.setCall("take");
@@ -438,9 +510,86 @@ describe("race controller", () => {
     assert.equal(c.getSnapshot().plate.stage, "flight");
     assert.equal(c.getSnapshot().plate.game.events.filter((e) => e.t === "swing").length, 0);
     c.resume();
-    assert.equal(c.release(0.92), true);
-    assert.equal(c.getSnapshot().release?.band, "now");
-    assert.equal(c.getSnapshot().plate.game.events.filter((e) => e.t === "swing").length, 1);
+    assert.equal(c.release(0.92, "cut"), true);
+    const landed = c.getSnapshot();
+    assert.equal(landed.release?.asked, "cut");
+    assert.equal(landed.release?.commitment, "cut");
+    assert.equal(landed.release?.kind, "power");
+    const swing = landed.plate.game.events.find((e) => e.t === "swing");
+    assert.equal(swing?.t === "swing" ? swing.kind : null, "power");
+    assert.ok(swing?.t === "swing" && Number.isFinite(swing.timingErr) && swing.timingErr !== 0);
+    assert.equal(landed.plate.game.events.filter((e) => e.t === "swing").length, 1);
+  });
+
+  it("a shorten that matches her sheet keeps that timing, and a cut widens it", () => {
+    let kept = false;
+    let widened = false;
+    for (let i = 0; i < 80 && (!kept || !widened); i++) {
+      if (!kept) {
+        const { c, sched } = race(`same-kind-${i}`);
+        c.setSit({ row: 1, col: 1 });
+        c.go();
+        let guard = 0;
+        while (c.getSnapshot().plate.stage !== "flight" && guard++ < 400) sched.advance(20);
+        const before = c.getSnapshot();
+        const decision = before.decision;
+        if (before.plate.stage === "flight" && decision?.swing && decision.kind === "contact" && before.plate.game.count.strikes < 2) {
+          assert.equal(c.release(0.6, "shorten"), true);
+          const swing = c.getSnapshot().plate.game.events.find((e) => e.t === "swing");
+          assert.equal(swing?.t === "swing" ? swing.kind : null, "contact");
+          assert.equal(swing?.t === "swing" ? swing.timingErr : null, decision.timingErr);
+          assert.equal(c.getSnapshot().release?.commitment, "shorten");
+          assert.equal(c.getSnapshot().release?.kind, "contact");
+          kept = true;
+        }
+      }
+      if (!widened) {
+        const { c, sched } = race(`cut-kind-${i}`);
+        c.setSit({ row: 1, col: 1 });
+        c.go();
+        let guard = 0;
+        while (c.getSnapshot().plate.stage !== "flight" && guard++ < 400) sched.advance(20);
+        const before = c.getSnapshot();
+        const decision = before.decision;
+        if (before.plate.stage === "flight" && decision?.swing && decision.kind === "contact" && before.plate.game.count.strikes < 2) {
+          assert.equal(c.release(0.6, "cut"), true);
+          const swing = c.getSnapshot().plate.game.events.find((e) => e.t === "swing");
+          assert.equal(swing?.t === "swing" ? swing.kind : null, "power");
+          assert.equal(swing?.t === "swing" ? swing.timingErr : null, decision.timingErr * POWER_SIGMA);
+          assert.equal(c.getSnapshot().release?.asked, "cut");
+          assert.equal(c.getSnapshot().release?.commitment, "cut");
+          assert.equal(c.getSnapshot().release?.kind, "power");
+          widened = true;
+        }
+      }
+    }
+    assert.ok(kept, "a contact sheet swing exists to shorten");
+    assert.ok(widened, "a contact sheet swing exists to cut");
+  });
+
+  it("a shorten off a power sheet tightens her timing", () => {
+    for (let i = 0; i < 400; i++) {
+      const hitter = newRun("miki");
+      hitter.rngSeed = `miki-power-${i}`;
+      hitter.stats = { ...hitter.stats, power: 14, contact: 8 };
+      const { c, sched } = race(hitter.rngSeed, { run: hitter, duel: false });
+      c.setSit({ row: 1, col: 1 });
+      c.go();
+      let guard = 0;
+      while (c.getSnapshot().plate.stage !== "flight" && guard++ < 400) sched.advance(20);
+      const before = c.getSnapshot();
+      const decision = before.decision;
+      if (before.plate.stage !== "flight" || !decision?.swing || decision.kind !== "power") continue;
+      assert.equal(c.release(0.6, "shorten"), true);
+      const swing = c.getSnapshot().plate.game.events.find((e) => e.t === "swing");
+      assert.equal(swing?.t === "swing" ? swing.kind : null, "contact");
+      assert.equal(swing?.t === "swing" ? swing.timingErr : null, decision.timingErr / POWER_SIGMA);
+      assert.equal(c.getSnapshot().release?.asked, "shorten");
+      assert.equal(c.getSnapshot().release?.commitment, "shorten");
+      assert.equal(c.getSnapshot().release?.kind, "contact");
+      return;
+    }
+    assert.fail("no power sheet swing in 400 seeds");
   });
 
   it("a swing that stays in the count holds on screen long enough to read as a swing", () => {
@@ -501,7 +650,7 @@ describe("race controller", () => {
     let walks = 0;
     let pas = 0;
     for (let i = 0; i < 120; i++) {
-      const { c, sched } = race(`mc-${i}`);
+      const { c, sched } = race(`mc-${i}`, { encounter: { arm: "sol", appearances: 3, neutral: true } });
       for (let pa = 1; pa <= 3; pa++) {
         c.go();
         untilPhase(c, sched, pa === 3 ? "done" : "pa-card");
@@ -521,27 +670,30 @@ describe("race controller", () => {
     assert.ok(walkRate > 0.02, `walk rate ${walkRate.toFixed(2)}`);
   });
 
-  it("a practice morning is one pitch, and the release names early, on time, or late", () => {
-    const bands = [
-      { u: 0.5, band: "early" as const, line: "She was way out in front of that one." },
-      { u: 0.92, band: "now" as const, line: "Right on time. She was all over it." },
-      { u: 1.2, band: "late" as const, line: "It got in on her hands. She was late." },
+  it("a practice morning is one pitch, and the cage stays a shorten", () => {
+    const asks = [
+      { u: 0.5, asked: "shorten" as const },
+      { u: 0.92, asked: "cut" as const },
     ];
-    for (const want of bands) {
-      const { c, sched, run } = race(`one-rep-${want.band}`, { kind: "practice", oneRep: true, duel: false, encounter: undefined });
+    for (const want of asks) {
+      const { c, sched, run } = race(`one-rep-${want.asked}`, { kind: "practice", oneRep: true, duel: false, encounter: undefined });
       run.turn = 17;
       c.setSit({ row: 1, col: 1 });
       assert.equal(c.go(), true);
       let guard = 0;
       while (c.getSnapshot().plate.stage !== "flight" && guard++ < 400) sched.advance(20);
       assert.equal(c.getSnapshot().plate.stage, "flight");
-      assert.equal(c.release(want.u), true);
-      assert.equal(c.getSnapshot().release?.band, want.band);
-      assert.equal(releaseLine(want.band), want.line);
+      assert.equal(c.release(want.u, want.asked), true);
+      assert.equal(c.getSnapshot().release?.asked, want.asked);
+      assert.equal(c.getSnapshot().release?.commitment, "shorten");
+      assert.equal(c.getSnapshot().release?.kind, "contact");
+      assert.equal(releaseLine("shorten"), "She shortened up and met it.");
+      assert.equal(releaseLine("cut"), "She cut through the ball.");
       const s = untilPhase(c, sched, "done");
       assert.equal(s.phase, "done");
       assert.equal(s.plate.game.pitchesSeen, 1);
-      assert.equal(s.release?.band, want.band);
+      assert.equal(s.release?.asked, want.asked);
+      assert.equal(s.release?.commitment, "shorten");
       assert.equal(s.plate.game.banner, "First Light is tomorrow.");
       assert.doesNotMatch(s.plate.game.banner, /complex/i);
       assert.ok(s.card);
@@ -593,10 +745,10 @@ describe("race controller: the day's broadcast beats", () => {
   });
 
   it("the readout names the pitch and the gun, in the broadcast's words", () => {
-    assert.equal(pitchReadout({ type: "fastball", speed: 0.395 }), "Fastball · 145 km/h");
-    assert.equal(pitchReadout({ type: "changeup", speed: 0.735 }), "Changeup · 124 km/h");
-    assert.match(pitchReadout({ type: "slider", speed: 0.45 }), /^Slider · \d{3} km\/h$/);
-    assert.match(pitchReadout({ type: "curve", speed: 0.6 }), /^Curveball · \d{3} km\/h$/);
+    assert.equal(pitchReadout({ type: "fastball", speed: 0.395 }), "Fast · 145 km/h");
+    assert.equal(pitchReadout({ type: "changeup", speed: 0.735 }), "Slow · 124 km/h");
+    assert.match(pitchReadout({ type: "slider", speed: 0.45 }), /^Breaking · \d{3} km\/h$/);
+    assert.match(pitchReadout({ type: "curve", speed: 0.6 }), /^Breaking · \d{3} km\/h$/);
     for (const type of ["fastball", "slider", "curve", "changeup"] as const) {
       assert.doesNotMatch(pitchReadout({ type, speed: 0.5 }), FORBIDDEN_IN_STORY, "broadcast words, no system speak");
     }

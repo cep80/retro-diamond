@@ -32,7 +32,8 @@ import {
 import type { CalendarEntry, CharacterId, StationId, TraineeRun, TraineeStatKey } from "../shine/types.ts";
 import { isBustSrc, isPitcherStyle, sceneBustSrc, sheet, stillSrc, type PortraitMood } from "../shine/bible.ts";
 import { yearOf } from "../shine/calendar.ts";
-import { coachBrief } from "../shine/coach.ts";
+import { coachBrief, workComparison } from "../shine/coach.ts";
+import { morningSpeech } from "../shine/culture.ts";
 
 /**
  * The stat the letter line follows. On the practice rep it is the rep's own work (the cage's
@@ -143,6 +144,14 @@ export function gainArrows(odds: "likely" | "possible"): string {
   return odds === "likely" ? "↑↑" : "↑";
 }
 
+/**
+ * 失敗 as a stamp, the way 達成 is: kana on top, English under it. The percent is
+ * only the extra risk rest and a good mood would take away, never the base roll.
+ */
+export function failStamp(pct: number): { jp: "失敗"; en: string } {
+  return { jp: "失敗", en: `She's tired, so this misses ${pct}% more` };
+}
+
 export function facilityFace(id: StationId, run: TraineeRun, open: boolean): FacilityFace | null {
   const stat = stationStat(id, run);
   if (!stat) return null;
@@ -155,6 +164,24 @@ export function facilityFace(id: StationId, run: TraineeRun, open: boolean): Fac
     fail: open ? workRiskPct(run, id) : null,
     odds: open ? workGainOdds(run, id) : null,
   };
+}
+
+/** What a screen reader hears for a training door. A coach talking, not a GM board. */
+export function facilitySays(name: string, face: FacilityFace | null, open: boolean, reason?: string): string {
+  const her = face?.en ? `Her ${face.en.toLowerCase()}` : "";
+  const plus = face?.plusEn ? `, and a little of her ${face.plusEn.toLowerCase()}` : "";
+  if (!open) {
+    const when = (reason ?? "later").replace(/^After/, "after").replace(/^From/, "from");
+    return her ? `${name}, and ${her.toLowerCase()} opens ${when}.` : `${name} opens ${when}.`;
+  }
+  const extra = face?.fail
+    ? ", and she's tired so it might go wrong"
+    : face?.odds === "likely"
+      ? ", and it'll probably pay off today"
+      : face?.odds
+        ? ", and it might pay off today"
+        : "";
+  return her ? `${name}, ${her.toLowerCase()}${plus}${extra}.` : `${name}${extra}.`;
 }
 
 /**
@@ -370,94 +397,94 @@ type Voice = {
  */
 const VOICE: Record<CharacterId, Voice> = {
   aoi: {
-    first: "The cage is open. I'll take the first bucket, Coach.",
+    first: "The cage is open, I'll take the first bucket, Coach.",
     ready: [
-      "Pencil's out. What do you see today, Coach?",
-      "I wrote yesterday down. Tell me what goes on today's page.",
-      "Um, sorry, can we do bunts after? The ball goes tok. I like it.",
+      "Pencil's out, what do you see today, Coach?",
+      "I wrote yesterday down, tell me what goes on today's page.",
+      "Um, sorry, can we do bunts after, the ball goes tok, I like it.",
     ],
-    high: "I slept eight hours. I wrote that down, too.",
+    high: "I slept eight hours, I wrote that down, too.",
     tired: [
-      "Slow legs today. Score me a groundout, not a strikeout.",
-      "A little tired. Not the kind that matters yet.",
-      "Mom fed me twice last night. I'm moving a little slow.",
+      "Slow legs today, score me a groundout, not a strikeout.",
+      "A little tired, not the kind that matters yet.",
+      "Mom fed me twice last night, I'm moving a little slow.",
     ],
-    worn: "Um, sorry. I'm dragging. Write it down, so we both know I said it.",
-    empty: "I've got nothing today. I'm sorry, Coach.",
-    low: "Don't tell me it's fine. Tell me what you saw.",
+    worn: "Um, sorry, I'm dragging, write it down, so we both know I said it.",
+    empty: "I've got nothing today, I'm sorry, Coach.",
+    low: "Don't tell me it's fine, tell me what you saw.",
   },
   reina: {
-    first: "Mitt up. Tell me when the slot drops.",
+    first: "Mitt up, tell me when the slot drops.",
     ready: [
-      "Again. Tell me what we're fixing.",
-      "Slider today. Tell me when the slot drops. When, not after.",
-      "Your collar's folded under again. Fix it. Then we work.",
+      "Again, tell me what we're fixing.",
+      "Slider today, tell me when the slot drops, when, not after.",
+      "Your collar's folded under again, fix it, then we work.",
     ],
-    high: "The arm feels right. Don't say it out loud.",
-    tired: ["Forty good pitches in the arm. Not forty-one.", "Tired. That's not a reason.", "I slept four hours. Four. Don't count it for me."],
-    worn: "I can pitch tired. I'd rather not prove it today.",
-    empty: "There's nothing in the arm. Don't hand me the ball.",
-    low: "My head's not right. Give me something I can fix.",
+    high: "The arm feels right, don't say it out loud.",
+    tired: ["Forty good pitches in the arm. Not forty-one.", "Tired. That's not a reason.", "I slept four hours, four, don't count it for me."],
+    worn: "I can pitch tired, I'd rather not prove it today.",
+    empty: "There's nothing in the arm, don't hand me the ball.",
+    low: "My head's not right, give me something I can fix.",
   },
   miki: {
-    first: "Gary's broken again. Cool. Where do you want me?",
+    first: "Gary's broken again, cool, where do you want me?",
     ready: [
-      "So. What's the plan, Coach?",
-      "Two shirts. Gary's clanking. So. Where do you want me?",
-      "Throw me the ugly ones today. Games are all ugly ones.",
+      "So, what's the plan, Coach?",
+      "Two shirts, Gary's clanking, so, where do you want me?",
+      "Throw me the ugly ones today, games are all ugly ones.",
     ],
-    high: "I'm in a good mood. Don't jinx it.",
+    high: "I'm in a good mood, don't jinx it.",
     tired: [
-      "My legs quit around the fourth bucket. My hands didn't notice.",
-      "Vending machine coffee. It's fine. I'm fine.",
-      "I ate both melon pans already. That's how tired I am.",
+      "My legs quit around the fourth bucket, my hands didn't notice.",
+      "Vending machine coffee, it's fine, I'm fine.",
+      "I ate both melon pans already, that's how tired I am.",
     ],
-    worn: "I'm running on fumes, Coach. Be nice about it.",
-    empty: "Genuinely nothing left. Not even a foul ball.",
-    low: "Rough week. You're still here, though. Okay.",
+    worn: "I'm running on fumes, Coach, be nice about it.",
+    empty: "Genuinely nothing left, not even a foul ball.",
+    low: "Rough week, you're still here, though, okay.",
   },
   sol: {
-    first: "Ninety-six in the bullpen. Tell me what else you want.",
-    ready: ["What are we throwing, Jefe?", "Arm's loose. Point at a corner.", "Ninety-six. Give me a reason for the curve."],
-    high: "Ninety-eight today. I can feel it.",
-    tired: ["The heat's winning a little. I'm still throwing.", "Ninety-four. Still enough.", "Luz made me eat first. Ninety-four, Jefe."],
-    worn: "Ninety-one, maybe. Don't tell anybody, Jefe.",
-    empty: "Nothing in the tank, Jefe. Ice and shade.",
-    low: "Ninety-nine. Don't ask again, Jefe.",
+    first: "Ninety-six in the bullpen, tell me what else you want.",
+    ready: ["What are we throwing, Jefe?", "Arm's loose, point at a corner.", "Ninety-six, give me a reason for the curve."],
+    high: "Ninety-eight today, I can feel it.",
+    tired: ["The heat's winning a little, I'm still throwing.", "Ninety-four. Still enough.", "Luz made me eat first, ninety-four, Jefe."],
+    worn: "Ninety-one, maybe, don't tell anybody, Jefe.",
+    empty: "Nothing in the tank, Jefe, ice and shade.",
+    low: "Ninety-nine, don't ask again, Jefe.",
   },
   kira: {
-    first: "Here's the deal. I warm up fast. Point me somewhere.",
+    first: "Here's the deal, I warm up fast, point me somewhere.",
     ready: [
-      "I'm ready. You pick, Partner.",
-      "Deal of the day, Partner: you pick, I don't argue. Much.",
-      "Ten pitches, a break, ten more, then juice. Deal?",
+      "I'm ready, you pick, Partner.",
+      "Deal of the day, Partner: you pick, I don't argue, much.",
+      "Ten pitches, a break, ten more, then juice, deal?",
     ],
-    high: "I feel like the ninth. You know what that means.",
+    high: "I feel like the ninth, you know what that means.",
     tired: [
-      "Legs are slow. Short work today, and you buy the juice.",
-      "Tired's fine. The ninth is always tired.",
-      "Missed the early bus. Ran. Don't laugh, Partner.",
+      "Legs are slow, short work today, and you buy the juice.",
+      "Tired's fine, the ninth is always tired.",
+      "Missed the early bus, ran, don't laugh, Partner.",
     ],
-    worn: "Here's the deal. I'm tired. Don't waste me.",
-    empty: "Partner, I've got nothing. The door stays shut today.",
-    low: "My head's loud today. Give me one thing to finish.",
+    worn: "Here's the deal, I'm tired, don't waste me.",
+    empty: "Partner, I've got nothing, the door stays shut today.",
+    low: "My head's loud today, give me one thing to finish.",
   },
   yuki: {
-    first: "How far is first? Don't tell me. I'll find out.",
+    first: "How far is first, don't tell me, I'll find out.",
     ready: [
-      "Already stretched. What's first, Stopwatch?",
-      "The line's chalked. Where am I running?",
-      "Already ran the bags. You're late, Stopwatch.",
+      "Already stretched, what's first, Stopwatch?",
+      "The line's chalked, where am I running?",
+      "Already ran the bags, you're late, Stopwatch.",
     ],
-    high: "I'm fast today. Time me.",
+    high: "I'm fast today, time me.",
     tired: [
-      "Still quicker than the throw. Probably. Don't check.",
-      "A little slow off the line. Don't write it down.",
-      "Brain freeze. From breakfast. I'm fine. Go.",
+      "Still quicker than the throw, probably, don't check.",
+      "A little slow off the line, don't write it down.",
+      "Brain freeze, from breakfast, I'm fine, go.",
     ],
-    worn: "Already stretched. Twice. …It's cold, that's all.",
-    empty: "Don't time me today, Stopwatch. Don't ask why. The leg's fine.",
-    low: "I'm in my head. Give me something to run at.",
+    worn: "Already stretched, twice, …it's cold, that's all.",
+    empty: "Don't time me today, Stopwatch, don't ask why, the leg's fine.",
+    low: "I'm in my head, give me something to run at.",
   },
 };
 
@@ -480,6 +507,47 @@ export function herMorning(id: CharacterId, turn: number, energy: number, mood: 
 /** Every line she can say here, for the voice checks. */
 export function allMorningLines(): string[] {
   return Object.values(VOICE).flatMap((v) => [v.first, ...v.ready, v.high, ...v.tired, v.worn, v.empty, v.low]);
+}
+
+export type MorningTalkWho = "coach" | "her";
+
+export interface MorningTalkLine {
+  who: MorningTalkWho;
+  text: string;
+}
+
+/** Split a Coach note into one-tap lines. Periods end a line; the next sentence waits. */
+export function splitCoachNote(text: string): string[] {
+  return text
+    .split(/(?<=\.)\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+/**
+ * The morning's talk, one line at a time: the Coach first (where to put her,
+ * what yesterday did, or the park waking up), then her own words. Never both
+ * on screen at once.
+ */
+export function morningTalk(run: TraineeRun, lastLine: string | null, mood: MoodIdx): MorningTalkLine[] {
+  const who = sheet(run.characterId);
+  const pitcher = isPitcherStyle(who.style);
+  const lines: MorningTalkLine[] = [];
+  if (run.turn === 3) {
+    for (const part of splitCoachNote(coachBrief(run).choice.why)) lines.push({ who: "coach", text: part });
+  } else if (run.turn === 4 && run.lastWork?.turn === 3) {
+    const cmp = workComparison(run);
+    if (cmp) {
+      for (const part of splitCoachNote(cmp.line)) lines.push({ who: "coach", text: part });
+      lines.push({ who: "coach", text: "The Gate is tomorrow." });
+    }
+  } else {
+    const note = morningSpeech(lastLine, run.year, who.parkId, pitcher);
+    if (note) for (const part of splitCoachNote(note)) lines.push({ who: "coach", text: part });
+  }
+  const words = herMorning(run.characterId, run.turn, run.energy, mood);
+  if (words) lines.push({ who: "her", text: words });
+  return lines;
 }
 
 // ---- The work still across the career (check-in 26, N7) ----

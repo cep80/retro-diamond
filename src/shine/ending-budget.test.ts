@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { artKey, BIBLE, isBustSrc, isPitcherStyle } from "./bible.ts";
 import { turnMeta } from "./calendar.ts";
-import { ENDING_ART_SHORT, finaleDonePicture, finaleEnding, finaleWinPicture, repeatedPicture, repeatsInRun } from "./ending-pictures.ts";
+import { ENDING_ART_SHORT, finaleDonePicture, finaleDoneSrcs, finaleEnding, finaleWinPicture, repeatedPicture, repeatsInRun } from "./ending-pictures.ts";
 import { avoidOnFirstPage, pagePictureChoices, scrapbookBook } from "./scrapbook.ts";
 import type { EndingRank, Highlight } from "./types.ts";
 
@@ -82,10 +82,19 @@ describe("F1: the whole ending is one picture budget", () => {
   it("the faces keep the night's mood: no crushed face after a win, no crushed Bow for a girl who got her ask", () => {
     for (const { met, won, end, tag } of everyEnding()) {
       if (won) {
+        assert.ok(!end.done.src.includes("/crushed."), `done: ${tag}`);
         assert.ok(!end.postgame.src.includes("/crushed."), `postgame: ${tag}`);
         assert.ok(!end.stage.src.includes("/crushed."), `Live: ${tag}`);
       }
       if (met) assert.ok(!end.stage.src.includes("/crushed."), `Bow: ${tag}`);
+    }
+  });
+
+  it("a hitter's won Finale with a missed ask settles on the trot, not crushed", () => {
+    for (const c of BIBLE.filter((b) => !isPitcherStyle(b.style))) {
+      const src = finaleDoneSrcs(c.id, false, true)[0]!;
+      assert.ok(!src.includes("/crushed."), c.id);
+      assert.ok(src.includes("/trot."), c.id);
     }
   });
 

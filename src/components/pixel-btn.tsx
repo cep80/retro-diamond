@@ -6,6 +6,8 @@ export function PixelBtn({
   children,
   onClick,
   onPointerDown,
+  onPointerUp,
+  onPointerCancel,
   variant = "primary",
   className,
   disabled,
@@ -17,6 +19,8 @@ export function PixelBtn({
   onClick?: () => void;
   /** Timing-critical inputs read the event timestamp here rather than waiting for click. */
   onPointerDown?: (ev: React.PointerEvent<HTMLButtonElement>) => void;
+  onPointerUp?: (ev: React.PointerEvent<HTMLButtonElement>) => void;
+  onPointerCancel?: (ev: React.PointerEvent<HTMLButtonElement>) => void;
   variant?: "primary" | "ghost" | "danger" | "cream";
   className?: string;
   disabled?: boolean;
@@ -43,6 +47,8 @@ export function PixelBtn({
       aria-label={ariaLabel}
       onClick={onClick}
       onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
       className={cn(
         "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-center font-display text-xs font-bold uppercase leading-none tracking-[0.08em] transition-[transform,background-color,border-color,filter,box-shadow] disabled:pointer-events-none disabled:opacity-40",
         styles,

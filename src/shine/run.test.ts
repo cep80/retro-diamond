@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { CAREER_CALENDAR, ROOKIE_CALENDAR, calendarPeekLine, clubhouseOpen, dateLabel, nextDateLine, nextNamedBeat, nextOfficial, turnMeta } from "./calendar.ts";
+import { CAREER_CALENDAR, ROOKIE_CALENDAR, backupWhen, calendarPeekLine, calendarPeekScene, clubhouseOpen, dateLabel, nextDateLine, nextNamedBeat, nextOfficial, turnMeta } from "./calendar.ts";
 import {
   applyGameResult,
   coachWarningTone,
@@ -29,31 +29,51 @@ describe("Aoi Rookie calendar", () => {
     assert.equal(turnMeta(18).type, "first-light");
     assert.equal(turnMeta(18).label, "First Light");
     assert.equal(turnMeta(20).type, "forced-scene");
+    assert.equal(turnMeta(1).label, "First morning");
+    assert.equal(turnMeta(20).label, "End of first spring");
+    assert.equal(turnMeta(40).label, "End of the lantern year");
+    assert.equal(turnMeta(41).label, "Last spring");
+    for (const b of CAREER_CALENDAR) {
+      assert.doesNotMatch(b.label, /Year-End|The First Day|First Free Choice|Calendar Preview|Senior Spring/, b.label);
+    }
   });
 
   it("names pitcher dates without a cage night", () => {
-    assert.equal(dateLabel(turnMeta(2), "ace"), "Practice in the Bullpen");
+    assert.equal(dateLabel(turnMeta(2), "ace"), "The bullpen");
     assert.equal(dateLabel(turnMeta(14), "closer"), "Bullpen Coach");
-    assert.equal(dateLabel(turnMeta(2), "lead"), "Practice at the Plate");
+    assert.equal(dateLabel(turnMeta(2), "lead"), "The cage");
     assert.equal(dateLabel(turnMeta(14), "lead"), "Cage Coach");
     assert.equal(dateLabel(turnMeta(5), "ace"), "Academy Gate");
     assert.equal(dateLabel(turnMeta(3), "lead"), "Morning");
     assert.equal(dateLabel(turnMeta(4), "move"), "Morning");
     assert.equal(dateLabel(turnMeta(6), "ace"), "Morning");
+    const when = backupWhen(50, "lead", Date.UTC(2026, 9, 22));
+    assert.match(when, /^The Stretch · /);
+    assert.doesNotMatch(when, /Day \d/);
   });
 
   it("names Academy Gate on the Turn 4 peek without a formula tooltip", () => {
     assert.match(calendarPeekLine(4), /Academy Gate is in 1 day/);
     assert.doesNotMatch(calendarPeekLine(4), /Eye|Guts|window|leverage/i);
+    assert.match(calendarPeekLine(4), /^Academy Gate is in 1 day\.$/);
+  });
+
+  it("reads the Gate peek one line at a time, not as a dumped Shell", () => {
+    const scene = calendarPeekScene("aoi", 4);
+    assert.equal(scene.id, "calendar-peek");
+    assert.ok(scene.beats.length >= 2);
+    assert.equal(scene.beats.at(-1)?.who, "coach");
+    assert.equal(scene.beats.at(-1)?.text, calendarPeekLine(4));
+    for (const b of scene.beats) assert.doesNotMatch(b.text, /ask|sit|sheet|window|held|PA|plate appearance/i, b.text);
   });
 
   it("counts down to year-end after First Light, not past it to Lantern", () => {
     assert.equal(nextOfficial(18).label, "Lantern Classic");
-    assert.equal(nextNamedBeat(18).label, "Rookie Year-End");
-    assert.equal(nextNamedBeat(19).label, "Rookie Year-End");
+    assert.equal(nextNamedBeat(18).label, "End of first spring");
+    assert.equal(nextNamedBeat(19).label, "End of first spring");
     assert.equal(nextNamedBeat(20).label, "Classic Spring");
-    assert.equal(nextDateLine(18, "first-light"), "Rookie Year-End is in 2 days.");
-    assert.equal(nextDateLine(19), "Rookie Year-End is tomorrow.");
+    assert.equal(nextDateLine(18, "first-light"), "End of first spring is in 2 days.");
+    assert.equal(nextDateLine(19), "End of first spring is tomorrow.");
     assert.doesNotMatch(nextDateLine(18, "first-light"), /folds/);
     assert.equal(nextDateLine(28, "lantern-classic"), "Night Classic is in 5 days.");
   });
@@ -75,7 +95,7 @@ describe("Aoi Rookie calendar", () => {
     resolveOffDay(run);
     assert.equal(run.energy, 75);
     assert.ok(run.mood > 2);
-    assert.equal(lastTrainLine(run), "Day off yesterday. She came back looking lighter.");
+    assert.equal(lastTrainLine(run), "Day off yesterday, she came back looking lighter.");
   });
 
   it("names the cage when the swing lands, and takes turns between three ways of saying it", () => {
@@ -101,7 +121,7 @@ describe("Aoi Rookie calendar", () => {
     run.energy = 10;
     resolveTreatment(run);
     assert.equal(run.calendar.at(-1)?.station, "treatment");
-    assert.equal(lastTrainLine(run), "She spent yesterday in the trainer's room. There's more in her legs today.");
+    assert.equal(lastTrainLine(run), "She spent yesterday in the trainer's room, there's more in her legs today.");
   });
 
   it("does not count an Academy Gate miss against the fail clock", () => {
@@ -123,7 +143,7 @@ describe("Aoi Rookie calendar", () => {
     assert.equal(run.pgResults[1], "missed");
     assert.equal(run.fans, 7);
     assert.equal(run.mood, 0);
-    assert.match(run.coachWarning ?? "", /Academy days/);
+    assert.match(run.coachWarning ?? "", /close her file/);
   });
 
   it("tells Miki a counted miss leaves her path open", () => {
@@ -131,7 +151,7 @@ describe("Aoi Rookie calendar", () => {
     run.turn = 50;
     applyGameResult(run, "stretch", false, false, false, false);
     assert.equal(run.pgMisses, 1);
-    assert.match(run.coachWarning ?? "", /She plays on/);
+    assert.match(run.coachWarning ?? "", /she plays on/i);
     assert.doesNotMatch(run.coachWarning ?? "", /Academy days are over|Lose one more|Miss one more/);
   });
 
@@ -139,7 +159,7 @@ describe("Aoi Rookie calendar", () => {
     const run = newAoiRun();
     run.turn = 18;
     applyGameResult(run, "first-light", false, false, false, false);
-    assert.match(run.coachWarning ?? "", /Lose one more/);
+    assert.match(run.coachWarning ?? "", /close her file/);
     run.turn = 28;
     applyGameResult(run, "lantern-classic", true, false, true, false);
     assert.equal(run.coachWarning, null);
@@ -153,7 +173,7 @@ describe("Aoi Rookie calendar", () => {
     assert.equal(run.pgMisses, 0);
     assert.equal(run.pgResults[1], "missed");
     // The relief line says what she did, and reads as good news.
-    assert.equal(run.coachWarning, "She put one in the outfield. That keeps her in it.");
+    assert.equal(run.coachWarning, "She put one in the outfield, and that keeps her in it.");
     assert.equal(coachWarningTone(run.coachWarning ?? ""), "relief");
     assert.equal(coachWarningTone("She didn't get what she came for. The smaller ask held: walk nobody. She's still in it."), "relief");
     assert.doesNotMatch(run.coachWarning ?? "", /\bgoal\b/i);
@@ -489,6 +509,9 @@ describe("complex live tiles", () => {
     run.turn = 3;
     run.energy = 80;
     assert.deepEqual(liveStationIds(run), ["cage", "poles", "off-day", "clubhouse"]);
+    run.catchWithCoachYear = run.year;
+    assert.equal(stationOpen(run, "clubhouse").reason, "Already this year");
+    run.catchWithCoachYear = 0;
     run.turn = 6;
     assert.deepEqual(liveStationIds(run), ["cage", "looks", "poles", "off-day", "clubhouse"]);
     assert.equal(liveStationIds(run).includes("charting"), false, "Charting is the pitchers' film room");

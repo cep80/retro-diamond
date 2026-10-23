@@ -186,14 +186,14 @@ describe("verdict lines", () => {
   });
 
   it("names the call and the pitch", () => {
-    assert.equal(verdictLine({ call: "sit-soft", outcome: "reach", pitchType: "slider" }), "Sat soft. Got the slider.");
-    assert.equal(verdictLine({ call: "sit-hard", outcome: "miss", pitchType: "changeup" }), "Sat hard. It was the change. Early.");
-    assert.equal(verdictLine({ call: "sit-cell", outcome: "reach", pitchType: "fastball", satCell: 0 }), "She was looking right there, and she didn't miss it.");
-    assert.equal(verdictLine({ call: "protect", outcome: "foul", pitchType: "curve" }), "Protected. Still two.");
-    assert.equal(verdictLine({ call: "take", outcome: "take-strike", pitchType: "fastball", strikes: 2 }), "Took it for a read. Strike two.");
-    assert.equal(verdictLine({ call: "take", outcome: "take-ball", pitchType: "slider" }), "Took it. Ball. She showed the slider.");
+    assert.equal(verdictLine({ call: "sit-soft", outcome: "reach", pitchType: "slider" }), "She was looking for the breaking ball, and she got the slider.");
+    assert.equal(verdictLine({ call: "sit-hard", outcome: "miss", pitchType: "changeup" }), "She was looking for heat, it was the change, and she was out in front.");
+    assert.equal(verdictLine({ call: "sit-cell", outcome: "reach", pitchType: "fastball", satCell: 0 }), "She was set up right there, and she didn't miss it.");
+    assert.equal(verdictLine({ call: "protect", outcome: "foul", pitchType: "curve" }), "She protected, and it's still two.");
+    assert.equal(verdictLine({ call: "take", outcome: "take-strike", pitchType: "fastball", strikes: 2 }), "She took it for a read, and that's strike two.");
+    assert.equal(verdictLine({ call: "take", outcome: "take-ball", pitchType: "slider" }), "She took it, a ball, and she showed the slider.");
     assert.equal(verdictLine({ call: "sit-cell", outcome: "out", pitchType: "fastball", satCell: 1 }), "It came in somewhere else, and she couldn't square it up.");
-    assert.equal(verdictLine({ call: "sit-cell", outcome: "reach", pitchType: "fastball", card: "green-light" }), "Green light. She didn't miss.");
+    assert.equal(verdictLine({ call: "sit-cell", outcome: "reach", pitchType: "fastball", card: "green-light" }), "Green light, and she didn't miss.");
   });
 
   it("says the 1.0 plate's calls like a fan, with the count, and never the design word", () => {
@@ -203,7 +203,7 @@ describe("verdict lines", () => {
       for (const satCell of [0, 1, 2] as const) {
         for (let seed = 0; seed < 3; seed++) {
           const line = verdictLine({ call: "sit-cell", outcome, pitchType: "slider", satCell, strikes: 1, balls: 2, seed });
-          assert.doesNotMatch(line, /\b(sat|sit|sitting)\b/i, line);
+          assert.doesNotMatch(line, /\b(sat|sit|sitting|look)\b/i, line);
           seen.add(`${outcome}|${satCell === 0}|${line}`);
         }
       }

@@ -413,13 +413,15 @@ describe("mound controller: saves, sounds, debug looks", () => {
     assert.equal(of(m, "land").length, 0, "the pitch in the air never lands");
   });
 
-  it("the bullpen is never saved", () => {
-    const m = mound("reina", "bullpen", { kind: "practice" }, 1);
+  it("the bullpen's one throw is saved so a reload keeps the result", () => {
+    const m = mound("reina", "bullpen", { kind: "practice", looks: 1 }, 1);
     m.c.start();
     m.c.throw();
     m.sched.advance(120_000);
     assert.equal(m.c.getSnapshot().game.done, true);
-    assert.equal(of(m, "save").length, 0);
+    const saves = of(m, "save");
+    assert.ok(saves.length >= 1);
+    assert.equal(saves.at(-1)!.cue.game.done, true);
     assert.ok(of(m, "land").every((q) => q.cue.practice), "no release sound in the bullpen");
     assert.equal(of(m, "stamp").length, 0);
     assert.equal(m.c.getSnapshot().paEnd, null, "no per-batter card");

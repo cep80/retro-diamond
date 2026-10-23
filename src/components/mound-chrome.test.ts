@@ -103,7 +103,7 @@ describe("the plate appearance a pitch ended", () => {
 describe("the per-batter card", () => {
   it("says the batter's line, the pitches in words and her side's tone", () => {
     const k = moundCard("Nishi", { result: "k", swung: false, runs: 0, pitches: 3, outs: 1 });
-    assert.deepEqual(k, { line: "Nishi strikes out looking. One down.", meta: "Three pitches.", tone: "gold" });
+    assert.deepEqual(k, { line: "Nishi strikes out looking, and one down.", meta: "Three pitches.", tone: "gold" });
     const walk = moundCard("Aoi", { result: "walk", swung: false, runs: 0, pitches: 6, outs: 0 });
     assert.equal(walk.tone, "slate");
     assert.equal(walk.line, "Aoi draws a walk.");
@@ -148,6 +148,11 @@ describe("the mound's caption", () => {
 
   it("says where the glove goes at the first aim of the day, practice too", () => {
     assert.equal(moundCaption({ ...base, firstPitch: true }), RACE_COPY.moundFirstPick);
+    assert.equal(moundCaption({ ...base, firstPitch: true, kind: "gate" }), RACE_COPY.moundFirstPick);
+    assert.equal(
+      moundCaption({ ...base, firstPitch: true, kind: "first-light", banner: "Two strikeouts in six batters." }),
+      "Two strikeouts in six batters.",
+    );
     assert.equal(moundCaption({ ...base, firstPitch: true, practice: true, banner: "Sit the glove. Then Go." }), RACE_COPY.moundFirstPick);
     assert.equal(
       moundCaption({ ...base, firstPitch: true, practice: true, morning: true, banner: "Sit the glove. Then Go." }),

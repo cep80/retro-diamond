@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { clubhouseOpen, facilityUnlock, morningKind, plateKindFor, turnMeta } from "./calendar.ts";
+import { clubhouseOpen, facilityUnlock, morningKind, nextNamedBeat, plateKindFor, turnMeta } from "./calendar.ts";
 import {
   applyGameResult,
   leavePostgame,
@@ -29,6 +29,7 @@ import {
   patchSettings,
   keepLiveExhibitionScreen,
   persistedScreen,
+  repMorning,
   pushBackup,
   type LiveGame,
   type RunBackup,
@@ -197,7 +198,7 @@ export const useShine = create<ShineState>()(
           set({ lastLine: `${sku.name} is already on.` });
           return;
         }
-        set({ ownedCosmetics: [...owned, id], lastLine: `${sku.name} is on. It only changes how things look.` });
+        set({ ownedCosmetics: [...owned, id], lastLine: `${sku.name} is on.` });
       },
       startRun: (id, parentId, sparks) => {
         const { clubhouse } = get();
@@ -210,8 +211,8 @@ export const useShine = create<ShineState>()(
         const memory = parent
           ? `${sheet(parent.characterId).name}'s old card is taped up inside her locker. She's been studying it.`
           : pitcher
-            ? "The bullpen lights are on, and nobody else is here yet. It's just her and the catcher."
-            : "The cage lights are on, and nobody else is here yet. It's just her and the machine.";
+            ? "The bullpen lights are on, and nobody else is here yet, it's just her and the catcher."
+            : "The cage lights are on, and nobody else is here yet, it's just her and the machine.";
         set({
           screen: "complex",
           run,
@@ -243,13 +244,13 @@ export const useShine = create<ShineState>()(
           // Back to wherever her day is: a practice morning goes back to its rep, never the tiles.
           screen: run ? screenFor(run) : "title",
           weeklyGuest: null,
-          lastLine: "Back from the weekly game. Nothing on her own calendar moved.",
+          lastLine: "Back from the weekly game, and nothing on her own calendar moved.",
         });
       },
       importCarry: (code) => {
         const card = decodeCard(code);
         if (!card) {
-          set({ lastLine: "That code didn't work. Check it and try again." });
+          set({ lastLine: "That code didn't work, so check it and try again." });
           return false;
         }
         const { clubhouse } = get();
@@ -259,7 +260,7 @@ export const useShine = create<ShineState>()(
         }
         set({
           clubhouse: [...clubhouse, card],
-          lastLine: "Your friend's card is in. It's up on the Clubhouse wall now.",
+          lastLine: "Your friend's card is in, and it's up on the Clubhouse wall now.",
         });
         return true;
       },
@@ -311,11 +312,11 @@ export const useShine = create<ShineState>()(
           run: next,
           screen: screenFor(next),
           lastLine: lastTrainLine(next),
-          calendarPeek: false,
+          calendarPeek: next.turn === 4,
           clubhouse: rememberCard(get().clubhouse, next.clubhouseCard),
           looksLock: false,
           liveGame: null,
-          backups: run.turn % 5 === 0 ? pushBackup(get().backups, run, `The morning of Day ${run.turn}`) : get().backups,
+          backups: run.turn % 5 === 0 ? pushBackup(get().backups, run, `The morning before ${nextNamedBeat(run.turn).label}`) : get().backups,
         });
       },
       finishForcedCage: () => {
@@ -328,8 +329,8 @@ export const useShine = create<ShineState>()(
           run: next,
           screen: screenFor(next),
           lastLine: pitcher
-            ? "Her first day in the bullpen is done. Tomorrow she throws to a real catcher."
-            : "Her first day in the cage is done. Tomorrow she steps in against a real pitcher.",
+            ? "Her first day in the bullpen is done, and tomorrow she throws to a real catcher."
+            : "Her first day in the cage is done, and tomorrow she steps in against a real pitcher.",
         });
       },
       finishMentor: () => {
@@ -343,8 +344,8 @@ export const useShine = create<ShineState>()(
           lastLine: next.lastBreakthrough
             ? lastTrainLine(next)
             : isPitcherStyle(sheet(next.characterId).style)
-              ? "The Bullpen Coach stayed late with her last night. She's still talking about it."
-              : "The Cage Coach stayed late with her last night. She's still talking about it.",
+              ? "The Bullpen Coach stayed late with her last night, and she's still talking about it."
+              : "The Cage Coach stayed late with her last night, and she's still talking about it.",
         });
       },
       finishGame: (kind, pg, sg, reached, hr, read, lastSpurt, box, carry) => {
@@ -354,7 +355,7 @@ export const useShine = create<ShineState>()(
             screen: run ? screenFor(run) : "title",
             weeklyGuest: null,
             liveGame: null,
-            lastLine: "That's the weekly game done. Back to her own calendar.",
+            lastLine: "That's the weekly game done, and back to her own calendar.",
           });
           return;
         }
@@ -421,7 +422,7 @@ export const useShine = create<ShineState>()(
         set({
           run: next,
           screen: screenFor(next),
-          lastLine: fromTurn <= 20 ? "That's her Rookie year done." : "That's her Classic year done.",
+          lastLine: fromTurn <= 20 ? "That's first spring done." : "That's the lantern year done.",
           clubhouse: rememberCard(clubhouse, next.clubhouseCard),
         });
       },
@@ -468,7 +469,7 @@ export const useShine = create<ShineState>()(
       version: SHINE_PERSIST_VERSION,
       partialize: (s) => ({
         run: s.run,
-        screen: persistedScreen(s.screen, Boolean(s.run), Boolean(s.liveGame)),
+        screen: persistedScreen(s.screen, Boolean(s.run), Boolean(s.liveGame), Boolean(s.run && repMorning(s.run))),
         lastLine: s.lastLine,
         clubhouse: s.clubhouse,
         ownedCosmetics: s.ownedCosmetics,
@@ -508,75 +509,75 @@ function encodeSame(a: ClubhouseCard, b: ClubhouseCard) {
  */
 const WORK_LANDED: Record<TraineeStatKey, [string, string, string]> = {
   contact: [
-    "The cage work paid off yesterday. She's squaring the ball up a little more.",
+    "The cage work paid off yesterday, she's squaring the ball up a little more.",
     "She found the barrel in the cage yesterday, and more than once.",
-    "Good day in the cage yesterday. Her swing's a little shorter and a lot quieter.",
+    "Good day in the cage yesterday, her swing's a little shorter and a lot quieter.",
   ],
   speed: [
     "She ran the poles hard yesterday, and her first step is quicker for it.",
-    "She beat her own best time on the poles yesterday. She checked the watch twice.",
+    "She beat her own best time on the poles yesterday, she checked the watch twice.",
     "Her legs came alive on the poles yesterday.",
   ],
   stuff: [
-    "She found something in the bullpen yesterday. The catcher's hand is still sore.",
-    "Good bullpen yesterday. Her fastball had a little extra on it by the end.",
+    "She found something in the bullpen yesterday, the catcher's hand is still sore.",
+    "Good bullpen yesterday, her fastball had a little extra on it by the end.",
     "The bullpen catcher says she was popping the glove yesterday.",
   ],
   control: [
-    "Spot work went well yesterday. She hit the corners more than she missed them.",
+    "Spot work went well yesterday, she hit the corners more than she missed them.",
     "She was painting the corners on flat ground yesterday.",
     "The catcher barely had to move her glove yesterday.",
   ],
   stamina: [
     "She ran the poles for her arm yesterday, and there's a little more in the tank now.",
-    "Long day on the poles yesterday. Her legs will carry her arm deeper into games.",
-    "She ran until the coaches went home yesterday. The tank's a little bigger.",
+    "Long day on the poles yesterday, her legs will carry her arm deeper into games.",
+    "She ran until the coaches went home yesterday, the tank's a little bigger.",
   ],
   eye: [
     "She tracked pitches all morning yesterday, and she's picking up the spin sooner.",
     "She called every pitch out loud yesterday, ball or strike, and got most of them right.",
-    "Good morning tracking pitches yesterday. The ball looks bigger to her now.",
+    "Good morning tracking pitches yesterday, the ball looks bigger to her now.",
   ],
   power: [
-    "She was driving the ball in BP yesterday. A couple of them cleared the fence.",
-    "On-field BP went well yesterday. The ball's carrying off her bat.",
-    "She hit a few into the parking lot in BP yesterday. Nobody's car got hurt.",
+    "She was driving the ball in BP yesterday, a couple of them cleared the fence.",
+    "On-field BP went well yesterday, the ball's carrying off her bat.",
+    "She hit a few into the parking lot in BP yesterday, nobody's car got hurt.",
   ],
   guts: [
-    "Pressure drills went well yesterday. She stays calmer when it gets loud.",
+    "Pressure drills went well yesterday, she stays calmer when it gets loud.",
     "They kept putting her in a jam yesterday, and she kept her head every time.",
-    "She was steady in the pressure drills yesterday. That'll matter in a big game.",
+    "She was steady in the pressure drills yesterday, that'll matter in a big game.",
   ],
   wit: [
     "She spent yesterday in the film room, and now she's calling pitches before they're thrown.",
-    "Film room yesterday. She filled half a notebook on the other team's hitters.",
+    "Film room yesterday, she filled half a notebook on the other team's hitters.",
     "She caught a hitter's habit on tape yesterday that the coaches missed.",
   ],
 };
 
 const LINE_BONUS: [string, string, string] = [
   "Yesterday was one of those mornings where everything she touched got better.",
-  "She had a great day yesterday. Even the coaches stopped to watch.",
-  "Everything clicked yesterday. She wants to bottle it.",
+  "She had a great day yesterday, even the coaches stopped to watch.",
+  "Everything clicked yesterday, she wants to bottle it.",
 ];
 const LINE_FAIL: [string, string, string] = [
-  "Yesterday's work didn't take. She wants another go at it.",
-  "Nothing stuck yesterday. She was quiet about it, which means she's annoyed.",
-  "Yesterday was a dud. Everybody has those.",
+  "Yesterday's work didn't take, she wants another go at it.",
+  "Nothing stuck yesterday, she was quiet about it, which means she's annoyed.",
+  "Yesterday was a dud, everybody has those.",
 ];
 const LINE_BAD_FAIL: [string, string, string] = [
-  "Yesterday went badly, and she's sore from it. Go easy on her today.",
-  "Yesterday's work went sideways. She's tired and a little down.",
-  "It went wrong yesterday. She'd never say so, but she needs an easy one.",
+  "Yesterday went badly, and she's sore from it, go easy on her today.",
+  "Yesterday's work went sideways, she's tired and a little down.",
+  "It went wrong yesterday, she'd never say so, but she needs an easy one.",
 ];
 const LINE_REST_HITTER: [string, string, string] = [
-  "She took yesterday off. She says she slept till nine, which means ten.",
-  "Day off yesterday. She came back looking lighter.",
-  "She took yesterday off and didn't touch a bat. Mostly.",
+  "She took yesterday off, she says she slept till nine, which means ten.",
+  "Day off yesterday, she came back looking lighter.",
+  "She took yesterday off and didn't touch a bat, mostly.",
 ];
 const LINE_REST_PITCHER: [string, string, string] = [
-  "She took yesterday off. Her arm got the rest it needed.",
-  "Day off yesterday. She didn't touch a ball, and her arm's grateful.",
+  "She took yesterday off, her arm got the rest it needed.",
+  "Day off yesterday, she didn't touch a ball, and her arm's grateful.",
   "She took yesterday off and kept her arm in a sleeve all day.",
 ];
 
@@ -585,23 +586,23 @@ function take(lines: readonly [string, string, string], turn: number): string {
 }
 
 export function lastTrainLine(run: TraineeRun) {
-  if (run.lastInjury) return "She tweaked something yesterday. She says it's fine, but take it easy on her.";
-  if (run.lastBreakthrough === "contact") return "The Cage Coach saw it yesterday too. Her swing finally looks like her own.";
-  if (run.lastBreakthrough === "speed") return "The Poles Coach saw it yesterday too. That first step is finally hers.";
-  if (run.lastTrainingSpark) return `Something about her ${run.lastTrainingSpark} clicked for good yesterday. That's the kind of thing she'll pass on someday.`;
+  if (run.lastInjury) return "She tweaked something yesterday, she says it's fine, but take it easy on her.";
+  if (run.lastBreakthrough === "contact") return "The Cage Coach saw it yesterday too, her swing finally looks like her own.";
+  if (run.lastBreakthrough === "speed") return "The Poles Coach saw it yesterday too, that first step is finally hers.";
+  if (run.lastTrainingSpark) return `Something about her ${run.lastTrainingSpark} clicked for good yesterday, that's the kind of thing she'll pass on someday.`;
   const last = run.calendar.at(-1);
   if (!last) return null;
   if (last.outcome === "bonus") return take(LINE_BONUS, run.turn);
   if (last.outcome === "success") {
     if (last.statTrained == null) {
-      if (last.station === "treatment") return "She spent yesterday in the trainer's room. There's more in her legs today.";
+      if (last.station === "treatment") return "She spent yesterday in the trainer's room, there's more in her legs today.";
       return take(isPitcherStyle(sheet(run.characterId).style) ? LINE_REST_PITCHER : LINE_REST_HITTER, run.turn);
     }
     return take(WORK_LANDED[last.statTrained], run.turn);
   }
   if (last.outcome === "fail") return take(LINE_FAIL, run.turn);
   if (last.outcome === "bad-fail") return take(LINE_BAD_FAIL, run.turn);
-  if (last.outcome === "event") return "You played catch with her in the parking lot last night. Nobody said much, and that was the point.";
+  if (last.outcome === "event") return "You played catch with her in the parking lot last night, nobody said much, and that was the point.";
   return null;
 }
 
@@ -616,8 +617,8 @@ export function stationOpen(run: TraineeRun, station: StationId): { open: boolea
     return { open: false };
   }
   if (station === "clubhouse") {
-    if (!clubhouseOpen(turn)) return { open: false, reason: "Not yet" };
-    if (run.catchWithCoachYear === run.year) return { open: false, reason: "Once a year" };
+    if (!clubhouseOpen(turn)) return { open: false, reason: "After two mornings" };
+    if (run.catchWithCoachYear === run.year) return { open: false, reason: "Already this year" };
     return { open: true };
   }
   if (station === "hitch") {

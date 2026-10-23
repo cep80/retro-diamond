@@ -51,7 +51,7 @@ import {
 import type { LivePitch } from "@/shine/featured-game.ts";
 import type { RivalArmId } from "@/shine/rivals.ts";
 import type { CharacterId } from "@/shine/types.ts";
-import { portraitSrc, sheet, type PortraitMood } from "@/shine/bible.ts";
+import { sheet, stillSrc, type PortraitMood } from "@/shine/bible.ts";
 
 export type { HrNameplate } from "@/shine/action-art.ts";
 
@@ -196,19 +196,18 @@ function Plate({
     if (!still) reportMissing("still", `${id}/${pose}`);
   }, [still, id, pose]);
   if (!still) {
-    // No drawn still for this girl and pose: her anime portrait carries the
-    // beat with a mood, so a cast member without a still pack still reads.
+    // No drawn still in the manifest: her action still from disk, never a farm portrait.
     if (id === "academy") return null;
     return (
       <img
-        src={portraitSrc(id as CharacterId, mood ?? portraitMoodForPose(pose))}
+        src={stillSrc(id as CharacterId, pose, mood ?? portraitMoodForPose(pose))}
         alt=""
         draggable={false}
         className={`pointer-events-none absolute inset-0 size-full select-none object-cover shine-mound-close ${className ?? ""}`}
         style={style}
         data-action-plate={role}
         data-action-pose={pose}
-        data-action-hero="portrait"
+        data-action-hero="film"
         aria-hidden
       />
     );
@@ -385,9 +384,9 @@ export function ActionStage({
   const hrBackdrop = !hr
     ? null
     : focus === "pitcher" && armId !== "academy"
-      ? (stillFor(pitcher, picture.pitcher)?.url ?? portraitSrc(armId, "crushed"))
+      ? (stillFor(pitcher, picture.pitcher)?.url ?? stillSrc(armId, picture.pitcher, "crushed"))
       : batterId !== "academy"
-        ? (stillFor(batter, "celebrate")?.url ?? portraitSrc(batterId, "elated"))
+        ? (stillFor(batter, "celebrate")?.url ?? stillSrc(batterId, "celebrate", "elated"))
         : null;
   const hrName: HrNameplate | null = hrBy ?? (batterId === "academy" ? null : { name: sheet(batterId).name, jp: sheet(batterId).jp, number: sheet(batterId).number });
   const hrOff: HrNameplate | null = side === "pitcher" && armId !== "academy" ? { name: sheet(armId).name, jp: sheet(armId).jp, number: sheet(armId).number } : null;

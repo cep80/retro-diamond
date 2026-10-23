@@ -46,12 +46,14 @@ export function WorkChips({ chips, label, kind }: { chips: readonly DayChip[]; l
 }
 
 /** The rep's real work, under its swing or throw: the line, then the chips. */
-export function RepWork({ result }: { result: RepResult }) {
+export function RepWork({ result, hideLine = false }: { result: RepResult; hideLine?: boolean }) {
   return (
     <div className="shine-rep-work" data-rep-outcome={result.outcome}>
-      <p className="text-center font-story text-sm text-cream/90" data-rep-line>
-        {result.line}
-      </p>
+      {hideLine ? null : (
+        <p className="text-center font-story text-sm text-cream/90" data-rep-line>
+          {result.line}
+        </p>
+      )}
       <WorkChips chips={result.chips} label="What the morning's work did" kind="rep" />
     </div>
   );

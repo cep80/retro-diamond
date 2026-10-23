@@ -24,7 +24,14 @@ export function rivalName(arm: RivalArmId) {
 }
 
 /** One page for a played date. */
-export function gameHighlight(run: TraineeRun, kind: string, pgMet: boolean, sgMet: boolean, record: GameRecord | undefined): Highlight {
+export function gameHighlight(
+  run: TraineeRun,
+  kind: string,
+  pgMet: boolean,
+  sgMet: boolean,
+  record: GameRecord | undefined,
+  smaller?: string | null,
+): Highlight {
   const label = turnMeta(run.turn).label;
   const who = sheet(run.characterId);
   const proof = record?.pgId ? proofLine(record.pgId, record.events) : null;
@@ -35,9 +42,14 @@ export function gameHighlight(run: TraineeRun, kind: string, pgMet: boolean, sgM
   else if (pgMet && proof) line = `She got what she came for${vs}. ${proof}`;
   else if (pgMet) line = `She got what she came for${vs}.`;
   // A Finale her side won without her ask: never "it got away" about a night they won.
-  else if (kind === "finale" && run.finaleTeamWon) line = `They won${vs}. What she came for didn't come.`;
-  else if (sgMet) line = `It got away from her${vs}. The smaller ask held.`;
-  else line = `It got away from her${vs}.`;
+  else if (kind === "finale" && run.finaleTeamWon) line = `They won${vs}, and what she came for didn't come.`;
+  else if (sgMet) {
+    const extra = (smaller?.trim() || "She still got something out of it.")
+      .replace(/\s+That keeps her in it\.?$/i, "")
+      .replace(/\.$/, "");
+    const tail = extra ? `${extra[0]!.toLowerCase()}${extra.slice(1)}` : "she still got something out of it";
+    line = `It got away from her${vs}, and ${tail}.`;
+  } else line = `It got away from her${vs}.`;
   return { turn: run.turn, label, line, kind: "game" };
 }
 
@@ -46,7 +58,18 @@ export function gameHighlight(run: TraineeRun, kind: string, pgMet: boolean, sgM
  * "the goal"; pitcher years used to mint the hitter keepsake. The page says what she actually kept.
  */
 export function scrapbookLine(id: CharacterId, line: string): string {
-  line = line.replace("The goal she came for slipped", "It got away from her").replace("The smaller one held.", "The smaller ask held.");
+  line = line
+    .replace("The goal she came for slipped", "It got away from her")
+    .replace("The smaller one held.", "That keeps her in it.")
+    .replace("The smaller ask held.", "That keeps her in it.");
+  line = line.replace(
+    /^(It got away from her(?: vs [^.]+)?)\. ([^.]+)\. That keeps her in it\.$/,
+    (_, head: string, did: string) => `${head}, and ${did[0]!.toLowerCase()}${did.slice(1)}.`,
+  );
+  line = line.replace(
+    /^(It got away from her(?: vs [^.]+)?)\. That keeps her in it\.$/,
+    "$1, and that keeps her in it.",
+  );
   const pitcher = isPitcherStyle(sheet(id).style);
   if (pitcher) {
     line = line.replaceAll(" vs the Academy arm", "");
@@ -65,24 +88,24 @@ export function memoryHighlight(m: CoachMemory): Highlight {
 
 /** Her Gate, as you'd remember it later: a whole sentence, never "The Gate: she reached." */
 export const GATE_NOTE = {
-  hitterMet: "The Gate. She got on base, and she grinned about it the whole bus ride home.",
-  hitterShort: "The Gate. She got on, just not the way she needed to, and she asked you what she should have done.",
-  hitterMissed: "The Gate. She never got on base, and you kept her anyway. She noticed.",
-  pitcherMet: "The Gate. She got her three outs and walked off like it was nothing. It wasn't nothing.",
-  pitcherMissed: "The Gate. The outs didn't come, and you sat with her on the bench after.",
+  hitterMet: "She got on at the Gate, and she grinned about it the whole bus ride home.",
+  hitterShort: "She got on at the Gate, just not the way she needed to, and she asked you what she should have done.",
+  hitterMissed: "She never got on at the Gate, and she noticed you kept her anyway.",
+  pitcherMet: "She got her three outs at the Gate and walked off like it was nothing.",
+  pitcherMissed: "The outs didn't come at the Gate, and you sat with her on the bench after.",
 } as const;
 
 /** What she kept, as a memory: who kept it, and where it lives now. */
 export const KEEPSAKE_NOTE = {
   dirt: "She kept a pinch of dirt from the baseline, wrapped up in a sock.",
-  firstHit: "She kept the ball from her first hit. It sits on her shelf now.",
-  lastOut: "She kept the ball from the last out. It lives in her glove bag now.",
+  firstHit: "She kept the ball from her first hit, and it sits on her shelf now.",
+  lastOut: "She kept the ball from the last out, and it lives in her glove bag now.",
 } as const;
 
 /** Her own keepsake page, where she has one: the same thing kept, in her world. */
 const KEEPSAKE_PAGE: Partial<Record<CharacterId, string>> = {
   aoi: "It's on her shelf now, right next to the pencil stub.",
-  miki: "She told you not to tell anyone. It's in her locker, behind the melon pan.",
+  miki: "She told you not to tell anyone, and it's in her locker, behind the melon pan.",
   yuki: "She wrote the date on it in marker, fast, and the ink smeared.",
   reina: "She wrote the pitch count on it in very small numbers.",
   sol: "Luz says it's going on the dashboard of the truck.",
@@ -99,7 +122,7 @@ export function keepsakeLine(id: CharacterId, keepsake: Keepsake): string | null
         ? "She kept the ball from the last out."
         : "She kept the ball from her first hit.";
   const where = KEEPSAKE_PAGE[id];
-  return where ? `${what} ${where}` : what;
+  return where ? `${what.replace(/\.$/, "")}, and ${where[0]!.toLowerCase()}${where.slice(1)}` : what;
 }
 
 /**
@@ -145,7 +168,7 @@ export function rivalHighlight(run: TraineeRun, arm: RivalArmId): Highlight | nu
   return {
     turn: run.turn,
     label: turnMeta(run.turn).label,
-    line: n === 1 ? `First time facing ${name}.` : `Third time facing ${name}. She knows your habits by now, and you know hers.`,
+    line: n === 1 ? `First time facing ${name}.` : `Third time facing ${name}, and by now you know each other's habits.`,
     kind: "rival",
   };
 }
@@ -201,15 +224,27 @@ export function definingPaFrom(run: TraineeRun, kind: string, record: GameRecord
       current = null;
     }
   }
-  const outcome = [...inPa].reverse().find((e) => e.t === "score" && e.runner === "self")
-    ? "She scored."
+  const lastSteal = [...inPa].reverse().find((e): e is Extract<PlateEvent, { t: "stealResult" }> => e.t === "stealResult" && e.safe);
+  const scoredSelf = inPa.some((e) => e.t === "score" && e.runner === "self");
+  const outcome = scoredSelf
+    ? lastSteal
+      ? lastSteal.from === 2
+        ? "She stole third and came home."
+        : "She stole and came home."
+      : "She scored."
     : inPa.some((e) => e.t === "rbi")
       ? "A run came in."
-      : inPa.some((e) => e.t === "reach")
-        ? "She reached."
-        : inPa.some((e) => e.t === "out" && e.how === "k") || pitcherStrikeout(ev, pa)
-          ? "Struck out."
-          : "Out.";
+      : lastSteal
+        ? lastSteal.from === 2
+          ? "She stole third."
+          : lastSteal.inning >= 7
+            ? "She stole late."
+            : "She stole second."
+        : inPa.some((e) => e.t === "reach")
+          ? "She reached."
+          : inPa.some((e) => e.t === "out" && e.how === "k") || pitcherStrikeout(ev, pa)
+            ? "Struck out."
+            : "Out.";
   return {
     turn: run.turn,
     kind,
@@ -253,35 +288,83 @@ function replayInning(pa: DefiningPa, pitcher: boolean): number {
   return pa.inning;
 }
 
-/** Text replay, one line per pitch. */
-export function replayLines(pa: DefiningPa, who: CharacterId): string[] {
+function replayOuts(outs: number): string {
+  if (outs <= 0) return "Nobody's out";
+  if (outs === 1) return "One out";
+  return "Two out";
+}
+
+function replayBases(bases: DefiningPa["bases"]): string {
+  const on = [bases.first && "first", bases.second && "second", bases.third && "third"].filter(Boolean);
+  if (on.length === 0) return "The bases are empty";
+  if (on.length === 1) return `Runner on ${on[0]}`;
+  if (on.length === 2) return `Runners on ${on[0]} and ${on[1]}`;
+  return "Bases loaded";
+}
+
+function uncap(line: string): string {
+  return line.charAt(0).toLowerCase() + line.slice(1);
+}
+
+/** The park, then who was out there, in one breath. */
+function replaySituation(pa: DefiningPa, who: CharacterId): string {
   const name = sheet(who).name;
   const pitcher = isPitcherStyle(sheet(who).style);
-  const rival = pa.rival ? sheet(pa.rival).name : "the Academy arm";
-  const bases = pa.bases.first || pa.bases.second || pa.bases.third
-    ? `runner${Number(pa.bases.first) + Number(pa.bases.second) + Number(pa.bases.third) > 1 ? "s" : ""} on ${[pa.bases.first && "1st", pa.bases.second && "2nd", pa.bases.third && "3rd"].filter(Boolean).join(" and ")}`
-    : "bases empty";
-  const matchup = pitcher ? `${name} on the mound` : `${name} against ${rival}`;
-  const outs = pa.outs === 0 ? "nobody out" : `${pa.outs} out`;
-  const lines = [`${turnMeta(pa.turn).label}. ${ordinalInning(replayInning(pa, pitcher))} inning, ${outs}, ${bases}. ${matchup}.`];
+  const rival = pa.rival ? sheet(pa.rival).name : "their pitcher";
+  const vs = pitcher ? `${name} is on the mound` : `${name} is up against ${rival}`;
+  return `${replayOuts(pa.outs)}, ${uncap(replayBases(pa.bases))}, and ${vs}.`;
+}
+
+/** Text replay, one line per pitch. The first line is a friend telling you the situation. */
+export function replayLines(pa: DefiningPa, who: CharacterId): string[] {
+  const pitcher = isPitcherStyle(sheet(who).style);
+  const date = turnMeta(pa.turn).label;
+  const inn = ordinalInning(replayInning(pa, pitcher));
+  const lines = [`${date}, ${inn} inning. ${replaySituation(pa, who)}`];
   let balls = 0;
   let strikes = 0;
   for (const p of pa.pitches) {
     // Read like the scorebook Aoi keeps: the count, the pitch, then what happened.
-    const result = p.result.charAt(0).toUpperCase() + p.result.slice(1);
-    lines.push(`${balls}-${strikes}, ${/^[aeiou]/i.test(p.type) ? "an" : "a"} ${p.type}${p.inZone ? "" : " off the plate"}. ${result}.`);
+    const a = /^[aeiou]/i.test(p.type) ? "an" : "a";
+    lines.push(`${balls}-${strikes}, ${a} ${p.type}${p.inZone ? "" : " off the plate"}. ${sayReplayResult(p.result)}`);
     if (p.result === "ball") balls += 1;
     else if (p.result === "called strike" || p.result === "swing and miss" || p.result === "foul") strikes += 1;
   }
-  lines.push(sayOutcome(replayOutcome(pa), pitcher));
+  lines.push(sayOutcome(replayOutcome(pa), pitcher, who, pa));
   return lines;
 }
 
+/** The pitch's result as a sentence, never a log token. */
+function sayReplayResult(result: string): string {
+  if (result === "called strike") return "Called strike.";
+  if (result === "swing and miss") return "Swing and a miss.";
+  if (result === "foul") return "Fouled off.";
+  if (result === "foul, two strikes") return "Fouled off with two strikes.";
+  if (result === "ball") return "Ball.";
+  if (result === "ball four") return "Ball four.";
+  if (result === "home run") return "Home run.";
+  if (result === "double") return "Double.";
+  if (result === "bunt single") return "Bunt single.";
+  if (result === "single") return "Single.";
+  if (result === "strike three") return "Strike three.";
+  if (result === "bunt, out") return "Bunt, and she's out.";
+  if (result === "in play, out") return "In play, and it's an out.";
+  const cap = result.charAt(0).toUpperCase() + result.slice(1);
+  return cap.endsWith(".") ? cap : `${cap}.`;
+}
+
 /** The saved outcome ("Struck out.") said as a whole sentence, from her side of it. */
-function sayOutcome(outcome: string, pitcher: boolean): string {
+function sayOutcome(outcome: string, pitcher: boolean, who?: CharacterId, pa?: DefiningPa): string {
   if (outcome === "Struck out.") return pitcher ? "She struck her out." : "She struck out.";
   if (outcome === "Out.") return pitcher ? "She got the out." : "She made an out.";
-  if (outcome === "She reached.") return "She got on base.";
+  if (outcome === "She reached.") {
+    // A save from before steal closes were minted still has "She reached" on a steal date.
+    if (who === "yuki" && pa?.kind === "finale" && pa.inning >= 7) return "She stole late.";
+    if (who === "yuki" && pa?.kind === "series") return "She stole third.";
+    if (who === "yuki" && pa?.kind === "stretch") return "She stole and came home.";
+    if (who === "yuki" && pa?.kind === "first-light") return "She stole second.";
+    return "She got on base.";
+  }
   if (outcome === "A run came in.") return "A run came in on her.";
   return outcome;
 }
@@ -340,23 +423,23 @@ function bigGameOf(turn: number): BigGame | null {
 export const PAGE_CAPTIONS: Record<BigGame, { met: [hitter: string, pitcher: string]; missed: [hitter: string, pitcher: string] }> = {
   gate: {
     met: ["Her first big game, and she got on.", "She took the ball before anyone offered it and gave it back with the inning done."],
-    missed: ["Nothing fell her way, and she asked to hit again anyway.", "The outs didn't come, and she sat on the bench until they turned the lights off."],
+    missed: ["Nothing fell her way, and she wanted another swing anyway.", "The outs didn't come, and she sat on the bench until they turned the lights off."],
   },
   "first-light": {
     met: ["She came to do one thing and did it before the lights warmed up.", "She finished what she started and walked off slow."],
-    missed: ["Nothing fell in for her, so she wrote down every pitch on the bus home.", "It got loud, and for one inning she couldn't find the strike zone. She still remembers which inning."],
+    missed: ["Nothing fell in for her, so she wrote down every pitch on the bus home.", "The strike zone got away from her for one inning, and she still remembers which one."],
   },
   "lantern-classic": {
     met: ["The lanterns were up, and so was she.", "The lanterns came on in the fifth, and she was still out there."],
     missed: ["The lanterns stayed lit, but it wasn't her night.", "She left the game before the lanterns went out."],
   },
   "night-classic": {
-    met: ["Somebody else's park, a full house, and it went her way.", "A road crowd, loud from the first pitch. She quieted it."],
-    missed: ["A long ride home. She took the window seat and didn't talk.", "The road crowd got the last word."],
+    met: ["Somebody else's park, a full house, and it went her way.", "A road crowd, loud from the first pitch, and she quieted it."],
+    missed: ["A long ride home, and she didn't talk.", "The road crowd got the last word."],
   },
   stretch: {
-    met: ["It came down to the late innings, and she came through.", "Every out was hard. She got the ones that mattered."],
-    missed: ["It got away late. She sat on the dugout step a long while.", "The arm ran out before the inning did."],
+    met: ["It came down to the late innings, and she came through.", "Every out was hard, and she got the ones that mattered."],
+    missed: ["It got away late, and she sat on the dugout step a long while.", "The arm ran out before the inning did."],
   },
   series: {
     met: ["She put the Finale on the calendar herself.", "She pitched her way into the Finale."],
@@ -364,7 +447,7 @@ export const PAGE_CAPTIONS: Record<BigGame, { met: [hitter: string, pitcher: str
   },
   finale: {
     met: ["The biggest night of the three years, and she won it.", "The last out of three years was hers."],
-    missed: ["The last night of three years. She played every inning of it.", "She took the ball on the biggest night there is. She'd wanted that part most."],
+    missed: ["The last night of three years, and she played every inning of it.", "She took the ball on the biggest night there is, and she'd wanted that part most."],
   },
 };
 
@@ -518,7 +601,7 @@ export const GIRL_CAPTIONS: Record<CharacterId, GirlCaptions> = {
       missed: "She asked for the eighth and got it, and the inning didn't go the way she'd made the deal.",
     },
     series: {
-      met: "She went three up, three down with a Stars Park bus transfer tucked in her cap.",
+      met: "Nobody reached, and she had a Stars Park bus transfer tucked in her cap.",
       missed: "Somebody reached, and she took the transfer out of her cap and put it back in the tin.",
     },
     finale: {
@@ -567,7 +650,7 @@ export const FINALE_WON_SHORT_CAPTIONS: Record<CharacterId, string> = {
   aoi: "They won, and she still circled every at-bat where nobody came home on her.",
   reina: "They won, and she went over the ninth in the ruled notebook anyway, one row at a time.",
   miki: "They won, and Section 4 rang both cowbells anyway, strikeout and all.",
-  sol: "They won, and she held up one finger to Luz in row one. She'd wanted two.",
+  sol: "They won, and she held up one finger to Luz in row one, though she'd wanted two.",
   kira: "They won, and she took the seat in the dugout without the save she'd come for.",
   yuki: "They won, and she told you the steal would have been there if you'd said go sooner.",
 };
@@ -593,11 +676,11 @@ function rivalFromLine(line: string): string | null {
 
 function meetingLine(name: string, n: number): string {
   if (n === 1) return `It was her first time facing ${name}.`;
-  if (n === 2) return `${name} again. They'd seen each other once before.`;
-  if (n === 3) return `Third time against ${name}. By now they knew each other's habits.`;
+  if (n === 2) return `${name} again, and they'd seen each other once before.`;
+  if (n === 3) return `Third time against ${name}, and by now they knew each other's habits.`;
   if (n === 4) return `Fourth time against ${name}, and neither one blinked.`;
-  if (n === 5) return `${name} again, five times now. Nobody was surprised.`;
-  return `${name} one more time. They'd both stopped counting.`;
+  if (n === 5) return `${name} again, five times now, and nobody was surprised.`;
+  return `${name} one more time, and they'd both stopped counting.`;
 }
 
 export interface BookPicture {
@@ -631,18 +714,18 @@ export function pagePictureChoices(id: CharacterId, game: BigGame, met: boolean,
   const bust = (mood: PortraitMood): BookPicture => ({ src: sceneBustSrc(id, mood), plate });
   const pool: BookPicture[] = met
     ? pitcher
-      ? [film("k", "neutral"), bust("elated"), film("follow", "focused")]
-      : [film("celebrate"), bust("elated"), film("trot")]
+      ? [film("k", "neutral"), film("follow", "focused"), bust("elated")]
+      : [film("celebrate"), film("trot"), film("follow")]
     : pitcher
-      ? [bust("focused"), bust("crushed"), film("windup", "neutral")]
-      : [bust("focused"), film("crushed"), bust("crushed")];
+      ? [film("windup", "neutral"), film("walk", "neutral"), bust("focused")]
+      : [film("take"), film("crushed"), bust("focused")];
   const extras: BookPicture[] = met
     ? pitcher
-      ? [film("windup", "neutral"), film("release", "neutral"), film("set", "neutral"), bust("neutral")]
-      : [film("contact"), film("follow"), bust("neutral")]
+      ? [film("release", "neutral"), film("set", "neutral"), bust("elated"), bust("neutral")]
+      : [film("contact"), bust("elated"), bust("neutral")]
     : pitcher
-      ? [film("walk", "neutral"), bust("neutral")]
-      : [film("take"), bust("neutral")];
+      ? [film("follow", "focused"), bust("crushed"), bust("neutral")]
+      : [film("follow"), bust("neutral")];
   const turn = nth % pool.length;
   const out: BookPicture[] = [];
   for (const p of [...pool.slice(turn), ...pool.slice(0, turn), ...extras]) if (!out.some((o) => o.src === p.src)) out.push(p);
@@ -678,7 +761,7 @@ export interface BookPage {
   /** The game's name, as the page was minted. */
   label: string;
   met: boolean;
-  /** The big ask missed, and the smaller one held. The chip says 小さな達成. */
+  /** The big goal missed, and what she could still do saved the miss. The chip says 小さな達成. */
   saved: boolean;
   caption: string;
   /** Who was across from her, counted over the career. */
@@ -689,6 +772,11 @@ export interface BookPage {
 }
 
 export type BookEntry = { kind: "page"; page: BookPage } | { kind: "note"; turn: number; label: string; line: string };
+
+/** Caption, then who was across from her, then the keepsake: one tap each on the polaroid. */
+export function polaroidLines(page: { caption: string; meeting: string | null; notes: readonly string[] }): string[] {
+  return [page.caption, page.meeting, ...page.notes].filter((x): x is string => Boolean(x));
+}
 
 /**
  * The scrapbook as a book: a polaroid for each big game she played, in order, with the
@@ -719,15 +807,14 @@ export function scrapbookBook(id: CharacterId, highlights: readonly Highlight[],
       // A Finale her side won short of her ask (gameHighlight's "They won") says they won.
       const wonShort = game === "finale" && !met && /^They won\b/.test(h.line);
       const caption = wonShort ? FINALE_WON_SHORT_CAPTIONS[id] : pageCaption(id, game, met);
-      const saved = !met && /smaller (ask|one) held/i.test(h.line);
-      const smaller = saved ? " She did get the smaller thing she was after, though." : "";
+      const saved = !met && (/smaller (ask|one) held/i.test(h.line) || /That keeps her in it/.test(h.line));
       const page: BookPage = {
         turn: h.turn,
         game,
         label: h.label,
         met,
         saved,
-        caption: `${caption}${smaller}`,
+        caption,
         meeting,
         notes: [],
         picture: pagePicture(id, game, met, met ? nth.met++ : nth.missed++),
@@ -758,6 +845,16 @@ export function letterPage(id: CharacterId, finalePlayed: boolean): { kicker: st
   if (!finalePlayed) return null;
   const text = sheet(id).letters.trim();
   return text ? { kicker: "A letter from the stands", text } : null;
+}
+
+/** One sentence at a time, so the scrapbook doesn't dump the whole letter. */
+export function letterLines(text: string): string[] {
+  const parts = text
+    .trim()
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts.length ? parts : [text.trim()];
 }
 
 export function addHighlight(run: TraineeRun, h: Highlight | null) {
